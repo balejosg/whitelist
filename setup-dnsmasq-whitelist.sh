@@ -52,22 +52,16 @@ else
     exit 1
 fi
 
-# Instalar dependencias
+# Liberar puerto 53 ANTES de instalar dnsmasq
 echo ""
-echo "[1/8] Instalando dependencias..."
-apt-get update -qq
-apt-get install -y ipset iptables curl dnsmasq libcap2-bin
-
-# Dar capacidades a dnsmasq para modificar ipset
-echo ""
-echo "[2/8] Configurando capacidades de dnsmasq..."
-setcap 'cap_net_admin=+ep' /usr/sbin/dnsmasq
-echo "dnsmasq puede ahora modificar ipset (CAP_NET_ADMIN)"
-
-# Configurar systemd-resolved para liberar el puerto 53
-echo ""
-echo "[3/8] Configurando systemd-resolved..."
+echo "[1/9] Liberando puerto 53..."
 if systemctl is-active --quiet systemd-resolved; then
+    # Crear backup de resolved.conf si no existe
+    if [ ! -f /etc/systemd/resolved.conf.backup-whitelist ]; then
+        cp /etc/systemd/resolved.conf /etc/systemd/resolved.conf.backup-whitelist
+        echo "Backup creado: /etc/systemd/resolved.conf.backup-whitelist"
+    fi
+
     # Deshabilitar DNSStubListener
     sed -i 's/#DNSStubListener=yes/DNSStubListener=no/' /etc/systemd/resolved.conf
     sed -i 's/DNSStubListener=yes/DNSStubListener=no/' /etc/systemd/resolved.conf
@@ -77,13 +71,52 @@ if systemctl is-active --quiet systemd-resolved; then
         sed -i "s/#DNS=/DNS=$GATEWAY_IP/" /etc/systemd/resolved.conf
     fi
 
+    # DETENER systemd-resolved para liberar puerto 53
+    echo "Deteniendo systemd-resolved para liberar puerto 53..."
+    systemctl stop systemd-resolved
+
+    # Verificar que puerto 53 está libre
+    echo "Verificando que puerto 53 está libre..."
+    for i in {1..10}; do
+        if ! ss -tulpn 2>/dev/null | grep -q ":53 "; then
+            echo "✓ Puerto 53 liberado"
+            break
+        fi
+        if [ $i -eq 10 ]; then
+            echo "ERROR: Puerto 53 aún está ocupado después de 10 segundos"
+            systemctl start systemd-resolved
+            exit 1
+        fi
+        sleep 1
+    done
+fi
+
+# Instalar dependencias
+echo ""
+echo "[2/9] Instalando dependencias..."
+apt-get update -qq
+# Instalar sin iniciar servicios automáticamente
+DEBIAN_FRONTEND=noninteractive apt-get install -y ipset iptables curl libcap2-bin
+# Instalar dnsmasq sin iniciarlo
+RUNLEVEL=1 apt-get install -y dnsmasq
+
+# Dar capacidades a dnsmasq para modificar ipset
+echo ""
+echo "[3/9] Configurando capacidades de dnsmasq..."
+setcap 'cap_net_admin=+ep' /usr/sbin/dnsmasq
+echo "dnsmasq puede ahora modificar ipset (CAP_NET_ADMIN)"
+
+# Reconfigurar systemd-resolved
+echo ""
+echo "[4/9] Reconfigurando systemd-resolved..."
+if [ -f /etc/systemd/resolved.conf.backup-whitelist ]; then
     systemctl restart systemd-resolved
-    echo "systemd-resolved configurado"
+    echo "systemd-resolved reconfigurado (sin puerto 53)"
 fi
 
 # Crear script principal
 echo ""
-echo "[4/8] Creando script principal dnsmasq-whitelist.sh..."
+echo "[5/9] Creando script principal dnsmasq-whitelist.sh..."
 cat > /usr/local/bin/dnsmasq-whitelist.sh << 'SCRIPT_EOF'
 #!/bin/bash
 
@@ -93,10 +126,11 @@ cat > /usr/local/bin/dnsmasq-whitelist.sh << 'SCRIPT_EOF'
 # Comportamiento: Fail-Open (si no se puede descargar, no restringe)
 #############################################
 
-set -e
+# NO usamos 'set -e' porque queremos manejar errores explícitamente
+# y evitar dejar el sistema en estado inconsistente si algo falla
 
 # Configuración
-WHITELIST_URL="https://gist.githubusercontent.com/balejosg/9a81340e7e7bfd044cc031f41af6acdc/raw/0b0a2339e8eb513dde8197cdc3eab487abd5f3cf/whitelist.txt"
+WHITELIST_URL="https://gist.githubusercontent.com/balejosg/9a81340e7e7bfd044cc031f41af6acdc/raw/whitelist.txt"
 WHITELIST_FILE="/var/lib/url-whitelist/whitelist.txt"
 WHITELIST_HASH="/var/lib/url-whitelist/whitelist.hash"
 DNSMASQ_CONF="/etc/dnsmasq.d/url-whitelist.conf"
@@ -239,7 +273,12 @@ has_config_changed() {
 # Función para verificar si las reglas de firewall están activas
 firewall_rules_active() {
     # Contar reglas en OUTPUT (debe haber al menos 5)
-    RULE_COUNT=$(iptables -L OUTPUT -n 2>/dev/null | grep -c "^ACCEPT\|^DROP" || echo "0")
+    RULE_COUNT=$(iptables -L OUTPUT -n 2>/dev/null | grep "^ACCEPT\|^DROP" | wc -l)
+
+    # Validar que RULE_COUNT es un número
+    if [ -z "$RULE_COUNT" ] || ! [[ "$RULE_COUNT" =~ ^[0-9]+$ ]]; then
+        RULE_COUNT=0
+    fi
 
     if [ "$RULE_COUNT" -ge 5 ]; then
         return 0  # Reglas activas
@@ -286,16 +325,37 @@ configure_firewall() {
 restart_dnsmasq() {
     log "Reiniciando dnsmasq..."
 
-    if systemctl restart dnsmasq; then
-        log "dnsmasq reiniciado exitosamente"
-
-        # Guardar hash de la configuración actual
-        md5sum "$DNSMASQ_CONF" | cut -d' ' -f1 > "$DNSMASQ_CONF_HASH"
-        return 0
-    else
+    if ! systemctl restart dnsmasq; then
         log "ERROR: No se pudo reiniciar dnsmasq"
         return 1
     fi
+
+    # Dar tiempo a que dnsmasq arranque completamente
+    sleep 3
+
+    # VALIDACIÓN 1: Verificar que dnsmasq está ejecutándose
+    if ! systemctl is-active --quiet dnsmasq; then
+        log "ERROR: dnsmasq no está activo después del reinicio"
+        return 1
+    fi
+
+    # VALIDACIÓN 2: Verificar que dnsmasq está escuchando en puerto 53
+    if ! ss -tulpn 2>/dev/null | grep -q ":53.*dnsmasq"; then
+        log "ERROR: dnsmasq no está escuchando en puerto 53"
+        return 1
+    fi
+
+    # VALIDACIÓN 3: Verificar que resuelve DNS correctamente
+    if ! host google.com 127.0.0.1 &>/dev/null && ! nslookup google.com 127.0.0.1 &>/dev/null; then
+        log "ERROR: dnsmasq no resuelve DNS correctamente"
+        return 1
+    fi
+
+    log "dnsmasq verificado y funcionando correctamente"
+
+    # Guardar hash de la configuración actual
+    md5sum "$DNSMASQ_CONF" | cut -d' ' -f1 > "$DNSMASQ_CONF_HASH"
+    return 0
 }
 
 # Función para verificar si el sistema está desactivado remotamente
@@ -341,23 +401,29 @@ main() {
         fi
 
         if [ "$CONFIG_CHANGED" = true ] || [ "$RULES_MISSING" = true ]; then
-            # Configurar firewall (siempre, si las reglas están ausentes)
+            # CRÍTICO: Reiniciar y validar dnsmasq ANTES de configurar firewall
+            if [ "$CONFIG_CHANGED" = true ]; then
+                log "Configuración cambió - Reiniciando dnsmasq..."
+                if restart_dnsmasq; then
+                    log "dnsmasq validado correctamente"
+                else
+                    log "=== ERROR: dnsmasq no funciona correctamente ==="
+                    log "=== FAIL-SAFE ACTIVADO: No se aplican restricciones ==="
+                    cleanup_firewall
+                    return
+                fi
+            fi
+
+            # Solo configurar firewall si dnsmasq está funcionando
+            log "dnsmasq operativo - Configurando firewall..."
             configure_firewall
 
-            # Reiniciar dnsmasq solo si la configuración cambió
-            if [ "$CONFIG_CHANGED" = true ]; then
-                if restart_dnsmasq; then
-                    log "=== Sistema actualizado exitosamente ==="
-                else
-                    log "=== ERROR al reiniciar dnsmasq - Activando fail-open ==="
-                    cleanup_firewall
-                fi
-            else
-                # Solo restauramos las reglas, no reiniciamos dnsmasq
-                log "=== Reglas de firewall restauradas (dnsmasq ya estaba configurado) ==="
+            if [ "$CONFIG_CHANGED" = false ]; then
                 # Guardar hash para marcar que ahora está sincronizado
                 md5sum "$DNSMASQ_CONF" | cut -d' ' -f1 > "$DNSMASQ_CONF_HASH"
             fi
+
+            log "=== Sistema actualizado exitosamente ==="
         else
             log "=== Sin cambios - Sistema operando correctamente ==="
         fi
@@ -378,7 +444,13 @@ chmod +x /usr/local/bin/dnsmasq-whitelist.sh
 
 # Configurar dnsmasq
 echo ""
-echo "[5/8] Configurando dnsmasq..."
+echo "[6/9] Configurando dnsmasq..."
+# Crear backup de dnsmasq.conf si no existe
+if [ ! -f /etc/dnsmasq.conf.backup-whitelist ]; then
+    cp /etc/dnsmasq.conf /etc/dnsmasq.conf.backup-whitelist 2>/dev/null || true
+    echo "Backup creado: /etc/dnsmasq.conf.backup-whitelist"
+fi
+
 # Se elimina el entrecomillado de DNSMASQ_EOF para permitir la expansión de la variable $GATEWAY_IP
 cat >> /etc/dnsmasq.conf << DNSMASQ_EOF
 
@@ -405,7 +477,13 @@ DNSMASQ_EOF
 
 # Configurar DNS del sistema
 echo ""
-echo "[6/8] Configurando DNS del sistema..."
+echo "[7/9] Configurando DNS del sistema..."
+# Crear backup de resolv.conf si no existe
+if [ ! -f /etc/resolv.conf.backup-whitelist ] && [ -f /etc/resolv.conf ]; then
+    cp /etc/resolv.conf /etc/resolv.conf.backup-whitelist
+    echo "Backup creado: /etc/resolv.conf.backup-whitelist"
+fi
+
 rm -f /etc/resolv.conf
 cat > /etc/resolv.conf << 'RESOLV_EOF'
 nameserver 127.0.0.1
@@ -414,7 +492,7 @@ RESOLV_EOF
 
 # Crear servicio systemd
 echo ""
-echo "[7/8] Creando servicios systemd..."
+echo "[8/9] Creando servicios systemd..."
 cat > /etc/systemd/system/dnsmasq-whitelist.service << 'SERVICE_EOF'
 [Unit]
 Description=dnsmasq URL Whitelist Manager
@@ -469,7 +547,7 @@ systemctl enable dnsmasq-whitelist.timer
 
 # Inicializar sistema
 echo ""
-echo "[8/8] Inicializando sistema..."
+echo "[9/9] Inicializando sistema..."
 
 # Temporalmente usar DNS del router para la primera descarga
 # Se elimina el entrecomillado de RESOLV_TEMP_EOF para permitir la expansión de la variable $GATEWAY_IP

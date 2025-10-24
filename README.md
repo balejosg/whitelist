@@ -23,6 +23,20 @@ El sistema funciona de manera automática una vez instalado:
 - Conexión a internet
 - Permisos de administrador (usuario root)
 
+## ⚠️ Nota Importante (Actualización Enero 2025)
+
+**El sistema ha sido mejorado con protecciones críticas de seguridad:**
+
+✅ **Instalación 100% segura**: El sistema ahora valida que todo funcione correctamente ANTES de activar restricciones. Si algo falla, el sistema mantiene acceso completo a internet.
+
+✅ **Sin riesgo de pérdida de conectividad**: Múltiples validaciones aseguran que nunca quedarás sin internet durante o después de la instalación.
+
+✅ **Actualizaciones remotas funcionan correctamente**: Los cambios que hagas en la lista de sitios web se aplicarán automáticamente en todos los ordenadores.
+
+✅ **Rollback completo**: Si necesitas desinstalar, el sistema restaura completamente la configuración original.
+
+**Si instalaste una versión anterior**, se recomienda desinstalar con el script de rollback y reinstalar con la nueva versión.
+
 ## Instalación (Paso a Paso)
 
 ### 1. Descargar el sistema
