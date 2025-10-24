@@ -88,6 +88,91 @@ También puedes ver la lista descargada actualmente en el ordenador:
 cat /var/lib/url-whitelist/whitelist.txt
 ```
 
+## 🚨 Desactivar el sistema remotamente (DESACTIVACIÓN DE EMERGENCIA)
+
+**IMPORTANTE:** Existe una manera muy fácil de desactivar todos los ordenadores simultáneamente sin necesidad de acceder a cada uno.
+
+### ¿Cuándo usar esto?
+
+- Clase especial donde necesites acceso libre a internet
+- Eventos o actividades que requieran navegación sin restricciones
+- Emergencias donde el bloqueo esté causando problemas
+- Mantenimiento temporal del sistema
+
+### Cómo desactivar (Método simple)
+
+1. Ve al Gist de la whitelist: https://gist.github.com/balejosg/9a81340e7e7bfd044cc031f41af6acdc
+2. Haz clic en **"Edit"** (Editar)
+3. **Añade esta línea al principio del archivo:**
+   ```
+   # DESACTIVADO
+   ```
+4. Haz clic en **"Update public gist"** (Actualizar)
+5. Espera **máximo 5 minutos** (o menos si ejecutas el comando de actualización manual)
+
+**Resultado:** Todos los ordenadores que usen este sistema permitirán acceso libre a internet.
+
+### Ejemplo de archivo desactivado
+
+```
+# DESACTIVADO
+# El sistema está desactivado mientras esta línea esté presente
+# (Puedes dejar el resto de la lista intacta)
+wikipedia.org
+google.com
+educamadrid.org
+```
+
+### Cómo reactivar
+
+1. Edita el Gist nuevamente
+2. **Elimina o comenta** la línea `# DESACTIVADO`
+3. Actualiza el Gist
+4. En máximo 5 minutos, el sistema volverá a aplicar restricciones
+
+### Ejemplo de archivo reactivado
+
+```
+# El sistema está activo de nuevo
+wikipedia.org
+google.com
+educamadrid.org
+```
+
+### Variantes que funcionan
+
+El sistema detecta cualquiera de estas variantes (no distingue mayúsculas/minúsculas):
+
+- `# DESACTIVADO`
+- `# desactivado`
+- `#DESACTIVADO`
+- `# Sistema desactivado`
+- `# DESACTIVADO temporalmente`
+
+**Lo importante:** La palabra "DESACTIVADO" debe estar en un comentario (línea que empieza con `#`) y debe ser la primera línea no vacía del archivo.
+
+### Forzar actualización inmediata
+
+Si necesitas que la desactivación/reactivación sea inmediata (sin esperar 5 minutos), ejecuta esto en cada ordenador:
+
+```bash
+sudo /usr/local/bin/dnsmasq-whitelist.sh
+```
+
+### Verificar estado
+
+Para verificar si un ordenador detectó la desactivación, revisa los logs:
+
+```bash
+sudo tail -n 20 /var/log/url-whitelist.log
+```
+
+Si está desactivado, verás un mensaje como:
+```
+DESACTIVACIÓN REMOTA DETECTADA en whitelist
+=== SISTEMA DESACTIVADO REMOTAMENTE - Eliminando restricciones ===
+```
+
 ## Páginas que siempre están permitidas
 
 Aunque no las añadas a la lista, estas páginas siempre estarán accesibles (son necesarias para el funcionamiento del sistema):
@@ -134,7 +219,17 @@ cat /var/lib/url-whitelist/whitelist.txt
 
 ## Desactivar temporalmente el sistema
 
-Si necesitas desactivar el control por algún motivo (por ejemplo, para una clase especial donde necesiten acceso libre):
+Hay dos formas de desactivar el sistema:
+
+### Método 1: Desactivación remota (Recomendado)
+
+**Para desactivar TODOS los ordenadores a la vez**, consulta la sección [🚨 Desactivar el sistema remotamente](#-desactivar-el-sistema-remotamente-desactivación-de-emergencia) más arriba.
+
+Este es el método más fácil porque no necesitas acceder físicamente a cada ordenador.
+
+### Método 2: Desactivación local (Solo un ordenador)
+
+Si solo necesitas desactivar UN ordenador específico:
 
 ```bash
 sudo systemctl stop dnsmasq-whitelist.timer
@@ -146,6 +241,8 @@ Para activarlo de nuevo:
 ```bash
 sudo systemctl start dnsmasq-whitelist.timer
 ```
+
+**Nota:** Este método solo afecta al ordenador donde ejecutes el comando. Los demás seguirán con las restricciones activas.
 
 ## Desinstalar completamente
 

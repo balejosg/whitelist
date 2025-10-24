@@ -40,6 +40,7 @@ This repository contains a **dnsmasq-based URL whitelist system** for Ubuntu/Deb
 
 - **Dynamic IP Resolution**: Uses dnsmasq + ipset to solve the dynamic IP problem. When dnsmasq resolves a whitelisted domain, it automatically adds the IP to ipset in real-time.
 - **Fail-Open Strategy**: If the GitHub Gist whitelist cannot be downloaded, the system removes all firewall restrictions to avoid blocking legitimate access.
+- **Remote Emergency Disable**: The system can be remotely disabled by adding `# DESACTIVADO` as the first non-empty line in the whitelist file. This triggers fail-open mode across all systems simultaneously.
 - **System-Wide Application**: Applies to all users on the system.
 - **5-Minute Update Cycle**: Whitelist is re-downloaded every 5 minutes via systemd timer.
 
@@ -143,6 +144,42 @@ OnUnitActiveSec=5min  # Change to desired interval
 ### Fail-Open vs Fail-Closed Behavior
 
 Current behavior is fail-open (setup-dnsmasq-whitelist.sh:344-347). To change to fail-closed, modify the `cleanup_firewall()` function to maintain restrictions instead of removing them.
+
+### Remote Emergency Disable
+
+The system supports remote emergency disabling via a keyword in the whitelist file:
+
+**How it works:**
+- The `check_emergency_disable()` function (lines 301-315) checks the first non-empty line of the downloaded whitelist
+- If the line contains `# DESACTIVADO` (case-insensitive), the system enters fail-open mode
+- This is checked after every successful whitelist download, before applying configurations
+
+**Implementation details:**
+```bash
+# Function detects variations like:
+# DESACTIVADO
+# desactivado
+# Sistema desactivado
+# DESACTIVADO temporalmente
+```
+
+**Activation flow:**
+1. Download whitelist from GitHub Gist (line 320)
+2. Check for emergency disable keyword (line 322)
+3. If detected, execute `cleanup_firewall()` and exit (lines 323-326)
+4. If not detected, proceed with normal configuration (line 329)
+
+**Use cases:**
+- Emergency internet access during incidents
+- Temporary unrestricted access for special events
+- Simultaneous disable across all systems without physical access
+- Quick rollback if whitelist causes issues
+
+**To implement:**
+Add `# DESACTIVADO` as the first line of the whitelist file in the GitHub Gist. Within 5 minutes (or immediately if manually executed), all systems will remove restrictions.
+
+**To restore:**
+Remove the `# DESACTIVADO` line from the Gist. Systems will re-enable restrictions on next update cycle.
 
 ## Security Considerations
 

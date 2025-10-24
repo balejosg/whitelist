@@ -298,10 +298,33 @@ restart_dnsmasq() {
     fi
 }
 
+# Función para verificar si el sistema está desactivado remotamente
+check_emergency_disable() {
+    # Verificar si la primera línea del whitelist contiene la palabra clave de desactivación
+    if [ -f "$WHITELIST_FILE" ]; then
+        # Leer primera línea no vacía
+        FIRST_LINE=$(grep -v '^[[:space:]]*$' "$WHITELIST_FILE" | head -n 1 | xargs)
+
+        # Verificar si contiene la palabra clave (case-insensitive)
+        if echo "$FIRST_LINE" | grep -iq "^#.*DESACTIVADO"; then
+            log "DESACTIVACIÓN REMOTA DETECTADA en whitelist"
+            return 0  # Sistema desactivado
+        fi
+    fi
+    return 1  # Sistema activo
+}
+
 # Lógica principal
 main() {
     # Intentar descargar whitelist
     if download_whitelist; then
+        # Verificar si hay orden de desactivación remota
+        if check_emergency_disable; then
+            log "=== SISTEMA DESACTIVADO REMOTAMENTE - Eliminando restricciones ==="
+            cleanup_firewall
+            return
+        fi
+
         # Descarga exitosa - generar configuración
         generate_dnsmasq_config
 
