@@ -170,34 +170,41 @@ activate_firewall() {
     iptables -A OUTPUT -p udp -d 127.0.0.1 --dport 53 -j ACCEPT
     iptables -A OUTPUT -p tcp -d 127.0.0.1 --dport 53 -j ACCEPT
 
-    # 4. BLOQUEAR DNS a cualquier otro servidor (anti-bypass)
+    # 4. Permitir a 'root' y 'dnsmasq' hacer consultas DNS externas
+    # Esto es CRÍTICO para que dnsmasq pueda resolver y el script de refresco pueda popular el ipset.
+    iptables -A OUTPUT -p udp --dport 53 -m owner --uid-owner 0 -j ACCEPT
+    iptables -A OUTPUT -p tcp --dport 53 -m owner --uid-owner 0 -j ACCEPT
+    iptables -A OUTPUT -p udp --dport 53 -m owner --uid-owner dnsmasq -j ACCEPT
+    iptables -A OUTPUT -p tcp --dport 53 -m owner --uid-owner dnsmasq -j ACCEPT
+
+    # 5. BLOQUEAR DNS a cualquier otro servidor (anti-bypass para el resto de usuarios)
     iptables -A OUTPUT -p udp --dport 53 -j DROP
     iptables -A OUTPUT -p tcp --dport 53 -j DROP
 
-    # 5. Bloquear puertos VPN comunes (anti-bypass)
+    # 6. Bloquear puertos VPN comunes (anti-bypass)
     iptables -A OUTPUT -p udp --dport 1194 -j DROP  # OpenVPN
     iptables -A OUTPUT -p udp --dport 51820 -j DROP # WireGuard
     iptables -A OUTPUT -p tcp --dport 1723 -j DROP  # PPTP
 
-    # 6. Bloquear Tor
+    # 7. Bloquear Tor
     iptables -A OUTPUT -p tcp --dport 9001 -j DROP
     iptables -A OUTPUT -p tcp --dport 9030 -j DROP
 
-    # 7. Permitir HTTP/HTTPS SOLO a IPs en whitelist (validación con ipset)
+    # 8. Permitir HTTP/HTTPS SOLO a IPs en whitelist (validación con ipset)
     # CRÍTICO: Esto valida que la IP destino esté en el ipset antes de permitir
     iptables -A OUTPUT -p tcp --dport 80 -m set --match-set url_whitelist dst -j ACCEPT
     iptables -A OUTPUT -p tcp --dport 443 -m set --match-set url_whitelist dst -j ACCEPT
 
-    # 8. Permitir NTP (sincronización de hora)
+    # 9. Permitir NTP (sincronización de hora)
     iptables -A OUTPUT -p udp --dport 123 -j ACCEPT
 
-    # 9. BLOQUEAR acceso directo por IP (forzar uso de DNS)
+    # 10. BLOQUEAR acceso directo por IP (forzar uso de DNS)
     # Excepto redes privadas y gateway
     iptables -A OUTPUT -d 10.0.0.0/8 -j ACCEPT
     iptables -A OUTPUT -d 172.16.0.0/12 -j ACCEPT
     iptables -A OUTPUT -d 192.168.0.0/16 -j ACCEPT
 
-    # 10. BLOQUEAR todo lo demás
+    # 11. BLOQUEAR todo lo demás
     iptables -A OUTPUT -j DROP
 
     log "Firewall restrictivo activado"
@@ -453,27 +460,27 @@ setup_ipset() {
     if ! ipset list url_whitelist >/dev/null 2>&1; then
         ipset create url_whitelist hash:ip timeout 0 2>/dev/null || true
         log "ipset 'url_whitelist' creado"
-    else
-        # Limpiar ipset existente
-        ipset flush url_whitelist 2>/dev/null || true
-        log "ipset 'url_whitelist' limpiado"
-    fi
 
-    # Resolver dominios base y añadir IPs manualmente al ipset
-    # Esto asegura que IPs estén disponibles inmediatamente
-    log "Pre-poblando ipset con IPs de dominios base..."
-    PREPOPULATED=0
-    for domain in "${BASE_URLS[@]}"; do
-        # Intentar resolver el dominio
-        IPS=$(dig +short "$domain" @"$GATEWAY_IP" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' || true)
-        if [ -n "$IPS" ]; then
-            while IFS= read -r ip; do
-                ipset add url_whitelist "$ip" 2>/dev/null || true
-                ((PREPOPULATED++)) || true
-            done <<< "$IPS"
-        fi
-    done
-    log "Pre-pobladas $PREPOPULATED IPs en ipset"
+        # SOLO pre-poblar si acabamos de crear el ipset
+        # Resolver dominios base y añadir IPs manualmente al ipset
+        # Esto asegura que IPs estén disponibles inmediatamente
+        log "Pre-poblando ipset nuevo con IPs de dominios base..."
+        PREPOPULATED=0
+        for domain in "${BASE_URLS[@]}"; do
+            # Intentar resolver el dominio con timeout de 2 segundos
+            IPS=$(timeout 2 dig +short +time=1 +tries=1 "$domain" @"$GATEWAY_IP" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' || true)
+            if [ -n "$IPS" ]; then
+                while IFS= read -r ip; do
+                    ipset add url_whitelist "$ip" 2>/dev/null || true
+                    ((PREPOPULATED++)) || true
+                done <<< "$IPS"
+            fi
+        done
+        log "Pre-pobladas $PREPOPULATED IPs en ipset"
+    else
+        # Si ipset ya existe, NO vaciarlo - dnsmasq lo gestiona dinámicamente
+        log "ipset 'url_whitelist' ya existe - dnsmasq lo gestionará dinámicamente"
+    fi
 }
 
 # Función para verificar desactivación remota
@@ -503,12 +510,31 @@ main() {
         generate_dnsmasq_config
 
         if has_config_changed; then
+            # Validar configuración de dnsmasq antes de reiniciar
+            log "Validando configuración de dnsmasq..."
+            if ! dnsmasq --test 2>&1 | grep -q "syntax check OK"; then
+                log "ERROR: Configuración de dnsmasq inválida"
+                dnsmasq --test 2>&1 | tail -5 | while read line; do log "  $line"; done
+                cleanup_system
+                return
+            fi
+            log "Configuración de dnsmasq válida"
+
             log "Reiniciando dnsmasq..."
-            if systemctl restart dnsmasq; then
-                md5sum "$DNSMASQ_CONF" | cut -d' ' -f1 > "$DNSMASQ_CONF_HASH"
-                log "dnsmasq reiniciado exitosamente"
+            # Usar timeout para evitar bloqueos indefinidos
+            if timeout 30 systemctl restart dnsmasq; then
+                # Verificar que dnsmasq realmente está corriendo
+                sleep 2
+                if systemctl is-active --quiet dnsmasq; then
+                    md5sum "$DNSMASQ_CONF" | cut -d' ' -f1 > "$DNSMASQ_CONF_HASH"
+                    log "dnsmasq reiniciado exitosamente"
+                else
+                    log "ERROR: dnsmasq no está activo después del reinicio"
+                    cleanup_system
+                    return
+                fi
             else
-                log "ERROR: No se pudo reiniciar dnsmasq"
+                log "ERROR: Timeout o fallo al reiniciar dnsmasq"
                 cleanup_system
                 return
             fi
