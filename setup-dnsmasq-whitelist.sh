@@ -1,19 +1,16 @@
 #!/bin/bash
 
 ################################################################################
-# Script de Instalación: dnsmasq URL Whitelist System
+# Script de Instalación: dnsmasq URL Whitelist System v2.0
 #
-# Este script instala y configura el sistema de whitelist de URLs basado en dnsmasq
-# para controlar el acceso a internet en sistemas Ubuntu/Debian.
+# Nueva arquitectura para portales cautivos (WEDU):
+# - DNS Sinkhole: dnsmasq solo resuelve dominios en whitelist
+# - Detector de portal cautivo: activa restricciones solo después de autenticarse
+# - Funciona con IPs dinámicas (no necesita ipset)
+# - Fail-open: si no puede conectar, permite todo
+# - Resistente a bypass técnicos
 #
 # Uso: sudo ./setup-dnsmasq-whitelist.sh
-#
-# Características:
-# - Whitelist basada en archivo remoto (GitHub Gist)
-# - Actualización cada 5 minutos
-# - Fail-open: si el servidor no es alcanzable, no se aplican restricciones
-# - Aplicable a todos los usuarios del sistema
-# - Soluciona el problema de IPs dinámicas usando dnsmasq + ipset
 #
 ################################################################################
 
@@ -26,7 +23,8 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 echo "======================================================"
-echo "  dnsmasq URL Whitelist System - Instalación"
+echo "  dnsmasq URL Whitelist System v2.0 - Instalación"
+echo "  Optimizado para portales cautivos (WEDU)"
 echo "======================================================"
 echo ""
 
@@ -54,7 +52,7 @@ fi
 
 # Liberar puerto 53 ANTES de instalar dnsmasq
 echo ""
-echo "[1/9] Liberando puerto 53..."
+echo "[1/10] Liberando puerto 53..."
 if systemctl is-active --quiet systemd-resolved; then
     # Crear backup de resolved.conf si no existe
     if [ ! -f /etc/systemd/resolved.conf.backup-whitelist ]; then
@@ -71,88 +69,245 @@ if systemctl is-active --quiet systemd-resolved; then
         sed -i "s/#DNS=/DNS=$GATEWAY_IP/" /etc/systemd/resolved.conf
     fi
 
-    # DETENER systemd-resolved para liberar puerto 53
-    echo "Deteniendo systemd-resolved para liberar puerto 53..."
+    # DETENER systemd-resolved Y su socket para liberar puerto 53
+    echo "Deteniendo systemd-resolved y systemd-resolved.socket..."
+    systemctl stop systemd-resolved.socket 2>/dev/null || true
     systemctl stop systemd-resolved
 
-    # Verificar que puerto 53 está libre
+    # Verificar que puerto 53 está libre (timeout extendido a 30s)
     echo "Verificando que puerto 53 está libre..."
-    for i in {1..10}; do
+    PORT_FREE=false
+    for i in {1..30}; do
         if ! ss -tulpn 2>/dev/null | grep -q ":53 "; then
-            echo "✓ Puerto 53 liberado"
+            echo "✓ Puerto 53 liberado (intento $i/30)"
+            PORT_FREE=true
             break
-        fi
-        if [ $i -eq 10 ]; then
-            echo "ERROR: Puerto 53 aún está ocupado después de 10 segundos"
-            systemctl start systemd-resolved
-            exit 1
         fi
         sleep 1
     done
+
+    if [ "$PORT_FREE" = false ]; then
+        echo "ERROR: Puerto 53 aún está ocupado después de 30 segundos"
+        echo "Procesos usando puerto 53:"
+        ss -tulpn 2>/dev/null | grep ":53 " || echo "  (ninguno visible)"
+        lsof -i :53 2>/dev/null || echo "  (lsof no disponible)"
+        echo ""
+        echo "Intentando reiniciar systemd-resolved..."
+        systemctl start systemd-resolved
+        exit 1
+    fi
 fi
 
 # Instalar dependencias
 echo ""
-echo "[2/9] Instalando dependencias..."
+echo "[2/10] Instalando dependencias..."
 apt-get update -qq
-# Instalar sin iniciar servicios automáticamente
-DEBIAN_FRONTEND=noninteractive apt-get install -y ipset iptables curl libcap2-bin
+DEBIAN_FRONTEND=noninteractive apt-get install -y iptables ipset curl libcap2-bin dnsutils
 # Instalar dnsmasq sin iniciarlo
 RUNLEVEL=1 apt-get install -y dnsmasq
 
-# Dar capacidades a dnsmasq para modificar ipset
+# Dar capacidades a dnsmasq
 echo ""
-echo "[3/9] Configurando capacidades de dnsmasq..."
-setcap 'cap_net_admin=+ep' /usr/sbin/dnsmasq
-echo "dnsmasq puede ahora modificar ipset (CAP_NET_ADMIN)"
+echo "[3/10] Configurando capacidades de dnsmasq..."
+setcap 'cap_net_bind_service,cap_net_admin=+ep' /usr/sbin/dnsmasq
+echo "dnsmasq configurado con capacidades CAP_NET_BIND_SERVICE y CAP_NET_ADMIN"
 
 # Reconfigurar systemd-resolved
 echo ""
-echo "[4/9] Reconfigurando systemd-resolved..."
+echo "[4/10] Reconfigurando systemd-resolved..."
 if [ -f /etc/systemd/resolved.conf.backup-whitelist ]; then
     systemctl restart systemd-resolved
     echo "systemd-resolved reconfigurado (sin puerto 53)"
 fi
 
-# Crear script principal
+# Crear script de detección de portal cautivo
 echo ""
-echo "[5/9] Creando script principal dnsmasq-whitelist.sh..."
+echo "[5/10] Creando detector de portal cautivo..."
+cat > /usr/local/bin/captive-portal-detector.sh << 'DETECTOR_EOF'
+#!/bin/bash
+
+#############################################
+# Captive Portal Detector
+# Detecta si estás autenticado en portal cautivo (WEDU)
+# y activa/desactiva firewall según el estado
+#############################################
+
+LOG_FILE="/var/log/captive-portal-detector.log"
+STATE_FILE="/var/run/captive-portal-state"
+CHECK_URL="http://detectportal.firefox.com/success.txt"
+EXPECTED_RESPONSE="success"
+
+# Función de logging
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+}
+
+# Crear directorio de logs
+mkdir -p "$(dirname "$LOG_FILE")"
+mkdir -p "$(dirname "$STATE_FILE")"
+
+# Función para activar firewall restrictivo
+activate_firewall() {
+    log "Activando firewall restrictivo..."
+
+    # Verificar que ipset existe antes de configurar firewall
+    if ! ipset list url_whitelist >/dev/null 2>&1; then
+        log "ERROR: ipset 'url_whitelist' no existe - no se puede activar firewall"
+        log "Esperando a que dnsmasq-whitelist.sh configure el ipset..."
+        return 1
+    fi
+
+    # Limpiar reglas existentes
+    iptables -F OUTPUT 2>/dev/null || true
+
+    # 1. Permitir tráfico local (loopback)
+    iptables -A OUTPUT -o lo -j ACCEPT
+
+    # 2. Permitir conexiones ya establecidas
+    iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+    # 3. Permitir DNS SOLO a localhost (forzar uso de dnsmasq local)
+    iptables -A OUTPUT -p udp -d 127.0.0.1 --dport 53 -j ACCEPT
+    iptables -A OUTPUT -p tcp -d 127.0.0.1 --dport 53 -j ACCEPT
+
+    # 4. BLOQUEAR DNS a cualquier otro servidor (anti-bypass)
+    iptables -A OUTPUT -p udp --dport 53 -j DROP
+    iptables -A OUTPUT -p tcp --dport 53 -j DROP
+
+    # 5. Bloquear puertos VPN comunes (anti-bypass)
+    iptables -A OUTPUT -p udp --dport 1194 -j DROP  # OpenVPN
+    iptables -A OUTPUT -p udp --dport 51820 -j DROP # WireGuard
+    iptables -A OUTPUT -p tcp --dport 1723 -j DROP  # PPTP
+
+    # 6. Bloquear Tor
+    iptables -A OUTPUT -p tcp --dport 9001 -j DROP
+    iptables -A OUTPUT -p tcp --dport 9030 -j DROP
+
+    # 7. Permitir HTTP/HTTPS SOLO a IPs en whitelist (validación con ipset)
+    # CRÍTICO: Esto valida que la IP destino esté en el ipset antes de permitir
+    iptables -A OUTPUT -p tcp --dport 80 -m set --match-set url_whitelist dst -j ACCEPT
+    iptables -A OUTPUT -p tcp --dport 443 -m set --match-set url_whitelist dst -j ACCEPT
+
+    # 8. Permitir NTP (sincronización de hora)
+    iptables -A OUTPUT -p udp --dport 123 -j ACCEPT
+
+    # 9. BLOQUEAR acceso directo por IP (forzar uso de DNS)
+    # Excepto redes privadas y gateway
+    iptables -A OUTPUT -d 10.0.0.0/8 -j ACCEPT
+    iptables -A OUTPUT -d 172.16.0.0/12 -j ACCEPT
+    iptables -A OUTPUT -d 192.168.0.0/16 -j ACCEPT
+
+    # 10. BLOQUEAR todo lo demás
+    iptables -A OUTPUT -j DROP
+
+    log "Firewall restrictivo activado"
+}
+
+# Función para desactivar firewall (modo permisivo)
+deactivate_firewall() {
+    log "Desactivando firewall (modo permisivo para portal cautivo)..."
+
+    # Limpiar TODAS las reglas
+    iptables -F OUTPUT 2>/dev/null || true
+
+    # NOTA: NO eliminamos ipset aquí, solo las reglas de firewall
+    # El ipset seguirá siendo gestionado por dnsmasq-whitelist.sh
+
+    log "Firewall desactivado - Acceso libre"
+}
+
+# Función para verificar si estamos autenticados
+check_authentication() {
+    # Intentar acceder a URL de detección con timeout de 5 segundos
+    RESPONSE=$(timeout 5 curl -s -L "$CHECK_URL" 2>/dev/null | tr -d '\n\r' || echo "")
+
+    if [ "$RESPONSE" = "$EXPECTED_RESPONSE" ]; then
+        return 0  # Autenticado
+    else
+        return 1  # NO autenticado
+    fi
+}
+
+# Estado anterior (para detectar cambios)
+PREVIOUS_STATE=""
+if [ -f "$STATE_FILE" ]; then
+    PREVIOUS_STATE=$(cat "$STATE_FILE")
+fi
+
+# Loop principal
+log "=== Iniciando detector de portal cautivo ==="
+
+while true; do
+    if check_authentication; then
+        CURRENT_STATE="authenticated"
+
+        if [ "$PREVIOUS_STATE" != "authenticated" ]; then
+            log "Estado: AUTENTICADO en red"
+            activate_firewall
+            echo "authenticated" > "$STATE_FILE"
+            PREVIOUS_STATE="authenticated"
+        fi
+    else
+        CURRENT_STATE="not_authenticated"
+
+        if [ "$PREVIOUS_STATE" != "not_authenticated" ]; then
+            log "Estado: NO AUTENTICADO en red (portal cautivo activo)"
+            deactivate_firewall
+            echo "not_authenticated" > "$STATE_FILE"
+            PREVIOUS_STATE="not_authenticated"
+        fi
+    fi
+
+    # Esperar 30 segundos antes de la siguiente comprobación
+    sleep 30
+done
+DETECTOR_EOF
+
+chmod +x /usr/local/bin/captive-portal-detector.sh
+
+# Crear script principal de whitelist
+echo ""
+echo "[6/10] Creando script principal dnsmasq-whitelist.sh..."
 cat > /usr/local/bin/dnsmasq-whitelist.sh << 'SCRIPT_EOF'
 #!/bin/bash
 
 #############################################
-# dnsmasq Whitelist Manager
-# Descarga whitelist desde GitHub Gist y configura dnsmasq
-# Comportamiento: Fail-Open (si no se puede descargar, no restringe)
+# dnsmasq Whitelist Manager v2.0
+# DNS Sinkhole: solo resuelve dominios en whitelist
+# Funciona con IPs dinámicas (no necesita ipset)
 #############################################
-
-# NO usamos 'set -e' porque queremos manejar errores explícitamente
-# y evitar dejar el sistema en estado inconsistente si algo falla
 
 # Configuración
 WHITELIST_URL="https://gist.githubusercontent.com/balejosg/9a81340e7e7bfd044cc031f41af6acdc/raw/whitelist.txt"
 WHITELIST_FILE="/var/lib/url-whitelist/whitelist.txt"
-WHITELIST_HASH="/var/lib/url-whitelist/whitelist.hash"
 DNSMASQ_CONF="/etc/dnsmasq.d/url-whitelist.conf"
 DNSMASQ_CONF_HASH="/var/lib/url-whitelist/dnsmasq.hash"
 LOG_FILE="/var/log/url-whitelist.log"
-IPSET_NAME="url_whitelist"
 
-# URLs base (hardcoded) - necesarias para bootstrap y operación básica
+# Obtener gateway dinámicamente
+GATEWAY_IP=$(ip route | grep default | awk '{print $3}' | head -n 1)
+
+# URLs base (hardcoded) - necesarias para bootstrap
 BASE_URLS=(
     "google.es"
     "www.google.es"
+    "google.com"
+    "www.google.com"
     "github.com"
     "gist.githubusercontent.com"
+    "raw.githubusercontent.com"
     "nce.wedu.comunidad.madrid"
     "archive.ubuntu.com"
     "security.ubuntu.com"
+    "packages.ubuntu.com"
     "max.educa.madrid.org"
-    "deb.nodesource.com"
     "anthropic.com"
     "api.anthropic.com"
     "www.anthropic.com"
     "claude.ai"
+    "detectportal.firefox.com"
+    "connectivity-check.ubuntu.com"
+    "connectivitycheck.gstatic.com"
 )
 
 # Función de logging
@@ -165,34 +320,40 @@ mkdir -p /var/lib/url-whitelist
 mkdir -p "$(dirname "$LOG_FILE")"
 mkdir -p /etc/dnsmasq.d
 
-log "=== Iniciando actualización de whitelist (dnsmasq) ==="
+log "=== Iniciando actualización de whitelist (dnsmasq v2.0) ==="
 
-# Función para limpiar reglas de firewall (fail-open)
-cleanup_firewall() {
-    log "Limpiando sistema - Acceso libre a internet"
+# Función para limpiar sistema (fail-open)
+cleanup_system() {
+    log "Limpiando sistema - Modo fail-open activado"
 
-    # Detener dnsmasq
-    systemctl stop dnsmasq 2>/dev/null || true
+    # Limpiar ipset si existe
+    if ipset list url_whitelist >/dev/null 2>&1; then
+        ipset destroy url_whitelist 2>/dev/null || true
+        log "ipset eliminado"
+    fi
 
-    # Destruir ipset si existe
-    ipset destroy "$IPSET_NAME" 2>/dev/null || true
+    # Configurar dnsmasq en modo passthrough (resuelve todo)
+    cat > "$DNSMASQ_CONF" << EOF
+# =============================================
+# URL Whitelist - MODO FAIL-OPEN
+# dnsmasq en modo passthrough (permite todo)
+# =============================================
 
-    # Limpiar TODAS las reglas de la cadena OUTPUT
-    iptables -F OUTPUT 2>/dev/null || true
+# Resolver todo contra gateway
+server=$GATEWAY_IP
+EOF
 
-    # Eliminar configuración dnsmasq
-    rm -f "$DNSMASQ_CONF"
+    # Reiniciar dnsmasq
+    systemctl restart dnsmasq 2>/dev/null || true
 
-    log "Sistema limpiado - Sin restricciones activas"
+    log "Sistema en modo fail-open - Sin restricciones"
 }
 
-# Función para descargar archivo de whitelist
+# Función para descargar whitelist
 download_whitelist() {
     log "Intentando descargar whitelist desde GitHub Gist..."
 
-    # Intentar descargar con timeout de 30 segundos
     if timeout 30 curl -L -f -s "$WHITELIST_URL" -o "${WHITELIST_FILE}.tmp" 2>/dev/null; then
-        # Verificar que el archivo no esté vacío
         if [ -s "${WHITELIST_FILE}.tmp" ]; then
             mv "${WHITELIST_FILE}.tmp" "$WHITELIST_FILE"
             log "Whitelist descargado exitosamente"
@@ -209,28 +370,27 @@ download_whitelist() {
     fi
 }
 
-# Función para generar configuración dnsmasq
+# Función para generar configuración dnsmasq (DNS Sinkhole)
 generate_dnsmasq_config() {
-    log "Generando configuración dnsmasq..."
+    log "Generando configuración dnsmasq (DNS Sinkhole)..."
 
-    # Archivo temporal
     TEMP_CONF="${DNSMASQ_CONF}.tmp"
 
     # Encabezado
     cat > "$TEMP_CONF" << 'EOF'
 # =============================================
-# URL Whitelist - dnsmasq Configuration
+# URL Whitelist - dnsmasq DNS Sinkhole
+# Solo resuelve dominios en whitelist
 # Auto-generated - Do not edit manually
 # =============================================
 
 EOF
 
-    # Combinar URLs base con URLs del archivo descargado
+    # Combinar URLs base con URLs del archivo
     ALL_URLS=("${BASE_URLS[@]}")
 
     if [ -f "$WHITELIST_FILE" ]; then
         while IFS= read -r line; do
-            # Ignorar líneas vacías y comentarios
             line=$(echo "$line" | sed 's/#.*//' | xargs)
             if [ -n "$line" ]; then
                 ALL_URLS+=("$line")
@@ -240,22 +400,37 @@ EOF
 
     log "Total de dominios en whitelist: ${#ALL_URLS[@]}"
 
-    # Generar líneas ipset para cada dominio
+    # Resolver solo dominios en whitelist contra gateway
+    echo "# Dominios permitidos (resueltos contra gateway)" >> "$TEMP_CONF"
     for domain in "${ALL_URLS[@]}"; do
-        # Añadir dominio al ipset automáticamente cuando se resuelva
-        echo "ipset=/${domain}/${IPSET_NAME}" >> "$TEMP_CONF"
+        # Resolver este dominio contra el gateway
+        echo "server=/${domain}/${GATEWAY_IP}" >> "$TEMP_CONF"
     done
 
-    # Mover a ubicación final
-    mv "$TEMP_CONF" "$DNSMASQ_CONF"
+    echo "" >> "$TEMP_CONF"
 
-    log "Configuración dnsmasq generada con ${#ALL_URLS[@]} dominios"
+    # Añadir ipset para cada dominio (para validación en firewall)
+    echo "# Añadir IPs resueltas al ipset (para validación de firewall)" >> "$TEMP_CONF"
+    for domain in "${ALL_URLS[@]}"; do
+        echo "ipset=/${domain}/url_whitelist" >> "$TEMP_CONF"
+    done
+
+    echo "" >> "$TEMP_CONF"
+
+    # BLOQUEAR dominios NO en whitelist (DNS Sinkhole)
+    # address=/#/ retorna 127.0.0.1 para dominios que NO coincidan con server=
+    # Esto NO sobrescribe los server= anteriores - el orden importa
+    echo "# DNS Sinkhole: dominios NO en whitelist retornan 127.0.0.1 (bloqueados)" >> "$TEMP_CONF"
+    echo "address=/#/127.0.0.1" >> "$TEMP_CONF"
+
+    mv "$TEMP_CONF" "$DNSMASQ_CONF"
+    log "Configuración dnsmasq generada con ${#ALL_URLS[@]} dominios + DNS sinkhole activo"
 }
 
-# Función para verificar si la configuración ha cambiado
+# Función para verificar si la configuración cambió
 has_config_changed() {
     if [ ! -f "$DNSMASQ_CONF_HASH" ]; then
-        return 0  # No hay hash previo, considerar como cambio
+        return 0
     fi
 
     NEW_HASH=$(md5sum "$DNSMASQ_CONF" | cut -d' ' -f1)
@@ -270,205 +445,113 @@ has_config_changed() {
     fi
 }
 
-# Función para verificar si las reglas de firewall están activas
-firewall_rules_active() {
-    # Contar reglas en OUTPUT (debe haber al menos 5)
-    RULE_COUNT=$(iptables -L OUTPUT -n 2>/dev/null | grep "^ACCEPT\|^DROP" | wc -l)
-
-    # Validar que RULE_COUNT es un número
-    if [ -z "$RULE_COUNT" ] || ! [[ "$RULE_COUNT" =~ ^[0-9]+$ ]]; then
-        RULE_COUNT=0
-    fi
-
-    if [ "$RULE_COUNT" -ge 5 ]; then
-        return 0  # Reglas activas
-    else
-        log "ADVERTENCIA: Reglas de firewall no detectadas ($RULE_COUNT reglas)"
-        return 1
-    fi
-}
-
-# Función para configurar firewall
-configure_firewall() {
-    log "Configurando firewall con dnsmasq..."
+# Función para configurar ipset
+setup_ipset() {
+    log "Configurando ipset para validación de IPs..."
 
     # Crear ipset si no existe
-    if ! ipset list "$IPSET_NAME" &>/dev/null; then
-        ipset create "$IPSET_NAME" hash:ip timeout 0 2>/dev/null || true
-        log "ipset creado: $IPSET_NAME"
+    if ! ipset list url_whitelist >/dev/null 2>&1; then
+        ipset create url_whitelist hash:ip timeout 0 2>/dev/null || true
+        log "ipset 'url_whitelist' creado"
+    else
+        # Limpiar ipset existente
+        ipset flush url_whitelist 2>/dev/null || true
+        log "ipset 'url_whitelist' limpiado"
     fi
 
-    # Limpiar TODAS las reglas antiguas primero (flush completo)
-    iptables -F OUTPUT 2>/dev/null || true
-
-    # Configurar nuevas reglas de iptables
-    # 1. Permitir tráfico local (loopback)
-    iptables -A OUTPUT -o lo -j ACCEPT
-
-    # 2. Permitir conexiones ya establecidas
-    iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
-
-    # 3. Permitir DNS (necesario para resolver nombres)
-    iptables -A OUTPUT -p udp --dport 53 -j ACCEPT
-    iptables -A OUTPUT -p tcp --dport 53 -j ACCEPT
-
-    # 4. Permitir tráfico a IPs de la whitelist (añadidas por dnsmasq)
-    iptables -A OUTPUT -m set --match-set "$IPSET_NAME" dst -j ACCEPT
-
-    # 5. BLOQUEAR todo lo demás
-    iptables -A OUTPUT -j DROP
-
-    log "Firewall configurado - Restricciones activas"
+    # Resolver dominios base y añadir IPs manualmente al ipset
+    # Esto asegura que IPs estén disponibles inmediatamente
+    log "Pre-poblando ipset con IPs de dominios base..."
+    PREPOPULATED=0
+    for domain in "${BASE_URLS[@]}"; do
+        # Intentar resolver el dominio
+        IPS=$(dig +short "$domain" @"$GATEWAY_IP" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' || true)
+        if [ -n "$IPS" ]; then
+            while IFS= read -r ip; do
+                ipset add url_whitelist "$ip" 2>/dev/null || true
+                ((PREPOPULATED++)) || true
+            done <<< "$IPS"
+        fi
+    done
+    log "Pre-pobladas $PREPOPULATED IPs en ipset"
 }
 
-# Función para reiniciar dnsmasq
-restart_dnsmasq() {
-    log "Reiniciando dnsmasq..."
-
-    if ! systemctl restart dnsmasq; then
-        log "ERROR: No se pudo reiniciar dnsmasq"
-        return 1
-    fi
-
-    # Dar tiempo a que dnsmasq arranque completamente
-    sleep 3
-
-    # VALIDACIÓN 1: Verificar que dnsmasq está ejecutándose
-    if ! systemctl is-active --quiet dnsmasq; then
-        log "ERROR: dnsmasq no está activo después del reinicio"
-        return 1
-    fi
-
-    # VALIDACIÓN 2: Verificar que dnsmasq está escuchando en puerto 53
-    if ! ss -tulpn 2>/dev/null | grep -q ":53.*dnsmasq"; then
-        log "ERROR: dnsmasq no está escuchando en puerto 53"
-        return 1
-    fi
-
-    # VALIDACIÓN 3: Verificar que resuelve DNS correctamente
-    if ! host google.com 127.0.0.1 &>/dev/null && ! nslookup google.com 127.0.0.1 &>/dev/null; then
-        log "ERROR: dnsmasq no resuelve DNS correctamente"
-        return 1
-    fi
-
-    log "dnsmasq verificado y funcionando correctamente"
-
-    # Guardar hash de la configuración actual
-    md5sum "$DNSMASQ_CONF" | cut -d' ' -f1 > "$DNSMASQ_CONF_HASH"
-    return 0
-}
-
-# Función para verificar si el sistema está desactivado remotamente
+# Función para verificar desactivación remota
 check_emergency_disable() {
-    # Verificar si la primera línea del whitelist contiene la palabra clave de desactivación
     if [ -f "$WHITELIST_FILE" ]; then
-        # Leer primera línea no vacía
         FIRST_LINE=$(grep -v '^[[:space:]]*$' "$WHITELIST_FILE" | head -n 1 | xargs)
-
-        # Verificar si contiene la palabra clave (case-insensitive)
         if echo "$FIRST_LINE" | grep -iq "^#.*DESACTIVADO"; then
-            log "DESACTIVACIÓN REMOTA DETECTADA en whitelist"
-            return 0  # Sistema desactivado
+            log "DESACTIVACIÓN REMOTA DETECTADA"
+            return 0
         fi
     fi
-    return 1  # Sistema activo
+    return 1
 }
 
 # Lógica principal
 main() {
-    # Intentar descargar whitelist
     if download_whitelist; then
-        # Verificar si hay orden de desactivación remota
         if check_emergency_disable; then
-            log "=== SISTEMA DESACTIVADO REMOTAMENTE - Eliminando restricciones ==="
-            cleanup_firewall
+            log "=== SISTEMA DESACTIVADO REMOTAMENTE ==="
+            cleanup_system
             return
         fi
 
-        # Descarga exitosa - generar configuración
+        # Configurar ipset ANTES de generar config dnsmasq
+        setup_ipset
+
         generate_dnsmasq_config
 
-        # Verificar si la configuración ha cambiado O si las reglas están ausentes
-        CONFIG_CHANGED=false
-        RULES_MISSING=false
-
         if has_config_changed; then
-            CONFIG_CHANGED=true
-        fi
-
-        if ! firewall_rules_active; then
-            RULES_MISSING=true
-        fi
-
-        if [ "$CONFIG_CHANGED" = true ] || [ "$RULES_MISSING" = true ]; then
-            # CRÍTICO: Reiniciar y validar dnsmasq ANTES de configurar firewall
-            if [ "$CONFIG_CHANGED" = true ]; then
-                log "Configuración cambió - Reiniciando dnsmasq..."
-                if restart_dnsmasq; then
-                    log "dnsmasq validado correctamente"
-                else
-                    log "=== ERROR: dnsmasq no funciona correctamente ==="
-                    log "=== FAIL-SAFE ACTIVADO: No se aplican restricciones ==="
-                    cleanup_firewall
-                    return
-                fi
-            fi
-
-            # Solo configurar firewall si dnsmasq está funcionando
-            log "dnsmasq operativo - Configurando firewall..."
-            configure_firewall
-
-            if [ "$CONFIG_CHANGED" = false ]; then
-                # Guardar hash para marcar que ahora está sincronizado
+            log "Reiniciando dnsmasq..."
+            if systemctl restart dnsmasq; then
                 md5sum "$DNSMASQ_CONF" | cut -d' ' -f1 > "$DNSMASQ_CONF_HASH"
+                log "dnsmasq reiniciado exitosamente"
+            else
+                log "ERROR: No se pudo reiniciar dnsmasq"
+                cleanup_system
+                return
             fi
-
-            log "=== Sistema actualizado exitosamente ==="
-        else
-            log "=== Sin cambios - Sistema operando correctamente ==="
         fi
+
+        log "=== Sistema actualizado exitosamente ==="
     else
-        # No se pudo descargar - comportamiento fail-open
-        log "=== No se pudo acceder al servidor - Eliminando restricciones ==="
-        cleanup_firewall
+        log "=== No se pudo descargar whitelist - Modo fail-open ==="
+        cleanup_system
     fi
 }
 
-# Ejecutar
 main
-
 log "=== Proceso finalizado ==="
 SCRIPT_EOF
 
 chmod +x /usr/local/bin/dnsmasq-whitelist.sh
 
-# Configurar dnsmasq
+# Configurar dnsmasq base
 echo ""
-echo "[6/9] Configurando dnsmasq..."
-# Crear backup de dnsmasq.conf si no existe
+echo "[7/10] Configurando dnsmasq..."
 if [ ! -f /etc/dnsmasq.conf.backup-whitelist ]; then
     cp /etc/dnsmasq.conf /etc/dnsmasq.conf.backup-whitelist 2>/dev/null || true
     echo "Backup creado: /etc/dnsmasq.conf.backup-whitelist"
 fi
 
-# Se elimina el entrecomillado de DNSMASQ_EOF para permitir la expansión de la variable $GATEWAY_IP
 cat >> /etc/dnsmasq.conf << DNSMASQ_EOF
 
 # =============================================
-# URL Whitelist Configuration
+# URL Whitelist Configuration v2.0
 # =============================================
 
 # Listen only on localhost
 listen-address=127.0.0.1
 
-# Use router as upstream DNS
-server=$GATEWAY_IP
-
-# Don't read /etc/resolv.conf
+# Don't read /etc/resolv.conf (usaremos server= explícito)
 no-resolv
 
 # Read configuration from this directory
 conf-dir=/etc/dnsmasq.d/,*.conf
+
+# Cache size
+cache-size=1000
 
 # Enable logging for debugging (uncomment if needed)
 #log-queries
@@ -477,26 +560,26 @@ DNSMASQ_EOF
 
 # Configurar DNS del sistema
 echo ""
-echo "[7/9] Configurando DNS del sistema..."
-# Crear backup de resolv.conf si no existe
+echo "[8/10] Configurando DNS del sistema..."
 if [ ! -f /etc/resolv.conf.backup-whitelist ] && [ -f /etc/resolv.conf ]; then
     cp /etc/resolv.conf /etc/resolv.conf.backup-whitelist
     echo "Backup creado: /etc/resolv.conf.backup-whitelist"
 fi
 
-rm -f /etc/resolv.conf
-cat > /etc/resolv.conf << 'RESOLV_EOF'
-nameserver 127.0.0.1
+# Temporalmente usar DNS del router para la primera descarga
+cat > /etc/resolv.conf << RESOLV_TEMP_EOF
+nameserver $GATEWAY_IP
 search lan
-RESOLV_EOF
+RESOLV_TEMP_EOF
 
-# Crear servicio systemd
+# Crear servicios systemd
 echo ""
-echo "[8/9] Creando servicios systemd..."
+echo "[9/10] Creando servicios systemd..."
+
+# Servicio de whitelist
 cat > /etc/systemd/system/dnsmasq-whitelist.service << 'SERVICE_EOF'
 [Unit]
 Description=dnsmasq URL Whitelist Manager
-Documentation=man:iptables(8)
 After=network-online.target
 Wants=network-online.target
 Before=dnsmasq.service
@@ -507,8 +590,6 @@ ExecStart=/usr/local/bin/dnsmasq-whitelist.sh
 RemainAfterExit=no
 StandardOutput=journal
 StandardError=journal
-
-# Reintentar si falla
 Restart=on-failure
 RestartSec=10s
 
@@ -516,14 +597,13 @@ RestartSec=10s
 WantedBy=multi-user.target
 SERVICE_EOF
 
-# Crear timer systemd
+# Timer de whitelist
 cat > /etc/systemd/system/dnsmasq-whitelist.timer << 'TIMER_EOF'
 [Unit]
 Description=dnsmasq URL Whitelist Update Timer (Every 5 minutes)
 Requires=dnsmasq-whitelist.service
 
 [Timer]
-# Ejecutar cada 5 minutos
 OnBootSec=1min
 OnUnitActiveSec=5min
 AccuracySec=1s
@@ -532,10 +612,30 @@ AccuracySec=1s
 WantedBy=timers.target
 TIMER_EOF
 
+# Servicio detector de portal cautivo
+cat > /etc/systemd/system/captive-portal-detector.service << 'DETECTOR_SERVICE_EOF'
+[Unit]
+Description=Captive Portal Detector (WEDU)
+After=network-online.target dnsmasq.service
+Wants=network-online.target
+Requires=dnsmasq.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/captive-portal-detector.sh
+Restart=always
+RestartSec=10s
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+DETECTOR_SERVICE_EOF
+
 # Recargar systemd
 systemctl daemon-reload
 
-# Deshabilitar timer antiguo si existe
+# Deshabilitar servicios antiguos si existen
 if systemctl is-enabled url-whitelist.timer &>/dev/null; then
     echo "Deshabilitando timer antiguo url-whitelist.timer..."
     systemctl disable --now url-whitelist.timer 2>/dev/null || true
@@ -544,50 +644,60 @@ fi
 # Habilitar servicios
 systemctl enable dnsmasq.service
 systemctl enable dnsmasq-whitelist.timer
+systemctl enable captive-portal-detector.service
 
 # Inicializar sistema
 echo ""
-echo "[9/9] Inicializando sistema..."
-
-# Temporalmente usar DNS del router para la primera descarga
-# Se elimina el entrecomillado de RESOLV_TEMP_EOF para permitir la expansión de la variable $GATEWAY_IP
-cat > /etc/resolv.conf << RESOLV_TEMP_EOF
-nameserver $GATEWAY_IP
-search lan
-RESOLV_TEMP_EOF
+echo "[10/10] Inicializando sistema..."
 
 # Ejecutar script inicial
 /usr/local/bin/dnsmasq-whitelist.sh
 
-# Iniciar timer
+# Configurar DNS final (apuntar a localhost)
+cat > /etc/resolv.conf << 'RESOLV_FINAL_EOF'
+nameserver 127.0.0.1
+search lan
+RESOLV_FINAL_EOF
+
+# Iniciar servicios
 systemctl start dnsmasq-whitelist.timer
+systemctl start captive-portal-detector.service
 
 echo ""
 echo "======================================================"
 echo "  ¡Instalación completada exitosamente!"
 echo "======================================================"
 echo ""
+echo "Arquitectura v2.0 CORREGIDA:"
+echo "  ✓ DNS Sinkhole funcional: address=/#/127.0.0.1 bloquea dominios no-whitelist"
+echo "  ✓ ipset para validación de IPs: dnsmasq añade IPs dinámicamente"
+echo "  ✓ Firewall con validación ipset: solo permite HTTP/HTTPS a IPs whitelisted"
+echo "  ✓ Detector portal cautivo: activa firewall tras autenticarse en WEDU"
+echo "  ✓ Compatible con IPs dinámicas (ipset + dnsmasq)"
+echo "  ✓ Fail-open: si no conecta, permite todo"
+echo "  ✓ Anti-bypass: bloquea DNS externos, VPN, Tor, acceso directo por IP"
+echo ""
 echo "Información del sistema:"
-echo "  - Script principal: /usr/local/bin/dnsmasq-whitelist.sh"
-echo "  - Logs: /var/log/url-whitelist.log"
+echo "  - Script whitelist: /usr/local/bin/dnsmasq-whitelist.sh"
+echo "  - Detector portal: /usr/local/bin/captive-portal-detector.sh"
+echo "  - Logs whitelist: /var/log/url-whitelist.log"
+echo "  - Logs detector: /var/log/captive-portal-detector.log"
 echo "  - Whitelist local: /var/lib/url-whitelist/whitelist.txt"
-echo "  - Configuración dnsmasq: /etc/dnsmasq.d/url-whitelist.conf"
+echo "  - Config dnsmasq: /etc/dnsmasq.d/url-whitelist.conf"
 echo ""
 echo "Comandos útiles:"
-echo "  - Ver estado: systemctl status dnsmasq-whitelist.timer"
-echo "  - Ver logs: tail -f /var/log/url-whitelist.log"
-echo "  - Ejecutar manualmente: sudo /usr/local/bin/dnsmasq-whitelist.sh"
-echo "  - Deshabilitar: sudo systemctl disable --now dnsmasq-whitelist.timer"
-echo "  - Ver ipset: sudo ipset list url_whitelist"
+echo "  - Estado whitelist: systemctl status dnsmasq-whitelist.timer"
+echo "  - Estado detector: systemctl status captive-portal-detector.service"
+echo "  - Ver logs whitelist: tail -f /var/log/url-whitelist.log"
+echo "  - Ver logs detector: tail -f /var/log/captive-portal-detector.log"
+echo "  - Ejecutar whitelist manualmente: sudo /usr/local/bin/dnsmasq-whitelist.sh"
+echo "  - Deshabilitar: sudo systemctl disable --now dnsmasq-whitelist.timer captive-portal-detector.service"
 echo "  - Ver reglas firewall: sudo iptables -L OUTPUT -n -v"
 echo ""
-echo "El sistema descargará el whitelist desde GitHub Gist cada 5 minutos."
-echo "Si el servidor no es accesible, NO se aplicarán restricciones (fail-open)."
-echo ""
-echo "Ventajas de dnsmasq vs iptables directo:"
-echo "  - Soluciona el problema de IPs dinámicas"
-echo "  - dnsmasq añade IPs al ipset en tiempo real al resolver DNS"
-echo "  - No necesita resolver todas las IPs cada 5 minutos"
-echo "  - Funciona perfectamente con servicios como Google que usan DNS round-robin"
+echo "Funcionamiento con portal cautivo WEDU:"
+echo "  1. Al conectar a WEDU: firewall en modo PERMISIVO (permite login)"
+echo "  2. Después de autenticarse: firewall en modo RESTRICTIVO (whitelist activa)"
+echo "  3. Detector verifica estado cada 30 segundos"
+echo "  4. Si pierde conexión: vuelve a modo PERMISIVO automáticamente"
 echo ""
 echo "¡Listo! El sistema está configurado y funcionando."

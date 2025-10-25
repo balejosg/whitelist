@@ -218,6 +218,91 @@ Remove the `# DESACTIVADO` line from the Gist. Systems will re-enable restrictio
 - systemd-resolved is configured to use the router as upstream DNS
 - All DNS traffic goes through localhost dnsmasq instance
 
+## Architecture v2.0 Corrections (2025-10-25)
+
+The v2.0 architecture had critical flaws that allowed bypass of the whitelist. The following corrections were implemented:
+
+### Critical Bugs Fixed in v2.0
+
+1. **DNS Sinkhole Incomplete**
+   - **Problem:** Configuration only defined `server=/domain/gateway` for whitelisted domains but didn't block non-whitelisted domains
+   - **Impact:** Non-whitelisted domains could potentially resolve via root hints or other methods
+   - **Fix:** Added `address=/#/127.0.0.1` to explicitly block all non-whitelisted domains (setup-dnsmasq-whitelist.sh:394-398)
+
+2. **Firewall Allowed HTTP/HTTPS to ANY IP (CRITICAL)**
+   - **Problem:** Firewall rules permitted HTTP/HTTPS to any destination without validation
+   ```bash
+   # BEFORE (INSECURE):
+   iptables -A OUTPUT -p tcp --dport 80 -j ACCEPT
+   iptables -A OUTPUT -p tcp --dport 443 -j ACCEPT
+   ```
+   - **Impact:** Users could access any website if they had cached IPs or used direct IP access
+   - **Fix:** Added ipset validation to firewall rules (setup-dnsmasq-whitelist.sh:170-173)
+   ```bash
+   # AFTER (SECURE):
+   iptables -A OUTPUT -p tcp --dport 80 -m set --match-set url_whitelist dst -j ACCEPT
+   iptables -A OUTPUT -p tcp --dport 443 -m set --match-set url_whitelist dst -j ACCEPT
+   ```
+
+3. **Missing ipset Implementation**
+   - **Problem:** v2.0 removed ipset completely, relying only on DNS filtering
+   - **Impact:** No IP-level validation, easy to bypass with cached IPs
+   - **Fix:** Reintroduced ipset with automatic population via dnsmasq (setup-dnsmasq-whitelist.sh:386-390, 422-451)
+
+4. **Rollback Script Could Brick Network**
+   - **Problem:** `set -e` caused abrupt exits, wrong order of operations could leave system without DNS
+   - **Impact:** Running rollback could leave machines without internet
+   - **Fix:** Removed `set -e`, improved operation order, added validation and emergency DNS fallback (rollback-dnsmasq-whitelist.sh)
+
+### How v2.0 Now Works (Corrected Architecture)
+
+**Three-Layer Defense:**
+
+1. **Layer 1: DNS Sinkhole (dnsmasq)**
+   - Whitelisted domains: `server=/domain/gateway` + `ipset=/domain/url_whitelist`
+   - Non-whitelisted domains: `address=/#/127.0.0.1` (blocked)
+   - dnsmasq automatically adds resolved IPs to ipset in real-time
+
+2. **Layer 2: IP Validation (ipset)**
+   - ipset `url_whitelist` maintains list of allowed IPs
+   - Pre-populated with base domains on startup
+   - Automatically updated by dnsmasq as domains are resolved
+
+3. **Layer 3: Firewall (iptables)**
+   - Blocks DNS queries to non-localhost servers
+   - Blocks VPN ports (OpenVPN, WireGuard, PPTP)
+   - Blocks Tor ports
+   - **Allows HTTP/HTTPS ONLY to IPs in ipset** (critical fix)
+   - Blocks direct IP access (except private networks)
+
+**Captive Portal Detection:**
+- `captive-portal-detector.sh` monitors network authentication status
+- When NOT authenticated (e.g., WEDU login required): firewall disabled (permissive mode)
+- When authenticated: firewall enabled (restrictive mode with whitelist)
+- Checks every 30 seconds using http://detectportal.firefox.com/success.txt
+
+**Bypass Prevention:**
+- DNS bypass: Blocked via iptables (only localhost DNS allowed)
+- Cached IP bypass: Blocked via ipset validation in firewall
+- Direct IP bypass: Blocked via iptables (HTTP/HTTPS requires ipset match)
+- VPN bypass: Blocked via iptables (common VPN ports dropped)
+- Proxy bypass: Prevented by DNS+IP validation
+- /etc/hosts bypass: Prevented by DNS+IP validation
+
+### Rollback Script Improvements
+
+**Before (Dangerous):**
+- `set -e` caused abrupt exits on errors
+- Could leave system without DNS if operations failed mid-execution
+- No validation of restored configuration
+
+**After (Safe):**
+- Explicit error handling (no `set -e`)
+- Correct operation order: systemd-resolved → dnsmasq → resolv.conf → validation
+- Validates DNS functionality after restoration
+- Emergency DNS fallback to 8.8.8.8 if restoration fails
+- Reports connectivity status to user
+
 ## Known Issues Fixed (2025-01-24)
 
 ### Critical Bugs Resolved
