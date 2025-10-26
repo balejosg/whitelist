@@ -377,9 +377,41 @@ download_whitelist() {
     fi
 }
 
+# Función para verificar si dnsmasq soporta ipset
+check_dnsmasq_ipset_support() {
+    # Crear archivo de prueba
+    local TEST_CONF="/tmp/dnsmasq_ipset_test.conf"
+    cat > "$TEST_CONF" << 'EOF'
+listen-address=127.0.0.1
+no-resolv
+server=/test.com/8.8.8.8
+ipset=/test.com/test_set
+EOF
+
+    # Probar configuración
+    if dnsmasq --test --conf-file="$TEST_CONF" 2>&1 | grep -q "syntax check OK"; then
+        rm -f "$TEST_CONF"
+        return 0
+    else
+        rm -f "$TEST_CONF"
+        return 1
+    fi
+}
+
 # Función para generar configuración dnsmasq (DNS Sinkhole)
 generate_dnsmasq_config() {
     log "Generando configuración dnsmasq (DNS Sinkhole)..."
+
+    # Verificar soporte de ipset
+    IPSET_SUPPORTED=false
+    if check_dnsmasq_ipset_support; then
+        IPSET_SUPPORTED=true
+        export IPSET_MANUAL_MODE=false
+        log "dnsmasq soporta ipset - habilitando integración ipset automática"
+    else
+        export IPSET_MANUAL_MODE=true
+        log "ADVERTENCIA: dnsmasq no soporta ipset - usando población manual de ipset"
+    fi
 
     TEMP_CONF="${DNSMASQ_CONF}.tmp"
 
@@ -416,13 +448,17 @@ EOF
 
     echo "" >> "$TEMP_CONF"
 
-    # Añadir ipset para cada dominio (para validación en firewall)
-    echo "# Añadir IPs resueltas al ipset (para validación de firewall)" >> "$TEMP_CONF"
-    for domain in "${ALL_URLS[@]}"; do
-        echo "ipset=/${domain}/url_whitelist" >> "$TEMP_CONF"
-    done
-
-    echo "" >> "$TEMP_CONF"
+    # Añadir ipset SOLO si está soportado
+    if [ "$IPSET_SUPPORTED" = true ]; then
+        echo "# Añadir IPs resueltas al ipset (para validación de firewall)" >> "$TEMP_CONF"
+        for domain in "${ALL_URLS[@]}"; do
+            echo "ipset=/${domain}/url_whitelist" >> "$TEMP_CONF"
+        done
+        echo "" >> "$TEMP_CONF"
+    else
+        echo "# ipset no soportado por esta versión de dnsmasq" >> "$TEMP_CONF"
+        echo "" >> "$TEMP_CONF"
+    fi
 
     # BLOQUEAR dominios NO en whitelist (DNS Sinkhole)
     # address=/#/ retorna 127.0.0.1 para dominios que NO coincidan con server=
@@ -431,7 +467,12 @@ EOF
     echo "address=/#/127.0.0.1" >> "$TEMP_CONF"
 
     mv "$TEMP_CONF" "$DNSMASQ_CONF"
-    log "Configuración dnsmasq generada con ${#ALL_URLS[@]} dominios + DNS sinkhole activo"
+
+    if [ "$IPSET_SUPPORTED" = true ]; then
+        log "Configuración dnsmasq generada con ${#ALL_URLS[@]} dominios + ipset + DNS sinkhole"
+    else
+        log "Configuración dnsmasq generada con ${#ALL_URLS[@]} dominios + DNS sinkhole (sin ipset)"
+    fi
 }
 
 # Función para verificar si la configuración cambió
@@ -452,6 +493,35 @@ has_config_changed() {
     fi
 }
 
+# Función para poblar ipset manualmente (cuando dnsmasq no lo soporta)
+populate_ipset_manually() {
+    log "Poblando ipset manualmente (dnsmasq no soporta ipset automático)..."
+
+    # Combinar URLs base con URLs del archivo
+    local ALL_URLS=("${BASE_URLS[@]}")
+    if [ -f "$WHITELIST_FILE" ]; then
+        while IFS= read -r line; do
+            line=$(echo "$line" | sed 's/#.*//' | xargs)
+            if [ -n "$line" ]; then
+                ALL_URLS+=("$line")
+            fi
+        done < "$WHITELIST_FILE"
+    fi
+
+    local POPULATED=0
+    for domain in "${ALL_URLS[@]}"; do
+        # Intentar resolver el dominio con timeout de 2 segundos
+        IPS=$(timeout 2 dig +short +time=1 +tries=1 "$domain" @"$GATEWAY_IP" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' || true)
+        if [ -n "$IPS" ]; then
+            while IFS= read -r ip; do
+                ipset add url_whitelist "$ip" 2>/dev/null || true
+                ((POPULATED++)) || true
+            done <<< "$IPS"
+        fi
+    done
+    log "Pobladas $POPULATED IPs en ipset manualmente"
+}
+
 # Función para configurar ipset
 setup_ipset() {
     log "Configurando ipset para validación de IPs..."
@@ -460,26 +530,25 @@ setup_ipset() {
     if ! ipset list url_whitelist >/dev/null 2>&1; then
         ipset create url_whitelist hash:ip timeout 0 2>/dev/null || true
         log "ipset 'url_whitelist' creado"
-
-        # SOLO pre-poblar si acabamos de crear el ipset
-        # Resolver dominios base y añadir IPs manualmente al ipset
-        # Esto asegura que IPs estén disponibles inmediatamente
-        log "Pre-poblando ipset nuevo con IPs de dominios base..."
-        PREPOPULATED=0
-        for domain in "${BASE_URLS[@]}"; do
-            # Intentar resolver el dominio con timeout de 2 segundos
-            IPS=$(timeout 2 dig +short +time=1 +tries=1 "$domain" @"$GATEWAY_IP" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' || true)
-            if [ -n "$IPS" ]; then
-                while IFS= read -r ip; do
-                    ipset add url_whitelist "$ip" 2>/dev/null || true
-                    ((PREPOPULATED++)) || true
-                done <<< "$IPS"
-            fi
-        done
-        log "Pre-pobladas $PREPOPULATED IPs en ipset"
     else
-        # Si ipset ya existe, NO vaciarlo - dnsmasq lo gestiona dinámicamente
-        log "ipset 'url_whitelist' ya existe - dnsmasq lo gestionará dinámicamente"
+        log "ipset 'url_whitelist' ya existe"
+    fi
+
+    # Verificar si necesitamos población manual
+    # (se establece en generate_dnsmasq_config)
+    if [ "${IPSET_MANUAL_MODE:-false}" = true ]; then
+        # En modo manual, limpiar y re-poblar cada vez
+        ipset flush url_whitelist 2>/dev/null || true
+        populate_ipset_manually
+    else
+        # En modo automático (dnsmasq con ipset), solo pre-poblar si está vacío
+        CURRENT_SIZE=$(ipset list url_whitelist | grep -c "^[0-9]" || echo "0")
+        if [ "$CURRENT_SIZE" -eq 0 ]; then
+            log "Pre-poblando ipset con IPs de dominios base..."
+            populate_ipset_manually
+        else
+            log "ipset ya tiene $CURRENT_SIZE IPs - dnsmasq lo gestionará dinámicamente"
+        fi
     fi
 }
 
@@ -504,17 +573,24 @@ main() {
             return
         fi
 
-        # Configurar ipset ANTES de generar config dnsmasq
-        setup_ipset
-
+        # Generar config dnsmasq PRIMERO (esto establece IPSET_MANUAL_MODE)
         generate_dnsmasq_config
+
+        # Configurar ipset DESPUÉS (usa IPSET_MANUAL_MODE establecido arriba)
+        setup_ipset
 
         if has_config_changed; then
             # Validar configuración de dnsmasq antes de reiniciar
             log "Validando configuración de dnsmasq..."
-            if ! dnsmasq --test 2>&1 | grep -q "syntax check OK"; then
+            DNSMASQ_TEST_OUTPUT=$(dnsmasq --test 2>&1)
+            if ! echo "$DNSMASQ_TEST_OUTPUT" | grep -q "syntax check OK"; then
                 log "ERROR: Configuración de dnsmasq inválida"
-                dnsmasq --test 2>&1 | tail -5 | while read line; do log "  $line"; done
+                log "Salida completa de dnsmasq --test:"
+                echo "$DNSMASQ_TEST_OUTPUT" | while read line; do log "  $line"; done
+                log ""
+                log "Configuración generada en: $DNSMASQ_CONF"
+                log "Últimas 10 líneas de la configuración:"
+                tail -10 "$DNSMASQ_CONF" | while read line; do log "  $line"; done
                 cleanup_system
                 return
             fi
