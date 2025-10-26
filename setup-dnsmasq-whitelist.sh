@@ -150,11 +150,11 @@ mkdir -p "$(dirname "$STATE_FILE")"
 activate_firewall() {
     log "Activando firewall restrictivo..."
 
-    # Verificar que ipset existe antes de configurar firewall
+    # Verificar que ipset existe, si no, crearlo vacío
     if ! ipset list url_whitelist >/dev/null 2>&1; then
-        log "ERROR: ipset 'url_whitelist' no existe - no se puede activar firewall"
-        log "Esperando a que dnsmasq-whitelist.sh configure el ipset..."
-        return 1
+        log "ipset 'url_whitelist' no existe - creándolo..."
+        ipset create url_whitelist hash:ip timeout 0 2>/dev/null || true
+        log "ipset creado - será poblado por dnsmasq-whitelist.sh"
     fi
 
     # Limpiar reglas existentes
@@ -630,7 +630,7 @@ Description=dnsmasq URL Whitelist Update Timer (Every 5 minutes)
 Requires=dnsmasq-whitelist.service
 
 [Timer]
-OnBootSec=1min
+OnBootSec=10sec
 OnUnitActiveSec=5min
 AccuracySec=1s
 
@@ -642,8 +642,8 @@ TIMER_EOF
 cat > /etc/systemd/system/captive-portal-detector.service << 'DETECTOR_SERVICE_EOF'
 [Unit]
 Description=Captive Portal Detector (WEDU)
-After=network-online.target dnsmasq.service
-Wants=network-online.target
+After=network-online.target dnsmasq.service dnsmasq-whitelist.service
+Wants=network-online.target dnsmasq-whitelist.service
 Requires=dnsmasq.service
 
 [Service]
@@ -676,7 +676,14 @@ systemctl enable captive-portal-detector.service
 echo ""
 echo "[10/10] Inicializando sistema..."
 
-# Ejecutar script inicial
+# Configurar DNS temporal (usar gateway durante inicialización)
+cat > /etc/resolv.conf << RESOLV_TEMP_EOF
+nameserver $GATEWAY_IP
+search lan
+RESOLV_TEMP_EOF
+
+# Ejecutar script inicial PRIMERO (crea ipset y configura dnsmasq)
+echo "Ejecutando configuración inicial de whitelist..."
 /usr/local/bin/dnsmasq-whitelist.sh
 
 # Configurar DNS final (apuntar a localhost)
@@ -686,7 +693,10 @@ search lan
 RESOLV_FINAL_EOF
 
 # Iniciar servicios
+echo "Iniciando servicios..."
 systemctl start dnsmasq-whitelist.timer
+# Esperar 2 segundos para asegurar que ipset está poblado
+sleep 2
 systemctl start captive-portal-detector.service
 
 echo ""
