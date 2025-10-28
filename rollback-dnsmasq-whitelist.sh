@@ -248,15 +248,27 @@ if systemctl is-enabled --quiet dnsmasq 2>/dev/null; then
     systemctl disable dnsmasq 2>/dev/null || true
 fi
 
-# PASO 3: Restaurar resolv.conf
+# PASO 3: Restaurar resolv.conf (con soporte para symlinks)
 log "PASO 3/4: Restaurando /etc/resolv.conf..."
-if [ -f /etc/resolv.conf.backup-whitelist ]; then
-    # Remove current file if it exists
+
+# Verificar si el backup original era un symlink
+if [ -f /etc/resolv.conf.backup-whitelist.symlink ]; then
+    # Era symlink - restaurar symlink original
+    SYMLINK_TARGET=$(cat /etc/resolv.conf.backup-whitelist.symlink)
+    log "Restaurando symlink a: $SYMLINK_TARGET"
+    rm -f /etc/resolv.conf
+    ln -sf "$SYMLINK_TARGET" /etc/resolv.conf
+    log "Restored original /etc/resolv.conf symlink from backup"
+
+elif [ -f /etc/resolv.conf.backup-whitelist ]; then
+    # Era archivo regular - restaurar contenido
+    log "Restaurando archivo regular desde backup"
     if [ -L /etc/resolv.conf ] || [ -f /etc/resolv.conf ]; then
         rm -f /etc/resolv.conf
     fi
     mv /etc/resolv.conf.backup-whitelist /etc/resolv.conf
     log "Restored original /etc/resolv.conf from backup"
+
 else
     warn "No backup found for /etc/resolv.conf. Recreating symlink to systemd-resolved..."
     # Recrear symlink a systemd-resolved si no hay backup
