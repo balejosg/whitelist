@@ -1,13 +1,14 @@
 #!/bin/bash
 
 ################################################################################
-# Script de Instalación: dnsmasq URL Whitelist System v3.0
+# Script de Instalación: dnsmasq URL Whitelist System v3.1
 #
 # Arquitectura Híbrida (DNS Sinkhole + Firewall Selectivo):
-# - DNS Sinkhole: dnsmasq retorna 127.0.0.1 para dominios bloqueados
+# - DNS Sinkhole: dnsmasq retorna NXDOMAIN para dominios bloqueados
 # - Firewall: permite HTTP/HTTPS a cualquier IP (confía en DNS Sinkhole)
 # - Bloquea bypass: DNS alternativo, VPN, Tor
 # - Detector de portal cautivo: desactiva firewall si no estás autenticado
+# - Detección DINÁMICA de DNS (NetworkManager, backup, gateway)
 # - Fail-open: si algo falla, permite todo
 # - NO usa ipset (elimina problema de IPs dinámicas de CDN)
 #
@@ -24,8 +25,8 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 echo "======================================================"
-echo "  dnsmasq URL Whitelist System v2.0 - Instalación"
-echo "  Optimizado para portales cautivos (WEDU)"
+echo "  dnsmasq URL Whitelist System v3.1 - Instalación"
+echo "  DNS dinámico + Portales cautivos (WEDU)"
 echo "======================================================"
 echo ""
 
@@ -277,6 +278,13 @@ if [ -f /etc/systemd/resolved.conf.backup-whitelist ]; then
     echo "systemd-resolved reconfigurado (sin puerto 53)"
 fi
 
+# Guardar DNS original para detección dinámica posterior
+echo ""
+echo "Guardando configuración DNS original..."
+mkdir -p /var/lib/url-whitelist
+echo "$PRIMARY_DNS" > /var/lib/url-whitelist/original-dns.conf
+echo "DNS original guardado: $PRIMARY_DNS (usado como fallback)"
+
 # Crear script de detección de portal cautivo
 echo ""
 echo "[5/10] Creando detector de portal cautivo..."
@@ -293,11 +301,43 @@ LOG_FILE="/var/log/captive-portal-detector.log"
 STATE_FILE="/var/run/captive-portal-state"
 CHECK_URL="http://detectportal.firefox.com/success.txt"
 EXPECTED_RESPONSE="success"
-PRIMARY_DNS="__PRIMARY_DNS__"
 
 # Función de logging
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+}
+
+# Función para detectar DNS primario dinámicamente
+detect_primary_dns() {
+    local DNS=""
+
+    # Método 1: NetworkManager (más confiable para DHCP)
+    if command -v nmcli >/dev/null 2>&1; then
+        DNS=$(nmcli dev show 2>/dev/null | grep -i "IP4.DNS\[1\]" | awk '{print $2}' | head -1)
+        if [ -n "$DNS" ]; then
+            echo "$DNS"
+            return 0
+        fi
+    fi
+
+    # Método 2: Backup DNS original (guardado durante instalación)
+    if [ -f /var/lib/url-whitelist/original-dns.conf ]; then
+        DNS=$(cat /var/lib/url-whitelist/original-dns.conf 2>/dev/null | head -1)
+        if [ -n "$DNS" ]; then
+            echo "$DNS"
+            return 0
+        fi
+    fi
+
+    # Método 3: Gateway como último recurso
+    local GATEWAY=$(ip route | grep default | awk '{print $3}' | head -1)
+    if [ -n "$GATEWAY" ]; then
+        echo "$GATEWAY"
+        return 0
+    fi
+
+    # Fallback absoluto
+    echo "8.8.8.8"
 }
 
 # Crear directorio de logs
@@ -306,7 +346,10 @@ mkdir -p "$(dirname "$STATE_FILE")"
 
 # Función para activar firewall restrictivo (SIN ipset)
 activate_firewall() {
+    # Detectar DNS primario dinámicamente
+    local PRIMARY_DNS=$(detect_primary_dns)
     log "Activando firewall restrictivo (DNS Sinkhole mode)..."
+    log "DNS primario detectado: $PRIMARY_DNS"
 
     # Limpiar reglas existentes
     iptables -F OUTPUT 2>/dev/null || true
@@ -418,10 +461,8 @@ while true; do
 done
 DETECTOR_EOF
 
-# Reemplazar placeholder con PRIMARY_DNS real
-sed -i "s|__PRIMARY_DNS__|$PRIMARY_DNS|g" /usr/local/bin/captive-portal-detector.sh
-
 chmod +x /usr/local/bin/captive-portal-detector.sh
+echo "Captive portal detector creado (usa detección DNS dinámica)"
 
 # Crear script principal de whitelist
 echo ""
@@ -442,13 +483,8 @@ WHITELIST_URL="https://gist.githubusercontent.com/balejosg/9a81340e7e7bfd044cc03
 WHITELIST_FILE="/var/lib/url-whitelist/whitelist.txt"
 DNSMASQ_CONF="/etc/dnsmasq.d/url-whitelist.conf"
 DNSMASQ_CONF_HASH="/var/lib/url-whitelist/dnsmasq.hash"
+DNS_CACHE_FILE="/var/lib/url-whitelist/current-dns.cache"
 LOG_FILE="/var/log/url-whitelist.log"
-
-# DNS primario detectado durante instalación
-PRIMARY_DNS="__PRIMARY_DNS__"
-
-# Gateway (para fallback)
-GATEWAY_IP=$(ip route | grep default | awk '{print $3}' | head -n 1)
 
 # URLs base (hardcoded) - necesarias para bootstrap
 # NOTA: Solo dominios BASE - dnsmasq automáticamente resuelve subdominios
@@ -497,12 +533,65 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
 }
 
+# Función para detectar DNS primario dinámicamente
+detect_primary_dns() {
+    local DNS=""
+
+    # Método 1: NetworkManager (más confiable para DHCP)
+    if command -v nmcli >/dev/null 2>&1; then
+        DNS=$(nmcli dev show 2>/dev/null | grep -i "IP4.DNS\[1\]" | awk '{print $2}' | head -1)
+        if [ -n "$DNS" ]; then
+            echo "$DNS"
+            return 0
+        fi
+    fi
+
+    # Método 2: Backup DNS original (guardado durante instalación)
+    if [ -f /var/lib/url-whitelist/original-dns.conf ]; then
+        DNS=$(cat /var/lib/url-whitelist/original-dns.conf 2>/dev/null | head -1)
+        if [ -n "$DNS" ]; then
+            echo "$DNS"
+            return 0
+        fi
+    fi
+
+    # Método 3: Gateway como último recurso
+    local GATEWAY=$(ip route | grep default | awk '{print $3}' | head -1)
+    if [ -n "$GATEWAY" ]; then
+        echo "$GATEWAY"
+        return 0
+    fi
+
+    # Fallback absoluto
+    echo "8.8.8.8"
+}
+
 # Crear directorios necesarios
 mkdir -p /var/lib/url-whitelist
 mkdir -p "$(dirname "$LOG_FILE")"
 mkdir -p /etc/dnsmasq.d
 
-log "=== Iniciando actualización de whitelist (dnsmasq v2.0) ==="
+log "=== Iniciando actualización de whitelist (dnsmasq v3.1 - DNS dinámico) ==="
+
+# Detectar DNS primario actual
+PRIMARY_DNS=$(detect_primary_dns)
+log "DNS primario detectado: $PRIMARY_DNS"
+
+# Verificar si DNS cambió desde última ejecución
+DNS_CHANGED=false
+if [ -f "$DNS_CACHE_FILE" ]; then
+    CACHED_DNS=$(cat "$DNS_CACHE_FILE" 2>/dev/null)
+    if [ "$CACHED_DNS" != "$PRIMARY_DNS" ]; then
+        log "DNS cambió: $CACHED_DNS → $PRIMARY_DNS"
+        DNS_CHANGED=true
+    fi
+else
+    # Primera ejecución - crear cache
+    DNS_CHANGED=true
+fi
+
+# Guardar DNS actual en cache
+echo "$PRIMARY_DNS" > "$DNS_CACHE_FILE"
 
 # Función para limpiar firewall (fail-safe)
 cleanup_firewall() {
@@ -761,6 +850,12 @@ EOF
 
 # Función para verificar si la configuración cambió
 has_config_changed() {
+    # Si DNS cambió, forzar actualización
+    if [ "$DNS_CHANGED" = true ]; then
+        log "DNS cambió - forzando actualización de configuración"
+        return 0
+    fi
+
     if [ ! -f "$DNSMASQ_CONF_HASH" ]; then
         return 0
     fi
@@ -772,7 +867,7 @@ has_config_changed() {
         log "Detectado cambio en configuración dnsmasq"
         return 0
     else
-        log "No hay cambios en configuración"
+        log "No hay cambios en configuración ni en DNS"
         return 1
     fi
 }
@@ -887,10 +982,8 @@ main
 log "=== Proceso finalizado ==="
 SCRIPT_EOF
 
-# Reemplazar placeholder con PRIMARY_DNS real
-sed -i "s|__PRIMARY_DNS__|$PRIMARY_DNS|g" /usr/local/bin/dnsmasq-whitelist.sh
-
 chmod +x /usr/local/bin/dnsmasq-whitelist.sh
+echo "Script dnsmasq-whitelist creado (usa detección DNS dinámica)"
 
 # Configurar dnsmasq base
 echo ""
