@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ################################################################################
-# Script de Instalación: dnsmasq URL Whitelist System v3.1
+# Script de Instalación: dnsmasq URL Whitelist System v3.2
 #
 # Arquitectura Híbrida (DNS Sinkhole + Firewall Selectivo):
 # - DNS Sinkhole: dnsmasq retorna NXDOMAIN para dominios bloqueados
@@ -9,6 +9,7 @@
 # - Bloquea bypass: DNS alternativo, VPN, Tor
 # - Detector de portal cautivo: desactiva firewall si no estás autenticado
 # - Detección DINÁMICA de DNS (NetworkManager, backup, gateway)
+# - MÚLTIPLES URLs con fallback automático (resiliencia institucional)
 # - Fail-open: si algo falla, permite todo
 # - NO usa ipset (elimina problema de IPs dinámicas de CDN)
 #
@@ -25,8 +26,8 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 echo "======================================================"
-echo "  dnsmasq URL Whitelist System v3.1 - Instalación"
-echo "  DNS dinámico + Portales cautivos (WEDU)"
+echo "  dnsmasq URL Whitelist System v3.2 - Instalación"
+echo "  DNS dinámico + URLs resilientes + WEDU"
 echo "======================================================"
 echo ""
 
@@ -471,15 +472,26 @@ cat > /usr/local/bin/dnsmasq-whitelist.sh << 'SCRIPT_EOF'
 #!/bin/bash
 
 #############################################
-# dnsmasq Whitelist Manager v3.0
+# dnsmasq Whitelist Manager v3.2
 # Arquitectura Híbrida: DNS Sinkhole + Firewall Selectivo
 # - DNS Selectivo: solo resuelve dominios whitelisted
 # - Firewall previene bypass (VPN, Tor, DNS alternativo)
+# - Múltiples URLs con fallback automático
 # - NO usa ipset (confía en DNS Selectivo)
 #############################################
 
 # Configuración
-WHITELIST_URL="https://gist.githubusercontent.com/balejosg/9a81340e7e7bfd044cc031f41af6acdc/raw/whitelist.txt"
+# URLs de whitelist (intentadas en orden hasta que una funcione)
+# IMPORTANTE: Actualizar estas URLs tras migrar a organización GitHub/GitLab
+WHITELIST_URLS=(
+    # URL principal - CAMBIAR a organización GitHub tras migración
+    "https://gist.githubusercontent.com/balejosg/9a81340e7e7bfd044cc031f41af6acdc/raw/whitelist.txt"
+
+    # URLs de respaldo (agregar tras configurar):
+    # "https://raw.githubusercontent.com/colegio-xyz-it/url-whitelist/main/whitelist.txt"
+    # "https://gitlab.com/colegio-xyz-it/url-whitelist/-/raw/main/whitelist.txt"
+)
+
 WHITELIST_FILE="/var/lib/url-whitelist/whitelist.txt"
 DNSMASQ_CONF="/etc/dnsmasq.d/url-whitelist.conf"
 DNSMASQ_CONF_HASH="/var/lib/url-whitelist/dnsmasq.hash"
@@ -571,7 +583,7 @@ mkdir -p /var/lib/url-whitelist
 mkdir -p "$(dirname "$LOG_FILE")"
 mkdir -p /etc/dnsmasq.d
 
-log "=== Iniciando actualización de whitelist (dnsmasq v3.1 - DNS dinámico) ==="
+log "=== Iniciando actualización de whitelist (dnsmasq v3.2 - DNS dinámico + URLs resilientes) ==="
 
 # Detectar DNS primario actual
 PRIMARY_DNS=$(detect_primary_dns)
@@ -693,7 +705,7 @@ EOF
     log "Sistema en modo fail-open - Sin restricciones"
 }
 
-# Función para descargar whitelist
+# Función para descargar whitelist (con fallback a múltiples URLs)
 download_whitelist() {
     # Verificar si estamos en modo offline
     if [ "${OFFLINE_MODE:-false}" = true ]; then
@@ -701,23 +713,35 @@ download_whitelist() {
         return 1  # Retornar 1 para que main() use solo BASE_URLS
     fi
 
-    log "Intentando descargar whitelist desde GitHub Gist..."
+    log "Intentando descargar whitelist (${#WHITELIST_URLS[@]} URLs configuradas)..."
 
-    if timeout 30 curl -L -f -s "$WHITELIST_URL" -o "${WHITELIST_FILE}.tmp" 2>/dev/null; then
-        if [ -s "${WHITELIST_FILE}.tmp" ]; then
-            mv "${WHITELIST_FILE}.tmp" "$WHITELIST_FILE"
-            log "Whitelist descargado exitosamente"
-            return 0
+    # Intentar cada URL en orden hasta que una funcione
+    local url_index=1
+    for url in "${WHITELIST_URLS[@]}"; do
+        # Extraer dominio para logging
+        local domain=$(echo "$url" | sed 's|https\?://||' | cut -d'/' -f1)
+        log "[$url_index/${#WHITELIST_URLS[@]}] Intentando: $domain"
+
+        if timeout 30 curl -L -f -s "$url" -o "${WHITELIST_FILE}.tmp" 2>/dev/null; then
+            if [ -s "${WHITELIST_FILE}.tmp" ]; then
+                mv "${WHITELIST_FILE}.tmp" "$WHITELIST_FILE"
+                log "✓ Whitelist descargado exitosamente desde: $domain"
+                return 0
+            else
+                log "✗ Archivo vacío desde: $domain"
+                rm -f "${WHITELIST_FILE}.tmp"
+            fi
         else
-            log "ERROR: Archivo descargado está vacío"
+            log "✗ Fallo descarga desde: $domain"
             rm -f "${WHITELIST_FILE}.tmp"
-            return 1
         fi
-    else
-        log "ERROR: No se pudo descargar whitelist desde GitHub Gist"
-        rm -f "${WHITELIST_FILE}.tmp"
-        return 1
-    fi
+
+        url_index=$((url_index + 1))
+    done
+
+    log "ERROR: No se pudo descargar whitelist desde ninguna URL configurada"
+    log "URLs intentadas: ${#WHITELIST_URLS[@]}"
+    return 1
 }
 
 # Función para verificar si dnsmasq soporta ipset

@@ -8,9 +8,9 @@ This repository contains a **dnsmasq-based URL whitelist system** for Ubuntu/Deb
 
 ## System Architecture
 
-### Current Version: v3.1 (Dynamic DNS Detection)
+### Current Version: v3.2 (Institutional Resilience)
 
-The system has evolved through multiple versions. **v3.1 is the current stable version** with dynamic DNS detection for mobile/changing networks.
+The system has evolved through multiple versions. **v3.2 is the current stable version** with multiple URL fallback for institutional continuity and resilience.
 
 ### Core Components
 
@@ -319,6 +319,188 @@ Add `# DESACTIVADO` as the first line of the whitelist file in the GitHub Gist. 
 **To restore:**
 Remove the `# DESACTIVADO` line from the Gist. Systems will re-enable restrictions on next update cycle.
 
+## Migración a Hosting Institucional (v3.2)
+
+### Problema
+
+**Dependencia de cuenta personal es un riesgo crítico:**
+- Si el profesor dueño del Gist deja el centro → se pierde acceso
+- No hay control de acceso multi-usuario
+- No hay versionado robusto
+- No hay transferencia de propiedad sencilla
+
+### Solución: GitHub Organization + Múltiples URLs
+
+#### Paso 1: Crear Organización GitHub (15 minutos)
+
+1. **Crear organización gratuita:**
+   - Ir a: https://github.com/organizations/plan
+   - Seleccionar "Create a free organization"
+   - Nombre sugerido: `colegio-[nombre]-it` o `educacion-madrid-[centro]`
+   - Plan: "Free" (suficiente para repos públicos)
+
+2. **Agregar administradores:**
+   - Settings → People → Invite member
+   - Agregar 3-5 profesores clave como "Owner"
+   - Crear team "Profesores" con permisos de escritura
+
+#### Paso 2: Crear Repositorio Público (10 minutos)
+
+1. **Crear repo en la organización:**
+   - Repositories → New repository
+   - Nombre: `url-whitelist`
+   - Descripción: "Lista oficial de URLs permitidas - Centro Educativo"
+   - Visibilidad: **Public** (necesario para raw URLs gratuitas)
+   - Initialize with README: ✅ Yes
+
+2. **Agregar archivos:**
+   - Copiar contenido del Gist actual a `whitelist.txt`
+   - Copiar `/templates/REPO_README.md` como `README.md` (actualizar placeholders)
+   - Copiar `/templates/REPO_OWNERS.md` como `OWNERS.md` (rellenar nombres)
+
+3. **URL resultante:**
+   ```
+   https://raw.githubusercontent.com/[ORGANIZACION]/url-whitelist/main/whitelist.txt
+   ```
+
+#### Paso 3: Actualizar Sistema (5 minutos por equipo)
+
+**Método 1: Actualizar instalador (recomendado para nuevas instalaciones)**
+
+Editar `setup-dnsmasq-whitelist.sh` en línea 486-491:
+
+```bash
+WHITELIST_URLS=(
+    # URL principal - Organización institucional
+    "https://raw.githubusercontent.com/colegio-xyz-it/url-whitelist/main/whitelist.txt"
+
+    # URLs de respaldo
+    "https://gitlab.com/colegio-xyz-it/url-whitelist/-/raw/main/whitelist.txt"  # Mirror GitLab
+    "https://gist.githubusercontent.com/balejosg/9a81340e7e7bfd044cc031f41af6acdc/raw/whitelist.txt"  # Gist antiguo (backup)
+)
+```
+
+**Método 2: Actualizar equipos ya instalados**
+
+Editar `/usr/local/bin/dnsmasq-whitelist.sh` en cada equipo:
+
+```bash
+sudo nano /usr/local/bin/dnsmasq-whitelist.sh
+
+# Buscar línea 484-491 y reemplazar URLs
+# Guardar: Ctrl+O, Enter, Ctrl+X
+
+# Ejecutar manualmente para verificar
+sudo /usr/local/bin/dnsmasq-whitelist.sh
+
+# Verificar logs
+sudo tail -20 /var/log/url-whitelist.log
+```
+
+Debería ver en logs:
+```
+[2025-10-28 15:30:00] Intentando descargar whitelist (3 URLs configuradas)...
+[2025-10-28 15:30:00] [1/3] Intentando: raw.githubusercontent.com
+[2025-10-28 15:30:01] ✓ Whitelist descargado exitosamente desde: raw.githubusercontent.com
+```
+
+#### Paso 4: Configurar Mirror GitLab (Opcional - Resiliencia Máxima)
+
+Para máxima resiliencia, alojar también en GitLab:
+
+1. **Crear cuenta/organización GitLab:**
+   - Ir a: https://gitlab.com
+   - Crear grupo con mismo nombre que GitHub
+
+2. **Configurar mirror automático:**
+   - GitLab: New Project → Import project → GitHub
+   - Seleccionar repositorio de GitHub
+   - Habilitar "Mirror repository"
+   - Se sincronizará automáticamente cada hora
+
+3. **URL GitLab:**
+   ```
+   https://gitlab.com/[ORGANIZACION]/url-whitelist/-/raw/main/whitelist.txt
+   ```
+
+#### Paso 5: Verificación y Documentación
+
+**Verificar sistema de fallback:**
+
+```bash
+# Simular fallo de URL principal (temporal)
+sudo nano /usr/local/bin/dnsmasq-whitelist.sh
+# Cambiar primera URL a algo inválido temporalmente
+
+# Ejecutar y verificar que usa fallback
+sudo /usr/local/bin/dnsmasq-whitelist.sh
+sudo tail -30 /var/log/url-whitelist.log
+
+# Debería mostrar:
+# [1/3] Intentando: URL-INVALIDA
+# ✗ Fallo descarga desde: URL-INVALIDA
+# [2/3] Intentando: raw.githubusercontent.com
+# ✓ Whitelist descargado exitosamente desde: raw.githubusercontent.com
+```
+
+**Documentar URLs:**
+
+Actualizar `CLAUDE.md` con nuevas URLs y registrar en `OWNERS.md`:
+- URL principal
+- URLs de respaldo
+- Fecha de migración
+- Responsables
+
+### Ventajas del Sistema v3.2
+
+✅ **Resiliencia institucional**: No depende de 1 persona
+✅ **Múltiples administradores**: 3-10 profesores pueden editar
+✅ **Fallback automático**: Si GitHub cae, usa GitLab o Gist antiguo
+✅ **Historial completo**: Git guarda todos los cambios
+✅ **Auditoría**: Quién cambió qué y cuándo
+✅ **Transferencia sencilla**: Agregar/remover administradores en segundos
+✅ **Alta disponibilidad**: GitHub/GitLab tienen 99.9% uptime
+✅ **Sin costo**: Gratis para repos públicos
+
+### Flujo de Trabajo Post-Migración
+
+**Edición Web (sin git):**
+1. Ir a GitHub → `whitelist.txt`
+2. Click ✏️ (edit)
+3. Hacer cambios
+4. Scroll abajo → Commit message descriptivo
+5. Click "Commit changes"
+
+**Sincronización automática:**
+- Cambio en GitHub → detectado en máximo 5 minutos
+- Sistema intenta URLs en orden hasta descargar
+- Logs registran qué URL funcionó
+
+### Templates Incluidos
+
+El repositorio incluye templates listos para usar:
+
+- **`/templates/REPO_README.md`**: README.md para el repositorio institucional
+  - Instrucciones de edición para profesores
+  - Formato del whitelist
+  - Ejemplos de dominios comunes
+  - Desactivación de emergencia
+  - Contactos de soporte
+
+- **`/templates/REPO_OWNERS.md`**: Gestión de administradores
+  - Lista de propietarios y editores
+  - Proceso de agregar/remover administradores
+  - Mejores prácticas de seguridad
+  - Auditoría y revisiones periódicas
+
+**Uso:**
+1. Copiar templates a repositorio nuevo
+2. Reemplazar placeholders:
+   - `[ORGANIZACION]` → nombre real de la organización
+   - `[Nombre del Centro]` → nombre del colegio
+   - `[email@educamadrid.org]` → emails reales
+3. Rellenar tablas de administradores
+
 ## Rollback / Uninstallation
 
 To completely remove the whitelist system and restore original configuration:
@@ -353,7 +535,77 @@ The rollback script will:
 
 ## Architecture Evolution
 
-### v3.1 Changes (2025-10-28) - CURRENT VERSION
+### v3.2 Changes (2025-10-28) - CURRENT VERSION
+
+v3.2 adds **multiple URL fallback** to solve institutional dependency on personal accounts. The whitelist can now be hosted on multiple platforms simultaneously, with automatic fallback if primary source is unavailable.
+
+**Key Changes in v3.2:**
+
+1. **Multiple URL Support with Automatic Fallback**:
+   - **Problem in v3.0-v3.1**: Single GitHub Gist URL tied to personal account. If professor leaves → lost access
+   - **Solution**: Array of URLs tried in order until one succeeds
+   - **Configuration**: `WHITELIST_URLS=()` array in dnsmasq-whitelist.sh
+   - **Logging**: Shows which URL succeeded (e.g., "[2/3] ✓ Whitelist descargado desde: gitlab.com")
+
+2. **Enhanced download_whitelist() Function**:
+   - Iterates through all configured URLs
+   - Extracts domain name for cleaner logs
+   - Provides detailed feedback on each attempt
+   - Only succeeds if file is non-empty
+   - Returns error only if ALL URLs fail
+
+3. **Templates for Institutional Repository**:
+   - **`/templates/REPO_README.md`**: Ready-to-use README for GitHub/GitLab repo
+     - User-friendly editing instructions (web UI and git)
+     - Whitelist format documentation
+     - Emergency disable instructions
+     - Common domain examples
+   - **`/templates/REPO_OWNERS.md`**: Administrator management documentation
+     - Owner/maintainer lists
+     - Process for adding/removing administrators
+     - Security best practices
+     - Audit procedures
+
+4. **Migration Documentation**:
+   - Complete guide to migrate from personal Gist to GitHub Organization
+   - Step-by-step for creating organization (free)
+   - Instructions for adding multiple administrators
+   - Optional GitLab mirror setup for maximum resilience
+   - Verification procedures
+
+**Problems Solved by v3.2:**
+- ✅ No single point of failure (professor leaving)
+- ✅ Multiple administrators (3-10 people can edit)
+- ✅ Platform redundancy (GitHub + GitLab + Gist)
+- ✅ Institutional ownership (not personal)
+- ✅ Automatic fallback (if one platform down, uses another)
+- ✅ Easy administrator management (GitHub/GitLab UI)
+
+**Use Cases:**
+- **Personnel changes**: Professor leaves → other admins continue managing
+- **Platform outage**: GitHub down → automatically uses GitLab mirror
+- **Institutional control**: School owns the whitelist, not individual
+- **Audit trail**: Git history shows who changed what and when
+
+**Example Configuration:**
+```bash
+WHITELIST_URLS=(
+    "https://raw.githubusercontent.com/colegio-xyz-it/url-whitelist/main/whitelist.txt"
+    "https://gitlab.com/colegio-xyz-it/url-whitelist/-/raw/main/whitelist.txt"
+    "https://gist.githubusercontent.com/professor/abc123/raw/whitelist.txt"  # Legacy backup
+)
+```
+
+**Log Output:**
+```
+[2025-10-28 15:30:00] Intentando descargar whitelist (3 URLs configuradas)...
+[2025-10-28 15:30:00] [1/3] Intentando: raw.githubusercontent.com
+[2025-10-28 15:30:01] ✓ Whitelist descargado exitosamente desde: raw.githubusercontent.com
+```
+
+---
+
+### v3.1 Changes (2025-10-28)
 
 v3.1 adds **dynamic DNS detection** to solve the hardcoded DNS problem from v3.0. The DNS server is now detected on every execution, making the system work on mobile devices and networks with changing configurations.
 
