@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ################################################################################
-# Script de Instalación: dnsmasq URL Whitelist System v3.2
+# Script de Instalación: dnsmasq URL Whitelist System v3.3
 #
 # Arquitectura Híbrida (DNS Sinkhole + Firewall Selectivo):
 # - DNS Sinkhole: dnsmasq retorna NXDOMAIN para dominios bloqueados
@@ -9,11 +9,13 @@
 # - Bloquea bypass: DNS alternativo, VPN, Tor
 # - Detector de portal cautivo: desactiva firewall si no estás autenticado
 # - Detección DINÁMICA de DNS (NetworkManager, backup, gateway)
-# - MÚLTIPLES URLs con fallback automático (resiliencia institucional)
+# - URL CONFIGURABLE con prompt interactivo (predeterminada: LasEncinasIT)
 # - Fail-open: si algo falla, permite todo
 # - NO usa ipset (elimina problema de IPs dinámicas de CDN)
 #
-# Uso: sudo ./setup-dnsmasq-whitelist.sh
+# Uso:
+#   sudo ./setup-dnsmasq-whitelist.sh
+#   sudo ./setup-dnsmasq-whitelist.sh --whitelist-url "https://tu-url.com/file.txt"
 #
 ################################################################################
 
@@ -25,9 +27,22 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# URL predeterminada institucional (LasEncinasIT)
+DEFAULT_WHITELIST_URL="https://raw.githubusercontent.com/LasEncinasIT/Whitelist-por-aula/refs/heads/main/Informatica%203.txt"
+
+# Procesar argumentos de línea de comandos
+SKIP_WHITELIST_PROMPT=false
+WHITELIST_URL=""
+
+if [ "$1" = "--whitelist-url" ] && [ -n "$2" ]; then
+    WHITELIST_URL="$2"
+    SKIP_WHITELIST_PROMPT=true
+    echo "Usando URL personalizada: $WHITELIST_URL"
+fi
+
 echo "======================================================"
-echo "  dnsmasq URL Whitelist System v3.2 - Instalación"
-echo "  DNS dinámico + URLs resilientes + WEDU"
+echo "  dnsmasq URL Whitelist System v3.3 - Instalación"
+echo "  DNS dinámico + URL configurable + WEDU"
 echo "======================================================"
 echo ""
 
@@ -118,6 +133,50 @@ check_internet_connectivity() {
 
 # Ejecutar verificación de conectividad
 check_internet_connectivity
+
+# Configuración de URL del whitelist (si no se pasó por argumento)
+if [ "$SKIP_WHITELIST_PROMPT" = false ]; then
+    echo ""
+    echo "======================================================"
+    echo "  Configuración de Whitelist"
+    echo "======================================================"
+    echo ""
+    echo "URL predeterminada (LasEncinasIT - Informática 3):"
+    echo "  $DEFAULT_WHITELIST_URL"
+    echo ""
+    read -p "¿Usar esta URL? (Y/n): " use_default
+
+    if [[ "$use_default" =~ ^[Nn]$ ]]; then
+        echo ""
+        echo "Introduce la URL del whitelist:"
+        echo "Ejemplo: https://raw.githubusercontent.com/org/repo/main/whitelist.txt"
+        echo ""
+        read -p "URL: " custom_url
+
+        # Validar URL
+        echo "Validando URL..."
+        if timeout 10 curl -L -f -s -I "$custom_url" >/dev/null 2>&1; then
+            WHITELIST_URL="$custom_url"
+            echo "✓ URL validada: $WHITELIST_URL"
+        else
+            echo "✗ ADVERTENCIA: No se puede acceder a la URL proporcionada"
+            echo "Usando URL predeterminada como fallback"
+            WHITELIST_URL="$DEFAULT_WHITELIST_URL"
+        fi
+    else
+        WHITELIST_URL="$DEFAULT_WHITELIST_URL"
+        echo "✓ Usando URL predeterminada"
+    fi
+    echo ""
+fi
+
+# Si aún no hay URL configurada, usar la predeterminada
+if [ -z "$WHITELIST_URL" ]; then
+    WHITELIST_URL="$DEFAULT_WHITELIST_URL"
+fi
+
+echo "URL del whitelist configurada: $WHITELIST_URL"
+echo ""
 
 # Función para validar que dnsmasq está funcionando correctamente
 validate_dnsmasq() {
@@ -472,25 +531,17 @@ cat > /usr/local/bin/dnsmasq-whitelist.sh << 'SCRIPT_EOF'
 #!/bin/bash
 
 #############################################
-# dnsmasq Whitelist Manager v3.2
+# dnsmasq Whitelist Manager v3.3
 # Arquitectura Híbrida: DNS Sinkhole + Firewall Selectivo
 # - DNS Selectivo: solo resuelve dominios whitelisted
 # - Firewall previene bypass (VPN, Tor, DNS alternativo)
-# - Múltiples URLs con fallback automático
+# - URL configurable durante instalación
 # - NO usa ipset (confía en DNS Selectivo)
 #############################################
 
 # Configuración
-# URLs de whitelist (intentadas en orden hasta que una funcione)
-# IMPORTANTE: Actualizar estas URLs tras migrar a organización GitHub/GitLab
-WHITELIST_URLS=(
-    # URL principal - CAMBIAR a organización GitHub tras migración
-    "https://gist.githubusercontent.com/balejosg/9a81340e7e7bfd044cc031f41af6acdc/raw/whitelist.txt"
-
-    # URLs de respaldo (agregar tras configurar):
-    # "https://raw.githubusercontent.com/colegio-xyz-it/url-whitelist/main/whitelist.txt"
-    # "https://gitlab.com/colegio-xyz-it/url-whitelist/-/raw/main/whitelist.txt"
-)
+# URL del whitelist (configurada durante instalación)
+WHITELIST_URL="__WHITELIST_URL__"
 
 WHITELIST_FILE="/var/lib/url-whitelist/whitelist.txt"
 DNSMASQ_CONF="/etc/dnsmasq.d/url-whitelist.conf"
@@ -583,7 +634,7 @@ mkdir -p /var/lib/url-whitelist
 mkdir -p "$(dirname "$LOG_FILE")"
 mkdir -p /etc/dnsmasq.d
 
-log "=== Iniciando actualización de whitelist (dnsmasq v3.2 - DNS dinámico + URLs resilientes) ==="
+log "=== Iniciando actualización de whitelist (dnsmasq v3.3 - DNS dinámico + URL configurable) ==="
 
 # Detectar DNS primario actual
 PRIMARY_DNS=$(detect_primary_dns)
@@ -705,7 +756,7 @@ EOF
     log "Sistema en modo fail-open - Sin restricciones"
 }
 
-# Función para descargar whitelist (con fallback a múltiples URLs)
+# Función para descargar whitelist
 download_whitelist() {
     # Verificar si estamos en modo offline
     if [ "${OFFLINE_MODE:-false}" = true ]; then
@@ -713,35 +764,23 @@ download_whitelist() {
         return 1  # Retornar 1 para que main() use solo BASE_URLS
     fi
 
-    log "Intentando descargar whitelist (${#WHITELIST_URLS[@]} URLs configuradas)..."
+    log "Descargando whitelist desde: $WHITELIST_URL"
 
-    # Intentar cada URL en orden hasta que una funcione
-    local url_index=1
-    for url in "${WHITELIST_URLS[@]}"; do
-        # Extraer dominio para logging
-        local domain=$(echo "$url" | sed 's|https\?://||' | cut -d'/' -f1)
-        log "[$url_index/${#WHITELIST_URLS[@]}] Intentando: $domain"
-
-        if timeout 30 curl -L -f -s "$url" -o "${WHITELIST_FILE}.tmp" 2>/dev/null; then
-            if [ -s "${WHITELIST_FILE}.tmp" ]; then
-                mv "${WHITELIST_FILE}.tmp" "$WHITELIST_FILE"
-                log "✓ Whitelist descargado exitosamente desde: $domain"
-                return 0
-            else
-                log "✗ Archivo vacío desde: $domain"
-                rm -f "${WHITELIST_FILE}.tmp"
-            fi
+    if timeout 30 curl -L -f -s "$WHITELIST_URL" -o "${WHITELIST_FILE}.tmp" 2>/dev/null; then
+        if [ -s "${WHITELIST_FILE}.tmp" ]; then
+            mv "${WHITELIST_FILE}.tmp" "$WHITELIST_FILE"
+            log "✓ Whitelist descargado exitosamente"
+            return 0
         else
-            log "✗ Fallo descarga desde: $domain"
+            log "ERROR: Archivo descargado está vacío"
             rm -f "${WHITELIST_FILE}.tmp"
+            return 1
         fi
-
-        url_index=$((url_index + 1))
-    done
-
-    log "ERROR: No se pudo descargar whitelist desde ninguna URL configurada"
-    log "URLs intentadas: ${#WHITELIST_URLS[@]}"
-    return 1
+    else
+        log "ERROR: No se pudo descargar whitelist"
+        rm -f "${WHITELIST_FILE}.tmp"
+        return 1
+    fi
 }
 
 # Función para verificar si dnsmasq soporta ipset
@@ -1006,8 +1045,11 @@ main
 log "=== Proceso finalizado ==="
 SCRIPT_EOF
 
+# Reemplazar placeholder con URL configurada
+sed -i "s|__WHITELIST_URL__|$WHITELIST_URL|g" /usr/local/bin/dnsmasq-whitelist.sh
+
 chmod +x /usr/local/bin/dnsmasq-whitelist.sh
-echo "Script dnsmasq-whitelist creado (usa detección DNS dinámica)"
+echo "Script dnsmasq-whitelist creado con URL: $WHITELIST_URL"
 
 # Configurar dnsmasq base
 echo ""

@@ -8,9 +8,9 @@ This repository contains a **dnsmasq-based URL whitelist system** for Ubuntu/Deb
 
 ## System Architecture
 
-### Current Version: v3.2 (Institutional Resilience)
+### Current Version: v3.3 (LasEncinasIT - Interactive Configuration)
 
-The system has evolved through multiple versions. **v3.2 is the current stable version** with multiple URL fallback for institutional continuity and resilience.
+The system has evolved through multiple versions. **v3.3 is the current stable version** with interactive URL configuration and LasEncinasIT as the default institutional whitelist source.
 
 ### Core Components
 
@@ -535,7 +535,82 @@ The rollback script will:
 
 ## Architecture Evolution
 
-### v3.2 Changes (2025-10-28) - CURRENT VERSION
+### v3.3 Changes (2025-10-29) - CURRENT VERSION
+
+v3.3 simplifies URL configuration with **interactive prompt and LasEncinasIT as default**. Removes complexity of multiple URL fallback in favor of single, user-chosen URL with institutional default.
+
+**Key Changes in v3.3:**
+
+1. **Interactive URL Configuration**:
+   - **Problem in v3.2**: Multiple URL array added complexity, users had to edit code to change URLs
+   - **Solution**: Prompt during installation asks user which URL to use
+   - **Default**: LasEncinasIT institutional repository (Informática 3)
+   - **Flexibility**: Users can provide custom URL if needed
+
+2. **Simplified Architecture**:
+   - **Removed**: `WHITELIST_URLS=()` array with fallback logic
+   - **Added**: Single `WHITELIST_URL` variable set via prompt or argument
+   - **Benefit**: Simpler code, easier to understand, less failure points
+
+3. **Institutional Default (LasEncinasIT)**:
+   - **URL**: `https://raw.githubusercontent.com/LasEncinasIT/Whitelist-por-aula/refs/heads/main/Informatica%203.txt`
+   - **Organization**: Las Encinas IT department GitHub organization
+   - **Management**: Multiple administrators can edit via GitHub web UI
+   - **Pressing Enter during install**: Uses this URL automatically
+
+4. **Command-Line Support**:
+   - **Added**: `--whitelist-url` argument for automated installations
+   - **Usage**: `sudo ./setup-dnsmasq-whitelist.sh --whitelist-url "https://your-url.com/file.txt"`
+   - **Benefit**: Scriptable installations without interactive prompts
+
+5. **URL Validation**:
+   - **Checks**: URL accessibility during installation (10s timeout)
+   - **Fail-safe**: Falls back to default if custom URL is unreachable
+   - **Feedback**: Clear success/error messages
+
+**Installation Flow:**
+
+```
+====================================================
+  Configuración de Whitelist
+====================================================
+
+URL predeterminada (LasEncinasIT - Informática 3):
+  https://raw.githubusercontent.com/LasEncinasIT/...
+
+¿Usar esta URL? (Y/n): [Enter]
+✓ Usando URL predeterminada
+
+URL del whitelist configurada: https://raw.githubusercontent.com/LasEncinasIT/...
+```
+
+**Custom URL Flow:**
+
+```
+¿Usar esta URL? (Y/n): n
+Introduce la URL del whitelist:
+URL: https://mi-servidor.edu/whitelist.txt
+Validando URL...
+✓ URL validada: https://mi-servidor.edu/whitelist.txt
+```
+
+**Problems Solved by v3.3:**
+- ✅ No need to edit code to change URL
+- ✅ Clear institutional default (LasEncinasIT)
+- ✅ Simpler architecture (single URL, no fallback complexity)
+- ✅ Validates URL before installation
+- ✅ Supports automated/scripted installations
+- ✅ User-friendly prompt with clear default
+
+**Use Cases:**
+- **Standard installation**: Press Enter, uses LasEncinasIT
+- **Custom whitelist**: Enter custom URL, system validates and uses it
+- **Automated deployment**: Use `--whitelist-url` in scripts
+- **Multi-classroom**: Different classrooms use different whitelist files
+
+---
+
+### v3.2 Changes (2025-10-28)
 
 v3.2 adds **multiple URL fallback** to solve institutional dependency on personal accounts. The whitelist can now be hosted on multiple platforms simultaneously, with automatic fallback if primary source is unavailable.
 
