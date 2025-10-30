@@ -46,6 +46,124 @@ echo "  DNS dinámico + URL configurable + WEDU"
 echo "======================================================"
 echo ""
 
+# Verificar idempotencia - detectar instalación existente
+if [ -f /usr/local/bin/dnsmasq-whitelist.sh ]; then
+    echo "⚠⚠⚠ INSTALACIÓN EXISTENTE DETECTADA ⚠⚠⚠"
+    echo ""
+    echo "El sistema ya tiene una instalación del whitelist."
+    echo ""
+
+    # Verificar estado de los servicios
+    DNSMASQ_ACTIVE=false
+    TIMER_ACTIVE=false
+
+    if systemctl is-active --quiet dnsmasq 2>/dev/null; then
+        DNSMASQ_ACTIVE=true
+    fi
+
+    if systemctl is-active --quiet dnsmasq-whitelist.timer 2>/dev/null; then
+        TIMER_ACTIVE=true
+    fi
+
+    echo "Estado actual:"
+    if [ "$DNSMASQ_ACTIVE" = true ]; then
+        echo "  ✓ dnsmasq: ACTIVO"
+    else
+        echo "  ✗ dnsmasq: INACTIVO o FALLANDO"
+    fi
+
+    if [ "$TIMER_ACTIVE" = true ]; then
+        echo "  ✓ Timer whitelist: ACTIVO"
+    else
+        echo "  ✗ Timer whitelist: INACTIVO"
+    fi
+    echo ""
+
+    echo "Opciones disponibles:"
+    echo "  1) REINSTALAR - Elimina instalación anterior y reinstala desde cero"
+    echo "                  (Usa esto si el sistema está roto o quieres empezar limpio)"
+    echo ""
+    echo "  2) REPARAR    - Intenta arreglar la instalación actual"
+    echo "                  (Usa esto si solo quieres actualizar configuración)"
+    echo ""
+    echo "  3) CANCELAR   - Salir sin hacer cambios"
+    echo ""
+
+    while true; do
+        read -p "Selecciona una opción (1/2/3): " choice
+
+        case "$choice" in
+            1)
+                echo ""
+                echo "======================================================"
+                echo "  Modo REINSTALAR seleccionado"
+                echo "======================================================"
+                echo ""
+
+                # Verificar si existe script de rollback
+                if [ -f /usr/local/bin/rollback-dnsmasq-whitelist.sh ]; then
+                    echo "Ejecutando rollback para limpiar instalación anterior..."
+                    echo ""
+
+                    # Ejecutar rollback automáticamente (sin confirmación)
+                    if bash /usr/local/bin/rollback-dnsmasq-whitelist.sh --auto-yes 2>&1; then
+                        echo ""
+                        echo "✓ Rollback completado - Procediendo con instalación limpia..."
+                        sleep 2
+                    else
+                        echo ""
+                        echo "⚠ ADVERTENCIA: Rollback falló o está incompleto"
+                        read -p "¿Continuar con instalación de todas formas? (y/N): " continue_anyway
+                        if [[ ! "$continue_anyway" =~ ^[Yy]$ ]]; then
+                            echo "Instalación cancelada"
+                            exit 0
+                        fi
+                    fi
+                else
+                    echo "⚠ Script de rollback no encontrado - limpiando manualmente..."
+                    # Limpieza manual básica
+                    systemctl disable --now dnsmasq-whitelist.timer 2>/dev/null || true
+                    systemctl disable --now dnsmasq-whitelist.service 2>/dev/null || true
+                    systemctl disable --now captive-portal-detector.service 2>/dev/null || true
+                    systemctl stop dnsmasq 2>/dev/null || true
+                fi
+
+                echo ""
+                break
+                ;;
+            2)
+                echo ""
+                echo "======================================================"
+                echo "  Modo REPARAR seleccionado"
+                echo "======================================================"
+                echo ""
+                echo "⚠ IMPORTANTE: Este modo sobrescribirá configuraciones existentes"
+                echo ""
+                read -p "¿Estás seguro de continuar? (y/N): " confirm_repair
+
+                if [[ ! "$confirm_repair" =~ ^[Yy]$ ]]; then
+                    echo "Operación cancelada"
+                    exit 0
+                fi
+
+                echo "✓ Continuando en modo reparación..."
+                echo "  (Los archivos existentes serán sobrescritos)"
+                echo ""
+                sleep 2
+                break
+                ;;
+            3)
+                echo ""
+                echo "Instalación cancelada por el usuario"
+                exit 0
+                ;;
+            *)
+                echo "✗ Opción inválida. Por favor selecciona 1, 2 o 3"
+                ;;
+        esac
+    done
+fi
+
 # Detectar puerta de enlace (gateway)
 GATEWAY_IP=$(ip route | grep default | awk '{print $3}' | head -n 1)
 if [ -z "$GATEWAY_IP" ]; then
@@ -60,26 +178,107 @@ echo "Puerta de enlace detectado: $GATEWAY_IP"
 
 # Detectar servidores DNS reales del sistema
 # IMPORTANTE: El gateway NO siempre es el servidor DNS
+# Priorizar DNS guardado de instalación previa (si existe y funciona)
 DNS_SERVERS=""
-if [ -f /run/systemd/resolve/resolv.conf ]; then
-    DNS_SERVERS=$(grep "^nameserver" /run/systemd/resolve/resolv.conf | awk '{print $2}' | grep -v "^127\." | head -3 | tr '\n' ',' | sed 's/,$//')
+PRIMARY_DNS=""
+
+echo "Detectando servidores DNS del sistema..."
+
+# MÉTODO 1: DNS guardado de instalación previa (más confiable)
+if [ -f /var/lib/url-whitelist/original-dns.conf ]; then
+    SAVED_DNS=$(head -1 /var/lib/url-whitelist/original-dns.conf 2>/dev/null | tr -d '[:space:]')
+    if [ -n "$SAVED_DNS" ]; then
+        echo "  DNS guardado encontrado: $SAVED_DNS"
+        # Validar que el DNS guardado funciona
+        if timeout 5 dig @$SAVED_DNS google.com +short >/dev/null 2>&1; then
+            echo "  ✓ DNS guardado válido y funcional"
+            PRIMARY_DNS="$SAVED_DNS"
+            DNS_SERVERS="$SAVED_DNS"
+        else
+            echo "  ⚠ DNS guardado no responde - buscando alternativas"
+        fi
+    fi
 fi
 
-# Fallback a /etc/resolv.conf si no encontramos DNS en systemd-resolved
-if [ -z "$DNS_SERVERS" ] && [ -f /etc/resolv.conf ]; then
-    DNS_SERVERS=$(grep "^nameserver" /etc/resolv.conf | awk '{print $2}' | grep -v "^127\." | head -3 | tr '\n' ',' | sed 's/,$//')
+# MÉTODO 2: NetworkManager (más confiable para DHCP en redes institucionales)
+if [ -z "$PRIMARY_DNS" ] && command -v nmcli >/dev/null 2>&1; then
+    echo "  Intentando detección vía NetworkManager..."
+    NM_DNS=$(nmcli dev show 2>/dev/null | grep -i "IP4.DNS[1]" | awk '{print $2}' | head -1)
+    if [ -n "$NM_DNS" ] && [ "$NM_DNS" != "127.0.0.1" ]; then
+        echo "  DNS detectado por NetworkManager: $NM_DNS"
+        # Validar que funciona
+        if timeout 5 dig @$NM_DNS google.com +short >/dev/null 2>&1; then
+            echo "  ✓ DNS de NetworkManager válido"
+            PRIMARY_DNS="$NM_DNS"
+            DNS_SERVERS="$NM_DNS"
+        else
+            echo "  ⚠ DNS de NetworkManager no responde"
+        fi
+    fi
 fi
 
-# Si aún no hay DNS, usar el gateway como último recurso
-if [ -z "$DNS_SERVERS" ]; then
-    echo "⚠ ADVERTENCIA: No se detectaron servidores DNS. Usando gateway como DNS (puede no funcionar)"
-    DNS_SERVERS="$GATEWAY_IP"
+# MÉTODO 3: systemd-resolved (solo si está activo y no corrupto)
+if [ -z "$PRIMARY_DNS" ] && systemctl is-active --quiet systemd-resolved; then
+    echo "  Intentando detección vía systemd-resolved..."
+    if [ -f /run/systemd/resolve/resolv.conf ]; then
+        RESOLVED_DNS=$(grep "^nameserver" /run/systemd/resolve/resolv.conf | awk '{print $2}' | grep -v "^127\." | head -1)
+        # Filtrar gateway si aparece como DNS (es probablemente incorrecto)
+        if [ -n "$RESOLVED_DNS" ] && [ "$RESOLVED_DNS" != "$GATEWAY_IP" ]; then
+            echo "  DNS detectado por systemd-resolved: $RESOLVED_DNS"
+            if timeout 5 dig @$RESOLVED_DNS google.com +short >/dev/null 2>&1; then
+                echo "  ✓ DNS de systemd-resolved válido"
+                PRIMARY_DNS="$RESOLVED_DNS"
+                DNS_SERVERS="$RESOLVED_DNS"
+            else
+                echo "  ⚠ DNS de systemd-resolved no responde"
+            fi
+        fi
+    fi
 fi
 
-# Usar el primer servidor DNS como principal
-PRIMARY_DNS=$(echo "$DNS_SERVERS" | cut -d',' -f1)
-echo "Servidores DNS detectados: $DNS_SERVERS"
-echo "Servidor DNS principal a usar: $PRIMARY_DNS"
+# MÉTODO 4: /etc/resolv.conf directo (puede estar corrupto)
+if [ -z "$PRIMARY_DNS" ] && [ -f /etc/resolv.conf ]; then
+    echo "  Intentando detección vía /etc/resolv.conf..."
+    RESOLV_DNS=$(grep "^nameserver" /etc/resolv.conf | awk '{print $2}' | grep -v "^127\." | head -1)
+    if [ -n "$RESOLV_DNS" ]; then
+        echo "  DNS detectado en /etc/resolv.conf: $RESOLV_DNS"
+        if timeout 5 dig @$RESOLV_DNS google.com +short >/dev/null 2>&1; then
+            echo "  ✓ DNS de /etc/resolv.conf válido"
+            PRIMARY_DNS="$RESOLV_DNS"
+            DNS_SERVERS="$RESOLV_DNS"
+        else
+            echo "  ⚠ DNS de /etc/resolv.conf no responde"
+        fi
+    fi
+fi
+
+# MÉTODO 5: Probar gateway como DNS (último recurso)
+if [ -z "$PRIMARY_DNS" ]; then
+    echo "  No se detectó DNS funcional - probando gateway como DNS..."
+    if timeout 5 dig @$GATEWAY_IP google.com +short >/dev/null 2>&1; then
+        echo "  ✓ Gateway funciona como DNS"
+        PRIMARY_DNS="$GATEWAY_IP"
+        DNS_SERVERS="$GATEWAY_IP"
+    else
+        echo "  ⚠ Gateway no funciona como DNS"
+    fi
+fi
+
+# FALLBACK FINAL: DNS públicos (Google DNS)
+if [ -z "$PRIMARY_DNS" ]; then
+    echo ""
+    echo "⚠⚠⚠ ADVERTENCIA CRÍTICA ⚠⚠⚠"
+    echo "No se pudo detectar ningún servidor DNS funcional en tu red."
+    echo "Usando Google DNS (8.8.8.8) como fallback de emergencia."
+    echo ""
+    PRIMARY_DNS="8.8.8.8"
+    DNS_SERVERS="8.8.8.8,8.8.4.4"
+fi
+
+echo ""
+echo "Configuración DNS final:"
+echo "  Servidores DNS detectados: $DNS_SERVERS"
+echo "  Servidor DNS principal a usar: $PRIMARY_DNS"
 
 # Función para verificar conectividad a internet (detección de portal cautivo)
 check_internet_connectivity() {
@@ -182,8 +381,13 @@ echo ""
 validate_dnsmasq() {
     local max_attempts=10
     local attempt=1
+    local retry_delay=2  # Aumentado de 1 a 2 segundos entre reintentos
 
     echo "Validando dnsmasq (hasta $max_attempts intentos)..."
+
+    # IMPORTANTE: Dar tiempo inicial para que dnsmasq se inicialice completamente
+    echo "  Esperando que dnsmasq se inicialice completamente..."
+    sleep 3
 
     while [ $attempt -le $max_attempts ]; do
         echo "  Intento $attempt/$max_attempts..."
@@ -192,16 +396,16 @@ validate_dnsmasq() {
         if ! systemctl is-active --quiet dnsmasq; then
             echo "    ✗ dnsmasq no está activo"
             attempt=$((attempt + 1))
-            sleep 1
+            sleep $retry_delay
             continue
         fi
         echo "    ✓ dnsmasq está activo"
 
         # 2. Verificar que está escuchando en puerto 53
-        if ! ss -tulpn 2>/dev/null | grep -q "dnsmasq.*:53"; then
+        if ! ss -tulpn 2>/dev/null | grep ":53 " | grep -q "dnsmasq"; then
             echo "    ✗ dnsmasq no está escuchando en puerto 53"
             attempt=$((attempt + 1))
-            sleep 1
+            sleep $retry_delay
             continue
         fi
         echo "    ✓ dnsmasq escuchando en puerto 53"
@@ -216,11 +420,93 @@ validate_dnsmasq() {
         fi
 
         attempt=$((attempt + 1))
-        sleep 1
+        sleep $retry_delay
     done
 
     echo "✗ ERROR: dnsmasq no pasó la validación después de $max_attempts intentos"
     return 1
+}
+
+# Función para limpiar instalación fallida y restaurar sistema
+cleanup_failed_installation() {
+    echo ""
+    echo "======================================================"
+    echo "  Limpiando instalación fallida..."
+    echo "======================================================"
+    echo ""
+
+    # 1. Detener y deshabilitar dnsmasq
+    echo "[1/5] Deteniendo dnsmasq..."
+    systemctl stop dnsmasq 2>/dev/null || true
+    systemctl disable dnsmasq 2>/dev/null || true
+    echo "✓ dnsmasq detenido"
+
+    # 2. Re-habilitar y reiniciar systemd-resolved
+    echo "[2/5] Restaurando systemd-resolved..."
+    if [ -f /etc/systemd/resolved.conf.backup-whitelist ]; then
+        cp /etc/systemd/resolved.conf.backup-whitelist /etc/systemd/resolved.conf
+        echo "✓ Configuración de systemd-resolved restaurada"
+    fi
+
+    systemctl enable systemd-resolved 2>/dev/null || true
+    systemctl start systemd-resolved.socket 2>/dev/null || true
+    systemctl start systemd-resolved 2>/dev/null || true
+    sleep 2
+
+    if systemctl is-active --quiet systemd-resolved; then
+        echo "✓ systemd-resolved reiniciado"
+    else
+        echo "⚠ ADVERTENCIA: No se pudo reiniciar systemd-resolved"
+    fi
+
+    # 3. Restaurar /etc/resolv.conf
+    echo "[3/5] Restaurando /etc/resolv.conf..."
+    if [ -f /etc/resolv.conf.backup-whitelist.symlink ]; then
+        # Era un symlink - restaurarlo
+        local target=$(cat /etc/resolv.conf.backup-whitelist.symlink)
+        rm -f /etc/resolv.conf
+        ln -sf "$target" /etc/resolv.conf
+        echo "✓ Symlink /etc/resolv.conf restaurado a $target"
+    elif [ -f /etc/resolv.conf.backup-whitelist ]; then
+        # Era un archivo - restaurar contenido
+        cp /etc/resolv.conf.backup-whitelist /etc/resolv.conf
+        echo "✓ Archivo /etc/resolv.conf restaurado"
+    else
+        # No hay backup - crear configuración de emergencia
+        echo "⚠ No hay backup de resolv.conf - usando configuración de emergencia"
+        echo "nameserver 8.8.8.8" > /etc/resolv.conf
+        echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+        echo "✓ DNS configurado a Google DNS (8.8.8.8)"
+    fi
+
+    # 4. Verificar conectividad
+    echo "[4/5] Verificando conectividad a internet..."
+    sleep 2
+    if timeout 10 curl -s http://detectportal.firefox.com/success.txt 2>/dev/null | grep -q "success"; then
+        echo "✓ Conectividad a internet FUNCIONANDO"
+    elif ping -c 3 8.8.8.8 >/dev/null 2>&1; then
+        echo "⚠ Conectividad de red OK, pero posible portal cautivo"
+    else
+        echo "✗ Sin conectividad - verifica tu conexión de red"
+    fi
+
+    # 5. Limpiar timers y servicios parcialmente instalados
+    echo "[5/5] Limpiando servicios parcialmente instalados..."
+    systemctl disable --now dnsmasq-whitelist.timer 2>/dev/null || true
+    systemctl disable --now dnsmasq-whitelist.service 2>/dev/null || true
+    systemctl disable --now captive-portal-detector.service 2>/dev/null || true
+    echo "✓ Servicios limpiados"
+
+    echo ""
+    echo "======================================================"
+    echo "  ✓ Sistema restaurado a configuración previa"
+    echo "======================================================"
+    echo ""
+    echo "El sistema debería tener acceso normal a internet."
+    echo "Revisa los logs para diagnosticar el problema:"
+    echo "  - sudo journalctl -u dnsmasq -n 50"
+    echo "  - sudo dnsmasq --test"
+    echo ""
 }
 
 # Función para escribir /etc/resolv.conf preservando symlinks
@@ -252,6 +538,25 @@ fi
 # Liberar puerto 53 ANTES de instalar dnsmasq
 echo ""
 echo "[1/10] Liberando puerto 53..."
+
+# PASO 1: Detectar y detener dnsmasq existente (de instalaciones previas)
+echo "Verificando si dnsmasq ya está corriendo..."
+if systemctl is-active --quiet dnsmasq 2>/dev/null; then
+    echo "⚠ dnsmasq detectado de instalación previa - deteniéndolo..."
+    systemctl stop dnsmasq 2>/dev/null || true
+    systemctl disable dnsmasq 2>/dev/null || true
+    sleep 2
+    echo "✓ dnsmasq previo detenido"
+elif pgrep -x dnsmasq >/dev/null 2>&1; then
+    echo "⚠ Proceso dnsmasq detectado (sin systemd) - terminándolo..."
+    pkill -9 dnsmasq 2>/dev/null || true
+    sleep 1
+    echo "✓ Proceso dnsmasq terminado"
+else
+    echo "✓ No se detectó dnsmasq previo"
+fi
+
+# PASO 2: Detener systemd-resolved si está activo
 if systemctl is-active --quiet systemd-resolved; then
     # Crear backup de resolved.conf si no existe
     if [ ! -f /etc/systemd/resolved.conf.backup-whitelist ]; then
@@ -274,26 +579,61 @@ if systemctl is-active --quiet systemd-resolved; then
     systemctl stop systemd-resolved
     systemctl disable systemd-resolved 2>/dev/null || true
     echo "✓ systemd-resolved deshabilitado permanentemente"
+fi
 
-    # Verificar que puerto 53 está libre (timeout extendido a 30s)
-    echo "Verificando que puerto 53 está libre..."
-    PORT_FREE=false
-    for i in {1..30}; do
-        if ! ss -tulpn 2>/dev/null | grep -q ":53 "; then
-            echo "✓ Puerto 53 liberado (intento $i/30)"
-            PORT_FREE=true
-            break
-        fi
-        sleep 1
-    done
+# PASO 3: Verificar que puerto 53 está libre (con identificación inteligente)
+echo "Verificando que puerto 53 está libre..."
+PORT_FREE=false
+for i in {1..30}; do
+    if ! ss -tulpn 2>/dev/null | grep -q ":53 "; then
+        echo "✓ Puerto 53 liberado (intento $i/30)"
+        PORT_FREE=true
+        break
+    fi
+    sleep 1
+done
 
-    if [ "$PORT_FREE" = false ]; then
-        echo "ERROR: Puerto 53 aún está ocupado después de 30 segundos"
-        echo "Procesos usando puerto 53:"
-        ss -tulpn 2>/dev/null | grep ":53 " || echo "  (ninguno visible)"
-        lsof -i :53 2>/dev/null || echo "  (lsof no disponible)"
+if [ "$PORT_FREE" = false ]; then
+    echo ""
+    echo "✗ ERROR: Puerto 53 aún está ocupado después de 30 segundos"
+    echo ""
+    echo "Procesos usando puerto 53:"
+    ss -tulpn 2>/dev/null | grep ":53 " || echo "  (ninguno visible)"
+    lsof -i :53 2>/dev/null || echo "  (lsof no disponible)"
+    echo ""
+
+    # Identificar inteligentemente qué proceso está usando el puerto
+    if ss -tulpn 2>/dev/null | grep ":53 " | grep -q "dnsmasq"; then
+        echo "✗ DIAGNÓSTICO: dnsmasq sigue usando puerto 53"
         echo ""
-        echo "Intentando reiniciar systemd-resolved..."
+        echo "Soluciones sugeridas:"
+        echo "  1. Ejecuta: sudo systemctl stop dnsmasq && sudo pkill -9 dnsmasq"
+        echo "  2. Espera 5 segundos"
+        echo "  3. Vuelve a ejecutar este script"
+    elif ss -tulpn 2>/dev/null | grep ":53 " | grep -q "systemd-resolve"; then
+        echo "✗ DIAGNÓSTICO: systemd-resolved sigue usando puerto 53"
+        echo ""
+        echo "Soluciones sugeridas:"
+        echo "  1. Ejecuta: sudo systemctl stop systemd-resolved.socket"
+        echo "  2. Ejecuta: sudo systemctl stop systemd-resolved"
+        echo "  3. Vuelve a ejecutar este script"
+    else
+        echo "✗ DIAGNÓSTICO: Proceso desconocido usando puerto 53"
+        echo ""
+        echo "Investiga con: sudo lsof -i :53"
+    fi
+    echo ""
+
+    # Intentar recuperación
+    echo "Intentando recuperación automática..."
+    pkill -9 dnsmasq 2>/dev/null || true
+    systemctl stop systemd-resolved 2>/dev/null || true
+    sleep 3
+
+    if ! ss -tulpn 2>/dev/null | grep -q ":53 "; then
+        echo "✓ Puerto 53 liberado después de recuperación"
+    else
+        echo "✗ Recuperación fallida - Restaurando systemd-resolved..."
         systemctl start systemd-resolved
         exit 1
     fi
@@ -373,7 +713,7 @@ detect_primary_dns() {
 
     # Método 1: NetworkManager (más confiable para DHCP)
     if command -v nmcli >/dev/null 2>&1; then
-        DNS=$(nmcli dev show 2>/dev/null | grep -i "IP4.DNS\[1\]" | awk '{print $2}' | head -1)
+        DNS=$(nmcli dev show 2>/dev/null | grep -i "IP4.DNS[1]" | awk '{print $2}' | head -1)
         if [ -n "$DNS" ]; then
             echo "$DNS"
             return 0
@@ -602,7 +942,7 @@ detect_primary_dns() {
 
     # Método 1: NetworkManager (más confiable para DHCP)
     if command -v nmcli >/dev/null 2>&1; then
-        DNS=$(nmcli dev show 2>/dev/null | grep -i "IP4.DNS\[1\]" | awk '{print $2}' | head -1)
+        DNS=$(nmcli dev show 2>/dev/null | grep -i "IP4.DNS[1]" | awk '{print $2}' | head -1)
         if [ -n "$DNS" ]; then
             echo "$DNS"
             return 0
@@ -752,6 +1092,32 @@ EOF
 
     # Reiniciar dnsmasq
     systemctl restart dnsmasq 2>/dev/null || true
+    sleep 2
+
+    # CRÍTICO: Verificar que dnsmasq reinició correctamente
+    if ! systemctl is-active --quiet dnsmasq 2>/dev/null; then
+        log "⚠ ADVERTENCIA: dnsmasq falló al reiniciar en modo passthrough"
+        log "Configurando DNS directo a $PRIMARY_DNS (bypass de dnsmasq)"
+
+        # Cambiar /etc/resolv.conf para apuntar directamente al DNS upstream
+        # Esto asegura que el DNS funciona incluso si dnsmasq está caído
+        cat > /etc/resolv.conf << EOF
+# Configuración de emergencia - DNS directo (bypass dnsmasq)
+nameserver $PRIMARY_DNS
+nameserver 8.8.8.8
+search lan
+EOF
+        log "✓ DNS configurado directamente a $PRIMARY_DNS"
+    else
+        # dnsmasq funciona - asegurar que /etc/resolv.conf apunta a localhost
+        if ! grep -q "nameserver 127.0.0.1" /etc/resolv.conf 2>/dev/null; then
+            cat > /etc/resolv.conf << EOF
+nameserver 127.0.0.1
+search lan
+EOF
+            log "✓ DNS configurado a localhost (dnsmasq en modo passthrough)"
+        fi
+    fi
 
     log "Sistema en modo fail-open - Sin restricciones"
 }
@@ -856,7 +1222,7 @@ EOF
         NUM_PARTS=${#PARTS[@]}
 
         # Intentar combinaciones: google.com, api.google.com, www.api.google.com
-        for ((i=1; i<$NUM_PARTS; i++)); do
+        for ((i=1; i<$NUM_PARS; i++)); do
             BASE_DOMAIN="${PARTS[@]:$i}"
             BASE_DOMAIN="${BASE_DOMAIN// /.}"
 
@@ -1059,6 +1425,20 @@ if [ ! -f /etc/dnsmasq.conf.backup-whitelist ]; then
     echo "Backup creado: /etc/dnsmasq.conf.backup-whitelist"
 fi
 
+# Eliminar configuración previa del whitelist si existe (evitar duplicados)
+if grep -q "URL Whitelist Configuration" /etc/dnsmasq.conf 2>/dev/null; then
+    echo "Eliminando configuración previa del whitelist..."
+    # Restaurar desde backup y limpiar
+    if [ -f /etc/dnsmasq.conf.backup-whitelist ]; then
+        cp /etc/dnsmasq.conf.backup-whitelist /etc/dnsmasq.conf
+        echo "✓ Configuración restaurada desde backup"
+    else
+        # Si no hay backup, eliminar manualmente la sección del whitelist
+        sed -i '/# URL Whitelist Configuration/,/^$/d' /etc/dnsmasq.conf
+        echo "✓ Configuración previa eliminada"
+    fi
+fi
+
 cat >> /etc/dnsmasq.conf << DNSMASQ_EOF
 
 # =============================================
@@ -1078,6 +1458,9 @@ conf-dir=/etc/dnsmasq.d/,*.conf
 # Cache size
 cache-size=1000
 
+# La configuración del servidor DNS upstream es gestionada dinámicamente por dnsmasq-whitelist.sh
+# No se debe definir un servidor global en este fichero.
+
 # Enable logging for debugging (uncomment if needed)
 #log-queries
 #log-facility=/var/log/dnsmasq.log
@@ -1087,19 +1470,29 @@ DNSMASQ_EOF
 echo "Creando override de systemd para dnsmasq..."
 mkdir -p /etc/systemd/system/dnsmasq.service.d
 cat > /etc/systemd/system/dnsmasq.service.d/override.conf << 'OVERRIDE_EOF'
+[Unit]
+# Limpiar dependencias del servicio original
+Requires=
+Wants=
+Before=
+After=network-online.target
+
 [Service]
-# Cambiar a Type=simple para permitir -k (foreground)
+# Limpiar todo del servicio original
 Type=simple
 PIDFile=
-
-# Sobrescribir ExecStart para evitar --local-service del init script
 ExecStart=
-ExecStart=/usr/sbin/dnsmasq -k --conf-file=/etc/dnsmasq.conf
-
-# Deshabilitar resolvconf hooks
 ExecStartPre=
 ExecStartPost=
 ExecStop=
+Environment=
+
+# Definir el nuevo comportamiento
+ExecStart=/usr/sbin/dnsmasq --keep-in-foreground --no-resolv --conf-file=/etc/dnsmasq.conf
+StandardOutput=journal
+StandardError=journal
+Restart=always
+RestartSec=5
 OVERRIDE_EOF
 echo "✓ Override de systemd creado"
 systemctl daemon-reload
@@ -1224,8 +1617,8 @@ echo "✓ Servicios habilitados para arranque automático"
 echo ""
 echo "[10/10] Inicializando sistema..."
 
-# NO cambiar DNS aún - ejecutar script con DNS actual del sistema
-echo "Ejecutando configuración inicial de whitelist (usando DNS actual)..."
+# PASO 1: Ejecutar script de whitelist para configurar y arrancar dnsmasq
+echo "Ejecutando configuración inicial de whitelist y arrancando dnsmasq..."
 
 # Pasar variable de entorno OFFLINE_MODE al script de whitelist
 if [ "${OFFLINE_MODE:-false}" = true ]; then
@@ -1235,33 +1628,46 @@ fi
 if ! /usr/local/bin/dnsmasq-whitelist.sh; then
     echo ""
     echo "✗ ERROR: El script de whitelist falló"
-    echo "Manteniendo DNS actual del sistema - modo fail-open"
-    echo "El sistema mantiene acceso a internet con configuración actual"
-    echo ""
+    cleanup_failed_installation
     echo "Revisa los logs en: /var/log/url-whitelist.log"
-    echo "Para intentar de nuevo: sudo /usr/local/bin/dnsmasq-whitelist.sh"
+    echo "Para intentar de nuevo después de arreglar el problema:"
+    echo "  sudo ./setup-dnsmasq-whitelist.sh"
     exit 1
 fi
-echo "✓ Script de whitelist ejecutado exitosamente"
+echo "✓ Script de whitelist ejecutado y dnsmasq configurado"
 
-# VALIDAR que dnsmasq funciona ANTES de cambiar DNS
+# PASO 2: VALIDAR que dnsmasq funciona correctamente
 echo ""
 echo "Validando que dnsmasq está funcionando correctamente..."
 if ! validate_dnsmasq; then
     echo ""
     echo "✗ ERROR: dnsmasq no funciona correctamente"
-    echo "Dejando DNS configurado al gateway ($GATEWAY_IP) - modo fail-open"
-    echo "El sistema tiene acceso a internet sin restricciones"
     echo ""
     echo "Estado de dnsmasq:"
     systemctl status dnsmasq --no-pager || true
     echo ""
-    echo "Para intentar arreglar:"
+    cleanup_failed_installation
+    echo "Para diagnosticar el problema:"
     echo "  1. Revisa logs: sudo journalctl -u dnsmasq -n 50"
     echo "  2. Revisa configuración: sudo dnsmasq --test"
-    echo "  3. Prueba reiniciar: sudo systemctl restart dnsmasq"
+    echo "  3. Vuelve a intentar la instalación: sudo ./setup-dnsmasq-whitelist.sh"
     exit 1
 fi
+echo "✓ dnsmasq validado correctamente"
+
+# PASO 3: Validar de nuevo que dnsmasq sigue funcionando después de la configuración
+echo ""
+echo "Re-validando dnsmasq después de aplicar configuración..."
+if ! validate_dnsmasq; then
+    echo ""
+    echo "✗ ERROR: dnsmasq dejó de funcionar después de aplicar la configuración"
+    echo ""
+    cleanup_failed_installation
+    echo "La configuración generada puede tener errores de sintaxis"
+    echo "Revisa: sudo dnsmasq --test"
+    exit 1
+fi
+echo "✓ dnsmasq funciona correctamente con la nueva configuración"
 
 # Verificar que ipset está poblado
 IPSET_COUNT=$(ipset list url_whitelist 2>/dev/null | grep "^[0-9]" | wc -l)
