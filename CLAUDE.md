@@ -159,7 +159,8 @@ The system includes multiple layers of protection to prevent loss of internet co
     - NO global `set -e` (prevents abrupt exits that leave system broken)
     - Explicit error checking with descriptive logging
     - All critical operations verify success before continuing
-    - Fail-open on errors (remove restrictions rather than block everything)
+    - **Fail-safe with BASE_URLS**: If whitelist download fails, system continues with hardcoded BASE_URLS (Google, GitHub, EducaMadrid, Ubuntu) instead of removing all restrictions
+    - Only enters true fail-open mode if emergency disable keyword is detected in whitelist
 
 ## File Locations
 
@@ -350,9 +351,23 @@ Edit the timer configuration (setup-dnsmasq-whitelist.sh:426-434):
 OnUnitActiveSec=5min  # Change to desired interval
 ```
 
-### Fail-Open vs Fail-Closed Behavior
+### Fail-Safe Behavior
 
-Current behavior is fail-open (setup-dnsmasq-whitelist.sh:344-347). To change to fail-closed, modify the `cleanup_firewall()` function to maintain restrictions instead of removing them.
+**Current behavior (v3.3+)**: Fail-safe with BASE_URLS
+
+When whitelist download fails, the system:
+1. **Continues with BASE_URLS only** (Google, GitHub, EducaMadrid, Ubuntu, etc.)
+2. **Keeps firewall ACTIVE** with DNS Sinkhole blocking non-BASE_URLs
+3. **Timer continues** attempting download every 5 minutes
+4. **Self-recovers** when whitelist becomes available
+
+This provides basic protection during transient network issues while preventing complete lockout.
+
+**To change to fail-closed** (block everything on failure):
+Modify lines 1334-1339 in the embedded script to call `cleanup_firewall()` and set firewall to DROP all traffic except essential services.
+
+**To change to fail-open** (allow everything on failure):
+Modify lines 1334-1339 to call `cleanup_system()` instead of continuing with BASE_URLS.
 
 ### Remote Emergency Disable
 
@@ -987,3 +1002,275 @@ dnsmasq[xxxx]: se usa el servidor 172.23.136.5#53
 
 - **setup-dnsmasq-whitelist.sh**: Bug #13 fix applied (lines 1469-1497, 1630-1653)
 - **CLAUDE.md**: This documentation (lines 566-end)
+
+## Known Issues Fixed (2025-11-07)
+
+### Critical Bug Resolved: Bug #14 - systemd Timer Stops Scheduling After Fail-Open
+
+During production deployment, a critical bug was discovered where the systemd timer would stop scheduling automatic whitelist updates after the system entered fail-open mode.
+
+#### **Bug #14: RemainAfterExit Prevents Timer Re-scheduling**
+
+**Problem:**
+The whitelist update service had `RemainAfterExit=yes` which caused the systemd timer to stop scheduling future executions when the script exited early (fail-open mode).
+
+**Symptoms:**
+- Timer status showed `Trigger: n/a` (no next execution scheduled)
+- Last successful execution was days ago
+- Manual execution of `/usr/local/bin/dnsmasq-whitelist.sh` worked fine
+- System stuck in fail-open mode (no traffic blocking) even after network recovered
+
+**Root Cause:**
+The service configuration combined three problematic elements:
+```systemd
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/dnsmasq-whitelist.sh
+RemainAfterExit=yes  # <-- THIS IS THE BUG
+```
+
+When the whitelist script encountered errors (download failures, emergency disable, etc.), it would execute early `return` statements (lines 1324, 1334, 1355, 1382, 1387). With `RemainAfterExit=yes`:
+1. Script exits early with `return`
+2. systemd keeps service in "active" state (because of RemainAfterExit=yes)
+3. Timer using `OnUnitActiveSec=5min` cannot schedule next run while service remains "active"
+4. Timer gets stuck with `Trigger: n/a`
+5. No future automatic updates occur
+
+**Impact:**
+- Systems remained in fail-open mode indefinitely (no protection)
+- Whitelist updates stopped completely
+- Required manual intervention to restart the update cycle
+- Security bypass: students had unrestricted internet access
+
+**Fix Applied (Line 1537):**
+
+**Before (BROKEN):**
+```systemd
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/dnsmasq-whitelist.sh
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+```
+
+**After (FIXED):**
+```systemd
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/dnsmasq-whitelist.sh
+StandardOutput=journal
+StandardError=journal
+```
+
+**Why This Works:**
+- Service properly deactivates after each run (regardless of how it exits)
+- Timer can schedule next execution 5 minutes later
+- Fail-open mode no longer blocks future executions
+- System self-recovers when network/whitelist becomes available
+
+**Deployment to Existing Installations:**
+
+Option 1 - Re-run installer:
+```bash
+sudo ./setup-dnsmasq-whitelist.sh
+# Choose "REPARAR" option
+```
+
+Option 2 - Manual fix:
+```bash
+# Edit service file
+sudo nano /etc/systemd/system/dnsmasq-whitelist.service
+# Remove the line: RemainAfterExit=yes
+
+# Reload systemd and restart timer
+sudo systemctl daemon-reload
+sudo systemctl restart dnsmasq-whitelist.timer
+
+# Verify timer is scheduling
+sudo systemctl status dnsmasq-whitelist.timer
+# Should show "Trigger: ..." with a future timestamp, not "n/a"
+```
+
+**Testing Evidence:**
+
+Before fix (alumno14 - Nov 7, 2025):
+```
+>> systemctl status dnsmasq-whitelist.timer
+Active: active (running) since Fri 2025-11-07 08:06:28 CET
+Trigger: n/a    # <-- STUCK, NO NEXT RUN SCHEDULED
+
+Last execution: Nov 4 (3 days ago)
+System in fail-open mode: ALL traffic allowed
+```
+
+After manual execution + fix (expected):
+```
+>> systemctl status dnsmasq-whitelist.timer
+Active: active (waiting) since Fri 2025-11-07 08:20:00 CET
+Trigger: Fri 2025-11-07 08:25:00 CET; 4min left    # <-- PROPERLY SCHEDULED
+
+Next execution: 5 minutes from last run
+System protecting: Only whitelisted domains allowed
+```
+
+**Debug Information:**
+The issue was discovered using `collect_debug_info.sh`:
+```bash
+sudo ./collect_debug_info.sh
+# debug_info.txt showed:
+# - Timer active but Trigger: n/a
+# - Logs showed downloads failing days ago
+# - dnsmasq in passthrough mode (fail-open)
+# - Manual script execution worked perfectly
+```
+
+**Additional Improvement (Lines 1135-1156):**
+
+During debugging, we discovered that curl errors were hidden with `2>/dev/null`, making it impossible to diagnose download failures. Enhanced error reporting:
+
+**Before:**
+```bash
+if timeout 30 curl -L -f -s "$WHITELIST_URL" -o "${WHITELIST_FILE}.tmp" 2>/dev/null; then
+    # ...
+else
+    log "ERROR: No se pudo descargar whitelist"  # No details!
+fi
+```
+
+**After:**
+```bash
+CURL_ERROR=$(timeout 30 curl -L -f -s "$WHITELIST_URL" -o "${WHITELIST_FILE}.tmp" 2>&1 >/dev/null)
+CURL_EXIT_CODE=$?
+
+if [ $CURL_EXIT_CODE -eq 0 ]; then
+    # ...
+else
+    log "ERROR: No se pudo descargar whitelist (curl exit code: $CURL_EXIT_CODE)"
+    if [ -n "$CURL_ERROR" ]; then
+        log "Detalle del error de curl: $CURL_ERROR"
+    fi
+fi
+```
+
+**Benefit:** Administrators can now see the actual curl error (certificate issues, DNS failures, HTTP errors, etc.) in `/var/log/url-whitelist.log` for troubleshooting.
+
+**Critical Behavior Change (Lines 1334-1339):**
+
+The fail-open behavior when whitelist download fails has been changed to maintain basic protection:
+
+**Before (INSECURE):**
+```bash
+else
+    # Fallo real de descarga (no modo offline)
+    log "=== No se pudo descargar whitelist - Modo fail-open ==="
+    cleanup_system    # Removes ALL firewall rules, permits ALL traffic
+    return
+fi
+```
+
+**Impact of old behavior:**
+- Download failure during installation → System enters fail-open mode
+- NO traffic blocking at all (students have unrestricted internet)
+- Security bypass until manual intervention
+
+**After (SECURE):**
+```bash
+else
+    # Si falla descarga, usar solo BASE_URLS (no fail-open)
+    log "⚠️  No se pudo descargar whitelist - Usando solo BASE_URLS hardcodeadas"
+    log "El sistema seguirá intentando descargar el whitelist cada 5 minutos"
+    # Continuar con configuración usando solo BASE_URLS
+fi
+```
+
+**New behavior:**
+- Download failure → Continue with BASE_URLS only (Google, GitHub, EducaMadrid, Ubuntu repos, etc.)
+- Firewall ACTIVE with DNS Sinkhole blocking non-BASE_URLS traffic
+- Timer continues attempting download every 5 minutes
+- System self-recovers when whitelist becomes available
+
+**Why this matters:**
+During installation, DNS may not be fully configured yet, causing initial download to fail. Instead of disabling all protection, the system now provides basic protection with hardcoded BASE_URLS until the full whitelist can be downloaded.
+
+**Critical Fix: DNS During Installation (Lines 1621-1629):**
+
+The most critical issue was that `curl` failed with **exit code 6 (Couldn't resolve host)** during installation because:
+
+1. systemd-resolved was disabled (line 580) to free port 53
+2. `/etc/resolv.conf` was left pointing to 127.0.0.53 (non-functional)
+3. Whitelist script attempted to download before dnsmasq was active
+4. No functional DNS → curl fails → installation proceeds with BASE_URLS only
+
+**Fix Applied:**
+```bash
+# BEFORE executing whitelist script (line 1621-1629)
+# Configure temporary DNS for curl to work
+cat > /etc/resolv.conf << EOF
+nameserver $PRIMARY_DNS  # Use detected DNS (e.g., 172.23.136.5)
+search lan
+EOF
+
+# NOW execute whitelist script → curl can resolve hostnames
+/usr/local/bin/dnsmasq-whitelist.sh
+
+# AFTER validation (line 1694)
+# Switch to localhost DNS (dnsmasq)
+cat > /etc/resolv.conf << EOF
+nameserver 127.0.0.1
+search lan
+EOF
+```
+
+**Result:** Whitelist download now succeeds during installation, providing full protection from the first boot instead of only BASE_URLS.
+
+**Bug #15: Syntax Error in Domain Deduplication (Line 1232):**
+
+During domain deduplication, a typo caused bash syntax errors that corrupted the dnsmasq configuration:
+
+**Error:**
+```bash
+for ((i=1; i<$NUM_PARS; i++)); do  # TYPO: NUM_PARS doesn't exist
+```
+
+**Impact:**
+- Error message repeated for every domain in whitelist (111 times)
+- `/usr/local/bin/dnsmasq-whitelist.sh: línea 362: ((: i<: error sintáctico`
+- Generated dnsmasq configuration was incomplete/corrupted
+- dnsmasq failed to start → installation failed
+
+**Fix:**
+```bash
+for ((i=1; i<$NUM_PARTS; i++)); do  # CORRECT: NUM_PARTS
+```
+
+**Bug #16: grep -c with Fallback Causes String Corruption (Line 1395):**
+
+When counting iptables rules, the combination of `grep -c` with `|| echo "0"` produced corrupted output:
+
+**Error:**
+```bash
+CURRENT_RULES=$(iptables -L OUTPUT -n 2>/dev/null | grep -c "dpt:53.*DROP" || echo "0")
+# When grep finds 0 matches, grep -c returns 0 (success exit code)
+# The || echo "0" never executes, BUT output contains newline
+# Result: CURRENT_RULES = "0\n0" instead of "0"
+```
+
+**Impact:**
+```
+[2025-11-07 08:57:32] /usr/local/bin/dnsmasq-whitelist.sh: línea 526: [: 0
+0: se esperaba una expresión entera
+[2025-11-07 08:57:32] ✓ Firewall ya configurado (0
+0 reglas de bloqueo DNS)
+```
+
+**Fix:**
+```bash
+CURRENT_RULES=$(iptables -L OUTPUT -n 2>/dev/null | grep "dpt:53.*DROP" | wc -l)
+# wc -l always returns clean integer, no newline issues
+```
+
+### Related Files Modified
+
+- **setup-dnsmasq-whitelist.sh**: Bug #14 fixes (line 1537 removed, lines 1135-1156 enhanced error logging, lines 1334-1339 fail-safe behavior improved, lines 1621-1629 temporary DNS configuration added), Bug #15 fix (line 1232), Bug #16 fix (line 1395)
+- **CLAUDE.md**: This documentation

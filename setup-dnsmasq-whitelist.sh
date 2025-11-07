@@ -1132,7 +1132,11 @@ download_whitelist() {
 
     log "Descargando whitelist desde: $WHITELIST_URL"
 
-    if timeout 30 curl -L -f -s "$WHITELIST_URL" -o "${WHITELIST_FILE}.tmp" 2>/dev/null; then
+    # Capturar stderr de curl para diagnóstico
+    CURL_ERROR=$(timeout 30 curl -L -f -s "$WHITELIST_URL" -o "${WHITELIST_FILE}.tmp" 2>&1 >/dev/null)
+    CURL_EXIT_CODE=$?
+
+    if [ $CURL_EXIT_CODE -eq 0 ]; then
         if [ -s "${WHITELIST_FILE}.tmp" ]; then
             mv "${WHITELIST_FILE}.tmp" "$WHITELIST_FILE"
             log "✓ Whitelist descargado exitosamente"
@@ -1143,7 +1147,10 @@ download_whitelist() {
             return 1
         fi
     else
-        log "ERROR: No se pudo descargar whitelist"
+        log "ERROR: No se pudo descargar whitelist (curl exit code: $CURL_EXIT_CODE)"
+        if [ -n "$CURL_ERROR" ]; then
+            log "Detalle del error de curl: $CURL_ERROR"
+        fi
         rm -f "${WHITELIST_FILE}.tmp"
         return 1
     fi
@@ -1222,7 +1229,7 @@ EOF
         NUM_PARTS=${#PARTS[@]}
 
         # Intentar combinaciones: google.com, api.google.com, www.api.google.com
-        for ((i=1; i<$NUM_PARS; i++)); do
+        for ((i=1; i<$NUM_PARTS; i++)); do
             BASE_DOMAIN="${PARTS[@]:$i}"
             BASE_DOMAIN="${BASE_DOMAIN// /.}"
 
@@ -1324,16 +1331,11 @@ main() {
             return
         fi
     else
-        # Si falla descarga, verificar si es modo offline
-        if [ "${OFFLINE_MODE:-false}" = true ]; then
-            log "=== Modo OFFLINE: Usando solo BASE_URLS hardcodeadas ==="
-            # Continuar con configuración usando solo BASE_URLS
-        else
-            # Fallo real de descarga (no modo offline)
-            log "=== No se pudo descargar whitelist - Modo fail-open ==="
-            cleanup_system
-            return
-        fi
+        # Si falla descarga, usar solo BASE_URLS (no fail-open)
+        # Esto permite que la instalación continúe con protección básica
+        log "⚠️  No se pudo descargar whitelist - Usando solo BASE_URLS hardcodeadas"
+        log "El sistema seguirá intentando descargar el whitelist cada 5 minutos"
+        # Continuar con configuración usando solo BASE_URLS
     fi
 
     # Generar config dnsmasq
@@ -1390,7 +1392,7 @@ main() {
         # Si la config no cambió, verificar que firewall sigue configurado
         log "Configuración sin cambios - Verificando firewall..."
         # Verificar si hay regla que bloquea DNS a servidores alternativos
-        CURRENT_RULES=$(iptables -L OUTPUT -n 2>/dev/null | grep -c "dpt:53.*DROP" || echo "0")
+        CURRENT_RULES=$(iptables -L OUTPUT -n 2>/dev/null | grep "dpt:53.*DROP" | wc -l)
         if [ "$CURRENT_RULES" -lt 2 ]; then
             log "⚠️  Firewall no configurado correctamente - Reconfigurando..."
             configure_firewall
@@ -1534,7 +1536,6 @@ Requires=dnsmasq.service
 [Service]
 Type=oneshot
 ExecStart=/usr/local/bin/dnsmasq-whitelist.sh
-RemainAfterExit=yes
 StandardOutput=journal
 StandardError=journal
 
@@ -1616,6 +1617,16 @@ echo "✓ Servicios habilitados para arranque automático"
 # Inicializar sistema
 echo ""
 echo "[10/10] Inicializando sistema..."
+
+# CRÍTICO: Configurar DNS temporal para que curl funcione durante la instalación
+# En este punto, systemd-resolved está deshabilitado y dnsmasq aún no está activo
+# Necesitamos un DNS funcional para que el script de whitelist pueda descargar
+echo "Configurando DNS temporal para descarga de whitelist..."
+cat > /etc/resolv.conf << EOF
+nameserver $PRIMARY_DNS
+search lan
+EOF
+echo "✓ DNS temporal configurado: $PRIMARY_DNS"
 
 # PASO 1: Ejecutar script de whitelist para configurar y arrancar dnsmasq
 echo "Ejecutando configuración inicial de whitelist y arrancando dnsmasq..."
