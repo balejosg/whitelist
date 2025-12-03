@@ -1,0 +1,25 @@
+# Scripts con credenciales hardcodeadas - NUNCA commitar
+auto-reinstall.sh
+
+# Variables de entorno
+.env
+.env.local
+*.local
+
+# Logs locales
+/tmp/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Archivos de configuración local
+.claude/
