@@ -121,3 +121,16 @@ youtube.com
 ## BLOCKED-SUBDOMAINS
 doodles.google.com
 doodles.google.es
+
+## BLOCKED-PATHS
+*2048*
+google.com/doodles
+google.com/logos
+google.com/search*
+google.es/doodles
+sites.google.com/site/populardoodlegames
+youtube.com/*gaming*
+youtube.com/*live*
+youtube.com/*shorts*
+youtube.com/feed/subscriptions
+youtube.com/feed/trending
