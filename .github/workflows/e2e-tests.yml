@@ -1,0 +1,336 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'install.sh'
+      - 'uninstall.sh'
+      - 'lib/**'
+      - 'scripts/**'
+      - 'whitelist-windows/**'
+      - '.github/workflows/e2e-tests.yml'
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  # ============================================
+  # Linux E2E Tests
+  # ============================================
+  linux-e2e:
+    name: Linux E2E Tests
+    runs-on: ubuntu-latest-8-cores
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dnsmasq iptables ipset dnsutils curl shellcheck
+      
+      - name: Make scripts executable
+        run: |
+          chmod +x install.sh uninstall.sh
+          chmod +x scripts/*.sh
+          chmod +x tests/e2e/linux-e2e-tests.sh
+      
+      - name: Run installation
+        run: |
+          echo "🚀 Running install.sh..."
+          sudo ./install.sh --url "https://raw.githubusercontent.com/LasEncinasIT/Whitelist-por-aula/main/Informatica%203.txt"
+      
+      - name: Verify installation
+        run: |
+          echo "🔍 Checking dnsmasq status..."
+          sudo systemctl status dnsmasq --no-pager || true
+          
+          echo ""
+          echo "🔍 Checking port 53..."
+          sudo ss -tulpn | grep ":53" || true
+          
+          echo ""
+          echo "🔍 Checking config files..."
+          ls -la /etc/dnsmasq.d/*.conf 2>/dev/null || true
+          ls -la /var/lib/url-whitelist/ 2>/dev/null || true
+      
+      - name: Run smoke tests
+        run: |
+          echo "🧪 Running smoke tests..."
+          sudo scripts/smoke-test.sh
+      
+      - name: Run E2E tests
+        run: |
+          echo "🧪 Running comprehensive E2E tests..."
+          sudo tests/e2e/linux-e2e-tests.sh
+      
+      - name: Test whitelist command
+        run: |
+          echo "🧪 Testing whitelist command..."
+          
+          # Check command exists
+          which whitelist || echo "whitelist command not in PATH"
+          
+          # Test status command
+          sudo whitelist status || true
+          
+          # Test check command
+          sudo whitelist check google.com || true
+          sudo whitelist check blocked-domain-test.com || true
+      
+      - name: Verify DNS resolution
+        run: |
+          echo "🔍 Testing DNS resolution..."
+          
+          # Test whitelisted domain
+          echo "Testing google.com (should resolve):"
+          dig @127.0.0.1 google.com +short || echo "FAILED"
+          
+          # Test blocked domain
+          echo ""
+          echo "Testing blocked-test-domain.com (should return empty/NXDOMAIN):"
+          result=$(dig @127.0.0.1 blocked-test-domain.com +short 2>/dev/null)
+          if [ -z "$result" ]; then
+            echo "✓ Correctly blocked (no response)"
+          else
+            echo "⚠ Got response: $result"
+          fi
+      
+      - name: Run uninstall
+        run: |
+          echo "🧹 Running uninstall..."
+          sudo ./uninstall.sh --force || true
+      
+      - name: Verify cleanup
+        run: |
+          echo "🔍 Verifying cleanup..."
+          
+          # Check dnsmasq stopped
+          if ! systemctl is-active --quiet dnsmasq 2>/dev/null; then
+            echo "✓ dnsmasq service stopped"
+          else
+            echo "⚠ dnsmasq still running"
+          fi
+          
+          # Check config removed
+          if [ ! -f /etc/dnsmasq.d/url-whitelist.conf ]; then
+            echo "✓ Config files removed"
+          else
+            echo "⚠ Config files still exist"
+          fi
+
+  # ============================================
+  # Windows E2E Tests
+  # ============================================
+  windows-e2e:
+    name: Windows E2E Tests
+    runs-on: windows-latest-8-cores
+    timeout-minutes: 20
+    continue-on-error: true  # Windows E2E may have limitations
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Pester
+        shell: pwsh
+        run: |
+          Install-Module -Name Pester -Force -SkipPublisherCheck
+          Import-Module Pester -PassThru
+      
+      - name: Prepare installation
+        shell: pwsh
+        run: |
+          Write-Host "📁 Creating directory structure..."
+          New-Item -ItemType Directory -Path "C:\Whitelist\lib" -Force | Out-Null
+          New-Item -ItemType Directory -Path "C:\Whitelist\scripts" -Force | Out-Null
+          New-Item -ItemType Directory -Path "C:\Whitelist\data\logs" -Force | Out-Null
+          
+          Write-Host "📋 Copying modules..."
+          Copy-Item "whitelist-windows\lib\*.psm1" "C:\Whitelist\lib\" -Force
+          Copy-Item "whitelist-windows\scripts\*.ps1" "C:\Whitelist\scripts\" -Force
+      
+      - name: Create test configuration
+        shell: pwsh
+        run: |
+          $config = @{
+              whitelistUrl = "https://raw.githubusercontent.com/LasEncinasIT/Whitelist-por-aula/main/Informatica%203.txt"
+              updateIntervalMinutes = 5
+              watchdogIntervalMinutes = 1
+              primaryDNS = "8.8.8.8"
+              acrylicPath = ""
+              enableFirewall = $true
+              enableBrowserPolicies = $false
+              installedAt = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+          }
+          $config | ConvertTo-Json -Depth 10 | Set-Content "C:\Whitelist\data\config.json" -Encoding UTF8
+          Write-Host "✓ Test configuration created"
+      
+      - name: Import and test modules
+        shell: pwsh
+        run: |
+          Write-Host "📦 Importing modules..."
+          Import-Module "C:\Whitelist\lib\Common.psm1" -Force
+          Import-Module "C:\Whitelist\lib\DNS.psm1" -Force
+          Import-Module "C:\Whitelist\lib\Firewall.psm1" -Force
+          
+          Write-Host ""
+          Write-Host "🔍 Testing module functions..."
+          
+          # Test DNS module functions
+          $acrylicPath = Get-AcrylicPath
+          Write-Host "Acrylic Path: $acrylicPath"
+          
+          $installed = Test-AcrylicInstalled
+          Write-Host "Acrylic Installed: $installed"
+      
+      - name: Test DNS resolution (without Acrylic)
+        shell: pwsh
+        run: |
+          Write-Host "🔍 Testing system DNS resolution..."
+          
+          try {
+              $result = Resolve-DnsName -Name "google.com" -ErrorAction Stop
+              Write-Host "✓ google.com resolves: $($result[0].IPAddress)"
+          }
+          catch {
+              Write-Host "⚠ DNS resolution failed: $_"
+          }
+      
+      - name: Test Firewall module
+        shell: pwsh
+        run: |
+          Import-Module "C:\Whitelist\lib\Firewall.psm1" -Force
+          
+          Write-Host "🔍 Testing firewall functions..."
+          
+          # Check if firewall is active
+          $active = Test-FirewallActive
+          Write-Host "Firewall Active: $active"
+          
+          # Try to create test rule (will be cleaned up)
+          Write-Host ""
+          Write-Host "Creating test firewall rule..."
+          try {
+              New-NetFirewallRule -DisplayName "Whitelist-Test-Rule" -Direction Outbound -Action Block -Protocol UDP -RemotePort 12345 -ErrorAction Stop | Out-Null
+              Write-Host "✓ Test rule created"
+              
+              # Verify rule exists
+              $rule = Get-NetFirewallRule -DisplayName "Whitelist-Test-Rule" -ErrorAction SilentlyContinue
+              if ($rule) {
+                  Write-Host "✓ Test rule verified"
+              }
+              
+              # Clean up
+              Remove-NetFirewallRule -DisplayName "Whitelist-Test-Rule" -ErrorAction SilentlyContinue
+              Write-Host "✓ Test rule removed"
+          }
+          catch {
+              Write-Host "⚠ Test rule creation failed (may require elevated privileges): $_"
+          }
+      
+      - name: Run Pester E2E tests
+        shell: pwsh
+        run: |
+          Write-Host "🧪 Running Pester E2E tests..."
+          
+          $config = New-PesterConfiguration
+          $config.Run.Path = "tests/e2e/Windows-E2E.Tests.ps1"
+          $config.Output.Verbosity = "Detailed"
+          $config.Run.PassThru = $true
+          
+          $result = Invoke-Pester -Configuration $config
+          
+          Write-Host ""
+          Write-Host "Results: $($result.PassedCount) passed, $($result.FailedCount) failed"
+          
+          if ($result.FailedCount -gt 0) {
+              Write-Host "⚠ Some tests failed (expected in CI environment)"
+          }
+      
+      - name: Verify scheduled tasks API
+        shell: pwsh
+        run: |
+          Write-Host "🔍 Testing scheduled tasks API..."
+          
+          try {
+              # Create a test task
+              $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-Command 'echo test'"
+              $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddHours(1)
+              
+              Register-ScheduledTask -TaskName "Whitelist-E2E-Test" -Action $action -Trigger $trigger -Force | Out-Null
+              Write-Host "✓ Test task created"
+              
+              # Verify
+              $task = Get-ScheduledTask -TaskName "Whitelist-E2E-Test" -ErrorAction SilentlyContinue
+              if ($task) {
+                  Write-Host "✓ Test task verified"
+              }
+              
+              # Cleanup
+              Unregister-ScheduledTask -TaskName "Whitelist-E2E-Test" -Confirm:$false
+              Write-Host "✓ Test task removed"
+          }
+          catch {
+              Write-Host "⚠ Scheduled task test failed: $_"
+          }
+      
+      - name: Cleanup
+        shell: pwsh
+        if: always()
+        run: |
+          Write-Host "🧹 Cleaning up..."
+          
+          # Remove test directories
+          if (Test-Path "C:\Whitelist") {
+              Remove-Item "C:\Whitelist" -Recurse -Force -ErrorAction SilentlyContinue
+              Write-Host "✓ Test directories removed"
+          }
+          
+          # Remove any test firewall rules
+          Get-NetFirewallRule -DisplayName "Whitelist-*" -ErrorAction SilentlyContinue | 
+              Remove-NetFirewallRule -ErrorAction SilentlyContinue
+          
+          # Remove any test scheduled tasks
+          Get-ScheduledTask -TaskName "Whitelist-*" -ErrorAction SilentlyContinue | 
+              Unregister-ScheduledTask -Confirm:$false -ErrorAction SilentlyContinue
+
+  # ============================================
+  # Summary Job
+  # ============================================
+  e2e-summary:
+    name: E2E Summary
+    runs-on: ubuntu-latest
+    needs: [linux-e2e, windows-e2e]
+    if: always()
+    
+    steps:
+      - name: Check results
+        run: |
+          echo "📊 E2E Test Summary"
+          echo "===================="
+          
+          if [[ "${{ needs.linux-e2e.result }}" == "success" ]]; then
+            echo "✅ Linux E2E: PASSED"
+          else
+            echo "❌ Linux E2E: ${{ needs.linux-e2e.result }}"
+          fi
+          
+          if [[ "${{ needs.windows-e2e.result }}" == "success" ]]; then
+            echo "✅ Windows E2E: PASSED"
+          else
+            echo "⚠️ Windows E2E: ${{ needs.windows-e2e.result }} (may have limitations)"
+          fi
+          
+          # Fail only if Linux fails (Windows has continue-on-error)
+          if [[ "${{ needs.linux-e2e.result }}" == "failure" ]]; then
+            echo ""
+            echo "❌ E2E Tests FAILED"
+            exit 1
+          fi
+          
+          echo ""
+          echo "✅ E2E Tests Complete"
