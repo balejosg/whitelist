@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whitelist Manager - GitHub Pages</title>
+    <meta name="description" content="Panel de administración para gestión de whitelist DNS via GitHub">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <!-- Setup Screen -->
+    <div id="setup-screen" class="screen">
+        <div class="login-container">
+            <div class="login-header">
+                <div class="logo">🛡️</div>
+                <h1>Whitelist Manager</h1>
+                <p>Configuración inicial - GitHub API</p>
+            </div>
+            <form id="setup-form" class="login-form">
+                <div class="form-group">
+                    <label for="setup-token">Personal Access Token (PAT)</label>
+                    <input type="password" id="setup-token" name="token" required 
+                           placeholder="ghp_xxxxxxxxxxxx">
+                    <small>
+                        <a href="https://github.com/settings/tokens/new?scopes=repo&description=Whitelist%20Manager" 
+                           target="_blank">Crear token con permisos "repo"</a>
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label for="setup-owner">Usuario/Organización</label>
+                    <input type="text" id="setup-owner" name="owner" required 
+                           placeholder="tu-usuario">
+                </div>
+                <div class="form-group">
+                    <label for="setup-repo">Repositorio</label>
+                    <input type="text" id="setup-repo" name="repo" required 
+                           placeholder="whitelist">
+                </div>
+                <div class="form-group">
+                    <label for="setup-branch">Rama</label>
+                    <input type="text" id="setup-branch" name="branch" 
+                           placeholder="main" value="main">
+                </div>
+                <div class="form-group">
+                    <label for="setup-grupos-dir">Directorio de grupos</label>
+                    <input type="text" id="setup-grupos-dir" name="gruposDir" 
+                           placeholder="grupos" value="grupos">
+                    <small>Directorio donde se guardan los archivos .txt</small>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Conectar</button>
+                <div id="setup-error" class="error-message"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard-screen" class="screen hidden">
+        <header class="header">
+            <div class="header-left">
+                <span class="logo-small">🛡️</span>
+                <h1>Whitelist Manager</h1>
+            </div>
+            <div class="header-right">
+                <span id="current-user" class="user-badge">Usuario</span>
+                <button id="logout-btn" class="btn btn-ghost">Cerrar sesión</button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- Stats Cards -->
+            <section class="stats-section">
+                <div class="stat-card">
+                    <div class="stat-icon">📁</div>
+                    <div class="stat-content">
+                        <span id="stat-groups" class="stat-number">0</span>
+                        <span class="stat-label">Grupos</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-content">
+                        <span id="stat-whitelist" class="stat-number">0</span>
+                        <span class="stat-label">Dominios permitidos</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🚫</div>
+                    <div class="stat-content">
+                        <span id="stat-blocked" class="stat-number">0</span>
+                        <span class="stat-label">Bloqueados</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Groups List -->
+            <section class="groups-section">
+                <div class="section-header">
+                    <h2>Grupos</h2>
+                    <button id="new-group-btn" class="btn btn-primary">
+                        <span>+</span> Nuevo grupo
+                    </button>
+                </div>
+                <div id="groups-list" class="groups-list">
+                    <!-- Groups loaded dynamically -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Group Editor -->
+    <div id="editor-screen" class="screen hidden">
+        <header class="header">
+            <div class="header-left">
+                <button id="back-btn" class="btn btn-ghost">← Volver</button>
+                <h1 id="editor-title">Editor</h1>
+            </div>
+            <div class="header-right">
+                <button id="copy-url-btn" class="btn btn-secondary">📋 Copiar URL</button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- Group Config -->
+            <section class="config-section">
+                <div class="config-row">
+                    <div class="form-group">
+                        <label>Nombre del grupo</label>
+                        <span id="group-name-display" class="input-display"></span>
+                    </div>
+                    <div class="form-group">
+                        <label>Estado</label>
+                        <select id="group-enabled" class="select-status">
+                            <option value="1">✅ Activo</option>
+                            <option value="0">⏸️ Pausado</option>
+                        </select>
+                    </div>
+                    <button id="save-config-btn" class="btn btn-primary">Guardar</button>
+                    <button id="delete-group-btn" class="btn btn-danger">🗑️ Eliminar</button>
+                </div>
+                <div class="url-display">
+                    <label>URL para clientes dnsmasq:</label>
+                    <code id="export-url"></code>
+                </div>
+            </section>
+
+            <!-- Rules Tabs -->
+            <section class="rules-section">
+                <div class="tabs">
+                    <button class="tab active" data-type="whitelist">
+                        ✅ Whitelist
+                        <span id="count-whitelist" class="badge">0</span>
+                    </button>
+                    <button class="tab" data-type="blocked_subdomain">
+                        🚫 Subdominios bloqueados
+                        <span id="count-blocked_subdomain" class="badge">0</span>
+                    </button>
+                    <button class="tab" data-type="blocked_path">
+                        🔗 Paths bloqueados
+                        <span id="count-blocked_path" class="badge">0</span>
+                    </button>
+                </div>
+
+                <div class="rules-toolbar">
+                    <input type="text" id="search-rules" placeholder="🔍 Buscar..." class="search-input">
+                    <button id="add-rule-btn" class="btn btn-primary">+ Añadir</button>
+                    <button id="bulk-add-btn" class="btn btn-secondary">📝 Añadir múltiples</button>
+                </div>
+
+                <div id="rules-list" class="rules-list">
+                    <!-- Rules loaded dynamically -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal: New Group -->
+    <div id="modal-new-group" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nuevo grupo</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="new-group-form">
+                <div class="form-group">
+                    <label for="new-group-name">Nombre del grupo</label>
+                    <input type="text" id="new-group-name" placeholder="informatica-3" pattern="[a-zA-Z0-9-_]+" required>
+                    <small>Solo letras, números, guiones. Se convertirá a archivo .txt</small>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost modal-cancel">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear grupo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Add Rule -->
+    <div id="modal-add-rule" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Añadir regla</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="add-rule-form">
+                <div class="form-group">
+                    <label for="new-rule-value">Valor</label>
+                    <input type="text" id="new-rule-value" placeholder="ejemplo.com" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost modal-cancel">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Añadir</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Bulk Add -->
+    <div id="modal-bulk-add" class="modal hidden">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>Añadir múltiples reglas</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="bulk-add-form">
+                <div class="form-group">
+                    <label for="bulk-values">Una regla por línea</label>
+                    <textarea id="bulk-values" rows="10" placeholder="google.com
+youtube.com
+wikipedia.org"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost modal-cancel">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Añadir todas</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div id="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/github-api.js"></script>
+    <script src="js/whitelist-parser.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
