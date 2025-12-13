@@ -2,7 +2,7 @@
 
 Sistema modular de control de acceso a internet mediante DNS sinkhole. Bloquea todos los dominios por defecto, permitiendo únicamente aquellos incluidos en una lista blanca centralizada.
 
-**Versión**: 3.4
+**Versión**: 3.5
 
 ## Características principales
 
@@ -13,6 +13,9 @@ Sistema modular de control de acceso a internet mediante DNS sinkhole. Bloquea t
 ✅ **Monitoreo de salud** - Verifica funcionamiento cada minuto
 ✅ **Desactivación remota** - Control centralizado via whitelist
 ✅ **Arquitectura modular** - Funcionalidad separada en librerías
+✅ **Multi-plataforma** - Soporte para Linux (dnsmasq) y Windows (Acrylic DNS)
+✅ **Gestión web** - SPA con autenticación GitHub OAuth para administrar reglas
+✅ **Extensión Firefox** - Monitoreo de bloqueos en tiempo real
 
 ## Requisitos
 
@@ -55,19 +58,34 @@ sudo ./uninstall.sh
 
 ```
 whitelist/
-├── install.sh                      # Script de instalación principal
-├── uninstall.sh                    # Script de desinstalación
-├── lib/                            # Módulos de funcionalidad
+├── install.sh                      # Script de instalación principal (Linux)
+├── uninstall.sh                    # Script de desinstalación (Linux)
+├── lib/                            # Módulos de funcionalidad (Linux)
 │   ├── common.sh                   # Variables y funciones comunes
 │   ├── dns.sh                      # Gestión de dnsmasq
 │   ├── firewall.sh                 # Reglas de iptables
 │   ├── browser.sh                  # Políticas de navegadores
 │   └── services.sh                 # Integración con systemd
-└── scripts/                        # Scripts de ejecución
-    ├── dnsmasq-whitelist.sh        # Actualiza whitelist (timer)
-    ├── dnsmasq-watchdog.sh         # Monitoreo de salud (timer)
-    ├── captive-portal-detector.sh  # Detección de portales WiFi
-    └── whitelist-cmd.sh            # Comando de usuario whitelist
+├── scripts/                        # Scripts de ejecución (Linux)
+│   ├── dnsmasq-whitelist.sh        # Actualiza whitelist (timer)
+│   ├── dnsmasq-watchdog.sh         # Monitoreo de salud (timer)
+│   ├── captive-portal-detector.sh  # Detección de portales WiFi
+│   └── whitelist-cmd.sh            # Comando de usuario whitelist
+├── whitelist-windows/              # Implementación Windows
+│   ├── Install-Whitelist.ps1       # Instalador PowerShell
+│   ├── Uninstall-Whitelist.ps1     # Desinstalador
+│   └── lib/                        # Módulos PowerShell
+├── whitelist-web-static/           # SPA para gestión de reglas
+│   ├── index.html                  # Aplicación web
+│   └── js/                         # Lógica JavaScript + GitHub OAuth
+├── oauth-worker/                   # Cloudflare Worker para OAuth
+│   └── src/index.js                # Backend serverless
+├── firefox-extension/              # Extensión de monitoreo
+│   └── manifest.json               # Firefox WebExtension
+└── tests/                          # Suite de tests
+    ├── bats/                       # 72 tests BATS para Linux
+    ├── e2e/                        # Tests E2E Linux/Windows
+    └── whitelist-web/              # Tests API web
 ```
 
 ## Directorios de instalación
@@ -337,5 +355,17 @@ Sistema para uso educativo e institucional.
 
 ---
 
-**Versión**: 3.4
+## Componentes adicionales
+
+| Componente | Plataforma | Documentación |
+|------------|------------|---------------|
+| [whitelist-windows](./whitelist-windows/) | Windows 10/11 | DNS con Acrylic Proxy |
+| [whitelist-web-static](./whitelist-web-static/) | Web (GitHub Pages) | SPA para gestión centralizada |
+| [oauth-worker](./oauth-worker/) | Cloudflare Workers | Backend OAuth para SPA |
+| [firefox-extension](./firefox-extension/) | Firefox | Monitoreo de bloqueos |
+| [tests/e2e](./tests/e2e/) | Linux/Windows | Tests End-to-End |
+
+---
+
+**Versión**: 3.5
 **Última actualización**: Diciembre 2024

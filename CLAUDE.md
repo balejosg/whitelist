@@ -4,7 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a **DNS-based URL whitelist enforcement system** (v3.4) for Linux that uses `dnsmasq` as a DNS sinkhole to restrict network access to only whitelisted domains. It's designed for educational environments to control internet access on workstations.
+This is a **multi-platform DNS-based URL whitelist enforcement system** (v3.5) that uses DNS sinkhole technology to restrict network access to only whitelisted domains. It's designed for educational environments to control internet access on workstations.
+
+**Supported Platforms:**
+- **Linux**: Uses `dnsmasq` as DNS sinkhole with iptables firewall
+- **Windows**: Uses `Acrylic DNS Proxy` with Windows Firewall
 
 **Key Concept**: The system blocks all DNS resolution by default (NXDOMAIN), then explicitly allows only whitelisted domains to resolve. Combined with restrictive iptables rules that force all DNS through localhost, this creates an effective content filter.
 
@@ -54,6 +58,25 @@ All functionality is split into reusable libraries in `/usr/local/lib/whitelist-
 - `firewall.sh` - iptables rules, connection flushing
 - `browser.sh` - Browser policy generation and enforcement
 - `services.sh` - systemd service creation and management
+
+### Web Management (whitelist-web-static)
+
+7. **Static SPA** (`whitelist-web-static/`)
+   - Client-side only, deployable on GitHub Pages
+   - Manages whitelist rules via GitHub API
+   - Supports GitHub OAuth authentication via Cloudflare Worker
+   - Permission-based access (repo write access required for edits)
+
+8. **OAuth Worker** (`oauth-worker/`)
+   - Cloudflare Worker handling GitHub OAuth flow
+   - Exchanges authorization codes for access tokens
+   - Validates repository permissions
+
+### Windows Implementation (whitelist-windows)
+
+9. **Acrylic DNS Proxy** - Windows DNS sinkhole equivalent
+10. **Windows Firewall** - PowerShell-managed firewall rules
+11. **Task Scheduler** - Scheduled updates and watchdog
 
 ## Installation Paths
 
@@ -279,9 +302,33 @@ If the order is reversed, the whitelist won't work. The `address=/#/` directive 
 
 ## Version History
 
-Current version: **3.4**
+Current version: **3.5**
 
 Version is stored in:
-- `install.sh` - `VERSION="3.4"`
-- `lib/common.sh` - `VERSION="3.4"`
+- `install.sh` - `VERSION="3.5"`
+- `lib/common.sh` - `VERSION="3.5"`
 - Comments in all major scripts
+
+## Testing
+
+### BATS Tests (72 tests)
+Shell library tests in `tests/bats/`:
+```bash
+cd tests && bats bats/
+```
+
+### E2E Tests
+- Linux: `tests/e2e/linux-e2e-tests.sh`
+- Windows: `tests/e2e/Windows-E2E.Tests.ps1`
+
+### Web API Tests
+```bash
+cd tests/whitelist-web && npm test
+```
+
+### CI/CD
+Workflows in `.github/workflows/`:
+- `ci.yml` - Linting, BATS tests, web tests
+- `e2e-tests.yml` - Full E2E on Linux/Windows
+- `deploy.yml` - GitHub Pages deployment
+

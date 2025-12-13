@@ -92,7 +92,7 @@ github.com"
 @test "generate_dnsmasq_config crea archivo de configuración" {
     export DNSMASQ_CONF="$TEST_TMP_DIR/dnsmasq.d/url-whitelist.conf"
     export PRIMARY_DNS="8.8.8.8"
-    export VERSION="3.4"
+    export VERSION="3.5"
     
     mkdir -p "$(dirname "$DNSMASQ_CONF")"
     
@@ -114,7 +114,7 @@ github.com"
 @test "generate_dnsmasq_config incluye address=/#/ primero" {
     export DNSMASQ_CONF="$TEST_TMP_DIR/dnsmasq.d/url-whitelist.conf"
     export PRIMARY_DNS="8.8.8.8"
-    export VERSION="3.4"
+    export VERSION="3.5"
     
     mkdir -p "$(dirname "$DNSMASQ_CONF")"
     
@@ -134,7 +134,7 @@ github.com"
 @test "generate_dnsmasq_config incluye dominios del whitelist" {
     export DNSMASQ_CONF="$TEST_TMP_DIR/dnsmasq.d/url-whitelist.conf"
     export PRIMARY_DNS="8.8.8.8"
-    export VERSION="3.4"
+    export VERSION="3.5"
     
     mkdir -p "$(dirname "$DNSMASQ_CONF")"
     
@@ -155,7 +155,7 @@ github.com"
 @test "generate_dnsmasq_config incluye subdominios bloqueados" {
     export DNSMASQ_CONF="$TEST_TMP_DIR/dnsmasq.d/url-whitelist.conf"
     export PRIMARY_DNS="8.8.8.8"
-    export VERSION="3.4"
+    export VERSION="3.5"
     
     mkdir -p "$(dirname "$DNSMASQ_CONF")"
     

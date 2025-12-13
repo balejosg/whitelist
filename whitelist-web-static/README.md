@@ -5,6 +5,7 @@ SPA estática para gestionar reglas de whitelist DNS directamente en GitHub, sin
 ## Características
 
 ✅ **Sin backend** - Todo client-side via GitHub API  
+✅ **Autenticación dual** - GitHub OAuth o Personal Access Token  
 ✅ Gestión de múltiples grupos  
 ✅ Editor de reglas (whitelist, subdominios, paths bloqueados)  
 ✅ Commit automático de cambios  
@@ -15,7 +16,9 @@ SPA estática para gestionar reglas de whitelist DNS directamente en GitHub, sin
 ## Requisitos
 
 - Un repositorio GitHub
-- Personal Access Token (PAT) con permisos `repo`
+- Credenciales (una de las siguientes):  
+  - **OAuth**: Requiere [oauth-worker](../oauth-worker/) desplegado  
+  - **PAT**: Personal Access Token con permisos `repo`
 - Navegador moderno
 
 ## Instalación

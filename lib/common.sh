@@ -5,7 +5,7 @@
 ################################################################################
 
 # Versión del sistema
-VERSION="3.4"
+VERSION="3.5"
 
 # Directorios y archivos
 INSTALL_DIR="/usr/local/lib/whitelist-system"
