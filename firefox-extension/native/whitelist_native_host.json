@@ -1,0 +1,9 @@
+{
+    "name": "whitelist_native_host",
+    "description": "Native messaging host for Monitor de Bloqueos de Red extension",
+    "path": "/usr/local/bin/whitelist-native-host.py",
+    "type": "stdio",
+    "allowed_extensions": [
+        "monitor-bloqueos@whitelist-system"
+    ]
+}

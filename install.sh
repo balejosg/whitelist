@@ -59,9 +59,9 @@ echo "URL Whitelist: $WHITELIST_URL"
 echo ""
 
 # ============================================================================
-# [1/10] INSTALAR LIBRERÍAS
+# [1/11] INSTALAR LIBRERÍAS
 # ============================================================================
-echo "[1/10] Instalando librerías..."
+echo "[1/11] Instalando librerías..."
 
 mkdir -p "$INSTALL_DIR/lib"
 mkdir -p "$CONFIG_DIR"
@@ -84,10 +84,10 @@ source "$INSTALL_DIR/lib/browser.sh"
 source "$INSTALL_DIR/lib/services.sh"
 
 # ============================================================================
-# [2/10] INSTALAR DEPENDENCIAS
+# [2/11] INSTALAR DEPENDENCIAS
 # ============================================================================
 echo ""
-echo "[2/10] Instalando dependencias..."
+echo "[2/11] Instalando dependencias..."
 
 apt-get update -qq
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -109,29 +109,29 @@ setcap 'cap_net_bind_service,cap_net_admin=+ep' /usr/sbin/dnsmasq 2>/dev/null ||
 echo "✓ Dependencias instaladas"
 
 # ============================================================================
-# [3/10] LIBERAR PUERTO 53
+# [3/11] LIBERAR PUERTO 53
 # ============================================================================
 echo ""
-echo "[3/10] Liberando puerto 53..."
+echo "[3/11] Liberando puerto 53..."
 
 free_port_53
 echo "✓ Puerto 53 liberado"
 
 # ============================================================================
-# [4/10] DETECTAR DNS
+# [4/11] DETECTAR DNS
 # ============================================================================
 echo ""
-echo "[4/10] Detectando DNS primario..."
+echo "[4/11] Detectando DNS primario..."
 
 PRIMARY_DNS=$(detect_primary_dns)
 echo "$PRIMARY_DNS" > "$CONFIG_DIR/original-dns.conf"
 echo "✓ DNS primario: $PRIMARY_DNS"
 
 # ============================================================================
-# [5/10] INSTALAR SCRIPTS
+# [5/11] INSTALAR SCRIPTS
 # ============================================================================
 echo ""
-echo "[5/10] Instalando scripts..."
+echo "[5/11] Instalando scripts..."
 
 # Script principal de actualización
 cp "$SCRIPT_DIR/scripts/dnsmasq-whitelist.sh" "$SCRIPTS_DIR/"
@@ -158,10 +158,27 @@ echo "$WHITELIST_URL" > "$CONFIG_DIR/whitelist-url.conf"
 echo "✓ Scripts instalados"
 
 # ============================================================================
-# [6/10] CREAR SERVICIOS SYSTEMD
+# [6/11] CONFIGURAR SUDOERS PARA WHITELIST
 # ============================================================================
 echo ""
-echo "[6/10] Creando servicios systemd..."
+echo "[6/11] Configurando permisos sudo..."
+
+cat > /etc/sudoers.d/whitelist << 'EOF'
+# Permitir a todos los usuarios ejecutar comandos whitelist sin contraseña
+ALL ALL=(root) NOPASSWD: /usr/local/bin/whitelist *
+ALL ALL=(root) NOPASSWD: /usr/local/bin/dnsmasq-whitelist.sh
+ALL ALL=(root) NOPASSWD: /usr/local/bin/dnsmasq-watchdog.sh
+EOF
+
+chmod 440 /etc/sudoers.d/whitelist
+
+echo "✓ Permisos sudo configurados"
+
+# ============================================================================
+# [7/11] CREAR SERVICIOS SYSTEMD
+# ============================================================================
+echo ""
+echo "[7/11] Creando servicios systemd..."
 
 create_systemd_services
 create_logrotate_config
@@ -170,10 +187,10 @@ create_tmpfiles_config
 echo "✓ Servicios creados"
 
 # ============================================================================
-# [7/10] CONFIGURAR DNS
+# [8/11] CONFIGURAR DNS
 # ============================================================================
 echo ""
-echo "[7/10] Configurando DNS..."
+echo "[8/11] Configurando DNS..."
 
 configure_upstream_dns
 configure_resolv_conf
@@ -181,10 +198,16 @@ configure_resolv_conf
 echo "✓ DNS configurado"
 
 # ============================================================================
-# [8/10] CONFIGURACIÓN INICIAL DNSMASQ
+# [9/11] CONFIGURACIÓN INICIAL DNSMASQ
 # ============================================================================
 echo ""
-echo "[8/10] Configurando dnsmasq..."
+echo "[9/11] Configurando dnsmasq..."
+
+# Comentar directivas conflictivas en /etc/dnsmasq.conf para evitar duplicados
+if [ -f /etc/dnsmasq.conf ]; then
+    sed -i 's/^no-resolv/#no-resolv/g' /etc/dnsmasq.conf 2>/dev/null || true
+    sed -i 's/^cache-size=/#cache-size=/g' /etc/dnsmasq.conf 2>/dev/null || true
+fi
 
 # Configuración inicial permisiva
 cat > /etc/dnsmasq.d/url-whitelist.conf << EOF
@@ -210,19 +233,19 @@ else
 fi
 
 # ============================================================================
-# [9/10] APLICAR POLÍTICAS DE NAVEGADORES
+# [10/11] APLICAR POLÍTICAS DE NAVEGADORES
 # ============================================================================
 echo ""
-echo "[9/10] Aplicando políticas de navegadores..."
+echo "[10/11] Aplicando políticas de navegadores..."
 
 apply_search_engine_policies
 echo "✓ Políticas aplicadas"
 
 # ============================================================================
-# [10/10] HABILITAR SERVICIOS Y PRIMERA EJECUCIÓN
+# [11/11] HABILITAR SERVICIOS Y PRIMERA EJECUCIÓN
 # ============================================================================
 echo ""
-echo "[10/10] Habilitando servicios..."
+echo "[11/11] Habilitando servicios..."
 
 enable_services
 
@@ -231,6 +254,24 @@ echo "Ejecutando primera actualización..."
 "$SCRIPTS_DIR/dnsmasq-whitelist.sh" || echo "⚠ Primera actualización falló (el timer lo reintentará)"
 
 echo "✓ Servicios habilitados"
+
+# ============================================================================
+# SMOKE TESTS POST-INSTALACIÓN
+# ============================================================================
+
+# Instalar script de smoke tests
+if [ -f "$SCRIPT_DIR/scripts/smoke-test.sh" ]; then
+    cp "$SCRIPT_DIR/scripts/smoke-test.sh" "$SCRIPTS_DIR/"
+    chmod +x "$SCRIPTS_DIR/smoke-test.sh"
+fi
+
+echo ""
+echo "Ejecutando smoke tests..."
+if "$SCRIPTS_DIR/smoke-test.sh" --quick 2>/dev/null; then
+    SMOKE_STATUS="PASSED"
+else
+    SMOKE_STATUS="FAILED"
+fi
 
 # ============================================================================
 # RESUMEN FINAL
@@ -244,6 +285,7 @@ echo "Estado:"
 echo "  - dnsmasq: $(systemctl is-active dnsmasq)"
 echo "  - Timer: $(systemctl is-active dnsmasq-whitelist.timer)"
 echo "  - Watchdog: $(systemctl is-active dnsmasq-watchdog.timer)"
+echo "  - Smoke Tests: $SMOKE_STATUS"
 echo ""
 echo "Configuración:"
 echo "  - Whitelist: $WHITELIST_URL"
@@ -254,6 +296,10 @@ echo "  whitelist status  - Ver estado"
 echo "  whitelist test    - Probar DNS"
 echo "  whitelist update  - Forzar actualización"
 echo "  whitelist help    - Ver ayuda completa"
+echo ""
+echo "Tests manuales:"
+echo "  sudo smoke-test.sh        - Ejecutar smoke tests completos"
+echo "  sudo smoke-test.sh --quick - Solo tests críticos"
 echo ""
 echo "Desinstalar: sudo $SCRIPT_DIR/uninstall.sh"
 echo ""

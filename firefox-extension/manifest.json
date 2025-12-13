@@ -1,0 +1,38 @@
+{
+  "manifest_version": 2,
+  "name": "Monitor de Bloqueos de Red",
+  "version": "1.1.0",
+  "description": "Detecta dominios bloqueados por whitelists DNS y firewalls. Facilita la identificación de recursos que impiden el correcto funcionamiento de páginas web.",
+  "author": "Whitelist System",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "monitor-bloqueos@whitelist-system",
+      "strict_min_version": "78.0"
+    }
+  },
+  "permissions": [
+    "webRequest",
+    "webNavigation",
+    "tabs",
+    "clipboardWrite",
+    "nativeMessaging",
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": [
+      "background.js"
+    ],
+    "persistent": true
+  },
+  "browser_action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "48": "icons/icon-48.png"
+    },
+    "default_title": "Monitor de Bloqueos"
+  },
+  "icons": {
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png"
+  }
+}

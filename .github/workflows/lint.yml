@@ -1,0 +1,40 @@
+name: Lint Shell Scripts
+
+on:
+  push:
+    paths:
+      - '**.sh'
+  pull_request:
+    paths:
+      - '**.sh'
+
+jobs:
+  shellcheck:
+    name: Shellcheck
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+      
+      - name: Run shellcheck on all scripts
+        run: |
+          echo "🔍 Scanning shell scripts..."
+          find . -type f -name "*.sh" ! -path "./node_modules/*" | head -50 | while read script; do
+            echo "Checking: $script"
+            shellcheck --severity=error "$script" || exit 1
+          done
+          echo "✓ All scripts passed shellcheck"
+      
+      - name: Detailed shellcheck report
+        if: always()
+        run: |
+          echo "📋 Detailed report (warnings included):"
+          find . -type f -name "*.sh" ! -path "./node_modules/*" | head -50 | while read script; do
+            echo ""
+            echo "=== $script ==="
+            shellcheck --format=tty "$script" || true
+          done

@@ -4,6 +4,17 @@
 # Parte del sistema dnsmasq URL Whitelist v3.4
 ################################################################################
 
+# Calcular hash de las políticas actuales
+get_policies_hash() {
+    local hash=""
+    if [ -f "$FIREFOX_POLICIES" ]; then
+        hash="${hash}$(md5sum "$FIREFOX_POLICIES" 2>/dev/null | cut -d' ' -f1)"
+    fi
+    # Añadir hash de blocked_paths para detectar cambios en WebsiteFilter
+    hash="${hash}$(echo "${BLOCKED_PATHS[*]}" | md5sum | cut -d' ' -f1)"
+    echo "$hash"
+}
+
 # Generar políticas de Firefox
 generate_firefox_policies() {
     log "Generando políticas de Firefox..."
@@ -120,11 +131,17 @@ apply_search_engine_policies() {
     
     local policies_file="$FIREFOX_POLICIES"
     
+    # CRÍTICO: Crear directorio si no existe
+    mkdir -p "$(dirname "$policies_file")"
+    
     python3 << 'PYEOF'
 import json
 import os
 
 policies_file = os.environ.get('FIREFOX_POLICIES', '/etc/firefox/policies/policies.json')
+
+# Crear directorio si no existe
+os.makedirs(os.path.dirname(policies_file), exist_ok=True)
 
 # Leer o crear políticas
 if os.path.exists(policies_file):
@@ -219,26 +236,32 @@ force_browser_close() {
     
     local closed=0
     
-    # Navegadores Snap (Ubuntu)
-    if command -v snap >/dev/null 2>&1; then
-        snap stop firefox 2>/dev/null && closed=$((closed + 1)) || true
-        snap stop chromium 2>/dev/null && closed=$((closed + 1)) || true
-    fi
-    
-    # Navegadores nativos - SIGTERM
-    for browser in firefox firefox-esr chromium chromium-browser chrome google-chrome; do
-        if pgrep -x "$browser" >/dev/null 2>&1; then
-            pkill -TERM -x "$browser" 2>/dev/null || true
+    # Método 1: pkill por nombre de proceso (funciona para nativos y Snap)
+    # -f busca en toda la línea de comando
+    for pattern in "firefox" "chromium" "chrome"; do
+        if pgrep -f "$pattern" >/dev/null 2>&1; then
+            log "Detectado proceso: $pattern - enviando SIGTERM..."
+            pkill -TERM -f "$pattern" 2>/dev/null || true
             closed=$((closed + 1))
         fi
     done
     
+    # Esperar a que cierren gracefully
     if [ $closed -gt 0 ]; then
-        sleep 2
-        # SIGKILL si no respondieron
-        for browser in firefox firefox-esr chromium chromium-browser chrome google-chrome; do
-            pkill -9 -x "$browser" 2>/dev/null || true
+        log "Esperando cierre de $closed navegador(es)..."
+        sleep 3
+        
+        # SIGKILL para los que no respondieron
+        for pattern in "firefox" "chromium" "chrome"; do
+            if pgrep -f "$pattern" >/dev/null 2>&1; then
+                log "Forzando cierre de: $pattern"
+                pkill -9 -f "$pattern" 2>/dev/null || true
+            fi
         done
-        log "✓ $closed navegador(es) cerrado(s)"
+        
+        sleep 1
+        log "✓ Navegadores cerrados"
+    else
+        log "No se detectaron navegadores abiertos"
     fi
 }

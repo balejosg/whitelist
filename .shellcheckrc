@@ -1,0 +1,7 @@
+# ShellCheck Configuration
+# See: https://github.com/koalaman/shellcheck/wiki/Directives
+
+# Disable specific checks project-wide if needed
+# Format: disable=SC1234,SC5678
+
+# Currently no global disables - fix issues instead of ignoring them

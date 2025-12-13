@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitor de Bloqueos</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+  <header>
+    <h1>🛡️ Monitor de Bloqueos</h1>
+    <span id="native-status" class="status-indicator hidden" title="Native Messaging disponible">⚡</span>
+  </header>
+
+  <section id="context">
+    <span class="label">Pestaña:</span>
+    <span id="tab-domain" class="domain">--</span>
+  </section>
+
+  <section id="domains-container">
+    <h2>Dominios Bloqueados (<span id="count">0</span>)</h2>
+    <ul id="domains-list"></ul>
+    <p id="empty-message" class="hidden">
+      ✅ No hay dominios bloqueados en esta pestaña
+    </p>
+  </section>
+
+  <!-- Sección de resultados de verificación -->
+  <section id="verify-results" class="hidden">
+    <h2>Resultado de Verificación</h2>
+    <ul id="verify-list"></ul>
+  </section>
+
+  <footer>
+    <button id="btn-copy" title="Copiar lista al portapapeles">
+      📋 Copiar
+    </button>
+    <button id="btn-verify" title="Verificar dominios en whitelist local" class="hidden">
+      🔍 Verificar
+    </button>
+    <button id="btn-clear" title="Limpiar lista de bloqueos">
+      🗑️ Limpiar
+    </button>
+  </footer>
+
+  <div id="toast" class="hidden">Copiado al portapapeles</div>
+
+  <script src="popup.js"></script>
+</body>
+
+</html>

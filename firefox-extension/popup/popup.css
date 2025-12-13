@@ -1,0 +1,374 @@
+/**
+ * Monitor de Bloqueos de Red - Popup Styles
+ * 
+ * Diseño minimalista con tema oscuro y fuentes monoespaciadas
+ * para mejor legibilidad de dominios técnicos.
+ * 
+ * @version 1.1.0
+ */
+
+/* ============================================================================
+   Variables y Reset
+   ============================================================================ */
+
+:root {
+  --bg-primary: #1e1e2e;
+  --bg-secondary: #2a2a3e;
+  --bg-tertiary: #363650;
+  --text-primary: #e0e0e0;
+  --text-secondary: #a0a0a0;
+  --text-muted: #707080;
+  --accent-red: #ff4757;
+  --accent-green: #2ed573;
+  --accent-blue: #3742fa;
+  --accent-yellow: #ffa502;
+  --border-color: #404060;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 380px;
+  min-height: 200px;
+  max-height: 550px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  font-size: 13px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+/* ============================================================================
+   Header
+   ============================================================================ */
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+  border-bottom: 1px solid var(--border-color);
+}
+
+header h1 {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* Native Status Indicator */
+.status-indicator {
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--accent-yellow);
+  color: #1e1e2e;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* ============================================================================
+   Context Section (Current Tab)
+   ============================================================================ */
+
+#context {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+#context .label {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+#context .domain {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 12px;
+  color: var(--accent-blue);
+  font-weight: 500;
+}
+
+/* ============================================================================
+   Domains Container
+   ============================================================================ */
+
+#domains-container {
+  padding: 12px 16px;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+#domains-container h2 {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+#domains-container h2 span {
+  color: var(--accent-red);
+  font-weight: 700;
+}
+
+/* ============================================================================
+   Domains List
+   ============================================================================ */
+
+#domains-list {
+  list-style: none;
+}
+
+#domains-list li {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  background: var(--bg-secondary);
+  border-radius: 6px;
+  border-left: 3px solid var(--accent-red);
+  transition: background 0.15s ease;
+}
+
+#domains-list li:hover {
+  background: var(--bg-tertiary);
+}
+
+#domains-list li .hostname {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 12px;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+#domains-list li .hostname::before {
+  content: '⚠️ ';
+  font-size: 11px;
+}
+
+#domains-list li .error-type {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 3px;
+  font-family: monospace;
+}
+
+/* Empty Message */
+#empty-message {
+  text-align: center;
+  padding: 24px 16px;
+  color: var(--accent-green);
+  font-size: 13px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ============================================================================
+   Verification Results Section
+   ============================================================================ */
+
+#verify-results {
+  padding: 12px 16px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border-color);
+}
+
+#verify-results h2 {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent-yellow);
+  margin-bottom: 10px;
+}
+
+#verify-list {
+  list-style: none;
+}
+
+#verify-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 11px;
+}
+
+#verify-list li .status-icon {
+  font-size: 12px;
+}
+
+#verify-list li .domain-name {
+  flex: 1;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+#verify-list li .whitelist-status {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+#verify-list li .whitelist-status.in-whitelist {
+  background: var(--accent-green);
+  color: #1e1e2e;
+}
+
+#verify-list li .whitelist-status.not-in-whitelist {
+  background: var(--accent-red);
+  color: white;
+}
+
+/* ============================================================================
+   Footer (Action Buttons)
+   ============================================================================ */
+
+footer {
+  display: flex;
+  gap: 6px;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+}
+
+footer button {
+  flex: 1;
+  padding: 10px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+#btn-copy {
+  background: linear-gradient(135deg, #3742fa 0%, #5352ed 100%);
+  color: white;
+}
+
+#btn-copy:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(55, 66, 250, 0.4);
+}
+
+#btn-copy:active {
+  transform: translateY(0);
+}
+
+#btn-verify {
+  background: linear-gradient(135deg, #ffa502 0%, #ff7f50 100%);
+  color: #1e1e2e;
+}
+
+#btn-verify:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 165, 2, 0.4);
+}
+
+#btn-verify:active {
+  transform: translateY(0);
+}
+
+#btn-verify:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+#btn-clear {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+#btn-clear:hover {
+  background: var(--accent-red);
+  color: white;
+  border-color: var(--accent-red);
+}
+
+/* ============================================================================
+   Toast Notification
+   ============================================================================ */
+
+#toast {
+  position: fixed;
+  bottom: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 20px;
+  background: var(--accent-green);
+  color: #1e1e2e;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  animation: slideUp 0.3s ease;
+  z-index: 100;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* ============================================================================
+   Scrollbar Styling
+   ============================================================================ */
+
+#domains-container::-webkit-scrollbar,
+#verify-results::-webkit-scrollbar {
+  width: 6px;
+}
+
+#domains-container::-webkit-scrollbar-track,
+#verify-results::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+#domains-container::-webkit-scrollbar-thumb,
+#verify-results::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+#domains-container::-webkit-scrollbar-thumb:hover,
+#verify-results::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}

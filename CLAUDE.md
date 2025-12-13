@@ -4,233 +4,284 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a modular DNS whitelist system (v3.4) based on dnsmasq that implements a "deny all, allow specific" internet access control policy. The system blocks all DNS domains by default, only allowing those explicitly whitelisted. It combines DNS sinkholing with firewall rules and browser policies for multi-layered protection.
+This is a **DNS-based URL whitelist enforcement system** (v3.4) for Linux that uses `dnsmasq` as a DNS sinkhole to restrict network access to only whitelisted domains. It's designed for educational environments to control internet access on workstations.
 
-**Language**: Bash (shell scripts)
-**Target OS**: Ubuntu 20.04+ / Debian 10+ (x86_64)
-**Requires**: root/sudo access
+**Key Concept**: The system blocks all DNS resolution by default (NXDOMAIN), then explicitly allows only whitelisted domains to resolve. Combined with restrictive iptables rules that force all DNS through localhost, this creates an effective content filter.
 
 ## Architecture
 
-The system is divided into **5 core modules** that separate concerns:
+### Core Components
 
-### Core Modules (lib/)
+1. **dnsmasq DNS Sinkhole** (`/etc/dnsmasq.d/url-whitelist.conf`)
+   - Returns NXDOMAIN for all domains by default via `address=/#/`
+   - Explicitly allows whitelisted domains via `server=/domain.com/$PRIMARY_DNS`
+   - Essential system domains (GitHub, captive portal detection, NTP) are always allowed
 
-1. **common.sh** - Shared infrastructure
-   - Global configuration variables and paths
-   - Logging functions
-   - Whitelist parsing (domains, blocked-subdomains, blocked-paths)
-   - DNS detection (finds upstream DNS server from NetworkManager, systemd-resolved, or resolv.conf)
-   - Utility functions (IP validation, etc.)
+2. **Firewall Layer** (`lib/firewall.sh`)
+   - Blocks all external DNS queries (port 53, 853) except to localhost and upstream DNS
+   - Blocks common VPN ports (OpenVPN, WireGuard, PPTP) and Tor
+   - Allows HTTP/HTTPS (trusts DNS sinkhole for enforcement)
+   - Allows ICMP, DHCP, NTP, and private networks (for captive portals)
 
-2. **dns.sh** - DNS sinkhole configuration
-   - Manages dnsmasq service startup/config
-   - Generates dnsmasq config files (denies all by default, allows whitelisted domains)
-   - Configures /etc/resolv.conf to use localhost DNS
-   - Handles port 53 conflicts (stops systemd-resolved)
-   - Detects and saves upstream DNS server
+3. **Browser Policies** (`lib/browser.sh`)
+   - Firefox: Enforces WebsiteFilter and SearchEngines policies via `/etc/firefox/policies/policies.json`
+   - Chromium/Chrome: Enforces URLBlocklist via managed policies
+   - Forces DuckDuckGo as default search engine, blocks Google search
 
-3. **firewall.sh** - Multi-layer traffic blocking
-   - iptables rules to block alternative DNS ports (53, 853)
-   - VPN protocol blocking (OpenVPN, WireGuard, PPTP)
-   - Tor network blocking
-   - Allows only essential traffic (DHCP, ICMP, loopback, established connections)
-   - Can be activated/deactivated
+4. **Whitelist Management** (`scripts/dnsmasq-whitelist.sh`)
+   - Downloads whitelist from configurable URL (default: GitHub)
+   - Parses three sections: `## WHITELIST`, `## BLOCKED-SUBDOMAINS`, `## BLOCKED-PATHS`
+   - Supports remote emergency disable via `# DESACTIVADO` marker
+   - Runs every 5 minutes via systemd timer
+   - Closes browsers only when policies change (to avoid disruption)
 
-4. **browser.sh** - Client-side enforcement
-   - Generates Firefox policies.json for policy-based blocking
-   - Generates Chromium extension blocklists
-   - Blocks specific URL paths listed in whitelist
+5. **Watchdog** (`scripts/dnsmasq-watchdog.sh`)
+   - Health checks every 1 minute
+   - Auto-recovers dnsmasq, upstream DNS config, and resolv.conf
+   - Enters fail-open mode after 3 consecutive failures
 
-5. **services.sh** - systemd integration
-   - Creates service units (dnsmasq service)
-   - Creates timer units (dnsmasq-whitelist.timer runs every 5 min, dnsmasq-watchdog.timer every 1 min)
-   - Enables/disables services
+6. **Captive Portal Detector** (`scripts/captive-portal-detector.sh`)
+   - Detects captive portals via `http://detectportal.firefox.com/success.txt`
+   - Temporarily disables firewall when captive portal detected
+   - Re-enables firewall after authentication
+   - Runs continuously as a service
 
-### Operational Scripts (scripts/)
+### Modular Library Structure
 
-1. **install.sh** - Main installation orchestrator
-   - Parses CLI flags (--whitelist-url, --unattended)
-   - Loads all modules sequentially
-   - Installs dependencies (apt-get)
-   - Deploys code to system directories
-   - Performs 10-step installation (see install.sh for full details)
+All functionality is split into reusable libraries in `/usr/local/lib/whitelist-system/lib/`:
+- `common.sh` - Shared variables, logging, whitelist parsing
+- `dns.sh` - DNS configuration, dnsmasq management
+- `firewall.sh` - iptables rules, connection flushing
+- `browser.sh` - Browser policy generation and enforcement
+- `services.sh` - systemd service creation and management
 
-2. **dnsmasq-whitelist.sh** - Periodic whitelist updater (runs via timer)
-   - Downloads whitelist from configured URL
-   - Detects `#DESACTIVADO` flag for remote disabling (fail-open mode)
-   - Regenerates dnsmasq config
-   - Applies browser policies
-   - Handles captive portal detection
+## Installation Paths
 
-3. **dnsmasq-watchdog.sh** - Health monitor (runs via timer)
-   - Verifies dnsmasq process is running
-   - Tests DNS resolution validity
-   - Auto-recovers from failures
-   - Validates upstream DNS connectivity
+- **Scripts**: `/usr/local/bin/`
+  - `dnsmasq-whitelist.sh` - Main update script
+  - `dnsmasq-watchdog.sh` - Health monitoring
+  - `captive-portal-detector.sh` - Captive portal handling
+  - `dnsmasq-init-resolv.sh` - DNS upstream initialization
+  - `whitelist` - Unified CLI command
 
-4. **captive-portal-detector.sh** - WiFi authentication handler
-   - Continuously checks for captive portals
-   - Temporarily disables firewall for authentication
-   - Re-enables firewall after successful auth
-   - Runs as system service
+- **Libraries**: `/usr/local/lib/whitelist-system/lib/*.sh`
 
-5. **whitelist-cmd.sh** - User-facing CLI tool
-   - `whitelist` command for manual operations
-   - View/modify whitelist settings
-   - Check system status
+- **Configuration**: `/var/lib/url-whitelist/`
+  - `whitelist.txt` - Downloaded whitelist
+  - `original-dns.conf` - Detected upstream DNS
+  - `whitelist-url.conf` - Whitelist source URL
+  - `dnsmasq.hash` - Config change detection
+  - `browser-policies.hash` - Browser policy change detection
 
-## Installation Directories
+- **Logs**: `/var/log/url-whitelist.log` (rotated daily, 7 days)
 
-After installation, the system is distributed to:
+## Common Development Tasks
+
+### Building and Testing
+
+There is no build process. This is a bash-based system.
+
+**Install the system:**
+```bash
+sudo ./install.sh
+# Or with custom whitelist URL:
+sudo ./install.sh --whitelist-url "https://example.com/whitelist.txt"
+# Or unattended (no prompts):
+sudo ./install.sh --unattended
+```
+
+**Test the system:**
+```bash
+whitelist status    # Check all services and DNS
+whitelist test      # Test DNS resolution
+whitelist domains   # List whitelisted domains
+whitelist check google.com  # Check specific domain
+whitelist health    # Run health checks
+```
+
+**View logs:**
+```bash
+whitelist logs      # Follow logs in real-time
+whitelist log 100   # Show last 100 lines
+```
+
+**Force updates:**
+```bash
+sudo whitelist update    # Force whitelist download and apply
+sudo whitelist force     # Force apply changes (closes browsers, flushes connections)
+sudo whitelist restart   # Restart all services
+```
+
+**Uninstall:**
+```bash
+sudo ./uninstall.sh
+# Or unattended:
+sudo ./uninstall.sh --unattended
+```
+
+**Quick reinstall (for development):**
+```bash
+sudo ./auto-reinstall.sh
+```
+
+### Testing Changes to Scripts
+
+After modifying scripts in the repository:
+
+1. **For library changes** (`lib/*.sh`):
+   ```bash
+   sudo cp lib/*.sh /usr/local/lib/whitelist-system/lib/
+   sudo whitelist restart
+   ```
+
+2. **For main scripts** (`scripts/*.sh`):
+   ```bash
+   sudo cp scripts/dnsmasq-whitelist.sh /usr/local/bin/
+   sudo systemctl restart dnsmasq-whitelist.timer
+   ```
+
+3. **For full reinstall** (recommended during development):
+   ```bash
+   sudo ./auto-reinstall.sh
+   ```
+
+### Debugging
+
+**Check service status:**
+```bash
+systemctl status dnsmasq
+systemctl status dnsmasq-whitelist.timer
+systemctl status dnsmasq-watchdog.timer
+systemctl status captive-portal-detector.service
+```
+
+**View service logs:**
+```bash
+journalctl -u dnsmasq -f
+journalctl -u dnsmasq-whitelist.service -f
+journalctl -u dnsmasq-watchdog.service -f
+```
+
+**Check firewall rules:**
+```bash
+sudo iptables -L OUTPUT -n -v
+```
+
+**Check DNS configuration:**
+```bash
+cat /etc/dnsmasq.d/url-whitelist.conf
+cat /etc/resolv.conf
+cat /run/dnsmasq/resolv.conf
+```
+
+**Test DNS resolution manually:**
+```bash
+dig @127.0.0.1 google.com
+dig @127.0.0.1 example.com +short
+nslookup google.com 127.0.0.1
+```
+
+**Check browser policies:**
+```bash
+cat /etc/firefox/policies/policies.json | python3 -m json.tool
+cat /etc/chromium/policies/managed/url-whitelist.json | python3 -m json.tool
+```
+
+## Key Implementation Details
+
+### Whitelist File Format
+
+The whitelist file supports three sections:
 
 ```
-/usr/local/lib/whitelist-system/    # Code and library modules
-/usr/local/bin/whitelist            # User command
-/var/lib/url-whitelist/             # Configuration (whitelist.txt, url config)
-/etc/dnsmasq.d/                     # dnsmasq config files
-/var/log/                           # System logs (url-whitelist.log)
-```
-
-## Whitelist Format
-
-The whitelist file supports three sections (downloaded via timer from remote URL):
-
-```
-## WHITELIST
-example.com
-subdomain.example.com
+# Comments are allowed
+google.com
+github.com
 
 ## BLOCKED-SUBDOMAINS
+# These subdomains are explicitly blocked even if parent domain is allowed
 ads.example.com
 
 ## BLOCKED-PATHS
-example.com/tracking
+# These URL patterns are blocked in browsers via WebsiteFilter/URLBlocklist
+*/ads/*
+*/tracking/*
 ```
 
-Special flag: `#DESACTIVADO` at file start enables fail-open mode (all access allowed, firewall disabled).
+### Emergency Remote Disable
 
-## Development Commands
+If the first non-empty line of the whitelist contains `# DESACTIVADO` (case-insensitive), the system enters fail-open mode:
+- Disables firewall (allows all traffic)
+- Clears browser policies
+- Configures dnsmasq as passthrough
+- Closes all browsers
 
-### Build/Deployment
-```bash
-# Full installation (requires sudo, copies code to system)
-sudo ./install.sh
+This allows remote emergency shutdown by modifying the whitelist URL.
 
-# Custom whitelist URL
-sudo ./install.sh --whitelist-url "https://example.com/whitelist.txt"
+### Change Detection and Browser Closure
 
-# Unattended installation (no prompts)
-sudo ./install.sh --unattended
+The system uses MD5 hashes to detect configuration changes:
+- `dnsmasq.hash` - Tracks DNS configuration changes
+- `browser-policies.hash` - Tracks browser policy changes
 
-# Uninstall system
-sudo ./uninstall.sh
+**Browsers are only closed when:**
+1. Browser policies change (WebsiteFilter or SearchEngines)
+2. System transitions from disabled to enabled (firewall reactivation)
+3. Remote disable is triggered
+
+This minimizes disruption while ensuring policy enforcement.
+
+### DNS Upstream Detection
+
+The system attempts to detect the upstream DNS in this order:
+1. Previously saved DNS from `/var/lib/url-whitelist/original-dns.conf`
+2. NetworkManager via `nmcli dev show`
+3. systemd-resolved from `/run/systemd/resolve/resolv.conf`
+4. Gateway IP as DNS
+5. Fallback to Google DNS (8.8.8.8)
+
+The detected DNS is validated by testing resolution of `google.com`.
+
+### Fail-Open Design Philosophy
+
+The system is designed to fail open (permissive) rather than fail closed (restrictive) to avoid breaking network connectivity:
+- If whitelist download fails, uses existing whitelist
+- If dnsmasq fails to start 3 times, disables firewall
+- If captive portal detected, disables firewall
+- Watchdog automatically recovers from transient failures
+
+### Locking and Race Conditions
+
+- `dnsmasq-whitelist.sh` and `captive-portal-detector.sh` share a lock file (`/var/run/whitelist-update.lock`) via `flock` to prevent concurrent firewall modifications
+- Lock is automatically released on script exit (via trap)
+
+## Critical DNS Sinkhole Pattern
+
+The order of rules in dnsmasq configuration is critical:
+
+```
+# MUST BE FIRST - blocks everything by default
+address=/#/
+
+# THEN - explicitly allow domains
+server=/github.com/8.8.8.8
+server=/google.com/8.8.8.8
 ```
 
-### Testing & Debugging
-```bash
-# Test DNS resolution (local dnsmasq)
-dig @127.0.0.1 example.com
+If the order is reversed, the whitelist won't work. The `address=/#/` directive catches all domains not explicitly allowed by previous `server=` directives.
 
-# Test system DNS
-dig example.com
+## System Requirements
 
-# Validate dnsmasq configuration
-dnsmasq --test -C /etc/dnsmasq.d/url-whitelist.conf
+- Linux with systemd
+- Root/sudo access
+- Packages: `iptables`, `iptables-persistent`, `ipset`, `curl`, `dnsmasq`, `libcap2-bin`, `dnsutils`, `conntrack`, `python3`
+- Port 53 must be available (systemd-resolved is disabled during install)
 
-# Check dnsmasq status
-sudo systemctl status dnsmasq
-sudo journalctl -u dnsmasq -f
+## Version History
 
-# View whitelist update logs
-sudo journalctl -u dnsmasq-whitelist.service -n 50
+Current version: **3.4**
 
-# View watchdog logs
-sudo journalctl -u dnsmasq-watchdog.service -f
-
-# Check main log file
-tail -f /var/log/url-whitelist.log
-
-# View whitelist content
-sudo grep "^example.com" /var/lib/url-whitelist/whitelist.txt
-
-# Check firewall rules
-sudo iptables -L OUTPUT
-```
-
-### Common Development Tasks
-
-**Adding a new whitelist section/feature**: Edit the parsing logic in `lib/common.sh` and regeneration logic in relevant module (dns.sh for DNS, browser.sh for browser policies, etc.)
-
-**Modifying dnsmasq behavior**: Edit `generate_dnsmasq_config()` function in `lib/dns.sh`, then restart: `sudo systemctl restart dnsmasq`
-
-**Adding firewall rules**: Edit `activate_firewall()` in `lib/firewall.sh`
-
-**Testing installation locally**: Run `sudo ./install.sh` in development directory. To reset, run `sudo ./uninstall.sh` and clean /var/lib/url-whitelist and /var/log/url-whitelist.log
-
-## Key Implementation Patterns
-
-### Module Loading
-All scripts that need functionality source the required modules:
-```bash
-source "$INSTALL_DIR/lib/common.sh"
-source "$INSTALL_DIR/lib/dns.sh"
-```
-
-### Logging
-Use the shared `log()` function (defined in common.sh):
-```bash
-log "This message appears in /var/log/url-whitelist.log with timestamp"
-```
-
-### Locking
-The dnsmasq-whitelist.sh script uses flock to prevent race conditions with captive-portal-detector:
-```bash
-exec 200>"$LOCK_FILE"
-flock -n 200  # Exclusive lock, non-blocking
-```
-
-### Error Handling
-install.sh uses `set -e` to exit on any error. Other scripts handle errors individually where needed.
-
-### Configuration Persistence
-Whitelist URL is stored in `/var/lib/url-whitelist/whitelist-url.conf`
-Original upstream DNS is saved in `/var/lib/url-whitelist/original-dns.conf`
-
-## Systemd Services & Timers
-
-The system creates:
-- `dnsmasq.service` - Main DNS server
-- `dnsmasq-whitelist.timer` - Runs dnsmasq-whitelist.service every 5 minutes (2 min after boot)
-- `dnsmasq-watchdog.timer` - Runs dnsmasq-watchdog.service every 1 minute
-- `captive-portal-detector.service` - Continuous WiFi portal detection
-
-View timer status: `sudo systemctl list-timers`
-
-## Multi-Layer Protection Strategy
-
-The system implements defense-in-depth:
-
-1. **DNS Layer** (dnsmasq)
-   - `address=/#/127.0.0.1` blocks all domains
-   - `server=/whitelisted.com/upstream-dns` allows specific domains
-   - Blocks DNS-over-HTTPS on alternate ports
-
-2. **Firewall Layer** (iptables)
-   - Blocks alternative DNS ports (53, 853, 5053)
-   - Blocks VPN protocols
-   - Blocks Tor entry nodes
-   - Only allows essential services
-
-3. **Browser Layer** (browser policies)
-   - Firefox: policies.json enforces search engine, blocks extensions
-   - Chromium: managed policies block specific URLs
-   - Blocks specific URL paths even if domain is whitelisted
-
-## Important Notes
-
-- The system runs with `set -e` in install.sh, so any command failure stops execution
-- DNS upstream detection is smart - tries saved config, NetworkManager, systemd-resolved, then /etc/resolv.conf
-- Whitelist updates are idempotent - can be run multiple times safely
-- Captive portal detection happens in background and temporarily disables firewall
-- The #DESACTIVADO flag provides emergency remote shutdown capability
+Version is stored in:
+- `install.sh` - `VERSION="3.4"`
+- `lib/common.sh` - `VERSION="3.4"`
+- Comments in all major scripts

@@ -18,13 +18,19 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Verificar root
-require_root() {
-    if [ "$EUID" -ne 0 ]; then
-        echo -e "${RED}ERROR: Requiere sudo${NC}"
-        exit 1
+# Comandos que requieren root
+ROOT_COMMANDS="update health force enable disable restart"
+
+# Auto-elevar a root si el comando lo requiere
+auto_elevate() {
+    local cmd="${1:-status}"
+    if [[ " $ROOT_COMMANDS " =~ " $cmd " ]] && [ "$EUID" -ne 0 ]; then
+        exec sudo "$0" "$@"
     fi
 }
+
+# Llamar auto-elevación con los argumentos originales
+auto_elevate "$@"
 
 # Mostrar estado
 cmd_status() {
@@ -66,7 +72,6 @@ cmd_status() {
 
 # Forzar actualización
 cmd_update() {
-    require_root
     echo -e "${BLUE}Actualizando whitelist...${NC}"
     /usr/local/bin/dnsmasq-whitelist.sh
 }
@@ -140,7 +145,6 @@ cmd_check() {
 
 # Health check
 cmd_health() {
-    require_root
     /usr/local/bin/dnsmasq-watchdog.sh
     echo ""
     if [ -f "$CONFIG_DIR/health-status" ]; then
@@ -150,7 +154,6 @@ cmd_health() {
 
 # Forzar aplicación
 cmd_force() {
-    require_root
     source "$INSTALL_DIR/lib/firewall.sh"
     source "$INSTALL_DIR/lib/browser.sh"
     
@@ -167,17 +170,23 @@ cmd_force() {
 
 # Habilitar
 cmd_enable() {
-    require_root
     source "$INSTALL_DIR/lib/services.sh"
-    
+    source "$INSTALL_DIR/lib/firewall.sh"
+    source "$INSTALL_DIR/lib/browser.sh"
+
     echo -e "${BLUE}Habilitando sistema...${NC}"
     enable_services
     /usr/local/bin/dnsmasq-whitelist.sh
+
+    # Forzar cierre de navegadores y limpieza de conexiones
+    force_browser_close
+    flush_connections
+
+    echo -e "${GREEN}✓ Sistema habilitado${NC}"
 }
 
 # Deshabilitar
 cmd_disable() {
-    require_root
     source "$INSTALL_DIR/lib/firewall.sh"
     source "$INSTALL_DIR/lib/browser.sh"
     
@@ -206,7 +215,6 @@ EOF
 
 # Reiniciar
 cmd_restart() {
-    require_root
     echo -e "${BLUE}Reiniciando servicios...${NC}"
     
     systemctl restart dnsmasq
@@ -226,17 +234,17 @@ cmd_help() {
     echo ""
     echo "Comandos:"
     echo "  status          Estado del sistema"
-    echo "  update          Forzar actualización (sudo)"
+    echo "  update          Forzar actualización"
     echo "  test            Probar resolución DNS"
     echo "  logs            Ver logs en tiempo real"
     echo "  log [N]         Ver últimas N líneas del log"
     echo "  domains [texto] Listar dominios (filtrar opcional)"
     echo "  check <dominio> Verificar si dominio está permitido"
-    echo "  health          Verificar salud del sistema (sudo)"
-    echo "  force           Forzar aplicación de cambios (sudo)"
-    echo "  enable          Habilitar sistema (sudo)"
-    echo "  disable         Deshabilitar sistema (sudo)"
-    echo "  restart         Reiniciar servicios (sudo)"
+    echo "  health          Verificar salud del sistema"
+    echo "  force           Forzar aplicación de cambios"
+    echo "  enable          Habilitar sistema"
+    echo "  disable         Deshabilitar sistema"
+    echo "  restart         Reiniciar servicios"
     echo "  help            Mostrar esta ayuda"
     echo ""
 }

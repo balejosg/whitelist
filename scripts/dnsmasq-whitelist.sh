@@ -87,12 +87,15 @@ cleanup_system() {
     log "=== Activando modo fail-open ==="
     
     # Limpiar firewall
+    log "Desactivando firewall..."
     deactivate_firewall
     
     # Limpiar políticas de navegadores
+    log "Limpiando políticas de navegadores..."
     cleanup_browser_policies
     
     # dnsmasq en modo passthrough
+    log "Configurando dnsmasq en modo passthrough..."
     cat > "$DNSMASQ_CONF" << EOF
 # MODO FAIL-OPEN - Sin restricciones
 no-resolv
@@ -102,11 +105,17 @@ bind-interfaces
 server=$PRIMARY_DNS
 EOF
     
+    # CRÍTICO: Borrar hashes para forzar regeneración cuando se reactive
+    rm -f "$DNSMASQ_CONF_HASH" 2>/dev/null || true
+    rm -f "$BROWSER_POLICIES_HASH" 2>/dev/null || true
+    
+    log "Reiniciando dnsmasq..."
     systemctl restart dnsmasq 2>/dev/null || true
-    
-    # Cerrar navegadores
-    force_browser_close
-    
+
+    # Limpiar conexiones
+    log "Limpiando conexiones..."
+    flush_connections
+
     log "=== Sistema en modo fail-open ==="
 }
 
@@ -152,16 +161,8 @@ main() {
     fi
     
     # Descargar whitelist
-    if download_whitelist; then
-        # Verificar desactivación remota
-        if check_emergency_disable; then
-            log "=== SISTEMA DESACTIVADO REMOTAMENTE ==="
-            cleanup_system
-            return
-        fi
-    else
-        log "⚠ Usando whitelist existente"
-        # Si no podemos descargar Y no hay whitelist previo, modo fail-open
+    if ! download_whitelist; then
+        log "⚠ Error al descargar - usando whitelist existente"
         if [ ! -f "$WHITELIST_FILE" ]; then
             log "⚠ Sin whitelist disponible - modo fail-open"
             cleanup_system
@@ -169,19 +170,65 @@ main() {
         fi
     fi
     
+    # SIEMPRE verificar desactivación (tanto si se descargó como si usamos el existente)
+    if check_emergency_disable; then
+        # Solo actuar si es una NUEVA desactivación (transición)
+        if [ ! -f "$SYSTEM_DISABLED_FLAG" ]; then
+            log "=== SISTEMA DESACTIVADO REMOTAMENTE ==="
+            cleanup_system
+            # Cerrar navegadores solo en la transición activo → desactivado
+            log "Cerrando navegadores por desactivación del sistema..."
+            force_browser_close
+            # Marcar sistema como desactivado
+            touch "$SYSTEM_DISABLED_FLAG"
+        else
+            log "Sistema ya desactivado - sin cambios"
+        fi
+        return
+    fi
+
+    # Si llegamos aquí, el sistema está activo - borrar flag si existía
+    if [ -f "$SYSTEM_DISABLED_FLAG" ]; then
+        log "Sistema reactivándose desde modo desactivado"
+        rm -f "$SYSTEM_DISABLED_FLAG"
+    fi
+    
     # Parsear secciones
     parse_whitelist_sections "$WHITELIST_FILE"
     
+    # Guardar estado del firewall ANTES de hacer cambios
+    local firewall_was_inactive=false
+    if [ "$(check_firewall_status)" != "active" ]; then
+        firewall_was_inactive=true
+    fi
+
     # Generar configuración
     generate_dnsmasq_config
-    
-    # Generar políticas de navegadores
+
+    # Generar políticas de navegadores (WebsiteFilter + SearchEngines)
     generate_firefox_policies
     generate_chromium_policies
+    apply_search_engine_policies
+
+    # Verificar si las políticas de navegador cambiaron
+    # Comparar contra hash guardado de ejecución anterior, no contra hash pre-regeneración
+    local new_policies_hash=$(get_policies_hash)
+    local old_policies_hash=""
+    if [ -f "$BROWSER_POLICIES_HASH" ]; then
+        old_policies_hash=$(cat "$BROWSER_POLICIES_HASH" 2>/dev/null)
+    fi
+
+    local policies_changed=false
+    if [ "$old_policies_hash" != "$new_policies_hash" ]; then
+        policies_changed=true
+        log "Detectados cambios en políticas de navegador"
+        # Guardar nuevo hash
+        echo "$new_policies_hash" > "$BROWSER_POLICIES_HASH"
+    fi
     
-    # Aplicar cambios si es necesario
+    # Aplicar cambios de dnsmasq si es necesario
     if has_config_changed; then
-        log "Detectados cambios en configuración..."
+        log "Detectados cambios en configuración DNS - aplicando..."
         
         if restart_dnsmasq; then
             # Guardar hash
@@ -191,7 +238,6 @@ main() {
             if verify_dns; then
                 log "✓ DNS funcional"
                 activate_firewall
-                force_apply_changes
             else
                 log "⚠ DNS no funcional - modo permisivo"
                 deactivate_firewall
@@ -202,18 +248,29 @@ main() {
             return
         fi
     else
-        log "Sin cambios en configuración"
-        
-        # Solo activar firewall si DNS funciona
+        # Sin cambios en DNS, pero verificar firewall
         if verify_dns; then
-            if [ "$(check_firewall_status)" != "active" ]; then
-                log "Firewall no activo - reconfigurando..."
+            if [ "$firewall_was_inactive" = true ]; then
+                log "Reactivando firewall..."
                 activate_firewall
             fi
         else
             log "⚠ DNS no funcional - manteniendo firewall permisivo"
             deactivate_firewall
         fi
+    fi
+    
+    # CERRAR NAVEGADORES solo si:
+    # 1. Las políticas de navegador cambiaron, O
+    # 2. El sistema pasó de desactivado a activado (firewall estaba inactivo)
+    if [ "$policies_changed" = true ]; then
+        log "Cerrando navegadores por cambio en políticas..."
+        force_browser_close
+        flush_connections
+    elif [ "$firewall_was_inactive" = true ]; then
+        log "Cerrando navegadores por reactivación del sistema..."
+        force_browser_close
+        flush_connections
     fi
     
     log "=== Actualización completada ==="

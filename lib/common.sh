@@ -16,6 +16,8 @@ LOG_FILE="/var/log/url-whitelist.log"
 # Archivos de configuración
 DNSMASQ_CONF="/etc/dnsmasq.d/url-whitelist.conf"
 DNSMASQ_CONF_HASH="$CONFIG_DIR/dnsmasq.hash"
+BROWSER_POLICIES_HASH="$CONFIG_DIR/browser-policies.hash"
+SYSTEM_DISABLED_FLAG="$CONFIG_DIR/system-disabled.flag"
 WHITELIST_FILE="$CONFIG_DIR/whitelist.txt"
 ORIGINAL_DNS_FILE="$CONFIG_DIR/original-dns.conf"
 

@@ -1,0 +1,70 @@
+#!/bin/bash
+################################################################################
+# build-xpi.sh - Empaqueta la extensión como archivo XPI
+# Parte del sistema Monitor de Bloqueos de Red
+################################################################################
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BUILD_DIR="$SCRIPT_DIR/build"
+XPI_NAME="monitor-bloqueos-red"
+
+# Colores
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+echo -e "${BLUE}Empaquetando extensión Firefox...${NC}"
+echo ""
+
+# Leer versión del manifest
+VERSION=$(grep '"version"' "$SCRIPT_DIR/manifest.json" | head -1 | sed 's/.*"version".*"\([^"]*\)".*/\1/')
+echo "  Versión: $VERSION"
+
+# Crear directorio de build
+rm -rf "$BUILD_DIR"
+mkdir -p "$BUILD_DIR"
+
+# Copiar archivos necesarios (excluyendo native y scripts de build)
+echo "  → Copiando archivos..."
+
+cp "$SCRIPT_DIR/manifest.json" "$BUILD_DIR/"
+cp "$SCRIPT_DIR/background.js" "$BUILD_DIR/"
+cp -r "$SCRIPT_DIR/popup" "$BUILD_DIR/"
+cp -r "$SCRIPT_DIR/icons" "$BUILD_DIR/"
+
+# Crear el archivo XPI (es un ZIP con extensión .xpi)
+XPI_FILE="$SCRIPT_DIR/${XPI_NAME}-${VERSION}.xpi"
+echo "  → Creando archivo XPI..."
+
+cd "$BUILD_DIR"
+zip -r -q "$XPI_FILE" ./*
+
+cd "$SCRIPT_DIR"
+
+# Limpiar
+rm -rf "$BUILD_DIR"
+
+# Verificar
+if [ -f "$XPI_FILE" ]; then
+    SIZE=$(du -h "$XPI_FILE" | cut -f1)
+    echo ""
+    echo -e "${GREEN}✓ Extensión empaquetada correctamente${NC}"
+    echo ""
+    echo "  Archivo: $XPI_FILE"
+    echo "  Tamaño:  $SIZE"
+    echo ""
+    echo "Para instalar:"
+    echo "  1. Abre Firefox → about:addons"
+    echo "  2. Clic en el engranaje → 'Instalar complemento desde archivo...'"
+    echo "  3. Selecciona el archivo XPI"
+    echo ""
+    echo "Nota: La extensión no está firmada, por lo que solo funcionará"
+    echo "      en Firefox Developer Edition/Nightly con xpinstall.signatures.required = false"
+    echo ""
+else
+    echo -e "${RED}Error: No se pudo crear el archivo XPI${NC}"
+    exit 1
+fi

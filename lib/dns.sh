@@ -129,11 +129,10 @@ generate_dnsmasq_config() {
     
     local temp_conf="${DNSMASQ_CONF}.tmp"
     
-    # Cabecera con configuración base
+    # Cabecera con configuración base (SIN fecha para que el hash sea estable)
     cat > "$temp_conf" << EOF
 # =============================================
 # URL Whitelist - dnsmasq DNS Sinkhole v$VERSION
-# Generado: $(date)
 # =============================================
 
 # Configuración base

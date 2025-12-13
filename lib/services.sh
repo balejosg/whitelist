@@ -51,7 +51,7 @@ After=network-online.target
 
 [Timer]
 OnBootSec=2min
-OnUnitActiveSec=5min
+OnCalendar=*:0/5
 AccuracySec=1min
 Persistent=true
 

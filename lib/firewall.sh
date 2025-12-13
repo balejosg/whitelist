@@ -125,7 +125,7 @@ flush_dns_cache() {
 
 # Verificar estado del firewall
 check_firewall_status() {
-    local rules=$(iptables -L OUTPUT -n 2>/dev/null | grep "dpt:53.*DROP" | wc -l)
+    local rules=$(iptables -L OUTPUT -n 2>/dev/null | grep "DROP.*dpt:53" | wc -l)
     if [ "$rules" -ge 2 ]; then
         echo "active"
         return 0
