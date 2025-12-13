@@ -1,0 +1,221 @@
+# Whitelist Browser Policies Module for Windows
+# Manages Firefox and Chrome/Edge policies
+
+# Import common functions
+$modulePath = Split-Path $PSScriptRoot -Parent
+Import-Module "$modulePath\lib\Common.psm1" -Force -ErrorAction SilentlyContinue
+
+function Set-FirefoxPolicies {
+    <#
+    .SYNOPSIS
+        Configures Firefox policies including search engines and blocked paths
+    .PARAMETER BlockedPaths
+        Array of paths/URLs to block
+    #>
+    param(
+        [string[]]$BlockedPaths = @()
+    )
+    
+    Write-WhitelistLog "Configuring Firefox policies..."
+    
+    # Firefox policy locations
+    $firefoxPaths = @(
+        "$env:ProgramFiles\Mozilla Firefox\distribution",
+        "${env:ProgramFiles(x86)}\Mozilla Firefox\distribution"
+    )
+    
+    $policiesSet = $false
+    
+    foreach ($firefoxPath in $firefoxPaths) {
+        $firefoxExe = Split-Path $firefoxPath -Parent
+        if (-not (Test-Path "$firefoxExe\firefox.exe")) {
+            continue
+        }
+        
+        # Create distribution folder if needed
+        if (-not (Test-Path $firefoxPath)) {
+            New-Item -ItemType Directory -Path $firefoxPath -Force | Out-Null
+        }
+        
+        # Build blocked URLs in Firefox format
+        $blockedUrls = @()
+        foreach ($path in $BlockedPaths) {
+            if ($path) {
+                # Normalize to Firefox WebsiteFilter format
+                if ($path -notmatch "^\*://") {
+                    $blockedUrls += "*://*$path*"
+                }
+                else {
+                    $blockedUrls += $path
+                }
+            }
+        }
+        
+        # Always block Google Search
+        $blockedUrls += @(
+            "*://www.google.com/search*",
+            "*://www.google.es/search*",
+            "*://google.com/search*",
+            "*://google.es/search*"
+        )
+        
+        $policies = @{
+            policies = @{
+                SearchEngines = @{
+                    Remove = @("Google", "Bing")
+                    Default = "DuckDuckGo"
+                    Add = @(
+                        @{
+                            Name = "DuckDuckGo"
+                            Description = "Privacy-focused search engine"
+                            Alias = "ddg"
+                            Method = "GET"
+                            URLTemplate = "https://duckduckgo.com/?q={searchTerms}"
+                            IconURL = "https://duckduckgo.com/favicon.ico"
+                        },
+                        @{
+                            Name = "Wikipedia (ES)"
+                            Description = "Free encyclopedia"
+                            Alias = "wiki"
+                            Method = "GET"
+                            URLTemplate = "https://es.wikipedia.org/wiki/Special:Search?search={searchTerms}"
+                        }
+                    )
+                }
+                WebsiteFilter = @{
+                    Block = $blockedUrls
+                }
+                DisableTelemetry = $true
+                OverrideFirstRunPage = ""
+            }
+        }
+        
+        $policiesPath = "$firefoxPath\policies.json"
+        $policies | ConvertTo-Json -Depth 10 | Set-Content $policiesPath -Encoding UTF8
+        
+        Write-WhitelistLog "Firefox policies written to: $policiesPath"
+        $policiesSet = $true
+    }
+    
+    if (-not $policiesSet) {
+        Write-WhitelistLog "Firefox not found, skipping policies" -Level WARN
+    }
+    
+    return $policiesSet
+}
+
+function Set-ChromePolicies {
+    <#
+    .SYNOPSIS
+        Configures Chrome/Edge policies via Registry
+    .PARAMETER BlockedPaths
+        Array of paths/URLs to block
+    #>
+    param(
+        [string[]]$BlockedPaths = @()
+    )
+    
+    Write-WhitelistLog "Configuring Chrome/Edge policies..."
+    
+    # Policy registry paths
+    $regPaths = @(
+        "HKLM:\SOFTWARE\Policies\Google\Chrome",
+        "HKLM:\SOFTWARE\Policies\Microsoft\Edge"
+    )
+    
+    foreach ($regPath in $regPaths) {
+        try {
+            # Create base path
+            if (-not (Test-Path $regPath)) {
+                New-Item -Path $regPath -Force | Out-Null
+            }
+            
+            # URL Blocklist
+            $blocklistPath = "$regPath\URLBlocklist"
+            if (Test-Path $blocklistPath) {
+                Remove-Item $blocklistPath -Recurse -Force
+            }
+            New-Item -Path $blocklistPath -Force | Out-Null
+            
+            $i = 1
+            foreach ($path in $BlockedPaths) {
+                if ($path) {
+                    Set-ItemProperty -Path $blocklistPath -Name $i -Value $path
+                    $i++
+                }
+            }
+            
+            # Block Google Search
+            Set-ItemProperty -Path $blocklistPath -Name $i -Value "*://www.google.*/search*"
+            
+            # Set default search engine to DuckDuckGo
+            Set-ItemProperty -Path $regPath -Name "DefaultSearchProviderEnabled" -Value 1 -Type DWord
+            Set-ItemProperty -Path $regPath -Name "DefaultSearchProviderName" -Value "DuckDuckGo"
+            Set-ItemProperty -Path $regPath -Name "DefaultSearchProviderSearchURL" -Value "https://duckduckgo.com/?q={searchTerms}"
+            
+            Write-WhitelistLog "Policies written to: $regPath"
+        }
+        catch {
+            Write-WhitelistLog "Failed to set policies for $regPath : $_" -Level WARN
+        }
+    }
+    
+    return $true
+}
+
+function Remove-BrowserPolicies {
+    <#
+    .SYNOPSIS
+        Removes all whitelist browser policies
+    #>
+    Write-WhitelistLog "Removing browser policies..."
+    
+    # Firefox
+    $firefoxPaths = @(
+        "$env:ProgramFiles\Mozilla Firefox\distribution\policies.json",
+        "${env:ProgramFiles(x86)}\Mozilla Firefox\distribution\policies.json"
+    )
+    
+    foreach ($path in $firefoxPaths) {
+        if (Test-Path $path) {
+            Remove-Item $path -Force -ErrorAction SilentlyContinue
+        }
+    }
+    
+    # Chrome/Edge registry
+    $regPaths = @(
+        "HKLM:\SOFTWARE\Policies\Google\Chrome\URLBlocklist",
+        "HKLM:\SOFTWARE\Policies\Microsoft\Edge\URLBlocklist"
+    )
+    
+    foreach ($path in $regPaths) {
+        if (Test-Path $path) {
+            Remove-Item $path -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+    
+    Write-WhitelistLog "Browser policies removed"
+}
+
+function Set-AllBrowserPolicies {
+    <#
+    .SYNOPSIS
+        Sets policies for all supported browsers
+    .PARAMETER BlockedPaths
+        Array of paths/URLs to block
+    #>
+    param(
+        [string[]]$BlockedPaths = @()
+    )
+    
+    Set-FirefoxPolicies -BlockedPaths $BlockedPaths
+    Set-ChromePolicies -BlockedPaths $BlockedPaths
+}
+
+# Export module members
+Export-ModuleMember -Function @(
+    'Set-FirefoxPolicies',
+    'Set-ChromePolicies',
+    'Remove-BrowserPolicies',
+    'Set-AllBrowserPolicies'
+)

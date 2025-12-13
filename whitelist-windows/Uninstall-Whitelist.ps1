@@ -1,0 +1,134 @@
+#Requires -RunAsAdministrator
+<#
+.SYNOPSIS
+    Uninstalls the Whitelist DNS system for Windows
+.DESCRIPTION
+    Removes firewall rules, scheduled tasks, browser policies, 
+    and restores original DNS settings.
+.PARAMETER KeepAcrylic
+    Keep Acrylic DNS Proxy installed
+.PARAMETER KeepLogs
+    Keep log files
+#>
+
+param(
+    [switch]$KeepAcrylic,
+    [switch]$KeepLogs
+)
+
+$ErrorActionPreference = "SilentlyContinue"
+$WhitelistRoot = "C:\Whitelist"
+
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host "  Whitelist DNS para Windows - Desinstalador" -ForegroundColor Cyan
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host ""
+
+# Import modules if available
+if (Test-Path "$WhitelistRoot\lib\Common.psm1") {
+    Import-Module "$WhitelistRoot\lib\Common.psm1" -Force -ErrorAction SilentlyContinue
+}
+if (Test-Path "$WhitelistRoot\lib\DNS.psm1") {
+    Import-Module "$WhitelistRoot\lib\DNS.psm1" -Force -ErrorAction SilentlyContinue
+}
+if (Test-Path "$WhitelistRoot\lib\Firewall.psm1") {
+    Import-Module "$WhitelistRoot\lib\Firewall.psm1" -Force -ErrorAction SilentlyContinue
+}
+if (Test-Path "$WhitelistRoot\lib\Browser.psm1") {
+    Import-Module "$WhitelistRoot\lib\Browser.psm1" -Force -ErrorAction SilentlyContinue
+}
+if (Test-Path "$WhitelistRoot\lib\Services.psm1") {
+    Import-Module "$WhitelistRoot\lib\Services.psm1" -Force -ErrorAction SilentlyContinue
+}
+
+# Step 1: Remove scheduled tasks
+Write-Host "[1/6] Eliminando tareas programadas..." -ForegroundColor Yellow
+Get-ScheduledTask -TaskName "Whitelist-*" -ErrorAction SilentlyContinue | 
+    Unregister-ScheduledTask -Confirm:$false -ErrorAction SilentlyContinue
+Write-Host "  Tareas eliminadas" -ForegroundColor Green
+
+# Step 2: Remove firewall rules
+Write-Host "[2/6] Eliminando reglas de firewall..." -ForegroundColor Yellow
+Get-NetFirewallRule -DisplayName "Whitelist-DNS-*" -ErrorAction SilentlyContinue | 
+    Remove-NetFirewallRule -ErrorAction SilentlyContinue
+Write-Host "  Reglas eliminadas" -ForegroundColor Green
+
+# Step 3: Restore DNS
+Write-Host "[3/6] Restaurando configuración DNS..." -ForegroundColor Yellow
+Get-NetAdapter | Where-Object Status -eq 'Up' | ForEach-Object {
+    Set-DnsClientServerAddress -InterfaceIndex $_.ifIndex -ResetServerAddresses -ErrorAction SilentlyContinue
+}
+Clear-DnsClientCache
+Write-Host "  DNS restaurado" -ForegroundColor Green
+
+# Step 4: Remove browser policies
+Write-Host "[4/6] Eliminando políticas de navegadores..." -ForegroundColor Yellow
+
+# Firefox
+$firefoxPolicies = @(
+    "$env:ProgramFiles\Mozilla Firefox\distribution\policies.json",
+    "${env:ProgramFiles(x86)}\Mozilla Firefox\distribution\policies.json"
+)
+foreach ($path in $firefoxPolicies) {
+    if (Test-Path $path) {
+        Remove-Item $path -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# Chrome/Edge registry
+$regPaths = @(
+    "HKLM:\SOFTWARE\Policies\Google\Chrome\URLBlocklist",
+    "HKLM:\SOFTWARE\Policies\Microsoft\Edge\URLBlocklist"
+)
+foreach ($path in $regPaths) {
+    if (Test-Path $path) {
+        Remove-Item $path -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+Write-Host "  Políticas eliminadas" -ForegroundColor Green
+
+# Step 5: Stop and optionally remove Acrylic
+Write-Host "[5/6] Deteniendo Acrylic DNS..." -ForegroundColor Yellow
+$acrylicService = Get-Service -DisplayName "*Acrylic*" -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($acrylicService) {
+    Stop-Service -Name $acrylicService.Name -Force -ErrorAction SilentlyContinue
+    
+    if (-not $KeepAcrylic) {
+        # Uninstall Acrylic service
+        $acrylicPath = "${env:ProgramFiles(x86)}\Acrylic DNS Proxy"
+        if (Test-Path "$acrylicPath\AcrylicService.exe") {
+            & "$acrylicPath\AcrylicService.exe" /UNINSTALL 2>$null
+        }
+        Write-Host "  Acrylic detenido y desinstalado" -ForegroundColor Green
+    }
+    else {
+        Write-Host "  Acrylic detenido (mantenido instalado)" -ForegroundColor Green
+    }
+}
+else {
+    Write-Host "  Acrylic no encontrado" -ForegroundColor Yellow
+}
+
+# Step 6: Remove whitelist files
+Write-Host "[6/6] Eliminando archivos..." -ForegroundColor Yellow
+if (Test-Path $WhitelistRoot) {
+    if ($KeepLogs) {
+        # Keep logs directory
+        Get-ChildItem $WhitelistRoot -Exclude "data" | Remove-Item -Recurse -Force
+        Get-ChildItem "$WhitelistRoot\data" -Exclude "logs" | Remove-Item -Recurse -Force
+        Write-Host "  Archivos eliminados (logs conservados)" -ForegroundColor Green
+    }
+    else {
+        Remove-Item $WhitelistRoot -Recurse -Force
+        Write-Host "  Archivos eliminados" -ForegroundColor Green
+    }
+}
+
+Write-Host ""
+Write-Host "============================================" -ForegroundColor Green
+Write-Host "  DESINSTALACIÓN COMPLETADA" -ForegroundColor Green
+Write-Host "============================================" -ForegroundColor Green
+Write-Host ""
+Write-Host "El sistema ha sido restaurado a su estado original."
+Write-Host "Puede ser necesario reiniciar para aplicar todos los cambios."
+Write-Host ""
