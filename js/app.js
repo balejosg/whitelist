@@ -1,6 +1,6 @@
 /**
  * Whitelist SPA - Main Application
- * Static SPA for managing DNS whitelist via GitHub API
+ * Static SPA for managing DNS whitelist via GitHub API with OAuth
  */
 
 // ============== State ==============
@@ -10,6 +10,8 @@ let currentGroupData = null;
 let currentGroupSha = null;
 let currentRuleType = 'whitelist';
 let allGroups = [];
+let currentUser = null;
+let canEdit = false;
 
 // ============== Toast ==============
 function showToast(message, type = 'success') {
@@ -27,68 +29,126 @@ function showScreen(screenId) {
     document.getElementById(screenId).classList.remove('hidden');
 }
 
-// ============== Setup Flow ==============
-async function checkSetup() {
-    if (!Config.isConfigured()) {
-        showScreen('setup-screen');
+// ============== OAuth Flow ==============
+async function init() {
+    // Check for OAuth callback
+    const callbackResult = OAuth.handleCallback();
+    if (callbackResult?.error) {
+        showScreen('login-screen');
+        document.getElementById('login-error').textContent =
+            'Error de autenticación: ' + callbackResult.error;
         return;
     }
 
-    try {
-        const config = Config.getRequired();
-        github = new GitHubAPI(config.token, config.owner, config.repo, config.branch || 'main');
+    // Check if logged in
+    if (!OAuth.isLoggedIn()) {
+        showScreen('login-screen');
+        return;
+    }
 
-        // Validate token
-        const user = await github.validateToken();
-        document.getElementById('current-user').textContent = user.login;
+    // Get user info
+    currentUser = await OAuth.getUser();
+    if (!currentUser) {
+        showScreen('login-screen');
+        return;
+    }
 
-        showScreen('dashboard-screen');
-        loadDashboard();
-    } catch (err) {
-        console.error('Setup error:', err);
-        showToast('Error de configuración: ' + err.message, 'error');
-        Config.clear();
-        showScreen('setup-screen');
+    // Check if repo config exists
+    const config = Config.get();
+    if (!config.owner || !config.repo) {
+        showConfigScreen();
+        return;
+    }
+
+    // Initialize GitHub API with OAuth token
+    github = new GitHubAPI(
+        OAuth.getToken(),
+        config.owner,
+        config.repo,
+        config.branch || 'main'
+    );
+
+    // Check write permissions
+    canEdit = await OAuth.canWrite(config.owner, config.repo);
+
+    document.getElementById('current-user').textContent = currentUser.login;
+    updateEditUI();
+    showScreen('dashboard-screen');
+    loadDashboard();
+}
+
+function showConfigScreen() {
+    document.getElementById('config-username').textContent = currentUser.login;
+    showScreen('config-screen');
+}
+
+function updateEditUI() {
+    // Hide/show edit buttons based on permissions
+    const editButtons = document.querySelectorAll(
+        '#new-group-btn, #save-config-btn, #delete-group-btn, #add-rule-btn, #bulk-add-btn'
+    );
+    editButtons.forEach(btn => {
+        btn.style.display = canEdit ? '' : 'none';
+    });
+
+    // Show read-only badge if no write access
+    const header = document.querySelector('.header-right');
+    const existingBadge = document.getElementById('readonly-badge');
+    if (!canEdit && !existingBadge) {
+        const badge = document.createElement('span');
+        badge.id = 'readonly-badge';
+        badge.className = 'user-badge';
+        badge.textContent = '👁️ Solo lectura';
+        badge.style.background = 'rgba(234, 179, 8, 0.2)';
+        badge.style.color = '#eab308';
+        header.insertBefore(badge, header.firstChild);
+    } else if (canEdit && existingBadge) {
+        existingBadge.remove();
     }
 }
 
-// Setup form handler
-document.getElementById('setup-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const errorEl = document.getElementById('setup-error');
-    errorEl.textContent = '';
+// Login button
+document.getElementById('github-login-btn').addEventListener('click', () => {
+    OAuth.login();
+});
 
-    const token = document.getElementById('setup-token').value.trim();
-    const owner = document.getElementById('setup-owner').value.trim();
-    const repo = document.getElementById('setup-repo').value.trim();
-    const branch = document.getElementById('setup-branch').value.trim() || 'main';
-    const gruposDir = document.getElementById('setup-grupos-dir').value.trim() || 'grupos';
-
-    if (!token || !owner || !repo) {
-        errorEl.textContent = 'Todos los campos son requeridos';
-        return;
-    }
-
-    try {
-        // Test connection
-        const testGithub = new GitHubAPI(token, owner, repo, branch);
-        await testGithub.validateToken();
-
-        // Save config
-        Config.save({ token, owner, repo, branch, gruposDir });
-
-        showToast('Configuración guardada');
-        checkSetup();
-    } catch (err) {
-        errorEl.textContent = err.message || 'Token o repositorio inválido';
+// Logout
+document.getElementById('logout-btn').addEventListener('click', () => {
+    if (confirm('¿Cerrar sesión?')) {
+        OAuth.logout();
+        showScreen('login-screen');
     }
 });
 
-// Logout / Reset config
-document.getElementById('logout-btn').addEventListener('click', () => {
-    if (confirm('¿Cerrar sesión y borrar configuración?')) {
-        Config.clear();
-        showScreen('setup-screen');
+// Repo config form
+document.getElementById('repo-config-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorEl = document.getElementById('config-error');
+    errorEl.textContent = '';
+
+    const owner = document.getElementById('config-owner').value.trim();
+    const repo = document.getElementById('config-repo').value.trim();
+    const branch = document.getElementById('config-branch').value.trim() || 'main';
+    const gruposDir = document.getElementById('config-grupos-dir').value.trim() || 'grupos';
+
+    // Test connection
+    try {
+        github = new GitHubAPI(OAuth.getToken(), owner, repo, branch);
+        await github.listFiles(gruposDir);
+
+        Config.save({ owner, repo, branch, gruposDir });
+        canEdit = await OAuth.canWrite(owner, repo);
+
+        document.getElementById('current-user').textContent = currentUser.login;
+        updateEditUI();
+        showScreen('dashboard-screen');
+        loadDashboard();
+    } catch (err) {
+        if (err.message.includes('Not Found')) {
+            errorEl.textContent = `Directorio "${gruposDir}" no encontrado en ${owner}/${repo}`;
+        } else {
+            errorEl.textContent = err.message;
+        }
     }
 });
 
@@ -98,7 +158,6 @@ async function loadDashboard() {
     const gruposDir = config.gruposDir || 'grupos';
 
     try {
-        // Load groups (txt files in grupos directory)
         const files = await github.listFiles(gruposDir);
         allGroups = files
             .filter(f => f.name.endsWith('.txt'))
@@ -108,7 +167,6 @@ async function loadDashboard() {
                 sha: f.sha
             }));
 
-        // Load stats for each group
         let totalWhitelist = 0;
         let totalBlocked = 0;
 
@@ -127,21 +185,14 @@ async function loadDashboard() {
             }
         }
 
-        // Update stats
         document.getElementById('stat-groups').textContent = allGroups.length;
         document.getElementById('stat-whitelist').textContent = totalWhitelist;
         document.getElementById('stat-blocked').textContent = totalBlocked;
 
-        // Render groups list
         renderGroupsList();
-
     } catch (err) {
         console.error('Dashboard error:', err);
-        if (err.message.includes('Not Found')) {
-            showToast(`Directorio "${gruposDir}" no encontrado. Crear primero.`, 'error');
-        } else {
-            showToast('Error cargando datos: ' + err.message, 'error');
-        }
+        showToast('Error cargando datos: ' + err.message, 'error');
     }
 }
 
@@ -152,7 +203,7 @@ function renderGroupsList() {
         list.innerHTML = `
             <div class="empty-state">
                 <p>No hay grupos configurados</p>
-                <button class="btn btn-primary" onclick="openNewGroupModal()">Crear primer grupo</button>
+                ${canEdit ? '<button class="btn btn-primary" onclick="openNewGroupModal()">Crear primer grupo</button>' : ''}
             </div>
         `;
         return;
@@ -191,10 +242,12 @@ async function openGroup(name) {
         document.getElementById('group-enabled').value = currentGroupData.enabled ? '1' : '0';
         document.getElementById('export-url').textContent = github.getRawUrl(path);
 
+        // Disable editing if no write access
+        document.getElementById('group-enabled').disabled = !canEdit;
+
         renderRules();
         updateRuleCounts();
 
-        // Reset tabs
         document.querySelectorAll('.tab').forEach(t => {
             t.classList.toggle('active', t.dataset.type === 'whitelist');
         });
@@ -226,10 +279,10 @@ function renderRules() {
         return;
     }
 
-    list.innerHTML = displayed.map((r, i) => `
+    list.innerHTML = displayed.map((r) => `
         <div class="rule-item">
             <span class="rule-value">${escapeHtml(r)}</span>
-            <button class="btn btn-ghost btn-icon rule-delete" onclick="deleteRule('${escapeHtml(r)}', event)">🗑️</button>
+            ${canEdit ? `<button class="btn btn-ghost btn-icon rule-delete" onclick="deleteRule('${escapeHtml(r)}', event)">🗑️</button>` : ''}
         </div>
     `).join('');
 }
@@ -259,14 +312,16 @@ document.getElementById('back-btn').addEventListener('click', () => {
     loadDashboard();
 });
 
-// Save config (enabled state)
+// Save config
 document.getElementById('save-config-btn').addEventListener('click', async () => {
+    if (!canEdit) return;
     currentGroupData.enabled = document.getElementById('group-enabled').value === '1';
     await saveCurrentGroup('Actualizar estado del grupo');
 });
 
 // Delete group
 document.getElementById('delete-group-btn').addEventListener('click', async () => {
+    if (!canEdit) return;
     if (!confirm('¿Eliminar este grupo y todas sus reglas?')) return;
 
     const config = Config.get();
@@ -292,6 +347,7 @@ document.getElementById('copy-url-btn').addEventListener('click', () => {
 
 // Delete rule
 async function deleteRule(value, event) {
+    if (!canEdit) return;
     event.stopPropagation();
 
     const typeKey = currentRuleType === 'blocked_subdomain' ? 'blocked_subdomains'
@@ -302,7 +358,6 @@ async function deleteRule(value, event) {
     await saveCurrentGroup(`Eliminar ${value} de ${currentGroup}`);
 }
 
-// Save current group to GitHub
 async function saveCurrentGroup(message) {
     const config = Config.get();
     const gruposDir = config.gruposDir || 'grupos';
@@ -329,7 +384,6 @@ function closeModal(id) {
     document.getElementById(id).classList.add('hidden');
 }
 
-// Close on background click or cancel
 document.querySelectorAll('.modal').forEach(modal => {
     modal.addEventListener('click', (e) => {
         if (e.target === modal) closeModal(modal.id);
@@ -344,14 +398,20 @@ document.querySelectorAll('.modal-close, .modal-cancel').forEach(btn => {
 });
 
 // New Group
-document.getElementById('new-group-btn').addEventListener('click', () => openModal('modal-new-group'));
+document.getElementById('new-group-btn').addEventListener('click', () => {
+    if (!canEdit) return;
+    openModal('modal-new-group');
+});
 
 function openNewGroupModal() {
+    if (!canEdit) return;
     openModal('modal-new-group');
 }
 
 document.getElementById('new-group-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!canEdit) return;
+
     const name = document.getElementById('new-group-name').value.toLowerCase().replace(/[^a-z0-9-_]/g, '-');
 
     if (!name) {
@@ -363,7 +423,6 @@ document.getElementById('new-group-form').addEventListener('submit', async (e) =
     const gruposDir = config.gruposDir || 'grupos';
     const path = `${gruposDir}/${name}.txt`;
 
-    // Create empty whitelist file
     const initialData = {
         enabled: true,
         whitelist: [],
@@ -384,10 +443,15 @@ document.getElementById('new-group-form').addEventListener('submit', async (e) =
 });
 
 // Add Rule
-document.getElementById('add-rule-btn').addEventListener('click', () => openModal('modal-add-rule'));
+document.getElementById('add-rule-btn').addEventListener('click', () => {
+    if (!canEdit) return;
+    openModal('modal-add-rule');
+});
 
 document.getElementById('add-rule-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!canEdit) return;
+
     const value = document.getElementById('new-rule-value').value.toLowerCase().trim();
 
     if (!value) {
@@ -412,10 +476,15 @@ document.getElementById('add-rule-form').addEventListener('submit', async (e) =>
 });
 
 // Bulk Add
-document.getElementById('bulk-add-btn').addEventListener('click', () => openModal('modal-bulk-add'));
+document.getElementById('bulk-add-btn').addEventListener('click', () => {
+    if (!canEdit) return;
+    openModal('modal-bulk-add');
+});
 
 document.getElementById('bulk-add-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!canEdit) return;
+
     const text = document.getElementById('bulk-values').value;
     const values = text.split('\n').map(v => v.toLowerCase().trim()).filter(v => v);
 
@@ -453,4 +522,4 @@ function escapeHtml(text) {
 }
 
 // ============== Init ==============
-checkSetup();
+init();

@@ -90,10 +90,12 @@ a:hover {
 }
 
 @keyframes pulse {
+
     0%,
     100% {
         transform: scale(1);
     }
+
     50% {
         transform: scale(1.05);
     }
@@ -246,6 +248,30 @@ a:hover {
     height: 32px;
     padding: 0;
     border-radius: 50%;
+}
+
+.btn-github {
+    background: #24292e;
+    color: white;
+    font-size: 1rem;
+    padding: 1rem 1.5rem;
+}
+
+.btn-github:hover {
+    background: #3a3f44;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-github svg {
+    margin-right: 0.5rem;
+}
+
+.login-info {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-top: 1rem;
 }
 
 /* ============== Header ============== */
@@ -613,6 +639,7 @@ a:hover {
         opacity: 0;
         transform: scale(0.95) translateY(-10px);
     }
+
     to {
         opacity: 1;
         transform: scale(1) translateY(0);
@@ -693,6 +720,7 @@ a:hover {
         opacity: 0;
         transform: translateX(100%);
     }
+
     to {
         opacity: 1;
         transform: translateX(0);
