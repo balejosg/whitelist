@@ -3,8 +3,8 @@
  * Handles GitHub OAuth flow for whitelist SPA
  */
 const OAuth = {
-    // Will be set after worker deployment
-    WORKER_URL: 'https://whitelist-oauth.YOUR_SUBDOMAIN.workers.dev',
+    // Cloudflare Worker URL for OAuth
+    WORKER_URL: 'https://whitelist-oauth.bruno-alejosgomez.workers.dev',
 
     STORAGE_KEY: 'whitelist-oauth-token',
 
