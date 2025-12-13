@@ -25,12 +25,12 @@ FAILED=0
 
 test_pass() {
     echo -e "  ${GREEN}✓${NC} $1"
-    ((PASSED++))
+    PASSED=$((PASSED + 1))
 }
 
 test_fail() {
     echo -e "  ${RED}✗${NC} $1"
-    ((FAILED++))
+    FAILED=$((FAILED + 1))
 }
 
 test_section() {
