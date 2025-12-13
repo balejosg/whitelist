@@ -117,3 +117,7 @@ wordreference.com
 xataka.com
 youtu.be
 youtube.com
+
+## BLOCKED-SUBDOMAINS
+doodles.google.com
+doodles.google.es
