@@ -86,3 +86,165 @@ github.com"
     
     grep -q "nameserver 127.0.0.1" "$resolv_file"
 }
+
+# ============== Tests de generate_dnsmasq_config ==============
+
+@test "generate_dnsmasq_config crea archivo de configuración" {
+    export DNSMASQ_CONF="$TEST_TMP_DIR/dnsmasq.d/url-whitelist.conf"
+    export PRIMARY_DNS="8.8.8.8"
+    export VERSION="3.4"
+    
+    mkdir -p "$(dirname "$DNSMASQ_CONF")"
+    
+    # Initialize arrays
+    WHITELIST_DOMAINS=("google.com" "github.com")
+    BLOCKED_SUBDOMAINS=()
+    
+    # Mock log
+    log() { echo "$1"; }
+    export -f log
+    
+    source "$PROJECT_DIR/lib/dns.sh"
+    
+    run generate_dnsmasq_config
+    [ "$status" -eq 0 ]
+    [ -f "$DNSMASQ_CONF" ]
+}
+
+@test "generate_dnsmasq_config incluye address=/#/ primero" {
+    export DNSMASQ_CONF="$TEST_TMP_DIR/dnsmasq.d/url-whitelist.conf"
+    export PRIMARY_DNS="8.8.8.8"
+    export VERSION="3.4"
+    
+    mkdir -p "$(dirname "$DNSMASQ_CONF")"
+    
+    WHITELIST_DOMAINS=("google.com")
+    BLOCKED_SUBDOMAINS=()
+    
+    log() { echo "$1"; }
+    export -f log
+    
+    source "$PROJECT_DIR/lib/dns.sh"
+    
+    generate_dnsmasq_config
+    
+    grep -q "address=/#/" "$DNSMASQ_CONF"
+}
+
+@test "generate_dnsmasq_config incluye dominios del whitelist" {
+    export DNSMASQ_CONF="$TEST_TMP_DIR/dnsmasq.d/url-whitelist.conf"
+    export PRIMARY_DNS="8.8.8.8"
+    export VERSION="3.4"
+    
+    mkdir -p "$(dirname "$DNSMASQ_CONF")"
+    
+    WHITELIST_DOMAINS=("example.org" "test.com")
+    BLOCKED_SUBDOMAINS=()
+    
+    log() { echo "$1"; }
+    export -f log
+    
+    source "$PROJECT_DIR/lib/dns.sh"
+    
+    generate_dnsmasq_config
+    
+    grep -q "server=/example.org/8.8.8.8" "$DNSMASQ_CONF"
+    grep -q "server=/test.com/8.8.8.8" "$DNSMASQ_CONF"
+}
+
+@test "generate_dnsmasq_config incluye subdominios bloqueados" {
+    export DNSMASQ_CONF="$TEST_TMP_DIR/dnsmasq.d/url-whitelist.conf"
+    export PRIMARY_DNS="8.8.8.8"
+    export VERSION="3.4"
+    
+    mkdir -p "$(dirname "$DNSMASQ_CONF")"
+    
+    WHITELIST_DOMAINS=("example.org")
+    BLOCKED_SUBDOMAINS=("ads.example.org")
+    
+    log() { echo "$1"; }
+    export -f log
+    
+    source "$PROJECT_DIR/lib/dns.sh"
+    
+    generate_dnsmasq_config
+    
+    grep -q "address=/ads.example.org/" "$DNSMASQ_CONF"
+}
+
+# ============== Tests de validate_dnsmasq_config ==============
+
+@test "validate_dnsmasq_config detecta config válida" {
+    # Mock dnsmasq
+    dnsmasq() {
+        echo "dnsmasq: syntax check OK."
+        return 0
+    }
+    export -f dnsmasq
+    
+    log() { echo "$1"; }
+    export -f log
+    
+    source "$PROJECT_DIR/lib/dns.sh"
+    
+    run validate_dnsmasq_config
+    [ "$status" -eq 0 ]
+}
+
+@test "validate_dnsmasq_config detecta config inválida" {
+    # Mock dnsmasq with error
+    dnsmasq() {
+        echo "dnsmasq: syntax error at line 5"
+        return 1
+    }
+    export -f dnsmasq
+    
+    log() { echo "$1"; }
+    export -f log
+    
+    source "$PROJECT_DIR/lib/dns.sh"
+    
+    run validate_dnsmasq_config
+    [ "$status" -eq 1 ]
+}
+
+# ============== Tests de verify_dns ==============
+
+@test "verify_dns retorna éxito con DNS funcional" {
+    # Mock dig
+    dig() {
+        echo "142.250.185.206"
+        return 0
+    }
+    export -f dig
+    
+    # Mock timeout
+    timeout() {
+        shift  # Remove timeout value
+        "$@"   # Execute the rest
+    }
+    export -f timeout
+    
+    source "$PROJECT_DIR/lib/dns.sh"
+    
+    run verify_dns
+    [ "$status" -eq 0 ]
+}
+
+@test "verify_dns retorna error con DNS fallando" {
+    # Mock dig to fail
+    dig() {
+        return 1
+    }
+    export -f dig
+    
+    timeout() {
+        return 1
+    }
+    export -f timeout
+    
+    source "$PROJECT_DIR/lib/dns.sh"
+    
+    run verify_dns
+    [ "$status" -eq 1 ]
+}

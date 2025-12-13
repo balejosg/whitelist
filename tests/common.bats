@@ -112,3 +112,107 @@ teardown() {
     
     [ "$valid" = false ]
 }
+
+# ============== Tests de parse_whitelist_sections ==============
+
+@test "parse_whitelist_sections llena arrays correctamente" {
+    local wl_file=$(create_test_whitelist)
+    
+    source "$PROJECT_DIR/lib/common.sh"
+    # Override log to avoid permission issues
+    log() { echo "$1"; }
+    
+    parse_whitelist_sections "$wl_file"
+    
+    # Check WHITELIST_DOMAINS array
+    [ ${#WHITELIST_DOMAINS[@]} -eq 3 ]
+    [[ " ${WHITELIST_DOMAINS[*]} " == *" google.com "* ]]
+    [[ " ${WHITELIST_DOMAINS[*]} " == *" github.com "* ]]
+}
+
+@test "parse_whitelist_sections extrae subdominios bloqueados" {
+    local wl_file=$(create_test_whitelist)
+    
+    source "$PROJECT_DIR/lib/common.sh"
+    log() { echo "$1"; }
+    
+    parse_whitelist_sections "$wl_file"
+    
+    [ ${#BLOCKED_SUBDOMAINS[@]} -eq 2 ]
+    [[ " ${BLOCKED_SUBDOMAINS[*]} " == *" ads.google.com "* ]]
+}
+
+@test "parse_whitelist_sections extrae paths bloqueados" {
+    local wl_file=$(create_test_whitelist)
+    
+    source "$PROJECT_DIR/lib/common.sh"
+    log() { echo "$1"; }
+    
+    parse_whitelist_sections "$wl_file"
+    
+    [ ${#BLOCKED_PATHS[@]} -eq 2 ]
+    [[ " ${BLOCKED_PATHS[*]} " == *" example.org/ads "* ]]
+}
+
+@test "parse_whitelist_sections maneja archivo inexistente" {
+    source "$PROJECT_DIR/lib/common.sh"
+    
+    run parse_whitelist_sections "/nonexistent/file.txt"
+    [ "$status" -eq 1 ]
+}
+
+# ============== Tests de validate_ip ==============
+
+@test "validate_ip acepta IP válida" {
+    source "$PROJECT_DIR/lib/common.sh"
+    
+    run validate_ip "192.168.1.1"
+    [ "$status" -eq 0 ]
+}
+
+@test "validate_ip acepta DNS Google" {
+    source "$PROJECT_DIR/lib/common.sh"
+    
+    run validate_ip "8.8.8.8"
+    [ "$status" -eq 0 ]
+}
+
+@test "validate_ip rechaza texto" {
+    source "$PROJECT_DIR/lib/common.sh"
+    
+    run validate_ip "not-an-ip"
+    [ "$status" -eq 1 ]
+}
+
+@test "validate_ip rechaza IPv6" {
+    source "$PROJECT_DIR/lib/common.sh"
+    
+    run validate_ip "::1"
+    [ "$status" -eq 1 ]
+}
+
+# ============== Tests de init_directories ==============
+
+@test "init_directories crea CONFIG_DIR" {
+    source "$PROJECT_DIR/lib/common.sh"
+    # Override paths after sourcing
+    CONFIG_DIR="$TEST_TMP_DIR/newconfig"
+    LOG_FILE="$TEST_TMP_DIR/log/test.log"
+    INSTALL_DIR="$TEST_TMP_DIR/install"
+    
+    init_directories
+    
+    [ -d "$CONFIG_DIR" ]
+}
+
+@test "init_directories crea directorio de log" {
+    source "$PROJECT_DIR/lib/common.sh"
+    # Override paths after sourcing
+    CONFIG_DIR="$TEST_TMP_DIR/config2"
+    LOG_FILE="$TEST_TMP_DIR/logs/url-whitelist.log"
+    INSTALL_DIR="$TEST_TMP_DIR/install"
+    
+    init_directories
+    
+    [ -d "$(dirname "$LOG_FILE")" ]
+}
