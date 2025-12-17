@@ -1,0 +1,189 @@
+name: Release Installation Scripts
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'install.sh'
+      - 'uninstall.sh'
+      - 'auto-reinstall.sh'
+      - 'auto-reinstall-unattended.sh'
+      - 'lib/**'
+      - 'scripts/**'
+      - 'whitelist-windows/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # ============================================
+  # Build and Release Installation Scripts
+  # ============================================
+  release:
+    name: Build and Release Scripts
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Extract version and prepare variables
+        id: vars
+        run: |
+          echo "📦 Extracting version from install.sh..."
+          
+          VERSION=$(grep -oP 'VERSION="\K[^"]+' install.sh)
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          TAG="scripts-v${VERSION}-${SHORT_SHA}"
+          
+          echo "  Version: $VERSION"
+          echo "  Short SHA: $SHORT_SHA"
+          echo "  Tag: $TAG"
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "release_name=Installation Scripts v${VERSION} (${SHORT_SHA})" >> $GITHUB_OUTPUT
+      
+      - name: Create and push tag
+        continue-on-error: true
+        run: |
+          echo "🏷️  Creating tag: ${{ steps.vars.outputs.tag }}"
+          git tag "${{ steps.vars.outputs.tag }}"
+          git push origin "${{ steps.vars.outputs.tag }}" || echo "Tag already exists or push failed, continuing..."
+      
+      - name: Package Linux scripts
+        run: |
+          echo "🐧 Packaging Linux installation scripts..."
+          
+          VERSION="${{ steps.vars.outputs.version }}"
+          PACKAGE_NAME="whitelist-linux-v${VERSION}.tar.gz"
+          
+          # Create tarball with all necessary Linux files
+          echo "  → Creating tarball..."
+          tar -czf "$PACKAGE_NAME" \
+            install.sh \
+            uninstall.sh \
+            auto-reinstall.sh \
+            auto-reinstall-unattended.sh \
+            lib/ \
+            scripts/
+          
+          # Verify
+          if [ -f "$PACKAGE_NAME" ]; then
+            SIZE=$(du -h "$PACKAGE_NAME" | cut -f1)
+            echo "  ✓ Linux package created: ${PACKAGE_NAME} (${SIZE})"
+            
+            # List contents for verification
+            echo "  → Package contents:"
+            tar -tzf "$PACKAGE_NAME" | head -20
+          else
+            echo "  ✗ Error: Linux package not created"
+            exit 1
+          fi
+      
+      - name: Package Windows scripts
+        run: |
+          echo "🪟 Packaging Windows installation scripts..."
+          
+          VERSION="${{ steps.vars.outputs.version }}"
+          PACKAGE_NAME="whitelist-windows-v${VERSION}.zip"
+          
+          # Create ZIP with all Windows files
+          echo "  → Creating ZIP archive..."
+          zip -r -q "$PACKAGE_NAME" whitelist-windows/
+          
+          # Verify
+          if [ -f "$PACKAGE_NAME" ]; then
+            SIZE=$(du -h "$PACKAGE_NAME" | cut -f1)
+            echo "  ✓ Windows package created: ${PACKAGE_NAME} (${SIZE})"
+            
+            # List contents for verification
+            echo "  → Package contents:"
+            unzip -l "$PACKAGE_NAME" | head -20
+          else
+            echo "  ✗ Error: Windows package not created"
+            exit 1
+          fi
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: ${{ steps.vars.outputs.release_name }}
+          prerelease: true
+          generate_release_notes: true
+          files: |
+            whitelist-linux-v${{ steps.vars.outputs.version }}.tar.gz
+            whitelist-windows-v${{ steps.vars.outputs.version }}.zip
+          body: |
+            ## 🚀 Installation Scripts Release
+            
+            **Version:** ${{ steps.vars.outputs.version }}  
+            **Commit:** ${{ steps.vars.outputs.short_sha }}
+            
+            ### 📦 Assets
+            
+            - **`whitelist-linux-v${{ steps.vars.outputs.version }}.tar.gz`** - Linux installation scripts
+            - **`whitelist-windows-v${{ steps.vars.outputs.version }}.zip`** - Windows installation scripts
+            
+            ### 📝 Installation
+            
+            **Linux:**
+            ```bash
+            # Download and extract
+            wget https://github.com/balejosg/whitelist/releases/download/${{ steps.vars.outputs.tag }}/whitelist-linux-v${{ steps.vars.outputs.version }}.tar.gz
+            tar -xzf whitelist-linux-v${{ steps.vars.outputs.version }}.tar.gz
+            
+            # Run installer
+            sudo bash install.sh
+            ```
+            
+            **Windows (PowerShell as Administrator):**
+            ```powershell
+            # Download and extract
+            Invoke-WebRequest -Uri "https://github.com/balejosg/whitelist/releases/download/${{ steps.vars.outputs.tag }}/whitelist-windows-v${{ steps.vars.outputs.version }}.zip" -OutFile "whitelist-windows.zip"
+            Expand-Archive -Path "whitelist-windows.zip" -DestinationPath "."
+            
+            # Run installer
+            cd whitelist-windows
+            .\Install-Whitelist.ps1
+            ```
+            
+            ### 📋 What's Included
+            
+            **Linux Package:**
+            - Main installer (`install.sh`)
+            - Uninstaller (`uninstall.sh`)
+            - Auto-reinstall scripts
+            - Library modules (`lib/`)
+            - Runtime scripts (`scripts/`)
+            
+            **Windows Package:**
+            - PowerShell installer (`Install-Whitelist.ps1`)
+            - PowerShell uninstaller (`Uninstall-Whitelist.ps1`)
+            - Library modules (`lib/*.psm1`)
+            - Runtime scripts (`scripts/*.ps1`)
+            - Configuration files
+            
+            ---
+            
+            ⚠️ **Note:** This is a pre-release. Please test in a non-production environment first.
+      
+      - name: Release summary
+        if: success()
+        run: |
+          echo "## ✅ Release Created Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** \`${{ steps.vars.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`${{ steps.vars.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ steps.vars.outputs.short_sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Released Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- whitelist-linux-v${{ steps.vars.outputs.version }}.tar.gz" >> $GITHUB_STEP_SUMMARY
+          echo "- whitelist-windows-v${{ steps.vars.outputs.version }}.zip" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 [View Release](https://github.com/${{ github.repository }}/releases/tag/${{ steps.vars.outputs.tag }})" >> $GITHUB_STEP_SUMMARY
