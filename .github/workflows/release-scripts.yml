@@ -9,6 +9,7 @@ on:
       - 'lib/**'
       - 'scripts/**'
       - 'whitelist-windows/**'
+      - '.github/workflows/release-scripts.yml'
   workflow_dispatch:
 
 permissions:
