@@ -4,7 +4,7 @@ Home server REST API for handling domain whitelist requests.
 
 ## Overview
 
-This is a lightweight Express.js server designed to run on your home network (Raspberry Pi, old PC, NAS with Docker). It handles domain requests from the Firefox extension and provides an admin API to approve/reject requests.
+This is a lightweight Express.js server designed to run on your home network (Raspberry Pi, old PC, NAS with Docker, or Alpine container). It handles domain requests from the Firefox extension and provides an admin API to approve/reject requests.
 
 ## Architecture
 
