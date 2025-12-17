@@ -79,13 +79,14 @@ whitelist/
 │   ├── index.html                  # Aplicación web
 │   └── js/                         # Lógica JavaScript + GitHub OAuth
 ├── oauth-worker/                   # Cloudflare Worker para OAuth
-│   └── src/index.js                # Backend serverless
+│   └── worker.js                   # Backend serverless
 ├── firefox-extension/              # Extensión de monitoreo
 │   └── manifest.json               # Firefox WebExtension
+├── whitelist-request-api/          # API para solicitudes de dominios
+│   └── server.js                   # Express.js REST API
 └── tests/                          # Suite de tests
-    ├── bats/                       # 72 tests BATS para Linux
-    ├── e2e/                        # Tests E2E Linux/Windows
-    └── whitelist-web/              # Tests API web
+    ├── *.bats                      # 72 tests BATS para Linux
+    └── e2e/                        # Tests E2E Linux/Windows
 ```
 
 ## Directorios de instalación
@@ -360,7 +361,9 @@ Sistema para uso educativo e institucional.
 | Componente | Plataforma | Documentación |
 |------------|------------|---------------|
 | [whitelist-windows](./whitelist-windows/) | Windows 10/11 | DNS con Acrylic Proxy |
+| [whitelist-web](./whitelist-web/) | Docker | Gestión web con autenticación |
 | [whitelist-web-static](./whitelist-web-static/) | Web (GitHub Pages) | SPA para gestión centralizada |
+| [whitelist-request-api](./whitelist-request-api/) | Node.js | API REST para solicitudes de dominios |
 | [oauth-worker](./oauth-worker/) | Cloudflare Workers | Backend OAuth para SPA |
 | [firefox-extension](./firefox-extension/) | Firefox | Monitoreo de bloqueos |
 | [tests/e2e](./tests/e2e/) | Linux/Windows | Tests End-to-End |

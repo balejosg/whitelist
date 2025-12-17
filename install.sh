@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# install.sh - Instalador del sistema dnsmasq URL Whitelist v3.4
+# install.sh - Instalador del sistema dnsmasq URL Whitelist v3.5
 #
 # Este script instala y configura el sistema completo de whitelist DNS.
 # Divide la funcionalidad en módulos para mejor mantenibilidad.
@@ -9,6 +9,8 @@
 #   sudo ./install.sh
 #   sudo ./install.sh --whitelist-url "https://tu-url.com/whitelist.txt"
 #   sudo ./install.sh --unattended  (modo desatendido)
+#   sudo ./install.sh --no-extension  (sin extensión Firefox)
+#   sudo ./install.sh --with-native-host  (incluir native messaging)
 #
 ################################################################################
 
@@ -28,6 +30,8 @@ DEFAULT_WHITELIST_URL="https://raw.githubusercontent.com/LasEncinasIT/Whitelist-
 # Procesar argumentos
 WHITELIST_URL="$DEFAULT_WHITELIST_URL"
 UNATTENDED=false
+INSTALL_EXTENSION=true
+INSTALL_NATIVE_HOST=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -37,6 +41,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         --unattended)
             UNATTENDED=true
+            shift
+            ;;
+        --no-extension)
+            INSTALL_EXTENSION=false
+            shift
+            ;;
+        --with-native-host)
+            INSTALL_NATIVE_HOST=true
             shift
             ;;
         *)
@@ -56,12 +68,13 @@ echo "  dnsmasq URL Whitelist System v$VERSION - Instalación"
 echo "======================================================"
 echo ""
 echo "URL Whitelist: $WHITELIST_URL"
+echo "Extensión Firefox: $INSTALL_EXTENSION"
 echo ""
 
 # ============================================================================
-# [1/11] INSTALAR LIBRERÍAS
+# [1/13] INSTALAR LIBRERÍAS
 # ============================================================================
-echo "[1/11] Instalando librerías..."
+echo "[1/13] Instalando librerías..."
 
 mkdir -p "$INSTALL_DIR/lib"
 mkdir -p "$CONFIG_DIR"
@@ -84,10 +97,10 @@ source "$INSTALL_DIR/lib/browser.sh"
 source "$INSTALL_DIR/lib/services.sh"
 
 # ============================================================================
-# [2/11] INSTALAR DEPENDENCIAS
+# [2/13] INSTALAR DEPENDENCIAS
 # ============================================================================
 echo ""
-echo "[2/11] Instalando dependencias..."
+echo "[2/13] Instalando dependencias..."
 
 apt-get update -qq
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -109,29 +122,29 @@ setcap 'cap_net_bind_service,cap_net_admin=+ep' /usr/sbin/dnsmasq 2>/dev/null ||
 echo "✓ Dependencias instaladas"
 
 # ============================================================================
-# [3/11] LIBERAR PUERTO 53
+# [3/13] LIBERAR PUERTO 53
 # ============================================================================
 echo ""
-echo "[3/11] Liberando puerto 53..."
+echo "[3/13] Liberando puerto 53..."
 
 free_port_53
 echo "✓ Puerto 53 liberado"
 
 # ============================================================================
-# [4/11] DETECTAR DNS
+# [4/13] DETECTAR DNS
 # ============================================================================
 echo ""
-echo "[4/11] Detectando DNS primario..."
+echo "[4/13] Detectando DNS primario..."
 
 PRIMARY_DNS=$(detect_primary_dns)
 echo "$PRIMARY_DNS" > "$CONFIG_DIR/original-dns.conf"
 echo "✓ DNS primario: $PRIMARY_DNS"
 
 # ============================================================================
-# [5/11] INSTALAR SCRIPTS
+# [5/13] INSTALAR SCRIPTS
 # ============================================================================
 echo ""
-echo "[5/11] Instalando scripts..."
+echo "[5/13] Instalando scripts..."
 
 # Script principal de actualización
 cp "$SCRIPT_DIR/scripts/dnsmasq-whitelist.sh" "$SCRIPTS_DIR/"
@@ -158,10 +171,10 @@ echo "$WHITELIST_URL" > "$CONFIG_DIR/whitelist-url.conf"
 echo "✓ Scripts instalados"
 
 # ============================================================================
-# [6/11] CONFIGURAR SUDOERS PARA WHITELIST
+# [6/13] CONFIGURAR SUDOERS PARA WHITELIST
 # ============================================================================
 echo ""
-echo "[6/11] Configurando permisos sudo..."
+echo "[6/13] Configurando permisos sudo..."
 
 cat > /etc/sudoers.d/whitelist << 'EOF'
 # Permitir a todos los usuarios ejecutar comandos whitelist sin contraseña
@@ -175,10 +188,10 @@ chmod 440 /etc/sudoers.d/whitelist
 echo "✓ Permisos sudo configurados"
 
 # ============================================================================
-# [7/11] CREAR SERVICIOS SYSTEMD
+# [7/13] CREAR SERVICIOS SYSTEMD
 # ============================================================================
 echo ""
-echo "[7/11] Creando servicios systemd..."
+echo "[7/13] Creando servicios systemd..."
 
 create_systemd_services
 create_logrotate_config
@@ -187,10 +200,10 @@ create_tmpfiles_config
 echo "✓ Servicios creados"
 
 # ============================================================================
-# [8/11] CONFIGURAR DNS
+# [8/13] CONFIGURAR DNS
 # ============================================================================
 echo ""
-echo "[8/11] Configurando DNS..."
+echo "[8/13] Configurando DNS..."
 
 configure_upstream_dns
 configure_resolv_conf
@@ -198,10 +211,10 @@ configure_resolv_conf
 echo "✓ DNS configurado"
 
 # ============================================================================
-# [9/11] CONFIGURACIÓN INICIAL DNSMASQ
+# [9/13] CONFIGURACIÓN INICIAL DNSMASQ
 # ============================================================================
 echo ""
-echo "[9/11] Configurando dnsmasq..."
+echo "[9/13] Configurando dnsmasq..."
 
 # Comentar directivas conflictivas en /etc/dnsmasq.conf para evitar duplicados
 if [ -f /etc/dnsmasq.conf ]; then
@@ -233,19 +246,44 @@ else
 fi
 
 # ============================================================================
-# [10/11] APLICAR POLÍTICAS DE NAVEGADORES
+# [10/13] INSTALAR FIREFOX ESR
 # ============================================================================
 echo ""
-echo "[10/11] Aplicando políticas de navegadores..."
+echo "[10/13] Instalando Firefox ESR..."
+
+install_firefox_esr
+echo "✓ Firefox ESR instalado"
+
+# ============================================================================
+# [11/13] APLICAR POLÍTICAS DE NAVEGADORES
+# ============================================================================
+echo ""
+echo "[11/13] Aplicando políticas de navegadores..."
 
 apply_search_engine_policies
 echo "✓ Políticas aplicadas"
 
 # ============================================================================
-# [11/11] HABILITAR SERVICIOS Y PRIMERA EJECUCIÓN
+# [12/13] INSTALAR EXTENSIÓN FIREFOX
 # ============================================================================
 echo ""
-echo "[11/11] Habilitando servicios..."
+echo "[12/13] Instalando extensión Firefox..."
+
+if [ "$INSTALL_EXTENSION" = true ]; then
+    install_firefox_extension "$SCRIPT_DIR/firefox-extension"
+    if [ "$INSTALL_NATIVE_HOST" = true ]; then
+        install_native_host "$SCRIPT_DIR/firefox-extension/native"
+    fi
+    echo "✓ Extensión Firefox instalada"
+else
+    echo "⊘ Extensión Firefox omitida (--no-extension)"
+fi
+
+# ============================================================================
+# [13/13] HABILITAR SERVICIOS Y PRIMERA EJECUCIÓN
+# ============================================================================
+echo ""
+echo "[13/13] Habilitando servicios..."
 
 enable_services
 

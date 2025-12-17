@@ -1,8 +1,8 @@
 # ADR: Sistema de Whitelist DNS
 
-**Fecha**: 2024-12-13  
+**Fecha**: 2024-12-17  
 **Estado**: Implementado  
-**Versión del Sistema**: 3.4
+**Versión del Sistema**: 3.5
 
 ---
 

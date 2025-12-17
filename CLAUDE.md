@@ -335,9 +335,11 @@ Version is stored in:
 ## Testing
 
 ### BATS Tests (72 tests)
-Shell library tests in `tests/bats/`:
+Shell library tests in `tests/`:
 ```bash
-cd tests && bats bats/
+cd tests && bats *.bats
+# Or run all tests:
+./run-tests.sh
 ```
 
 ### E2E Tests
@@ -346,12 +348,13 @@ cd tests && bats bats/
 
 ### Web API Tests
 ```bash
-cd tests/whitelist-web && npm test
+cd whitelist-web && npm test
 ```
 
 ### CI/CD
 Workflows in `.github/workflows/`:
-- `ci.yml` - Linting, BATS tests, web tests
+- `ci.yml` - BATS tests, web tests
+- `lint.yml` - ShellCheck and ESLint linting
 - `e2e-tests.yml` - Full E2E on Linux/Windows
 - `deploy.yml` - GitHub Pages deployment
-
+- `deploy-api.yml` - API deployment

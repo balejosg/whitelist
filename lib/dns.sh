@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # dns.sh - Funciones de gestión DNS
-# Parte del sistema dnsmasq URL Whitelist v3.4
+# Parte del sistema dnsmasq URL Whitelist v3.5
 ################################################################################
 
 # Liberar puerto 53 (detener systemd-resolved)

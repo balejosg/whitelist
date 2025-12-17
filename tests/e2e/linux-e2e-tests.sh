@@ -148,7 +148,7 @@ test_systemd_timers() {
 }
 
 test_iptables_rules() {
-    test_section "7/7" "Firewall rules"
+    test_section "7/9" "Firewall rules"
     
     if ! command -v iptables &>/dev/null; then
         echo -e "  ${YELLOW}⚠${NC} iptables not available"
@@ -173,6 +173,116 @@ test_iptables_rules() {
     fi
 }
 
+test_firefox_esr_installed() {
+    test_section "8/9" "Firefox ESR installation"
+    
+    # Check if Firefox ESR or Firefox (non-snap) is installed
+    if command -v firefox-esr &>/dev/null; then
+        test_pass "firefox-esr command available"
+    elif command -v firefox &>/dev/null; then
+        test_pass "firefox command available"
+    else
+        echo -e "  ${YELLOW}⚠${NC} Firefox not installed"
+        return 0
+    fi
+    
+    # Check Snap Firefox is NOT installed
+    if snap list firefox &>/dev/null 2>&1; then
+        test_fail "Firefox Snap still installed (should be removed)"
+    else
+        test_pass "Firefox Snap not present"
+    fi
+    
+    # Check Firefox directories
+    local firefox_found=false
+    for dir in /usr/lib/firefox-esr /usr/lib/firefox /opt/firefox; do
+        if [ -d "$dir" ]; then
+            test_pass "Firefox directory exists: $dir"
+            firefox_found=true
+            break
+        fi
+    done
+    
+    if [ "$firefox_found" = false ]; then
+        echo -e "  ${YELLOW}⚠${NC} Firefox directory not found"
+    fi
+}
+
+test_firefox_extension_installed() {
+    test_section "9/9" "Firefox extension installation"
+    
+    local ext_id="monitor-bloqueos@whitelist-system"
+    local firefox_app_id="{ec8030f7-c20a-464f-9b0e-13a3a9e97384}"
+    local ext_dir="/usr/share/mozilla/extensions/$firefox_app_id/$ext_id"
+    
+    # Check extension directory exists
+    if [ -d "$ext_dir" ]; then
+        test_pass "Extension directory exists"
+    else
+        echo -e "  ${YELLOW}⚠${NC} Extension directory not found (may be installed with --no-extension)"
+        return 0
+    fi
+    
+    # Check manifest.json exists
+    if [ -f "$ext_dir/manifest.json" ]; then
+        test_pass "Extension manifest.json exists"
+    else
+        test_fail "Extension manifest.json missing"
+    fi
+    
+    # Check background.js exists
+    if [ -f "$ext_dir/background.js" ]; then
+        test_pass "Extension background.js exists"
+    else
+        test_fail "Extension background.js missing"
+    fi
+    
+    # Check autoconfig files
+    local autoconfig_found=false
+    for firefox_dir in /usr/lib/firefox-esr /usr/lib/firefox /opt/firefox; do
+        if [ -f "$firefox_dir/mozilla.cfg" ] && [ -f "$firefox_dir/defaults/pref/autoconfig.js" ]; then
+            test_pass "Firefox autoconfig configured in $firefox_dir"
+            autoconfig_found=true
+            
+            # Check signature verification is disabled
+            if grep -q "xpinstall.signatures.required.*false" "$firefox_dir/mozilla.cfg" 2>/dev/null; then
+                test_pass "Signature verification disabled"
+            else
+                test_fail "Signature verification not disabled"
+            fi
+            break
+        fi
+    done
+    
+    if [ "$autoconfig_found" = false ]; then
+        echo -e "  ${YELLOW}⚠${NC} Firefox autoconfig not found"
+    fi
+    
+    # Check extension in policies.json
+    if [ -f "/etc/firefox/policies/policies.json" ]; then
+        if grep -q "ExtensionSettings" "/etc/firefox/policies/policies.json" 2>/dev/null; then
+            test_pass "ExtensionSettings in policies.json"
+        else
+            echo -e "  ${YELLOW}⚠${NC} ExtensionSettings not in policies.json"
+        fi
+        
+        if grep -q "$ext_id" "/etc/firefox/policies/policies.json" 2>/dev/null; then
+            test_pass "Extension ID in policies.json"
+        else
+            echo -e "  ${YELLOW}⚠${NC} Extension ID not in policies.json"
+        fi
+    else
+        echo -e "  ${YELLOW}⚠${NC} policies.json not found"
+    fi
+    
+    # Check native messaging host (optional)
+    if [ -f "/usr/lib/mozilla/native-messaging-hosts/whitelist_native_host.json" ]; then
+        test_pass "Native messaging host installed"
+    else
+        echo -e "  ${YELLOW}ℹ${NC} Native messaging host not installed (optional)"
+    fi
+}
+
 # ============== Main ==============
 
 main() {
@@ -188,6 +298,8 @@ main() {
     test_config_files_exist
     test_systemd_timers
     test_iptables_rules
+    test_firefox_esr_installed
+    test_firefox_extension_installed
     
     # Summary
     echo ""

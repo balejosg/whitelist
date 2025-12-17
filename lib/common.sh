@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # common.sh - Variables y funciones comunes
-# Parte del sistema dnsmasq URL Whitelist v3.4
+# Parte del sistema dnsmasq URL Whitelist v3.5
 ################################################################################
 
 # Versión del sistema

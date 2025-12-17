@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # uninstall.sh - Desinstalador del sistema whitelist
-# Parte del sistema dnsmasq URL Whitelist v3.4
+# Parte del sistema dnsmasq URL Whitelist v3.5
 #
 # Corregido para:
 # - Restaurar systemd-resolved correctamente (socket primero)
@@ -183,6 +183,22 @@ echo '{"policies": {}}' > /etc/firefox/policies/policies.json 2>/dev/null || tru
 rm -f /etc/chromium/policies/managed/url-whitelist.json 2>/dev/null || true
 rm -f /etc/chromium-browser/policies/managed/url-whitelist.json 2>/dev/null || true
 rm -f /etc/opt/chrome/policies/managed/url-whitelist.json 2>/dev/null || true
+
+# Eliminar extensión de Firefox
+echo "  Eliminando extensión Firefox..."
+rm -rf /usr/share/mozilla/extensions/{ec8030f7-c20a-464f-9b0e-13a3a9e97384}/monitor-bloqueos@whitelist-system 2>/dev/null || true
+rm -f /usr/lib/mozilla/native-messaging-hosts/whitelist_native_host.json 2>/dev/null || true
+
+# Eliminar autoconfig de Firefox (restaurar verificación de firmas)
+for firefox_dir in /usr/lib/firefox-esr /usr/lib/firefox /opt/firefox; do
+    if [ -d "$firefox_dir" ]; then
+        rm -f "$firefox_dir/defaults/pref/autoconfig.js" 2>/dev/null || true
+        rm -f "$firefox_dir/mozilla.cfg" 2>/dev/null || true
+    fi
+done
+
+# Eliminar preferencias de APT para Mozilla PPA
+rm -f /etc/apt/preferences.d/mozilla-firefox 2>/dev/null || true
 
 echo ""
 echo "[7/7] Verificando conectividad..."

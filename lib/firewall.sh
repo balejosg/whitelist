@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # firewall.sh - Funciones de gestión de firewall (iptables)
-# Parte del sistema dnsmasq URL Whitelist v3.4
+# Parte del sistema dnsmasq URL Whitelist v3.5
 ################################################################################
 
 # Activar firewall restrictivo

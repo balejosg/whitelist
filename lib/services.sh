@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # services.sh - Funciones de gestión de servicios systemd
-# Parte del sistema dnsmasq URL Whitelist v3.4
+# Parte del sistema dnsmasq URL Whitelist v3.5
 ################################################################################
 
 # Crear todos los servicios systemd
