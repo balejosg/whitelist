@@ -14,7 +14,7 @@
 ################################################################################
 
 # Contraseña de root (⚠️ MALA PRÁCTICA - solo para fines educativos)
-ROOT_PASSWORD="Encinas2023"
+ROOT_PASSWORD=""
 
 # Colores para output
 RED='\033[0;31m'
