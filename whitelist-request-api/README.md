@@ -230,3 +230,11 @@ whitelist-request-api/
 2. **GITHUB_TOKEN**: Create at https://github.com/settings/tokens with `repo` scope
 3. **CORS**: In production, set `CORS_ORIGINS` to your specific domains
 4. **HTTPS**: Always use HTTPS in production (see Phase 3)
+
+## Continuous Deployment
+
+This API is automatically deployed to production on every push to `main` that modifies files in `whitelist-request-api/`. The GitHub Actions workflow handles:
+- Pulling latest code
+- Installing dependencies
+- Restarting the service
+- Health check verification
