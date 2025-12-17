@@ -1,0 +1,53 @@
+name: Deploy API to Alpine Container
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'whitelist-request-api/**'
+      - '.github/workflows/deploy-api.yml'
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Deploy to Alpine Container
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT }}
+          script: |
+            echo "🚀 Starting deployment..."
+            
+            # Navigate to repo
+            cd ~/whitelist
+            
+            # Pull latest changes
+            echo "📥 Pulling latest changes from GitHub..."
+            git pull origin main
+            
+            # Navigate to API directory
+            cd whitelist-request-api
+            
+            # Install/update dependencies
+            echo "📦 Installing dependencies..."
+            npm ci --production
+            
+            # Restart service
+            echo "🔄 Restarting API service..."
+            rc-service whitelist-request-api restart
+            
+            # Verify health
+            sleep 3
+            if curl -f http://localhost:3000/health > /dev/null 2>&1; then
+              echo "✅ Deployment successful! API is healthy."
+            else
+              echo "❌ Deployment failed! API health check failed."
+              exit 1
+            fi
+            
+            echo "🎉 Deployment completed at $(date)"
