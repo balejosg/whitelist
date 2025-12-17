@@ -1,6 +1,6 @@
 {
   "name": "whitelist-request-api",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "REST API for whitelist domain requests - Home server deployment",
   "main": "server.js",
   "scripts": {
