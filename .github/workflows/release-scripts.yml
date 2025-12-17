@@ -67,7 +67,8 @@ jobs:
             install.sh \
             uninstall.sh \
             lib/ \
-            scripts/
+            scripts/ \
+            firefox-extension/
           
           # Verify
           if [ -f "$PACKAGE_NAME" ]; then
@@ -157,6 +158,7 @@ jobs:
             - Uninstaller (`uninstall.sh`)
             - Library modules (`lib/`)
             - Runtime scripts (`scripts/`)
+            - Firefox extension (`firefox-extension/`)
             
             **Windows Package:**
             - PowerShell installer (`Install-Whitelist.ps1`)
