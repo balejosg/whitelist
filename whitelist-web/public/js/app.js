@@ -79,6 +79,9 @@ async function loadDashboard() {
     document.getElementById('stat-whitelist').textContent = stats.whitelistCount;
     document.getElementById('stat-blocked').textContent = stats.blockedCount;
 
+    // System status
+    await loadSystemStatus();
+
     // Groups
     const groups = await api('/api/groups');
     const list = document.getElementById('groups-list');
@@ -342,6 +345,63 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+// ============== System Toggle ==============
+async function loadSystemStatus() {
+    try {
+        const status = await api('/api/system/status');
+        updateSystemToggleUI(status.enabled);
+    } catch (err) {
+        console.error('Error loading system status:', err);
+    }
+}
+
+function updateSystemToggleUI(isEnabled) {
+    const toggle = document.getElementById('system-toggle');
+    const icon = document.getElementById('system-status-icon');
+    const text = document.getElementById('system-status-text');
+    const btn = document.getElementById('system-toggle-btn');
+
+    if (isEnabled) {
+        toggle.classList.remove('inactive');
+        toggle.classList.add('active');
+        icon.textContent = '🟢';
+        text.textContent = 'Sistema Activo';
+        btn.textContent = '⏸️ Desactivar Sistema';
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-danger');
+    } else {
+        toggle.classList.remove('active');
+        toggle.classList.add('inactive');
+        icon.textContent = '🔴';
+        text.textContent = 'Sistema Desactivado';
+        btn.textContent = '▶️ Activar Sistema';
+        btn.classList.remove('btn-danger');
+        btn.classList.add('btn-success');
+    }
+}
+
+document.getElementById('system-toggle-btn').addEventListener('click', async () => {
+    const toggle = document.getElementById('system-toggle');
+    const isCurrentlyEnabled = toggle.classList.contains('active');
+    const action = isCurrentlyEnabled ? 'desactivar' : 'activar';
+
+    if (!confirm(`¿Estás seguro de que deseas ${action} el sistema?\n\nEsto afectará a TODOS los grupos.`)) {
+        return;
+    }
+
+    try {
+        const result = await api('/api/system/toggle', {
+            method: 'POST',
+            body: JSON.stringify({ enable: !isCurrentlyEnabled })
+        });
+        updateSystemToggleUI(result.enabled);
+        await loadDashboard();
+        showToast(`Sistema ${result.enabled ? 'activado' : 'desactivado'} correctamente`);
+    } catch (err) {
+        showToast('Error al cambiar el estado del sistema', 'error');
+    }
+});
 
 // ============== Init ==============
 checkAuth();

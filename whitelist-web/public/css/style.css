@@ -269,6 +269,65 @@ body {
     color: var(--text-secondary);
 }
 
+/* ============== System Toggle ============== */
+.header-center {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+}
+
+.system-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 2rem;
+}
+
+.system-toggle .status-icon {
+    font-size: 1.25rem;
+}
+
+.system-toggle .status-text {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.system-toggle.active .status-text {
+    color: var(--accent-success);
+}
+
+.system-toggle.inactive .status-text {
+    color: var(--accent-danger);
+}
+
+.system-toggle .btn-sm {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.system-toggle.active {
+    border-color: rgba(34, 197, 94, 0.3);
+    background: rgba(34, 197, 94, 0.1);
+}
+
+.system-toggle.inactive {
+    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.btn-success {
+    background: var(--accent-success);
+    color: white;
+}
+
+.btn-success:hover {
+    background: #16a34a;
+}
+
 /* ============== Main Content ============== */
 .main-content {
     max-width: 1200px;

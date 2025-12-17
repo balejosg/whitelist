@@ -727,6 +727,107 @@ a:hover {
     }
 }
 
+/* ============== System Toggle ============== */
+.system-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    border-radius: var(--border-radius-sm);
+    transition: all 0.3s ease;
+}
+
+.system-toggle .toggle-icon {
+    font-size: 1.1rem;
+}
+
+.system-toggle.active {
+    background: var(--accent-success);
+    color: white;
+}
+
+.system-toggle.active:hover {
+    background: #16a34a;
+}
+
+.system-toggle.inactive {
+    background: var(--accent-danger);
+    color: white;
+    animation: pulse-danger 2s infinite;
+}
+
+.system-toggle.inactive:hover {
+    background: var(--accent-danger-hover);
+}
+
+@keyframes pulse-danger {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+    }
+}
+
+/* ============== System Status Banner ============== */
+.system-status-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(234, 179, 8, 0.1) 100%);
+    border: 1px solid var(--accent-danger);
+    border-radius: var(--border-radius);
+    animation: banner-pulse 3s infinite;
+}
+
+@keyframes banner-pulse {
+    0%, 100% {
+        border-color: var(--accent-danger);
+    }
+    50% {
+        border-color: var(--accent-warning);
+    }
+}
+
+.system-status-banner .status-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.system-status-banner .status-icon {
+    font-size: 1.5rem;
+    animation: shake 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes shake {
+    from {
+        transform: rotate(-5deg);
+    }
+    to {
+        transform: rotate(5deg);
+    }
+}
+
+.system-status-banner .status-text {
+    font-weight: 600;
+    color: var(--accent-danger);
+}
+
+.btn-success {
+    background: var(--accent-success);
+    color: white;
+}
+
+.btn-success:hover {
+    background: #16a34a;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
 /* ============== Responsive ============== */
 @media (max-width: 768px) {
     .header {
@@ -756,5 +857,15 @@ a:hover {
 
     .rules-toolbar {
         flex-direction: column;
+    }
+
+    .system-toggle .toggle-text {
+        display: none;
+    }
+
+    .system-status-banner {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
     }
 }

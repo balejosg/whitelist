@@ -214,6 +214,31 @@ function getStats() {
     };
 }
 
+// ============== System Status ==============
+
+function getSystemStatus() {
+    // System is active if at least one group is enabled
+    const hasEnabledGroups = db.groups.some(g => g.enabled === 1);
+    return {
+        enabled: hasEnabledGroups,
+        totalGroups: db.groups.length,
+        activeGroups: db.groups.filter(g => g.enabled === 1).length,
+        pausedGroups: db.groups.filter(g => g.enabled === 0).length
+    };
+}
+
+function toggleSystemStatus(enable) {
+    const newStatus = enable ? 1 : 0;
+    db.groups.forEach(g => {
+        g.enabled = newStatus;
+        g.updated_at = new Date().toISOString();
+    });
+    saveDb(db);
+    // Re-export all groups with new status
+    db.groups.forEach(g => exportGroupToFile(g.id));
+    return getSystemStatus();
+}
+
 module.exports = {
     getAllGroups,
     getGroupById,
@@ -230,5 +255,7 @@ module.exports = {
     exportGroupToFile,
     exportAllGroups,
     getStats,
+    getSystemStatus,
+    toggleSystemStatus,
     EXPORT_DIR
 };

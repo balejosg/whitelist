@@ -76,12 +76,25 @@
                 <h1>Whitelist Manager</h1>
             </div>
             <div class="header-right">
+                <button id="system-toggle-btn" class="btn btn-danger system-toggle" title="Desactivar sistema">
+                    <span class="toggle-icon">⚡</span>
+                    <span class="toggle-text">Sistema Activo</span>
+                </button>
                 <span id="current-user" class="user-badge">Usuario</span>
                 <button id="logout-btn" class="btn btn-ghost">Cerrar sesión</button>
             </div>
         </header>
 
         <main class="main-content">
+            <!-- System Status Banner -->
+            <section id="system-status-banner" class="system-status-banner hidden">
+                <div class="status-content">
+                    <span class="status-icon">⚠️</span>
+                    <span class="status-text">Sistema desactivado - Todo el tráfico está permitido</span>
+                </div>
+                <button id="reactivate-btn" class="btn btn-success">Reactivar Sistema</button>
+            </section>
+
             <!-- Stats Cards -->
             <section class="stats-section">
                 <div class="stat-card">

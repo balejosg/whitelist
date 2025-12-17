@@ -76,6 +76,18 @@ app.get('/api/stats', requireAuth, (req, res) => {
     res.json(db.getStats());
 });
 
+// ============== Rutas de Sistema ==============
+
+app.get('/api/system/status', requireAuth, (req, res) => {
+    res.json(db.getSystemStatus());
+});
+
+app.post('/api/system/toggle', requireAuth, (req, res) => {
+    const { enable } = req.body;
+    const status = db.toggleSystemStatus(enable);
+    res.json({ success: true, ...status });
+});
+
 // ============== Rutas de Groups ==============
 
 app.get('/api/groups', requireAuth, (req, res) => {
