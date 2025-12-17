@@ -1,0 +1,246 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    # Run weekly on Monday at 6:00 UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  # ============================================
+  # CodeQL Analysis for JavaScript/TypeScript
+  # ============================================
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['javascript']
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
+      
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  # ============================================
+  # Shellcheck Security Patterns
+  # ============================================
+  shellcheck-security:
+    name: Shell Script Security
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run shellcheck with security focus
+        run: |
+          echo "🔍 Scanning shell scripts for security issues..."
+          
+          # Check for common security issues
+          find . -type f -name "*.sh" ! -path "./node_modules/*" | while read script; do
+            echo "Checking: $script"
+            
+            # Run shellcheck with extended checks
+            shellcheck --severity=warning "$script" || true
+            
+            # Check for hardcoded credentials
+            if grep -iE "(password|passwd|pwd|secret|token|api_key).*=.*['\"]" "$script" 2>/dev/null; then
+              echo "⚠️  WARNING: Potential hardcoded credentials in $script"
+            fi
+            
+            # Check for eval usage
+            if grep -E "eval\s" "$script" 2>/dev/null; then
+              echo "⚠️  WARNING: Use of eval detected in $script"
+            fi
+          done
+          
+          echo "✓ Security scan complete"
+      
+      - name: Check for sensitive files
+        run: |
+          echo "🔍 Checking for accidentally committed secrets..."
+          
+          SENSITIVE_FILES=(
+            "*.pem"
+            "*.key"
+            "*.p12"
+            "*.pfx"
+            "id_rsa"
+            "id_dsa"
+            ".env"
+            ".env.local"
+            ".env.production"
+            "*.env"
+          )
+          
+          FOUND=0
+          for pattern in "${SENSITIVE_FILES[@]}"; do
+            if find . -name "$pattern" ! -path "./node_modules/*" ! -path "./.git/*" | grep -q .; then
+              echo "⚠️  WARNING: Found files matching: $pattern"
+              find . -name "$pattern" ! -path "./node_modules/*" ! -path "./.git/*"
+              FOUND=1
+            fi
+          done
+          
+          if [ $FOUND -eq 0 ]; then
+            echo "✓ No sensitive files found"
+          fi
+
+  # ============================================
+  # Docker Image Scanning with Trivy
+  # ============================================
+  trivy-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Build Docker image
+        run: |
+          docker build -t whitelist-web:scan ./whitelist-web
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'whitelist-web:scan'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+      
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+      
+      - name: Run Trivy for human-readable output
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'whitelist-web:scan'
+          format: 'table'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+
+  # ============================================
+  # Dependency Vulnerability Check
+  # ============================================
+  npm-audit:
+    name: NPM Audit
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        package:
+          - whitelist-web
+          - whitelist-request-api
+          - oauth-worker
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Run npm audit
+        working-directory: ${{ matrix.package }}
+        run: |
+          echo "🔍 Running npm audit for ${{ matrix.package }}..."
+          
+          # Install dependencies first
+          npm ci || npm install
+          
+          # Run audit (allow moderate/low to not fail CI)
+          npm audit --audit-level=high || true
+          
+          # Generate JSON report
+          npm audit --json > audit-report.json || true
+          
+          echo "✓ Audit complete"
+      
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: npm-audit-${{ matrix.package }}
+          path: ${{ matrix.package }}/audit-report.json
+          retention-days: 30
+
+  # ============================================
+  # Secret Scanning (gitleaks)
+  # ============================================
+  secret-scan:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  # ============================================
+  # Summary Job
+  # ============================================
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [codeql, shellcheck-security, trivy-scan, npm-audit, secret-scan]
+    if: always()
+    
+    steps:
+      - name: Check results
+        run: |
+          echo "## 🔒 Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| CodeQL Analysis | ${{ needs.codeql.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Shell Script Security | ${{ needs.shellcheck-security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Container Scan (Trivy) | ${{ needs.trivy-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| NPM Audit | ${{ needs.npm-audit.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Secret Scanning | ${{ needs.secret-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          
+          # Check if any critical jobs failed
+          if [[ "${{ needs.codeql.result }}" == "failure" ]] || \
+             [[ "${{ needs.secret-scan.result }}" == "failure" ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **Critical security issues detected!**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Security scans complete" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,37 @@
+# Code Owners for whitelist project
+# These users will be automatically requested for review when PRs modify these files
+
+# Global owners (fallback for everything)
+* @balejosg
+
+# Core system libraries
+/lib/ @balejosg
+/scripts/ @balejosg
+
+# Installation scripts
+/install.sh @balejosg
+/uninstall.sh @balejosg
+/auto-reinstall*.sh @balejosg
+
+# Windows implementation
+/whitelist-windows/ @balejosg
+
+# Firefox extension
+/firefox-extension/ @balejosg
+
+# Web applications
+/whitelist-web/ @balejosg
+/whitelist-web-static/ @balejosg
+/whitelist-request-api/ @balejosg
+/oauth-worker/ @balejosg
+
+# CI/CD and workflows
+/.github/ @balejosg
+
+# Tests
+/tests/ @balejosg
+
+# Documentation
+/README.md @balejosg
+/CLAUDE.md @balejosg
+/design_docs/ @balejosg

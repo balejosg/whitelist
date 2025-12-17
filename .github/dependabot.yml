@@ -1,0 +1,51 @@
+version: 2
+updates:
+  # GitHub Actions dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+
+  # whitelist-web (Node.js)
+  - package-ecosystem: "npm"
+    directory: "/whitelist-web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "npm"
+      - "whitelist-web"
+    versioning-strategy: increase
+
+  # whitelist-request-api (Node.js)
+  - package-ecosystem: "npm"
+    directory: "/whitelist-request-api"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "npm"
+      - "whitelist-request-api"
+    versioning-strategy: increase
+
+  # oauth-worker (Node.js)
+  - package-ecosystem: "npm"
+    directory: "/oauth-worker"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "npm"
+      - "oauth-worker"
+    versioning-strategy: increase
