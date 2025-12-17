@@ -32,6 +32,7 @@ echo "  → Copiando archivos..."
 
 cp "$SCRIPT_DIR/manifest.json" "$BUILD_DIR/"
 cp "$SCRIPT_DIR/background.js" "$BUILD_DIR/"
+cp "$SCRIPT_DIR/config.js" "$BUILD_DIR/"
 cp -r "$SCRIPT_DIR/popup" "$BUILD_DIR/"
 cp -r "$SCRIPT_DIR/icons" "$BUILD_DIR/"
 
