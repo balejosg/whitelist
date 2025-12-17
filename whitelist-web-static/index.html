@@ -118,6 +118,41 @@
                         <span class="stat-label">Bloqueados</span>
                     </div>
                 </div>
+                <div class="stat-card stat-requests" id="stat-requests-card">
+                    <div class="stat-icon">📨</div>
+                    <div class="stat-content">
+                        <span id="stat-pending-requests" class="stat-number">0</span>
+                        <span class="stat-label">Solicitudes pendientes</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Pending Requests Section -->
+            <section id="requests-section" class="requests-section hidden">
+                <div class="section-header">
+                    <h2>📨 Solicitudes de Dominios</h2>
+                    <div class="requests-actions">
+                        <button id="refresh-requests-btn" class="btn btn-ghost" title="Actualizar">🔄</button>
+                        <span id="requests-server-status" class="server-status">
+                            <span class="status-dot"></span>
+                            <span class="status-text">Servidor</span>
+                        </span>
+                    </div>
+                </div>
+                <div id="requests-config" class="requests-config hidden">
+                    <div class="form-group inline">
+                        <label for="requests-api-url">URL del servidor:</label>
+                        <input type="text" id="requests-api-url" placeholder="https://whitelist-requests.duckdns.org">
+                    </div>
+                    <div class="form-group inline">
+                        <label for="requests-api-token">Token admin:</label>
+                        <input type="password" id="requests-api-token" placeholder="Token de autenticación">
+                    </div>
+                    <button id="save-requests-config-btn" class="btn btn-primary btn-sm">Guardar</button>
+                </div>
+                <div id="requests-list" class="requests-list">
+                    <p class="empty-message">No hay solicitudes pendientes</p>
+                </div>
             </section>
 
             <!-- Groups List -->
@@ -273,6 +308,7 @@ wikipedia.org"></textarea>
     <script src="js/oauth.js"></script>
     <script src="js/github-api.js"></script>
     <script src="js/whitelist-parser.js"></script>
+    <script src="js/requests-api.js"></script>
     <script src="js/app.js"></script>
 </body>
 

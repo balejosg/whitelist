@@ -4,7 +4,7 @@
  * Gestiona la interfaz del popup: muestra dominios bloqueados,
  * copia al portapapeles, verifica en whitelist y permite limpiar la lista.
  * 
- * @version 1.1.0
+ * @version 1.2.0
  */
 
 // DOM Elements
@@ -15,10 +15,18 @@ const emptyMessageEl = document.getElementById('empty-message');
 const btnCopy = document.getElementById('btn-copy');
 const btnVerify = document.getElementById('btn-verify');
 const btnClear = document.getElementById('btn-clear');
+const btnRequest = document.getElementById('btn-request');
 const toastEl = document.getElementById('toast');
 const nativeStatusEl = document.getElementById('native-status');
 const verifyResultsEl = document.getElementById('verify-results');
 const verifyListEl = document.getElementById('verify-list');
+
+// Request form elements
+const requestSectionEl = document.getElementById('request-section');
+const requestDomainSelectEl = document.getElementById('request-domain-select');
+const requestReasonEl = document.getElementById('request-reason');
+const btnSubmitRequest = document.getElementById('btn-submit-request');
+const requestStatusEl = document.getElementById('request-status');
 
 // Current tab ID
 let currentTabId = null;
@@ -28,6 +36,9 @@ let blockedDomainsData = {};
 
 // Native Messaging available
 let nativeAvailable = false;
+
+// Request API available
+let requestApiAvailable = false;
 
 /**
  * Muestra un toast de notificación temporal
@@ -293,6 +304,196 @@ function hideVerifyResults() {
     verifyListEl.innerHTML = '';
 }
 
+// =============================================================================
+// Request API Functions
+// =============================================================================
+
+/**
+ * Get config value with fallback
+ */
+function getConfig(key, defaultValue) {
+    if (typeof WHITELIST_CONFIG !== 'undefined' && WHITELIST_CONFIG[key] !== undefined) {
+        return WHITELIST_CONFIG[key];
+    }
+    return defaultValue;
+}
+
+/**
+ * Check if the request API is available
+ */
+async function checkRequestApiAvailable() {
+    const apiUrl = getConfig('REQUEST_API_URL', '');
+    
+    if (!apiUrl || !getConfig('ENABLE_REQUESTS', true)) {
+        return false;
+    }
+    
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        
+        const response = await fetch(`${apiUrl}/health`, {
+            method: 'GET',
+            signal: controller.signal
+        });
+        
+        clearTimeout(timeout);
+        
+        if (response.ok) {
+            requestApiAvailable = true;
+            return true;
+        }
+    } catch (error) {
+        if (getConfig('DEBUG_MODE', false)) {
+            console.log('[Popup] Request API not available:', error.message);
+        }
+    }
+    
+    requestApiAvailable = false;
+    return false;
+}
+
+/**
+ * Toggle request section visibility
+ */
+function toggleRequestSection() {
+    const isHidden = requestSectionEl.classList.contains('hidden');
+    
+    if (isHidden) {
+        // Show and populate
+        requestSectionEl.classList.remove('hidden');
+        populateRequestDomainSelect();
+        hideVerifyResults();
+    } else {
+        // Hide
+        requestSectionEl.classList.add('hidden');
+        hideRequestStatus();
+    }
+}
+
+/**
+ * Populate the domain select dropdown
+ */
+function populateRequestDomainSelect() {
+    const hostnames = Object.keys(blockedDomainsData).sort();
+    
+    requestDomainSelectEl.innerHTML = '<option value="">Seleccionar dominio...</option>';
+    
+    hostnames.forEach(hostname => {
+        const option = document.createElement('option');
+        option.value = hostname;
+        option.textContent = hostname;
+        requestDomainSelectEl.appendChild(option);
+    });
+    
+    updateSubmitButtonState();
+}
+
+/**
+ * Update submit button enabled state
+ */
+function updateSubmitButtonState() {
+    const hasSelection = requestDomainSelectEl.value !== '';
+    const hasReason = requestReasonEl.value.trim().length >= 3;
+    
+    btnSubmitRequest.disabled = !hasSelection || !hasReason;
+}
+
+/**
+ * Submit a domain request
+ */
+async function submitDomainRequest() {
+    const domain = requestDomainSelectEl.value;
+    const reason = requestReasonEl.value.trim();
+    
+    if (!domain || reason.length < 3) {
+        showRequestStatus('❌ Selecciona un dominio y escribe un motivo', 'error');
+        return;
+    }
+    
+    const apiUrl = getConfig('REQUEST_API_URL', '');
+    const groupId = getConfig('DEFAULT_GROUP', 'default');
+    
+    // Disable button while submitting
+    btnSubmitRequest.disabled = true;
+    btnSubmitRequest.textContent = '⏳ Enviando...';
+    showRequestStatus('Enviando solicitud...', 'pending');
+    
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), getConfig('REQUEST_TIMEOUT', 10000));
+        
+        const response = await fetch(`${apiUrl}/api/requests`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                domain,
+                reason,
+                group_id: groupId,
+                requester_email: 'firefox-extension'
+            }),
+            signal: controller.signal
+        });
+        
+        clearTimeout(timeout);
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            showRequestStatus(
+                `✅ Solicitud enviada (ID: ${data.request_id})\nEstado: Pendiente de aprobación`,
+                'success'
+            );
+            showToast('✅ Solicitud enviada');
+            
+            // Clear form
+            requestDomainSelectEl.value = '';
+            requestReasonEl.value = '';
+        } else {
+            const errorMsg = data.error || 'Error desconocido';
+            showRequestStatus(`❌ ${errorMsg}`, 'error');
+            showToast(`❌ ${errorMsg}`);
+        }
+        
+    } catch (error) {
+        let errorMsg = 'Error de conexión';
+        
+        if (error.name === 'AbortError') {
+            errorMsg = 'Timeout - servidor no responde';
+        } else if (error.message) {
+            errorMsg = error.message;
+        }
+        
+        showRequestStatus(`❌ ${errorMsg}`, 'error');
+        showToast(`❌ Error al enviar`);
+        
+        if (getConfig('DEBUG_MODE', false)) {
+            console.error('[Popup] Request error:', error);
+        }
+    } finally {
+        btnSubmitRequest.disabled = false;
+        btnSubmitRequest.textContent = 'Enviar Solicitud';
+        updateSubmitButtonState();
+    }
+}
+
+/**
+ * Show request status message
+ */
+function showRequestStatus(message, type = 'info') {
+    requestStatusEl.classList.remove('hidden', 'success', 'error', 'pending');
+    requestStatusEl.classList.add(type);
+    requestStatusEl.textContent = message;
+}
+
+/**
+ * Hide request status message
+ */
+function hideRequestStatus() {
+    requestStatusEl.classList.add('hidden');
+    requestStatusEl.textContent = '';
+}
+
 /**
  * Inicializa el popup
  */
@@ -317,6 +518,15 @@ async function init() {
 
         // Verificar si Native Messaging está disponible
         await checkNativeAvailable();
+        
+        // Verificar si Request API está disponible
+        const requestAvailable = await checkRequestApiAvailable();
+        if (requestAvailable) {
+            btnRequest.classList.remove('hidden');
+            btnRequest.disabled = false;
+        } else {
+            btnRequest.classList.add('hidden');
+        }
 
     } catch (error) {
         console.error('[Popup] Error de inicialización:', error);
@@ -328,6 +538,10 @@ async function init() {
 btnCopy.addEventListener('click', copyToClipboard);
 btnClear.addEventListener('click', clearDomains);
 btnVerify.addEventListener('click', verifyDomainsWithNative);
+btnRequest.addEventListener('click', toggleRequestSection);
+btnSubmitRequest.addEventListener('click', submitDomainRequest);
+requestDomainSelectEl.addEventListener('change', updateSubmitButtonState);
+requestReasonEl.addEventListener('input', updateSubmitButtonState);
 
 // Inicializar al cargar
 document.addEventListener('DOMContentLoaded', init);

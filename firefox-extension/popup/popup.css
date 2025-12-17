@@ -372,3 +372,119 @@ footer button {
 #verify-results::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
 }
+
+/* ============================================================================
+   Request Section
+   ============================================================================ */
+
+#request-section {
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+}
+
+#request-section h2 {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: var(--text-primary);
+}
+
+#request-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#request-domain-select {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+#request-domain-select:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+}
+
+#request-reason {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 12px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+
+#request-reason::placeholder {
+  color: var(--text-muted);
+}
+
+#request-reason:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+}
+
+#btn-submit-request {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--accent-blue);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+#btn-submit-request:hover:not(:disabled) {
+  background: #5a5ffa;
+}
+
+#btn-submit-request:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#request-status {
+  margin-top: 8px;
+  padding: 8px 10px;
+  font-size: 11px;
+  border-radius: 4px;
+  white-space: pre-wrap;
+}
+
+#request-status.success {
+  background: rgba(46, 213, 115, 0.2);
+  color: var(--accent-green);
+  border: 1px solid var(--accent-green);
+}
+
+#request-status.error {
+  background: rgba(255, 71, 87, 0.2);
+  color: var(--accent-red);
+  border: 1px solid var(--accent-red);
+}
+
+#request-status.pending {
+  background: rgba(255, 165, 2, 0.2);
+  color: var(--accent-yellow);
+  border: 1px solid var(--accent-yellow);
+}
+
+/* Request button in footer */
+#btn-request {
+  background: var(--accent-blue);
+  color: white;
+}
+
+#btn-request:hover {
+  background: #5a5ffa;
+}

@@ -828,6 +828,186 @@ a:hover {
     box-shadow: var(--shadow-md);
 }
 
+/* ============== Requests Section ============== */
+.requests-section {
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border: 1px solid var(--border-color);
+}
+
+.requests-section .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.requests-section h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.requests-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.server-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-muted);
+}
+
+.status-dot.online {
+    background: var(--accent-success);
+    box-shadow: 0 0 8px var(--accent-success);
+}
+
+.status-dot.offline {
+    background: var(--accent-danger);
+}
+
+.requests-config {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--border-radius-sm);
+    margin-bottom: 1rem;
+}
+
+.requests-config .form-group.inline {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 200px;
+}
+
+.requests-config label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.requests-config input {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    color: var(--text-primary);
+}
+
+.requests-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.requests-list .empty-message {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 2rem;
+}
+
+.requests-list .empty-message.error {
+    color: var(--accent-danger);
+}
+
+.request-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--border-color);
+}
+
+.request-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+}
+
+.request-domain {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-weight: 600;
+    color: var(--accent-primary);
+}
+
+.request-meta {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.request-group {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.request-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.request-group-select {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    color: var(--text-primary);
+}
+
+.btn-sm {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+}
+
+/* Stat card for requests */
+.stat-card.stat-requests {
+    cursor: pointer;
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.stat-card.stat-requests:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent-primary);
+}
+
+.stat-card.stat-requests.has-pending {
+    border-color: var(--accent-warning);
+    background: linear-gradient(145deg, rgba(234, 179, 8, 0.1) 0%, rgba(234, 179, 8, 0.05) 100%);
+}
+
+.stat-card.stat-requests.has-pending .stat-icon {
+    animation: bounce 1s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+}
+
 /* ============== Responsive ============== */
 @media (max-width: 768px) {
     .header {
@@ -867,5 +1047,23 @@ a:hover {
         flex-direction: column;
         gap: 1rem;
         text-align: center;
+    }
+    
+    .request-item {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .request-actions {
+        justify-content: flex-end;
+    }
+    
+    .requests-config {
+        flex-direction: column;
+    }
+    
+    .requests-config .form-group.inline {
+        flex-direction: column;
+        align-items: stretch;
     }
 }

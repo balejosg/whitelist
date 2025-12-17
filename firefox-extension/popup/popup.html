@@ -33,12 +33,28 @@
     <ul id="verify-list"></ul>
   </section>
 
+  <!-- Sección de solicitud de dominio -->
+  <section id="request-section" class="hidden">
+    <h2>📨 Solicitar Dominio</h2>
+    <div id="request-form">
+      <select id="request-domain-select">
+        <option value="">Seleccionar dominio...</option>
+      </select>
+      <input type="text" id="request-reason" placeholder="Motivo de la solicitud..." maxlength="200">
+      <button id="btn-submit-request" disabled>Enviar Solicitud</button>
+    </div>
+    <div id="request-status" class="hidden"></div>
+  </section>
+
   <footer>
     <button id="btn-copy" title="Copiar lista al portapapeles">
       📋 Copiar
     </button>
     <button id="btn-verify" title="Verificar dominios en whitelist local" class="hidden">
       🔍 Verificar
+    </button>
+    <button id="btn-request" title="Solicitar añadir dominio a whitelist">
+      📨 Solicitar
     </button>
     <button id="btn-clear" title="Limpiar lista de bloqueos">
       🗑️ Limpiar
@@ -47,6 +63,7 @@
 
   <div id="toast" class="hidden">Copiado al portapapeles</div>
 
+  <script src="../config.js"></script>
   <script src="popup.js"></script>
 </body>
 

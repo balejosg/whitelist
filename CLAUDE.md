@@ -66,17 +66,40 @@ All functionality is split into reusable libraries in `/usr/local/lib/whitelist-
    - Manages whitelist rules via GitHub API
    - Supports GitHub OAuth authentication via Cloudflare Worker
    - Permission-based access (repo write access required for edits)
+   - Includes domain request management panel (connects to home server API)
 
 8. **OAuth Worker** (`oauth-worker/`)
    - Cloudflare Worker handling GitHub OAuth flow
    - Exchanges authorization codes for access tokens
    - Validates repository permissions
 
+### Home Server API (whitelist-request-api)
+
+9. **Request API** (`whitelist-request-api/`)
+   - Express.js REST API for domain requests
+   - Designed for home server deployment (Raspberry Pi, NAS, Docker)
+   - Endpoints:
+     - `POST /api/requests` - Submit domain request (public)
+     - `GET /api/requests` - List pending requests (admin)
+     - `POST /api/requests/:id/approve` - Approve and push to GitHub (admin)
+     - `POST /api/requests/:id/reject` - Reject request (admin)
+   - Uses JSON file storage (`data/requests.json`)
+   - Integrates with GitHub API to push approved domains
+   - Exposed via DuckDNS + port forwarding (or Cloudflare Tunnel)
+
+### Firefox Extension (firefox-extension)
+
+10. **Network Block Monitor**
+    - Detects DNS/firewall blocks in real-time
+    - Shows blocked domains per tab with badge count
+    - Native Messaging integration for local whitelist verification
+    - Domain request feature (submits to home server API)
+
 ### Windows Implementation (whitelist-windows)
 
-9. **Acrylic DNS Proxy** - Windows DNS sinkhole equivalent
-10. **Windows Firewall** - PowerShell-managed firewall rules
-11. **Task Scheduler** - Scheduled updates and watchdog
+11. **Acrylic DNS Proxy** - Windows DNS sinkhole equivalent
+12. **Windows Firewall** - PowerShell-managed firewall rules
+13. **Task Scheduler** - Scheduled updates and watchdog
 
 ## Installation Paths
 

@@ -190,6 +190,9 @@ async function loadDashboard() {
         document.getElementById('stat-blocked').textContent = totalBlocked;
 
         renderGroupsList();
+        
+        // Initialize requests section (home server API)
+        await initRequestsSection();
     } catch (err) {
         console.error('Dashboard error:', err);
         showToast('Error cargando datos: ' + err.message, 'error');
@@ -512,6 +515,205 @@ document.getElementById('bulk-add-form').addEventListener('submit', async (e) =>
     closeModal('modal-bulk-add');
     document.getElementById('bulk-add-form').reset();
     showToast(`${added} reglas añadidas`);
+});
+
+// ============== Requests API ==============
+
+// Initialize requests section
+async function initRequestsSection() {
+    // Load saved config
+    const savedUrl = localStorage.getItem('requests_api_url') || '';
+    const savedToken = localStorage.getItem('requests_api_token') || '';
+    
+    document.getElementById('requests-api-url').value = savedUrl;
+    document.getElementById('requests-api-token').value = savedToken;
+    
+    if (savedUrl && savedToken) {
+        RequestsAPI.init(savedUrl, savedToken);
+        await checkRequestsServerStatus();
+        await loadPendingRequests();
+    }
+    
+    // Show requests section
+    document.getElementById('requests-section').classList.remove('hidden');
+}
+
+// Check server status
+async function checkRequestsServerStatus() {
+    const statusEl = document.getElementById('requests-server-status');
+    const dotEl = statusEl.querySelector('.status-dot');
+    const textEl = statusEl.querySelector('.status-text');
+    
+    if (!RequestsAPI.isConfigured()) {
+        dotEl.className = 'status-dot offline';
+        textEl.textContent = 'No configurado';
+        return false;
+    }
+    
+    try {
+        const isOnline = await RequestsAPI.healthCheck();
+        
+        if (isOnline) {
+            dotEl.className = 'status-dot online';
+            textEl.textContent = 'Conectado';
+            return true;
+        } else {
+            dotEl.className = 'status-dot offline';
+            textEl.textContent = 'Sin conexión';
+            return false;
+        }
+    } catch {
+        dotEl.className = 'status-dot offline';
+        textEl.textContent = 'Error';
+        return false;
+    }
+}
+
+// Load pending requests
+async function loadPendingRequests() {
+    const listEl = document.getElementById('requests-list');
+    const statEl = document.getElementById('stat-pending-requests');
+    
+    if (!RequestsAPI.isConfigured()) {
+        listEl.innerHTML = '<p class="empty-message">Configura la URL del servidor y el token para ver solicitudes</p>';
+        statEl.textContent = '—';
+        return;
+    }
+    
+    try {
+        const response = await RequestsAPI.getPendingRequests();
+        const requests = response.requests || [];
+        
+        // Update stat card
+        statEl.textContent = requests.length;
+        
+        // Highlight if there are pending requests
+        const cardEl = document.getElementById('stat-requests-card');
+        if (requests.length > 0) {
+            cardEl.classList.add('has-pending');
+        } else {
+            cardEl.classList.remove('has-pending');
+        }
+        
+        if (requests.length === 0) {
+            listEl.innerHTML = '<p class="empty-message">✅ No hay solicitudes pendientes</p>';
+            return;
+        }
+        
+        listEl.innerHTML = requests.map(req => `
+            <div class="request-item" data-id="${req.id}">
+                <div class="request-info">
+                    <span class="request-domain">${escapeHtml(req.domain)}</span>
+                    <span class="request-meta">
+                        ${escapeHtml(req.reason || 'Sin motivo')} • 
+                        ${new Date(req.created_at).toLocaleString()}
+                    </span>
+                    <span class="request-group">Grupo: ${escapeHtml(req.group_id || 'default')}</span>
+                </div>
+                <div class="request-actions">
+                    <select class="request-group-select">
+                        ${allGroups.map(g => `
+                            <option value="${g}" ${g === req.group_id ? 'selected' : ''}>${g}</option>
+                        `).join('')}
+                    </select>
+                    <button class="btn btn-success btn-sm approve-request-btn" 
+                            data-id="${req.id}" title="Aprobar">✓</button>
+                    <button class="btn btn-danger btn-sm reject-request-btn" 
+                            data-id="${req.id}" title="Rechazar">✗</button>
+                </div>
+            </div>
+        `).join('');
+        
+        // Add event listeners
+        listEl.querySelectorAll('.approve-request-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = e.target.dataset.id;
+                const item = e.target.closest('.request-item');
+                const groupSelect = item.querySelector('.request-group-select');
+                const groupId = groupSelect.value;
+                
+                await approveRequest(id, groupId);
+            });
+        });
+        
+        listEl.querySelectorAll('.reject-request-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = e.target.dataset.id;
+                const reason = prompt('Motivo del rechazo (opcional):');
+                await rejectRequest(id, reason);
+            });
+        });
+        
+    } catch (error) {
+        listEl.innerHTML = `<p class="empty-message error">❌ Error: ${escapeHtml(error.message)}</p>`;
+        statEl.textContent = '!';
+    }
+}
+
+// Approve a request
+async function approveRequest(requestId, groupId) {
+    try {
+        const response = await RequestsAPI.approveRequest(requestId, groupId);
+        
+        if (response.success) {
+            showToast(`✅ Dominio ${response.domain} añadido a ${groupId}`);
+            await loadPendingRequests();
+            // Refresh groups to show new domain
+            await loadDashboard();
+        } else {
+            showToast(`❌ Error: ${response.error}`, 'error');
+        }
+    } catch (error) {
+        showToast(`❌ Error: ${error.message}`, 'error');
+    }
+}
+
+// Reject a request
+async function rejectRequest(requestId, reason) {
+    try {
+        const response = await RequestsAPI.rejectRequest(requestId, reason);
+        
+        if (response.success) {
+            showToast('Solicitud rechazada');
+            await loadPendingRequests();
+        } else {
+            showToast(`❌ Error: ${response.error}`, 'error');
+        }
+    } catch (error) {
+        showToast(`❌ Error: ${error.message}`, 'error');
+    }
+}
+
+// Save requests config
+document.getElementById('save-requests-config-btn').addEventListener('click', async () => {
+    const url = document.getElementById('requests-api-url').value.trim();
+    const token = document.getElementById('requests-api-token').value.trim();
+    
+    localStorage.setItem('requests_api_url', url);
+    localStorage.setItem('requests_api_token', token);
+    
+    RequestsAPI.init(url, token);
+    
+    const isOnline = await checkRequestsServerStatus();
+    
+    if (isOnline) {
+        showToast('✅ Configuración guardada');
+        await loadPendingRequests();
+    } else {
+        showToast('⚠️ Configuración guardada, pero el servidor no responde', 'warning');
+    }
+});
+
+// Refresh requests button
+document.getElementById('refresh-requests-btn').addEventListener('click', async () => {
+    await checkRequestsServerStatus();
+    await loadPendingRequests();
+});
+
+// Toggle requests config visibility
+document.getElementById('stat-requests-card').addEventListener('click', () => {
+    const configEl = document.getElementById('requests-config');
+    configEl.classList.toggle('hidden');
 });
 
 // ============== Helpers ==============
