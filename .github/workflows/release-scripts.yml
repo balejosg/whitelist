@@ -54,6 +54,12 @@ jobs:
           git tag "${{ steps.vars.outputs.tag }}"
           git push origin "${{ steps.vars.outputs.tag }}" || echo "Tag already exists or push failed, continuing..."
       
+      - name: Validate package contents
+        run: |
+          echo "🔍 Validating package structure before creating release..."
+          chmod +x tests/e2e/pre-install-validation.sh
+          ./tests/e2e/pre-install-validation.sh
+      
       - name: Package Linux scripts
         run: |
           echo "🐧 Packaging Linux installation scripts..."

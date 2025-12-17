@@ -37,7 +37,12 @@ jobs:
         run: |
           chmod +x install.sh uninstall.sh
           chmod +x scripts/*.sh
-          chmod +x tests/e2e/linux-e2e-tests.sh
+          chmod +x tests/e2e/*.sh
+      
+      - name: Run pre-installation validation
+        run: |
+          echo "🔍 Running pre-installation validation..."
+          ./tests/e2e/pre-install-validation.sh
       
       - name: Run installation
         run: |

@@ -1,0 +1,23 @@
+#!/bin/bash
+################################################################################
+# validate-release.sh - Quick validation before committing/releasing
+#
+# Run this script before committing to catch common packaging issues
+#
+# Usage: ./tests/validate-release.sh
+################################################################################
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+echo "🔍 Running quick release validation..."
+echo ""
+
+# Run pre-installation validation
+if [ -x "tests/e2e/pre-install-validation.sh" ]; then
+    ./tests/e2e/pre-install-validation.sh
+else
+    echo "❌ tests/e2e/pre-install-validation.sh not found or not executable"
+    exit 1
+fi

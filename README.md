@@ -239,6 +239,14 @@ Sistema detecta automáticamente:
 
 ### Testing
 
+**Quick validation before committing:**
+```bash
+./tests/validate-release.sh
+```
+
+This validates file permissions, directory structure, and package completeness.
+
+**Manual DNS testing:**
 ```bash
 # Probar resolución DNS local
 dig @127.0.0.1 example.com
