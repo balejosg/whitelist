@@ -32,7 +32,11 @@ const DEFAULT_CONFIG = {
 
     // Native messaging retry config
     NATIVE_RETRY_ATTEMPTS: 2,
-    NATIVE_RETRY_DELAY: 500
+    NATIVE_RETRY_DELAY: 500,
+
+    // Auto-inclusion settings
+    AUTO_INCLUDE_ENABLED: true,
+    SHARED_SECRET: 'whitelist-secret-2024'  // Change in production
 };
 
 // Runtime config (merged with stored settings)

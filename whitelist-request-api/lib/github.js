@@ -16,12 +16,12 @@ const GITHUB_API = 'api.github.com';
 function githubRequest(method, endpoint, body = null) {
     return new Promise((resolve, reject) => {
         const token = process.env.GITHUB_TOKEN;
-        
+
         if (!token) {
             reject(new Error('GITHUB_TOKEN not configured'));
             return;
         }
-        
+
         const options = {
             hostname: GITHUB_API,
             path: endpoint,
@@ -33,15 +33,15 @@ function githubRequest(method, endpoint, body = null) {
                 'User-Agent': 'whitelist-request-api/1.0'
             }
         };
-        
+
         const req = https.request(options, (res) => {
             let data = '';
-            
+
             res.on('data', chunk => data += chunk);
             res.on('end', () => {
                 try {
                     const json = data ? JSON.parse(data) : {};
-                    
+
                     if (res.statusCode >= 200 && res.statusCode < 300) {
                         resolve(json);
                     } else {
@@ -52,13 +52,13 @@ function githubRequest(method, endpoint, body = null) {
                 }
             });
         });
-        
+
         req.on('error', reject);
-        
+
         if (body) {
             req.write(JSON.stringify(body));
         }
-        
+
         req.end();
     });
 }
@@ -72,18 +72,18 @@ async function getFileContent(filePath) {
     const owner = process.env.GITHUB_OWNER;
     const repo = process.env.GITHUB_REPO;
     const branch = process.env.GITHUB_BRANCH || 'main';
-    
+
     const endpoint = `/repos/${owner}/${repo}/contents/${encodeURIComponent(filePath)}?ref=${branch}`;
-    
+
     const response = await githubRequest('GET', endpoint);
-    
+
     if (response.type !== 'file') {
         throw new Error('Path is not a file');
     }
-    
+
     // Decode base64 content
     const content = Buffer.from(response.content, 'base64').toString('utf-8');
-    
+
     return {
         content,
         sha: response.sha
@@ -102,19 +102,19 @@ async function updateFile(filePath, content, message, sha = null) {
     const owner = process.env.GITHUB_OWNER;
     const repo = process.env.GITHUB_REPO;
     const branch = process.env.GITHUB_BRANCH || 'main';
-    
+
     const endpoint = `/repos/${owner}/${repo}/contents/${encodeURIComponent(filePath)}`;
-    
+
     const body = {
         message,
         content: Buffer.from(content, 'utf-8').toString('base64'),
         branch
     };
-    
+
     if (sha) {
         body.sha = sha;
     }
-    
+
     return githubRequest('PUT', endpoint, body);
 }
 
@@ -128,11 +128,11 @@ async function addDomainToWhitelist(domain, groupId) {
     try {
         // Determine file path (adjust based on your repo structure)
         const filePath = `${groupId}.txt`;
-        
+
         // Get current file content
         let currentContent = '';
         let sha = null;
-        
+
         try {
             const file = await getFileContent(filePath);
             currentContent = file.content;
@@ -141,32 +141,32 @@ async function addDomainToWhitelist(domain, groupId) {
             // File doesn't exist, will create new
             console.log(`File ${filePath} not found, creating new`);
         }
-        
+
         // Parse current content to check if domain exists
         const lines = currentContent.split('\n');
         const domainLower = domain.toLowerCase().trim();
-        
+
         // Check if domain already exists
         const exists = lines.some(line => {
             const trimmed = line.trim().toLowerCase();
             return trimmed === domainLower || trimmed === `*.${domainLower}`;
         });
-        
+
         if (exists) {
             return {
                 success: false,
                 message: `Domain ${domain} already exists in ${groupId}`
             };
         }
-        
+
         // Find WHITELIST section and add domain
         let newContent = '';
         let addedDomain = false;
         let inWhitelistSection = false;
-        
+
         for (const line of lines) {
             newContent += line + '\n';
-            
+
             if (line.trim() === '## WHITELIST') {
                 inWhitelistSection = true;
             } else if (line.startsWith('## ') && inWhitelistSection) {
@@ -175,15 +175,15 @@ async function addDomainToWhitelist(domain, groupId) {
                     // Insert domain before this section header
                     const lastNewline = newContent.lastIndexOf('\n');
                     const beforeLastNewline = newContent.lastIndexOf('\n', lastNewline - 1);
-                    newContent = newContent.slice(0, beforeLastNewline + 1) + 
-                                 domainLower + '\n' +
-                                 newContent.slice(beforeLastNewline + 1);
+                    newContent = newContent.slice(0, beforeLastNewline + 1) +
+                        domainLower + '\n' +
+                        newContent.slice(beforeLastNewline + 1);
                     addedDomain = true;
                 }
                 inWhitelistSection = false;
             }
         }
-        
+
         // If no sections found, just append to end
         if (!addedDomain) {
             if (!currentContent.includes('## WHITELIST')) {
@@ -196,16 +196,16 @@ async function addDomainToWhitelist(domain, groupId) {
                 );
             }
         }
-        
+
         // Commit the change
         const commitMessage = `Add ${domain} to whitelist (approved request)`;
         await updateFile(filePath, newContent.trim() + '\n', commitMessage, sha);
-        
+
         return {
             success: true,
             message: `Domain ${domain} added to ${groupId}`
         };
-        
+
     } catch (error) {
         console.error('Error adding domain to whitelist:', error);
         return {
@@ -224,10 +224,10 @@ async function listWhitelistFiles() {
         const owner = process.env.GITHUB_OWNER;
         const repo = process.env.GITHUB_REPO;
         const branch = process.env.GITHUB_BRANCH || 'main';
-        
+
         const endpoint = `/repos/${owner}/${repo}/contents/?ref=${branch}`;
         const response = await githubRequest('GET', endpoint);
-        
+
         // Filter for .txt files
         return response
             .filter(item => item.type === 'file' && item.name.endsWith('.txt'))
@@ -235,10 +235,38 @@ async function listWhitelistFiles() {
                 name: item.name.replace('.txt', ''),
                 path: item.path
             }));
-            
+
     } catch (error) {
         console.error('Error listing whitelist files:', error);
         return [];
+    }
+}
+
+/**
+ * Check if a domain exists in a whitelist file
+ * @param {string} domain - Domain to check
+ * @param {string} groupId - Group/file name (e.g., 'informatica-3')
+ * @returns {Promise<boolean>}
+ */
+async function isDomainInWhitelist(domain, groupId) {
+    try {
+        const filePath = `${groupId}.txt`;
+        const file = await getFileContent(filePath);
+
+        const lines = file.content.split('\n');
+        const domainLower = domain.toLowerCase().trim();
+
+        return lines.some(line => {
+            const trimmed = line.trim().toLowerCase();
+            // Match exact domain or wildcard
+            return trimmed === domainLower ||
+                trimmed === `*.${domainLower}` ||
+                (trimmed.startsWith('*.') && domainLower.endsWith(trimmed.slice(1)));
+        });
+    } catch (error) {
+        // File doesn't exist or other error
+        console.error(`Error checking domain in whitelist: ${error.message}`);
+        return false;
     }
 }
 
@@ -246,5 +274,6 @@ module.exports = {
     getFileContent,
     updateFile,
     addDomainToWhitelist,
-    listWhitelistFiles
+    listWhitelistFiles,
+    isDomainInWhitelist
 };

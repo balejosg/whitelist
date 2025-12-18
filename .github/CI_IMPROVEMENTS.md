@@ -46,12 +46,14 @@
    - Already enabled by default with `GITHUB_TOKEN`
 
 2. **Add Codecov Secret** (optional but recommended):
+
    ```bash
    # Get token from https://codecov.io
    gh secret set CODECOV_TOKEN
    ```
 
 3. **Enable Branch Protection** (recommended):
+
    ```bash
    gh api repos/:owner/:repo/branches/main/protection -X PUT \
      --field required_status_checks[strict]=true \

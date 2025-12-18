@@ -17,7 +17,7 @@ describe('Whitelist Request API Tests', () => {
     test('GET /health should return 200 OK', async () => {
       const response = await fetch(`${API_URL}/health`);
       assert.strictEqual(response.status, 200);
-      
+
       const data = await response.json();
       assert.strictEqual(data.status, 'ok');
       assert.ok(data.timestamp);
@@ -27,10 +27,9 @@ describe('Whitelist Request API Tests', () => {
   describe('POST /api/requests - Submit Domain Request', () => {
     test('should accept valid domain request', async () => {
       const requestData = {
-        domains: ['example.com', 'test.org'],
+        domain: 'test-' + Date.now() + '.example.com',
         reason: 'Testing purposes',
-        requester: 'Test User',
-        contact: 'test@example.com'
+        requester_email: 'test@example.com'
       };
 
       const response = await fetch(`${API_URL}/api/requests`, {
@@ -40,16 +39,16 @@ describe('Whitelist Request API Tests', () => {
       });
 
       assert.strictEqual(response.status, 201);
-      
+
       const data = await response.json();
-      assert.ok(data.id);
+      assert.ok(data.request_id);
       assert.strictEqual(data.status, 'pending');
     });
 
-    test('should reject request without domains', async () => {
+    test('should reject request without domain', async () => {
       const requestData = {
         reason: 'Testing',
-        requester: 'Test User'
+        requester_email: 'test@example.com'
       };
 
       const response = await fetch(`${API_URL}/api/requests`, {
@@ -61,11 +60,10 @@ describe('Whitelist Request API Tests', () => {
       assert.strictEqual(response.status, 400);
     });
 
-    test('should reject empty domains array', async () => {
+    test('should reject invalid domain format', async () => {
       const requestData = {
-        domains: [],
-        reason: 'Testing',
-        requester: 'Test User'
+        domain: 'not-a-valid-domain',
+        reason: 'Testing'
       };
 
       const response = await fetch(`${API_URL}/api/requests`, {
@@ -77,11 +75,10 @@ describe('Whitelist Request API Tests', () => {
       assert.strictEqual(response.status, 400);
     });
 
-    test('should sanitize XSS attempts in domain names', async () => {
+    test('should reject XSS attempts in domain names', async () => {
       const requestData = {
-        domains: ['<script>alert("xss")</script>.com'],
-        reason: 'Testing',
-        requester: 'Test User'
+        domain: '<script>alert("xss")</script>.com',
+        reason: 'Testing'
       };
 
       const response = await fetch(`${API_URL}/api/requests`, {
@@ -90,25 +87,23 @@ describe('Whitelist Request API Tests', () => {
         body: JSON.stringify(requestData)
       });
 
-      // Should either reject or sanitize
-      assert.ok(response.status === 400 || response.status === 201);
+      // Should reject invalid domain format
+      assert.strictEqual(response.status, 400);
     });
   });
 
   describe('GET /api/requests - List Requests', () => {
-    test('should list all pending requests', async () => {
+    test('should require authentication for listing requests', async () => {
       const response = await fetch(`${API_URL}/api/requests`);
-      assert.strictEqual(response.status, 200);
-      
-      const data = await response.json();
-      assert.ok(Array.isArray(data));
+      // Requires admin auth
+      assert.strictEqual(response.status, 401);
     });
   });
 
   describe('CORS Headers', () => {
     test('should include CORS headers', async () => {
       const response = await fetch(`${API_URL}/health`);
-      
+
       const corsHeader = response.headers.get('access-control-allow-origin');
       assert.ok(corsHeader);
     });

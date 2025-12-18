@@ -208,6 +208,52 @@ def handle_message(message):
             "message": "pong"
         }
     
+    elif action == "get-hostname":
+        # Return the system hostname for token generation
+        import socket
+        hostname = socket.gethostname()
+        return {
+            "success": True,
+            "action": "get-hostname",
+            "hostname": hostname
+        }
+    
+    elif action == "update-whitelist":
+        # Trigger whitelist update script
+        try:
+            update_script = "/usr/local/bin/dnsmasq-whitelist.sh"
+            if os.path.exists(update_script):
+                proc = subprocess.run(
+                    [update_script, "--update"],
+                    capture_output=True,
+                    text=True,
+                    timeout=60
+                )
+                return {
+                    "success": proc.returncode == 0,
+                    "action": "update-whitelist",
+                    "output": proc.stdout,
+                    "error": proc.stderr if proc.returncode != 0 else None
+                }
+            else:
+                return {
+                    "success": False,
+                    "action": "update-whitelist",
+                    "error": "Update script not found"
+                }
+        except subprocess.TimeoutExpired:
+            return {
+                "success": False,
+                "action": "update-whitelist",
+                "error": "Update timed out"
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "action": "update-whitelist",
+                "error": str(e)
+            }
+    
     else:
         return {
             "success": False,
