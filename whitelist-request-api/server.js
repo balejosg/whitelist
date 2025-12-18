@@ -144,6 +144,19 @@ app.use('/api/requests', requestsRouter);
 // Error Handling
 // =============================================================================
 
+// JSON parsing error handler (must come before other error handlers)
+app.use((err, req, res, next) => {
+    if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+        // Malformed JSON
+        return res.status(400).json({
+            success: false,
+            error: 'Invalid JSON in request body',
+            code: 'INVALID_JSON'
+        });
+    }
+    next(err);
+});
+
 // 404 handler
 app.use((req, res) => {
     res.status(404).json({
@@ -155,7 +168,7 @@ app.use((req, res) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
-    console.error('Unhandled error:', err);
+    console.error('Unhandled error:', err.message || err);
     res.status(500).json({
         success: false,
         error: 'Internal server error'
