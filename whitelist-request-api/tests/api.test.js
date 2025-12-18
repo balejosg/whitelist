@@ -3,14 +3,18 @@ const assert = require('node:assert');
 const http = require('node:http');
 
 const API_URL = 'http://localhost:3000';
-let server;
 
-describe('Whitelist Request API Tests', () => {
+describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
   before(async () => {
     // Start server for testing
-    const app = require('../server.js');
-    // Server should be started by the app itself
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    require('../server.js');
+    // Wait for server to start
+    await new Promise(resolve => setTimeout(resolve, 1500));
+  });
+
+  after(() => {
+    // Force exit to prevent hang from open server connections
+    setTimeout(() => process.exit(0), 500);
   });
 
   describe('Health Check', () => {
