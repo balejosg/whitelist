@@ -31,7 +31,7 @@ jobs:
         uses: DavidAnson/markdownlint-cli2-action@v16
         with:
           globs: '**/*.md'
-          configurationFile: '.markdownlint.json'
+          config: '.markdownlint.json'
 
   # ============================================
   # Job 2: Test Web Application
