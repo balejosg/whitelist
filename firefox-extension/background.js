@@ -60,14 +60,21 @@ function ensureTabStorage(tabId) {
  * @param {number} tabId - ID de la pestaña
  * @param {string} hostname - Dominio bloqueado
  * @param {string} error - Tipo de error
+ * @param {string} originUrl - URL de la página que cargaba el recurso
  */
-function addBlockedDomain(tabId, hostname, error) {
+function addBlockedDomain(tabId, hostname, error, originUrl) {
     ensureTabStorage(tabId);
 
+    const originHostname = extractHostname(originUrl);
+
     if (!blockedDomains[tabId].has(hostname)) {
-        blockedDomains[tabId].set(hostname, new Set());
+        blockedDomains[tabId].set(hostname, {
+            errors: new Set(),
+            origin: originHostname,
+            timestamp: Date.now()
+        });
     }
-    blockedDomains[tabId].get(hostname).add(error);
+    blockedDomains[tabId].get(hostname).errors.add(error);
 
     updateBadge(tabId);
 }
@@ -104,14 +111,18 @@ function clearBlockedDomains(tabId) {
 /**
  * Obtiene los dominios bloqueados para una pestaña
  * @param {number} tabId - ID de la pestaña
- * @returns {Object} - Objeto con dominios y sus errores
+ * @returns {Object} - Objeto con dominios, errores y origen
  */
 function getBlockedDomainsForTab(tabId) {
     const result = {};
 
     if (blockedDomains[tabId]) {
-        blockedDomains[tabId].forEach((errors, hostname) => {
-            result[hostname] = Array.from(errors);
+        blockedDomains[tabId].forEach((data, hostname) => {
+            result[hostname] = {
+                errors: Array.from(data.errors),
+                origin: data.origin,
+                timestamp: data.timestamp
+            };
         });
     }
 
@@ -245,7 +256,7 @@ browser.webRequest.onErrorOccurred.addListener(
         }
 
         console.log(`[Monitor] Bloqueado: ${hostname} (${details.error})`);
-        addBlockedDomain(details.tabId, hostname, details.error);
+        addBlockedDomain(details.tabId, hostname, details.error, details.originUrl || details.documentUrl);
     },
     { urls: ['<all_urls>'] }
 );
@@ -309,6 +320,20 @@ browser.runtime.onMessage.addListener(
                 isNativeHostAvailable()
                     .then(available => sendResponse({ available }))
                     .catch(() => sendResponse({ available: false }));
+                return true;
+
+            case 'getHostname':
+                // Get system hostname via Native Messaging
+                sendNativeMessage({ action: 'get-hostname' })
+                    .then(result => sendResponse(result))
+                    .catch(error => sendResponse({ success: false, error: error.message }));
+                return true;
+
+            case 'triggerWhitelistUpdate':
+                // Trigger local whitelist update via Native Messaging
+                sendNativeMessage({ action: 'update-whitelist' })
+                    .then(result => sendResponse(result))
+                    .catch(error => sendResponse({ success: false, error: error.message }));
                 return true;
 
             default:

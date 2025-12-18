@@ -73,19 +73,22 @@ function sanitize(str, maxLen = 500) {
 // Middleware: Validate admin token with timing-safe comparison
 function requireAdmin(req, res, next) {
     const authHeader = req.headers.authorization;
-    const adminToken = process.env.ADMIN_TOKEN;
 
-    if (!adminToken) {
-        return res.status(500).json({
-            success: false,
-            error: 'Server not configured: ADMIN_TOKEN missing'
-        });
-    }
-
+    // Check for auth header first (returns 401)
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({
             success: false,
             error: 'Authorization header required'
+        });
+    }
+
+    const adminToken = process.env.ADMIN_TOKEN;
+
+    // Check if server is configured (returns 500)
+    if (!adminToken) {
+        return res.status(500).json({
+            success: false,
+            error: 'Server not configured: ADMIN_TOKEN missing'
         });
     }
 
@@ -114,6 +117,142 @@ function isValidDomain(domain) {
 // =============================================================================
 // PUBLIC ENDPOINTS (no auth required)
 // =============================================================================
+
+// Rate limiter for auto-inclusion: 50 requests per hour per IP
+const autoInclusionLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,  // 1 hour
+    max: 50,
+    message: {
+        success: false,
+        error: 'Auto-inclusion rate limit exceeded',
+        code: 'RATE_LIMITED'
+    },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+// Generate token from hostname + shared secret
+function generateToken(hostname, secret) {
+    return crypto.createHash('sha256')
+        .update(hostname + secret)
+        .digest('base64');
+}
+
+// Validate domain for auto-inclusion (stricter rules)
+function isValidAutoInclusionDomain(domain) {
+    if (!isValidDomain(domain)) return false;
+
+    // Block suspicious patterns
+    const blocklist = [
+        /^localhost$/i,
+        /^\d+\.\d+\.\d+\.\d+$/,  // No IPs
+        /\.local$/i,
+        /\.onion$/i,
+        /\.internal$/i,
+        /\.test$/i,
+        /\.example$/i
+    ];
+
+    return !blocklist.some(pattern => pattern.test(domain));
+}
+
+/**
+ * POST /api/requests/auto
+ * Auto-include domain in whitelist (no admin approval needed)
+ * Requires valid token and origin page in whitelist
+ */
+router.post('/auto', autoInclusionLimiter, async (req, res) => {
+    const { domain, origin_page, group_id, token, hostname } = req.body;
+
+    // 1. Validate required fields
+    if (!domain || !origin_page || !group_id || !token || !hostname) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields: domain, origin_page, group_id, token, hostname',
+            code: 'MISSING_FIELDS'
+        });
+    }
+
+    // 2. Validate token (hostname + shared secret)
+    const sharedSecret = process.env.SHARED_SECRET;
+    if (!sharedSecret) {
+        console.error('SHARED_SECRET not configured');
+        return res.status(500).json({
+            success: false,
+            error: 'Server not configured',
+            code: 'SERVER_ERROR'
+        });
+    }
+
+    const expectedToken = generateToken(hostname, sharedSecret);
+    if (!secureCompare(token, expectedToken)) {
+        console.warn(`Invalid token attempt from hostname: ${hostname}`);
+        return res.status(403).json({
+            success: false,
+            error: 'Invalid token',
+            code: 'INVALID_TOKEN'
+        });
+    }
+
+    // 3. Validate origin page is in whitelist
+    const isOriginValid = await github.isDomainInWhitelist(origin_page, group_id);
+    if (!isOriginValid) {
+        console.warn(`Origin not whitelisted: ${origin_page} in ${group_id}`);
+        return res.status(403).json({
+            success: false,
+            error: 'Origin page not in whitelist',
+            code: 'ORIGIN_NOT_WHITELISTED'
+        });
+    }
+
+    // 4. Validate domain format
+    if (!isValidAutoInclusionDomain(domain)) {
+        return res.status(400).json({
+            success: false,
+            error: 'Invalid domain format',
+            code: 'INVALID_DOMAIN'
+        });
+    }
+
+    try {
+        // 5. Add domain to whitelist automatically
+        const result = await github.addDomainToWhitelist(domain, group_id);
+
+        if (!result.success) {
+            return res.status(400).json({
+                success: false,
+                error: result.message,
+                code: 'ADD_FAILED'
+            });
+        }
+
+        // 6. Audit log
+        console.log(JSON.stringify({
+            level: 'INFO',
+            event: 'auto_include',
+            domain: domain.toLowerCase(),
+            origin_page,
+            group_id,
+            hostname,
+            timestamp: new Date().toISOString()
+        }));
+
+        res.status(201).json({
+            success: true,
+            domain: domain.toLowerCase(),
+            group_id,
+            added_at: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('Error in auto-inclusion:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to add domain',
+            code: 'SERVER_ERROR'
+        });
+    }
+});
 
 /**
  * POST /api/requests

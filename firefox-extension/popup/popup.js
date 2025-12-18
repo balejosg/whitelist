@@ -74,7 +74,7 @@ function formatErrorTypes(errors) {
 
 /**
  * Renderiza la lista de dominios bloqueados
- * @param {Object} domains - Objeto { hostname: [errors] }
+ * @param {Object} domains - Objeto { hostname: { errors: [], origin: string } }
  */
 function renderDomainsList(domains) {
     const hostnames = Object.keys(domains);
@@ -106,13 +106,16 @@ function renderDomainsList(domains) {
     hostnames.sort();
 
     domainsListEl.innerHTML = hostnames.map(hostname => {
-        const errors = domains[hostname];
-        const errorText = formatErrorTypes(errors);
+        const data = domains[hostname];
+        const errors = data.errors || data; // Support both old and new format
+        const origin = data.origin || '';
+        const errorText = formatErrorTypes(Array.isArray(errors) ? errors : [errors]);
 
         return `
-      <li>
+      <li data-origin="${escapeHtml(origin)}">
         <span class="hostname">${escapeHtml(hostname)}</span>
         <span class="error-type">${escapeHtml(errorText)}</span>
+        ${origin ? `<span class="origin-tag" title="Origen: ${escapeHtml(origin)}">📍</span>` : ''}
       </li>
     `;
     }).join('');
@@ -323,22 +326,22 @@ function getConfig(key, defaultValue) {
  */
 async function checkRequestApiAvailable() {
     const apiUrl = getConfig('REQUEST_API_URL', '');
-    
+
     if (!apiUrl || !getConfig('ENABLE_REQUESTS', true)) {
         return false;
     }
-    
+
     try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
-        
+
         const response = await fetch(`${apiUrl}/health`, {
             method: 'GET',
             signal: controller.signal
         });
-        
+
         clearTimeout(timeout);
-        
+
         if (response.ok) {
             requestApiAvailable = true;
             return true;
@@ -348,7 +351,7 @@ async function checkRequestApiAvailable() {
             console.log('[Popup] Request API not available:', error.message);
         }
     }
-    
+
     requestApiAvailable = false;
     return false;
 }
@@ -358,7 +361,7 @@ async function checkRequestApiAvailable() {
  */
 function toggleRequestSection() {
     const isHidden = requestSectionEl.classList.contains('hidden');
-    
+
     if (isHidden) {
         // Show and populate
         requestSectionEl.classList.remove('hidden');
@@ -372,20 +375,23 @@ function toggleRequestSection() {
 }
 
 /**
- * Populate the domain select dropdown
+ * Populate the domain select dropdown with origin info
  */
 function populateRequestDomainSelect() {
     const hostnames = Object.keys(blockedDomainsData).sort();
-    
+
     requestDomainSelectEl.innerHTML = '<option value="">Seleccionar dominio...</option>';
-    
+
     hostnames.forEach(hostname => {
+        const data = blockedDomainsData[hostname];
+        const origin = data.origin || 'desconocido';
         const option = document.createElement('option');
         option.value = hostname;
         option.textContent = hostname;
+        option.dataset.origin = origin;
         requestDomainSelectEl.appendChild(option);
     });
-    
+
     updateSubmitButtonState();
 }
 
@@ -395,57 +401,107 @@ function populateRequestDomainSelect() {
 function updateSubmitButtonState() {
     const hasSelection = requestDomainSelectEl.value !== '';
     const hasReason = requestReasonEl.value.trim().length >= 3;
-    
+
     btnSubmitRequest.disabled = !hasSelection || !hasReason;
 }
 
 /**
- * Submit a domain request
+ * Generate token from hostname using SHA-256
+ */
+async function generateToken(hostname, secret) {
+    const data = new TextEncoder().encode(hostname + secret);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = new Uint8Array(hashBuffer);
+    return btoa(String.fromCharCode(...hashArray));
+}
+
+/**
+ * Submit a domain request using auto-inclusion endpoint
  */
 async function submitDomainRequest() {
     const domain = requestDomainSelectEl.value;
     const reason = requestReasonEl.value.trim();
-    
+    const selectedOption = requestDomainSelectEl.selectedOptions[0];
+    const origin = selectedOption ? selectedOption.dataset.origin : '';
+
     if (!domain || reason.length < 3) {
         showRequestStatus('❌ Selecciona un dominio y escribe un motivo', 'error');
         return;
     }
-    
+
+    if (!origin) {
+        showRequestStatus('❌ El dominio no tiene un origen válido', 'error');
+        return;
+    }
+
     const apiUrl = getConfig('REQUEST_API_URL', '');
     const groupId = getConfig('DEFAULT_GROUP', 'default');
-    
+    const sharedSecret = getConfig('SHARED_SECRET', '');
+
     // Disable button while submitting
     btnSubmitRequest.disabled = true;
     btnSubmitRequest.textContent = '⏳ Enviando...';
     showRequestStatus('Enviando solicitud...', 'pending');
-    
+
     try {
+        // Get hostname via Native Messaging
+        const hostnameResult = await browser.runtime.sendMessage({ action: 'getHostname' });
+        if (!hostnameResult.success) {
+            throw new Error('No se pudo obtener el hostname del sistema');
+        }
+        const systemHostname = hostnameResult.hostname;
+
+        // Generate token
+        const token = await generateToken(systemHostname, sharedSecret);
+
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), getConfig('REQUEST_TIMEOUT', 10000));
-        
-        const response = await fetch(`${apiUrl}/api/requests`, {
+
+        // Use auto-inclusion endpoint
+        const response = await fetch(`${apiUrl}/api/requests/auto`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 domain,
-                reason,
+                origin_page: origin,
                 group_id: groupId,
-                requester_email: 'firefox-extension'
+                token,
+                hostname: systemHostname
             }),
             signal: controller.signal
         });
-        
+
         clearTimeout(timeout);
-        
+
         const data = await response.json();
-        
+
         if (response.ok && data.success) {
             showRequestStatus(
-                `✅ Solicitud enviada (ID: ${data.request_id})\nEstado: Pendiente de aprobación`,
+                `✅ Dominio añadido a ${data.group_id}\nActualizando whitelist local...`,
                 'success'
             );
-            showToast('✅ Solicitud enviada');
-            
+
+            // Trigger local whitelist update
+            try {
+                const updateResult = await browser.runtime.sendMessage({ action: 'triggerWhitelistUpdate' });
+                if (updateResult.success) {
+                    showRequestStatus(
+                        `✅ Dominio ${domain} añadido y whitelist local actualizada`,
+                        'success'
+                    );
+                    showToast('✅ Dominio añadido y WL actualizada');
+                } else {
+                    showRequestStatus(
+                        `✅ Dominio añadido (actualización local pendiente)`,
+                        'success'
+                    );
+                    showToast('✅ Dominio añadido');
+                }
+            } catch (updateError) {
+                console.warn('Whitelist update failed:', updateError);
+                showToast('✅ Dominio añadido');
+            }
+
             // Clear form
             requestDomainSelectEl.value = '';
             requestReasonEl.value = '';
@@ -454,19 +510,19 @@ async function submitDomainRequest() {
             showRequestStatus(`❌ ${errorMsg}`, 'error');
             showToast(`❌ ${errorMsg}`);
         }
-        
+
     } catch (error) {
         let errorMsg = 'Error de conexión';
-        
+
         if (error.name === 'AbortError') {
             errorMsg = 'Timeout - servidor no responde';
         } else if (error.message) {
             errorMsg = error.message;
         }
-        
+
         showRequestStatus(`❌ ${errorMsg}`, 'error');
         showToast(`❌ Error al enviar`);
-        
+
         if (getConfig('DEBUG_MODE', false)) {
             console.error('[Popup] Request error:', error);
         }
@@ -518,7 +574,7 @@ async function init() {
 
         // Verificar si Native Messaging está disponible
         await checkNativeAvailable();
-        
+
         // Verificar si Request API está disponible
         const requestAvailable = await checkRequestApiAvailable();
         if (requestAvailable) {
