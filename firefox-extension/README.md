@@ -34,6 +34,19 @@ Para instalar el XPI:
 
 > **Nota**: La extensión no está firmada. Solo funciona en Firefox Developer Edition/Nightly con `xpinstall.signatures.required = false` en `about:config`.
 
+### Publicar en Firefox Add-ons (AMO)
+
+Para publicar la extensión en [addons.mozilla.org](https://addons.mozilla.org):
+
+1. Crea una cuenta de desarrollador en AMO
+2. Genera el XPI: `./build-xpi.sh`
+3. Valida el XPI en https://addons.mozilla.org/developers/addon/validate
+4. Sube la extensión en https://addons.mozilla.org/developers/addon/submit/
+5. Usa las descripciones incluidas en [AMO.md](./AMO.md)
+6. Enlaza la política de privacidad: [PRIVACY.md](./PRIVACY.md)
+
+> **Tiempo de revisión**: Las extensiones nuevas suelen tardar 1-7 días en ser aprobadas.
+
 ## Uso
 
 1. **Navega** a cualquier sitio web

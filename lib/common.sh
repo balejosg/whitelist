@@ -38,9 +38,28 @@ WHITELIST_DOMAINS=()
 BLOCKED_SUBDOMAINS=()
 BLOCKED_PATHS=()
 
-# Función de logging
+# Función de logging con niveles
+# Uso: log "mensaje" o log_info/log_warn/log_error/log_debug "mensaje"
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+    local level="${2:-INFO}"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$level] $1" | tee -a "$LOG_FILE"
+}
+
+log_info() {
+    log "$1" "INFO"
+}
+
+log_warn() {
+    log "$1" "WARN"
+}
+
+log_error() {
+    log "$1" "ERROR"
+}
+
+log_debug() {
+    # Solo si DEBUG está habilitado
+    [ "${DEBUG:-0}" = "1" ] && log "$1" "DEBUG"
 }
 
 # Crear directorios necesarios

@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # dnsmasq-watchdog.sh - Watchdog para dnsmasq
-# Parte del sistema dnsmasq URL Whitelist v3.4
+# Parte del sistema dnsmasq URL Whitelist v3.5
 #
 # Verifica la salud del sistema y recupera automáticamente si hay problemas
 ################################################################################

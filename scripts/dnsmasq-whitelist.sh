@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # dnsmasq-whitelist.sh - Script de actualización de whitelist
-# Parte del sistema dnsmasq URL Whitelist v3.4
+# Parte del sistema dnsmasq URL Whitelist v3.5
 #
 # Este script se ejecuta periódicamente (via timer) para:
 # - Descargar el whitelist desde GitHub
@@ -136,7 +136,7 @@ has_config_changed() {
         return 0
     fi
     
-    local new_hash=$(md5sum "$DNSMASQ_CONF" 2>/dev/null | cut -d' ' -f1)
+    local new_hash=$(sha256sum "$DNSMASQ_CONF" 2>/dev/null | cut -d' ' -f1)
     local old_hash=$(cat "$DNSMASQ_CONF_HASH" 2>/dev/null)
     
     [ "$new_hash" != "$old_hash" ]
@@ -232,7 +232,7 @@ main() {
         
         if restart_dnsmasq; then
             # Guardar hash
-            md5sum "$DNSMASQ_CONF" | cut -d' ' -f1 > "$DNSMASQ_CONF_HASH"
+            sha256sum "$DNSMASQ_CONF" | cut -d' ' -f1 > "$DNSMASQ_CONF_HASH"
             
             # Verificar DNS
             if verify_dns; then

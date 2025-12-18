@@ -51,15 +51,72 @@ app.use((req, res, next) => {
 // Routes
 // =============================================================================
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-    res.json({
+// Health check endpoint - enhanced with component checks
+app.get('/health', async (req, res) => {
+    const startTime = Date.now();
+    const health = {
         status: 'ok',
         service: 'whitelist-request-api',
-        version: '1.0.0',
+        version: '1.0.4',
         uptime: Math.floor(process.uptime()),
-        timestamp: new Date().toISOString()
-    });
+        timestamp: new Date().toISOString(),
+        checks: {}
+    };
+
+    // Check storage health
+    try {
+        const storage = require('./lib/storage');
+        const stats = storage.getStats();
+        health.checks.storage = {
+            status: 'ok',
+            totalRequests: stats.total,
+            pendingRequests: stats.pending
+        };
+    } catch (error) {
+        health.checks.storage = {
+            status: 'error',
+            error: error.message
+        };
+        health.status = 'degraded';
+    }
+
+    // Check GitHub configuration
+    health.checks.github = {
+        status: process.env.GITHUB_TOKEN ? 'configured' : 'not_configured',
+        owner: process.env.GITHUB_OWNER ? 'set' : 'missing',
+        repo: process.env.GITHUB_REPO ? 'set' : 'missing'
+    };
+    if (!process.env.GITHUB_TOKEN) {
+        health.status = 'degraded';
+    }
+
+    // Check admin configuration
+    health.checks.auth = {
+        adminToken: process.env.ADMIN_TOKEN ? 'configured' : 'not_configured'
+    };
+    if (!process.env.ADMIN_TOKEN) {
+        health.status = 'degraded';
+    }
+
+    // Memory usage
+    const memUsage = process.memoryUsage();
+    health.system = {
+        memory: {
+            heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024) + 'MB',
+            heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024) + 'MB',
+            rss: Math.round(memUsage.rss / 1024 / 1024) + 'MB'
+        },
+        nodeVersion: process.version
+    };
+
+    // Response time
+    health.responseTime = Date.now() - startTime + 'ms';
+
+    // Set appropriate status code
+    const statusCode = health.status === 'ok' ? 200 :
+        health.status === 'degraded' ? 200 : 503;
+
+    res.status(statusCode).json(health);
 });
 
 // API info endpoint
@@ -119,7 +176,7 @@ app.listen(PORT, HOST, () => {
     console.log('║  API Docs:   /api                                     ║');
     console.log('╚═══════════════════════════════════════════════════════╝');
     console.log('');
-    
+
     // Check configuration
     if (!process.env.ADMIN_TOKEN) {
         console.warn('⚠️  WARNING: ADMIN_TOKEN not set. Admin endpoints will fail.');
