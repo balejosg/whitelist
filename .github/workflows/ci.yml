@@ -128,6 +128,9 @@ jobs:
         run: npm test
         env:
           NODE_ENV: test
+          ADMIN_TOKEN: test-admin-token-for-ci
+          SHARED_SECRET: test-shared-secret-for-ci
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ============================================
   # Job 5: Build Docker Image
