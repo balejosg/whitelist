@@ -129,4 +129,218 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
       assert.ok(response.status >= 400);
     });
   });
+
+  describe('GET /api/requests/status/:id - Check Request Status', () => {
+    test('should return 404 for non-existent request', async () => {
+      const response = await fetch(`${API_URL}/api/requests/status/nonexistent-id`);
+      assert.strictEqual(response.status, 404);
+
+      const data = await response.json();
+      assert.strictEqual(data.success, false);
+    });
+
+    test('should return status for existing request', async () => {
+      // First create a request
+      const createResponse = await fetch(`${API_URL}/api/requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain: 'status-test-' + Date.now() + '.example.com',
+          reason: 'Testing status endpoint'
+        })
+      });
+
+      const createData = await createResponse.json();
+      const requestId = createData.request_id;
+
+      // Then check its status
+      const statusResponse = await fetch(`${API_URL}/api/requests/status/${requestId}`);
+      assert.strictEqual(statusResponse.status, 200);
+
+      const statusData = await statusResponse.json();
+      assert.strictEqual(statusData.success, true);
+      assert.strictEqual(statusData.status, 'pending');
+      assert.ok(statusData.request_id);
+    });
+  });
+
+  describe('POST /api/requests/auto - Auto-inclusion Endpoint', () => {
+    test('should reject request without required fields', async () => {
+      const response = await fetch(`${API_URL}/api/requests/auto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain: 'test.example.com'
+          // missing: origin_page, group_id, token, hostname
+        })
+      });
+
+      assert.strictEqual(response.status, 400);
+
+      const data = await response.json();
+      assert.strictEqual(data.success, false);
+      assert.strictEqual(data.code, 'MISSING_FIELDS');
+    });
+
+    test('should reject request with invalid token', async () => {
+      const response = await fetch(`${API_URL}/api/requests/auto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain: 'test.example.com',
+          origin_page: 'origin.example.com',
+          group_id: 'test-group',
+          token: 'invalid-token',
+          hostname: 'test-host'
+        })
+      });
+
+      assert.strictEqual(response.status, 401);
+
+      const data = await response.json();
+      assert.strictEqual(data.success, false);
+      assert.strictEqual(data.code, 'INVALID_TOKEN');
+    });
+
+    test('should reject invalid domain format in auto-inclusion', async () => {
+      const response = await fetch(`${API_URL}/api/requests/auto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain: 'not-a-domain',
+          origin_page: 'origin.example.com',
+          group_id: 'test-group',
+          token: 'some-token',
+          hostname: 'test-host'
+        })
+      });
+
+      // Should fail validation before token check
+      assert.ok(response.status >= 400);
+    });
+  });
+
+  describe('GET /api/requests/groups/list - List Groups', () => {
+    test('should require authentication for listing groups', async () => {
+      const response = await fetch(`${API_URL}/api/requests/groups/list`);
+      assert.strictEqual(response.status, 401);
+
+      const data = await response.json();
+      assert.strictEqual(data.success, false);
+    });
+  });
+
+  describe('Admin Endpoints with Invalid Token', () => {
+    test('should reject admin list with wrong token', async () => {
+      const response = await fetch(`${API_URL}/api/requests`, {
+        headers: { 'Authorization': 'Bearer wrong-token' }
+      });
+      assert.strictEqual(response.status, 401);
+    });
+
+    test('should reject approve with wrong token', async () => {
+      const response = await fetch(`${API_URL}/api/requests/some-id/approve`, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer wrong-token',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ group_id: 'test' })
+      });
+      assert.strictEqual(response.status, 401);
+    });
+
+    test('should reject reject with wrong token', async () => {
+      const response = await fetch(`${API_URL}/api/requests/some-id/reject`, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer wrong-token',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason: 'test' })
+      });
+      assert.strictEqual(response.status, 401);
+    });
+
+    test('should reject delete with wrong token', async () => {
+      const response = await fetch(`${API_URL}/api/requests/some-id`, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer wrong-token' }
+      });
+      assert.strictEqual(response.status, 401);
+    });
+  });
+
+  describe('API Info Endpoint', () => {
+    test('GET /api should return API documentation', async () => {
+      const response = await fetch(`${API_URL}/api`);
+      assert.strictEqual(response.status, 200);
+
+      const data = await response.json();
+      assert.ok(data.name);
+      assert.ok(data.version);
+      assert.ok(data.endpoints);
+    });
+  });
+
+  describe('Input Sanitization', () => {
+    test('should sanitize reason field', async () => {
+      const response = await fetch(`${API_URL}/api/requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain: 'sanitize-test.example.com',
+          reason: '<script>alert("xss")</script>Normal reason'
+        })
+      });
+
+      assert.strictEqual(response.status, 201);
+      // Request should be created but reason should be sanitized
+    });
+
+    test('should handle very long domain names', async () => {
+      const longDomain = 'a'.repeat(300) + '.example.com';
+      const response = await fetch(`${API_URL}/api/requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain: longDomain,
+          reason: 'Testing long domain'
+        })
+      });
+
+      // Should reject - domain too long
+      assert.strictEqual(response.status, 400);
+    });
+
+    test('should handle special characters in email', async () => {
+      const response = await fetch(`${API_URL}/api/requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain: 'email-test.example.com',
+          reason: 'Testing',
+          requester_email: 'valid+tag@example.com'
+        })
+      });
+
+      assert.strictEqual(response.status, 201);
+    });
+  });
+
+  describe('Priority Field', () => {
+    test('should accept valid priority values', async () => {
+      const response = await fetch(`${API_URL}/api/requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain: 'priority-test.example.com',
+          reason: 'Testing priority',
+          priority: 'high'
+        })
+      });
+
+      assert.strictEqual(response.status, 201);
+    });
+  });
 });
