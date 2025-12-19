@@ -4,17 +4,32 @@ const http = require('node:http');
 
 const API_URL = 'http://localhost:3000';
 
+let server;
+
 describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
   before(async () => {
     // Start server for testing
-    require('../server.js');
+    const { app } = require('../server.js');
+    const PORT = process.env.PORT || 3000;
+
+    server = app.listen(PORT, () => {
+      console.log(`Test server started on port ${PORT}`);
+    });
+
     // Wait for server to start
     await new Promise(resolve => setTimeout(resolve, 1500));
   });
 
-  after(() => {
-    // Force exit to prevent hang from open server connections
-    setTimeout(() => process.exit(0), 500);
+  after(async () => {
+    // Properly close the server
+    if (server) {
+      await new Promise((resolve) => {
+        server.close(() => {
+          console.log('Test server closed');
+          resolve();
+        });
+      });
+    }
   });
 
   describe('Health Check', () => {

@@ -179,24 +179,30 @@ app.use((err, req, res, next) => {
 // Start Server
 // =============================================================================
 
-app.listen(PORT, HOST, () => {
-    console.log('');
-    console.log('╔═══════════════════════════════════════════════════════╗');
-    console.log('║       🛡️  Whitelist Request API Server                ║');
-    console.log('╠═══════════════════════════════════════════════════════╣');
-    console.log(`║  Running on: http://${HOST}:${PORT}                      ║`);
-    console.log('║  Health:     /health                                  ║');
-    console.log('║  API Docs:   /api                                     ║');
-    console.log('╚═══════════════════════════════════════════════════════╝');
-    console.log('');
+// Only start server if this file is run directly (not required)
+let server;
+if (require.main === module) {
+    server = app.listen(PORT, HOST, () => {
+        console.log('');
+        console.log('╔═══════════════════════════════════════════════════════╗');
+        console.log('║       🛡️  Whitelist Request API Server                ║');
+        console.log('╠═══════════════════════════════════════════════════════╣');
+        console.log(`║  Running on: http://${HOST}:${PORT}                      ║`);
+        console.log('║  Health:     /health                                  ║');
+        console.log('║  API Docs:   /api                                     ║');
+        console.log('╚═══════════════════════════════════════════════════════╝');
+        console.log('');
 
-    // Check configuration
-    if (!process.env.ADMIN_TOKEN) {
-        console.warn('⚠️  WARNING: ADMIN_TOKEN not set. Admin endpoints will fail.');
-    }
-    if (!process.env.GITHUB_TOKEN) {
-        console.warn('⚠️  WARNING: GITHUB_TOKEN not set. Approval will fail to push to GitHub.');
-    }
-});
+        // Check configuration
+        if (!process.env.ADMIN_TOKEN) {
+            console.warn('⚠️  WARNING: ADMIN_TOKEN not set. Admin endpoints will fail.');
+        }
+        if (!process.env.GITHUB_TOKEN) {
+            console.warn('⚠️  WARNING: GITHUB_TOKEN not set. Approval will fail to push to GitHub.');
+        }
+    });
+}
 
-module.exports = app;
+// Export both app and server for testing
+module.exports = { app, server };
+

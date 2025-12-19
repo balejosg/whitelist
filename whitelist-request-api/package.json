@@ -6,11 +6,15 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node --test tests/",
+    "test": "node --test tests/*.test.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
-  "keywords": ["whitelist", "dns", "api"],
+  "keywords": [
+    "whitelist",
+    "dns",
+    "api"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
