@@ -2,7 +2,7 @@
 
 Sistema modular de control de acceso a internet mediante DNS sinkhole. Bloquea todos los dominios por defecto, permitiendo únicamente aquellos incluidos en una lista blanca centralizada.
 
-**Versión**: 3.5
+**Versión**: 3.6
 
 ## Características principales
 
@@ -13,6 +13,7 @@ Sistema modular de control de acceso a internet mediante DNS sinkhole. Bloquea t
 ✅ **Monitoreo de salud** - Verifica funcionamiento cada minuto
 ✅ **Desactivación remota** - Control centralizado via whitelist
 ✅ **Arquitectura modular** - Funcionalidad separada en librerías
+✅ **Distribución APT** - Instalación y actualizaciones via apt
 ✅ **Multi-plataforma** - Soporte para Linux (dnsmasq) y Windows (Acrylic DNS)
 ✅ **Gestión web** - SPA con autenticación GitHub OAuth para administrar reglas
 ✅ **Extensión Firefox** - Monitoreo de bloqueos en tiempo real
@@ -26,31 +27,50 @@ Sistema modular de control de acceso a internet mediante DNS sinkhole. Bloquea t
 
 ## Instalación
 
-### Instalación básica
+### Vía APT (Recomendado)
 
 ```bash
+# Configurar repositorio e instalar
+curl -fsSL https://balejosg.github.io/whitelist/apt/apt-setup.sh | sudo bash
+sudo apt install whitelist-dnsmasq
+```
+
+O manualmente:
+
+```bash
+# 1. Añadir clave GPG
+curl -fsSL https://balejosg.github.io/whitelist/apt/pubkey.gpg | sudo gpg --dearmor -o /usr/share/keyrings/whitelist-system.gpg
+
+# 2. Añadir repositorio
+echo "deb [signed-by=/usr/share/keyrings/whitelist-system.gpg] https://balejosg.github.io/whitelist/apt stable main" | sudo tee /etc/apt/sources.list.d/whitelist-system.list
+
+# 3. Instalar
+sudo apt update
+sudo apt install whitelist-dnsmasq
+```
+
+### Instalación manual (desde código fuente)
+
+```bash
+git clone https://github.com/balejosg/whitelist.git
+cd whitelist
 sudo ./install.sh
 ```
 
-### Con URL de whitelist personalizada
+Con URL de whitelist personalizada:
 
 ```bash
-sudo ./install.sh --whitelist-url "https://raw.githubusercontent.com/tu-org/repo/main/whitelist.txt"
+sudo ./install.sh --whitelist-url "https://tu-url.com/whitelist.txt"
 ```
-
-### Instalación desatendida
-
-```bash
-sudo ./install.sh --unattended
-```
-
-**URL por defecto**: `https://raw.githubusercontent.com/LasEncinasIT/Whitelist-por-aula/refs/heads/main/Informatica%203.txt`
-
-El sistema se activa inmediatamente y persiste después de reinicios.
 
 ## Desinstalación
 
 ```bash
+# Vía APT
+sudo apt remove whitelist-dnsmasq    # Mantiene configuración
+sudo apt purge whitelist-dnsmasq     # Elimina todo
+
+# Instalación manual
 sudo ./uninstall.sh
 ```
 
@@ -94,12 +114,49 @@ whitelist/
 Después de instalar, el sistema se distribuye en:
 
 ```
-/usr/local/lib/whitelist-system/    # Código e librerías
+/usr/local/lib/whitelist-system/    # Código y librerías
 /usr/local/bin/                     # Ejecutables
   └── whitelist                     # Comando principal
-/var/lib/url-whitelist/             # Configuración y estado
+/etc/whitelist-system/              # Configuración (preservada en upgrades)
+  ├── whitelist-url.conf            # URL de la whitelist
+  ├── health-api-url.conf           # URL del API de salud (opcional)
+  └── health-api-secret.conf        # Secreto del API (opcional)
+/var/lib/url-whitelist/             # Estado y caché (regenerable)
+  └── whitelist.txt                 # Whitelist descargada
 /etc/dnsmasq.d/                     # Configuración dnsmasq
 /var/log/                           # Logs del sistema
+```
+
+## Configuración
+
+### Cambiar URL de whitelist
+
+```bash
+echo "https://tu-url.com/whitelist.txt" | sudo tee /etc/whitelist-system/whitelist-url.conf
+sudo whitelist update
+```
+
+### Configurar Health API (monitoreo centralizado)
+
+```bash
+echo "https://tu-api.com" | sudo tee /etc/whitelist-system/health-api-url.conf
+echo "tu-secreto" | sudo tee /etc/whitelist-system/health-api-secret.conf
+sudo chmod 600 /etc/whitelist-system/health-api-secret.conf
+```
+
+### Comandos útiles
+
+```bash
+whitelist status      # Ver estado del sistema
+whitelist test        # Probar resolución DNS
+whitelist update      # Forzar actualización
+whitelist help        # Ver todos los comandos
+```
+
+### Reconfigurar después de instalar
+
+```bash
+sudo dpkg-reconfigure whitelist-dnsmasq
 ```
 
 ## Formato de whitelist
