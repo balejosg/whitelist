@@ -27,3 +27,4 @@ Thumbs.db
 # USB installer secrets
 .usb-config
 usb-package/
+build/
