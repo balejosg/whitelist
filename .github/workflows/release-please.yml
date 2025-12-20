@@ -13,8 +13,31 @@ jobs:
     name: Release Please
     runs-on: ubuntu-latest
     
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    
     steps:
       - uses: googleapis/release-please-action@v4
+        id: release
         with:
           release-type: simple
           token: ${{ secrets.GITHUB_TOKEN }}
+          changelog-types: |
+            [
+              {"type": "feat", "section": "✨ Features", "hidden": false},
+              {"type": "fix", "section": "🐛 Bug Fixes", "hidden": false},
+              {"type": "ci", "section": "🔧 CI/CD", "hidden": false},
+              {"type": "docs", "section": "📚 Documentation", "hidden": false},
+              {"type": "perf", "section": "⚡ Performance", "hidden": false},
+              {"type": "refactor", "section": "♻️ Refactoring", "hidden": false},
+              {"type": "chore", "section": "🧹 Chores", "hidden": true}
+            ]
+      
+      - name: Release Summary
+        if: ${{ steps.release.outputs.release_created }}
+        run: |
+          echo "## 🎉 Release Created" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** ${{ steps.release.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}.${{ steps.release.outputs.patch }}" >> $GITHUB_STEP_SUMMARY
