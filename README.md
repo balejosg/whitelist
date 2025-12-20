@@ -380,3 +380,32 @@ Sistema para uso educativo e institucional.
 
 **Versión**: 3.5
 **Última actualización**: Diciembre 2024
+
+---
+
+## CI/CD
+
+Este proyecto utiliza GitHub Actions para integración y despliegue continuos.
+
+| Workflow | Propósito | Trigger |
+|----------|-----------|---------|
+| `ci.yml` | Tests, linting, Docker build | Push/PR a main |
+| `security.yml` | CodeQL, Shellcheck, Trivy, Gitleaks | Push/PR + semanal |
+| `e2e-tests.yml` | Tests E2E Linux/Windows | Push/PR |
+| `deploy.yml` | Deploy a GitHub Pages | Push a main |
+| `deploy-api.yml` | Deploy API via SSH (con rollback) | Push a main |
+| `release-please.yml` | Versionado semántico automático | Push a main |
+| `perf-test.yml` | Tests de rendimiento | Semanal + manual |
+| `release-extension.yml` | Release Firefox extension | Push a main |
+| `release-scripts.yml` | Release scripts instalación | Push a main |
+
+### Características CI/CD
+
+- ✅ Control de concurrencia (cancela runs duplicados)
+- ✅ Node.js 20 estandarizado
+- ✅ Linting (ESLint) en todas las apps Node.js
+- ✅ Rollback automático en deploy fallido
+- ✅ Versionado semántico con Release Please
+- ✅ Tests de rendimiento semanales
+- ✅ Escaneo de seguridad multi-capa
+
