@@ -75,9 +75,8 @@ chmod 440 "$BUILD_DIR/etc/sudoers.d/whitelist"
 echo "[8/8] Building .deb package..."
 dpkg-deb --build --root-owner-group "$BUILD_DIR"
 
-# Move to build directory
-mkdir -p "$ROOT_DIR/build"
-mv "${BUILD_DIR}.deb" "$ROOT_DIR/build/"
+# The .deb is created next to BUILD_DIR as ${BUILD_DIR}.deb
+# which is already in $ROOT_DIR/build/, so no mv needed
 
 echo ""
 echo "=============================================="
