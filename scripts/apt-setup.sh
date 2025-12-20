@@ -12,7 +12,7 @@
 set -e
 
 # Configuration
-REPO_URL="https://lasencinas.github.io/whitelist/apt"
+REPO_URL="https://balejosg.github.io/whitelist/apt"
 GPG_KEY_URL="$REPO_URL/pubkey.gpg"
 KEYRING_PATH="/usr/share/keyrings/whitelist-system.gpg"
 SOURCES_PATH="/etc/apt/sources.list.d/whitelist-system.list"

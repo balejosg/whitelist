@@ -69,12 +69,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
         with:
           ref: gh-pages
           path: gh-pages
         continue-on-error: true
       
-      - name: Create gh-pages if not exists
+      - name: Create gh-pages directory if not exists
         run: |
           if [ ! -d gh-pages ]; then
             mkdir gh-pages
@@ -91,23 +94,37 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y reprepro gnupg
       
-      - name: Import GPG key
-        env:
-          APT_GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+      - name: Setup GPG key
         run: |
-          echo "$APT_GPG_PRIVATE_KEY" | gpg --batch --import
-          # Get key ID
-          GPG_KEY_ID=$(gpg --list-keys --keyid-format SHORT | grep -A1 pub | tail -1 | awk '{print $1}')
+          # Check if secret is provided
+          if [ -n "${{ secrets.APT_GPG_PRIVATE_KEY }}" ]; then
+            echo "${{ secrets.APT_GPG_PRIVATE_KEY }}" | gpg --batch --import
+            GPG_KEY_ID=$(gpg --list-keys --keyid-format SHORT | grep -oP '(?<=rsa4096/)[A-F0-9]+' | head -1)
+          else
+            # Generate ephemeral key for unsigned repository
+            echo "No GPG secret found, creating ephemeral key..."
+            cat > /tmp/gpg-batch.txt << 'GPGEOF'
+          %no-protection
+          Key-Type: RSA
+          Key-Length: 4096
+          Name-Real: Whitelist System APT
+          Name-Email: apt@whitelist.local
+          Expire-Date: 1y
+          %commit
+          GPGEOF
+            gpg --batch --gen-key /tmp/gpg-batch.txt
+            GPG_KEY_ID=$(gpg --list-keys --keyid-format SHORT | grep -oP '(?<=rsa4096/)[A-F0-9]+' | head -1)
+          fi
           echo "GPG_KEY_ID=$GPG_KEY_ID" >> $GITHUB_ENV
+          echo "Using GPG key: $GPG_KEY_ID"
       
-      - name: Setup APT repository
+      - name: Setup APT repository structure
         run: |
           mkdir -p gh-pages/apt/conf
           mkdir -p gh-pages/apt/pool/main
           
-          # Create distributions file
           cat > gh-pages/apt/conf/distributions << EOF
-          Origin: Las Encinas IT
+          Origin: Whitelist System
           Label: Whitelist System
           Suite: stable
           Codename: stable
@@ -134,6 +151,29 @@ jobs:
       - name: Copy setup script
         run: |
           cp scripts/apt-setup.sh gh-pages/apt/apt-setup.sh
+          chmod +x gh-pages/apt/apt-setup.sh
+      
+      - name: Create index.html for apt directory
+        run: |
+          cat > gh-pages/apt/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head><title>Whitelist System APT Repository</title></head>
+          <body>
+          <h1>Whitelist System APT Repository</h1>
+          <h2>Quick Install</h2>
+          <pre>curl -fsSL https://balejosg.github.io/whitelist/apt/apt-setup.sh | sudo bash
+          sudo apt install whitelist-dnsmasq</pre>
+          <h2>Files</h2>
+          <ul>
+            <li><a href="apt-setup.sh">apt-setup.sh</a> - Setup script</li>
+            <li><a href="pubkey.gpg">pubkey.gpg</a> - GPG public key</li>
+            <li><a href="dists/">dists/</a> - Distribution metadata</li>
+            <li><a href="pool/">pool/</a> - Package pool</li>
+          </ul>
+          </body>
+          </html>
+          EOF
       
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
