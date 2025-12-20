@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Deploy to Alpine Container
+      - name: Backup and Deploy to Alpine Container
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -26,6 +26,10 @@ jobs:
             
             # Navigate to repo
             cd ~/whitelist
+            
+            # Backup current version
+            echo "📦 Creating backup..."
+            cp -r whitelist-request-api whitelist-request-api.backup 2>/dev/null || true
             
             # Pull latest changes
             echo "📥 Pulling latest changes from GitHub..."
@@ -46,9 +50,17 @@ jobs:
             sleep 3
             if curl -f http://localhost:3000/health > /dev/null 2>&1; then
               echo "✅ Deployment successful! API is healthy."
+              # Remove backup on success
+              cd ~/whitelist && rm -rf whitelist-request-api.backup
             else
-              echo "❌ Deployment failed! API health check failed."
+              echo "❌ Deployment failed! Rolling back..."
+              cd ~/whitelist
+              rm -rf whitelist-request-api
+              mv whitelist-request-api.backup whitelist-request-api
+              rc-service whitelist-request-api restart
+              echo "🔄 Rolled back to previous version"
               exit 1
             fi
             
             echo "🎉 Deployment completed at $(date)"
+

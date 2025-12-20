@@ -135,7 +135,7 @@ jobs:
     name: Windows E2E Tests
     runs-on: windows-latest
     timeout-minutes: 20
-    continue-on-error: true  # Windows E2E may have limitations
+    # Note: Windows failures now visible but don't block Linux-only users
     
     steps:
       - name: Checkout code
