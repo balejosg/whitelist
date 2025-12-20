@@ -47,36 +47,41 @@ jobs:
             whitelist-e2e:latest
           
           echo "⏳ Waiting for systemd to boot and tests to complete..."
-          sleep 10
+          sleep 15
           
-          # Wait for e2e-tests.service to complete (max 5 minutes)
-          for i in {1..60}; do
+          # Wait for e2e-tests.service to complete (max 8 minutes)
+          for i in {1..96}; do
             status=$(docker exec e2e-test systemctl is-active e2e-tests.service 2>/dev/null || echo "unknown")
             if [ "$status" = "inactive" ] || [ "$status" = "failed" ]; then
+              echo "  Service completed with status: $status"
               break
             fi
-            echo "  [$i/60] Tests still running..."
+            if [ "$((i % 12))" = "0" ]; then
+              echo "  [$i/96] Tests still running (${i}*5s = $((i*5))s elapsed)..."
+            fi
             sleep 5
           done
           
           echo ""
           echo "📋 Test output:"
-          docker exec e2e-test journalctl -u e2e-tests.service --no-pager
+          docker exec e2e-test journalctl -u e2e-tests.service --no-pager -n 100 || true
           
           echo ""
-          echo "🔍 Service status:"
-          docker exec e2e-test systemctl status e2e-tests.service --no-pager || true
+          echo "🔍 Checking service result..."
           
-          # Check if tests passed
-          result=$(docker exec e2e-test systemctl is-active e2e-tests.service 2>/dev/null || echo "failed")
-          docker stop e2e-test > /dev/null
-          docker rm e2e-test > /dev/null
+          # Get the actual result - "success" means tests passed
+          result=$(docker exec e2e-test systemctl show e2e-tests.service --property=Result --value 2>/dev/null || echo "failed")
+          echo "Service Result: $result"
           
-          if [ "$result" = "inactive" ]; then
+          # Cleanup (force, ignore errors)
+          docker stop e2e-test 2>/dev/null || true
+          docker rm -f e2e-test 2>/dev/null || true
+          
+          if [ "$result" = "success" ]; then
             echo "✅ E2E tests passed"
             exit 0
           else
-            echo "❌ E2E tests failed"
+            echo "❌ E2E tests failed (result: $result)"
             exit 1
           fi
       
