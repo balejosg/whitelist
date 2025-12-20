@@ -17,116 +17,40 @@ on:
 
 jobs:
   # ============================================
-  # Linux E2E Tests
+  # Linux E2E Tests (Docker-based for full DNS control)
   # ============================================
   linux-e2e:
     name: Linux E2E Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Install system dependencies
+      - name: Build Docker image
         run: |
-          sudo apt-get update
-          sudo apt-get install -y dnsmasq iptables ipset dnsutils curl shellcheck
+          echo "🐳 Building E2E test Docker image..."
+          docker build -t whitelist-e2e:latest -f tests/e2e/Dockerfile .
       
-      - name: Make scripts executable
+      - name: Run E2E tests in container
         run: |
-          chmod +x install.sh uninstall.sh
-          chmod +x scripts/*.sh
-          chmod +x tests/e2e/*.sh
+          echo "🧪 Running E2E tests in Docker container..."
+          docker run --rm \
+            --privileged \
+            --cap-add=NET_ADMIN \
+            --cap-add=NET_RAW \
+            -e CI=true \
+            whitelist-e2e:latest
       
-      - name: Run pre-installation validation
+      - name: Debug on failure
+        if: failure()
         run: |
-          echo "🔍 Running pre-installation validation..."
-          ./tests/e2e/pre-install-validation.sh
-      
-      - name: Run installation
-        run: |
-          echo "🚀 Running install.sh..."
-          sudo ./install.sh --url "https://raw.githubusercontent.com/LasEncinasIT/Whitelist-por-aula/main/Informatica%203.txt"
-      
-      - name: Verify installation
-        run: |
-          echo "🔍 Checking dnsmasq status..."
-          sudo systemctl status dnsmasq --no-pager || true
-          
-          echo ""
-          echo "🔍 Checking port 53..."
-          sudo ss -tulpn | grep ":53" || true
-          
-          echo ""
-          echo "🔍 Checking config files..."
-          ls -la /etc/dnsmasq.d/*.conf 2>/dev/null || true
-          ls -la /var/lib/url-whitelist/ 2>/dev/null || true
-      
-      - name: Run smoke tests
-        run: |
-          echo "🧪 Running smoke tests..."
-          sudo scripts/smoke-test.sh
-      
-      - name: Run E2E tests
-        run: |
-          echo "🧪 Running comprehensive E2E tests..."
-          sudo tests/e2e/linux-e2e-tests.sh
-      
-      - name: Test whitelist command
-        run: |
-          echo "🧪 Testing whitelist command..."
-          
-          # Check command exists
-          which whitelist || echo "whitelist command not in PATH"
-          
-          # Test status command
-          sudo whitelist status || true
-          
-          # Test check command
-          sudo whitelist check google.com || true
-          sudo whitelist check blocked-domain-test.com || true
-      
-      - name: Verify DNS resolution
-        run: |
-          echo "🔍 Testing DNS resolution..."
-          
-          # Test whitelisted domain
-          echo "Testing google.com (should resolve):"
-          dig @127.0.0.1 google.com +short || echo "FAILED"
-          
-          # Test blocked domain
-          echo ""
-          echo "Testing blocked-test-domain.com (should return empty/NXDOMAIN):"
-          result=$(dig @127.0.0.1 blocked-test-domain.com +short 2>/dev/null)
-          if [ -z "$result" ]; then
-            echo "✓ Correctly blocked (no response)"
-          else
-            echo "⚠ Got response: $result"
-          fi
-      
-      - name: Run uninstall
-        run: |
-          echo "🧹 Running uninstall..."
-          sudo ./uninstall.sh --force || true
-      
-      - name: Verify cleanup
-        run: |
-          echo "🔍 Verifying cleanup..."
-          
-          # Check dnsmasq stopped
-          if ! systemctl is-active --quiet dnsmasq 2>/dev/null; then
-            echo "✓ dnsmasq service stopped"
-          else
-            echo "⚠ dnsmasq still running"
-          fi
-          
-          # Check config removed
-          if [ ! -f /etc/dnsmasq.d/url-whitelist.conf ]; then
-            echo "✓ Config files removed"
-          else
-            echo "⚠ Config files still exist"
-          fi
+          echo "📋 Debug information..."
+          docker run --rm \
+            --privileged \
+            whitelist-e2e:latest cat /var/log/url-whitelist.log 2>/dev/null || echo "No log file"
+
 
   # ============================================
   # Windows E2E Tests
