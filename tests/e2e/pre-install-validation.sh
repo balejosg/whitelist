@@ -83,10 +83,10 @@ test_file_permissions() {
             fi
         done
         
-        if [ $lib_count -eq 5 ]; then
-            test_pass "Found 5 library scripts in lib/"
+        if [ $lib_count -eq 6 ]; then
+            test_pass "Found 6 library scripts in lib/"
         else
-            test_fail "Expected 5 library scripts, found $lib_count"
+            test_fail "Expected 6 library scripts, found $lib_count"
         fi
     fi
 }
@@ -136,6 +136,7 @@ test_required_files() {
         "lib/firewall.sh"
         "lib/browser.sh"
         "lib/services.sh"
+        "lib/rollback.sh"
         
         # Runtime scripts
         "scripts/dnsmasq-whitelist.sh"
