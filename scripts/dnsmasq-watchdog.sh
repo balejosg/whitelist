@@ -10,6 +10,7 @@
 INSTALL_DIR="/usr/local/lib/whitelist-system"
 source "$INSTALL_DIR/lib/common.sh"
 source "$INSTALL_DIR/lib/dns.sh"
+source "$INSTALL_DIR/lib/rollback.sh"
 
 HEALTH_FILE="$CONFIG_DIR/health-status"
 FAIL_COUNT_FILE="$CONFIG_DIR/watchdog-fails"
@@ -83,12 +84,22 @@ main() {
     
     # Protección contra loop infinito de reinicios
     if [ "$fail_count" -ge "$MAX_CONSECUTIVE_FAILS" ]; then
-        log "[WATCHDOG] ALERTA: $fail_count fallos consecutivos - entrando en modo fail-open"
-        source "$INSTALL_DIR/lib/firewall.sh"
-        deactivate_firewall
+        log "[WATCHDOG] ALERTA: $fail_count fallos consecutivos"
         
-        # Guardar estado
-        cat > "$HEALTH_FILE" << EOF
+        # First, try to rollback to a previous working checkpoint
+        if attempt_rollback_recovery; then
+            status="RECOVERED"
+            actions="rollback_recovery"
+            # Don't enter fail-open, rollback succeeded
+        else
+            # Rollback failed, enter fail-open mode
+            log "[WATCHDOG] Entrando en modo fail-open"
+            source "$INSTALL_DIR/lib/firewall.sh"
+            deactivate_firewall
+            
+            # Guardar estado
+            status="FAIL_OPEN"
+            cat > "$HEALTH_FILE" << EOF
 {
     "timestamp": "$(date -Iseconds)",
     "status": "FAIL_OPEN",
@@ -96,8 +107,12 @@ main() {
     "fail_count": $fail_count
 }
 EOF
-        # No resetear contador - requiere intervención manual
-        return 1
+            # Report fail-open to central API immediately
+            report_health_to_api "FAIL_OPEN" "fail_open_activated"
+            
+            # No resetear contador - requiere intervención manual
+            return 1
+        fi
     fi
     
     # Check 1: dnsmasq running
@@ -155,7 +170,7 @@ EOF
         reset_fail_count
     fi
     
-    # Guardar estado
+    # Guardar estado local
     cat > "$HEALTH_FILE" << EOF
 {
     "timestamp": "$(date -Iseconds)",
@@ -167,7 +182,75 @@ EOF
 }
 EOF
     
+    # Report health to central API (mandatory)
+    report_health_to_api "$status" "$actions"
+    
     [ "$status" = "OK" ] || [ "$status" = "RECOVERED" ]
+}
+
+# Report health status to central monitoring API
+report_health_to_api() {
+    local status="$1"
+    local actions="$2"
+    
+    # Read API URL from config
+    local api_url_file="$CONFIG_DIR/health-api-url.conf"
+    local shared_secret_file="$CONFIG_DIR/health-api-secret.conf"
+    
+    if [ ! -f "$api_url_file" ]; then
+        log_debug "[WATCHDOG] No health API configured (create $api_url_file)"
+        return 0
+    fi
+    
+    local api_url=$(cat "$api_url_file")
+    local shared_secret=""
+    [ -f "$shared_secret_file" ] && shared_secret=$(cat "$shared_secret_file")
+    
+    local hostname=$(hostname)
+    local payload=$(cat << EOF
+{
+    "hostname": "$hostname",
+    "status": "$status",
+    "dnsmasq_running": $(check_dnsmasq_running && echo "true" || echo "false"),
+    "dns_resolving": $(check_dns_resolving && echo "true" || echo "false"),
+    "fail_count": $(get_fail_count),
+    "actions": "$actions",
+    "version": "${VERSION:-3.5}"
+}
+EOF
+)
+    
+    # Send report (fire and forget, don't block watchdog)
+    local auth_header=""
+    [ -n "$shared_secret" ] && auth_header="-H \"Authorization: Bearer $shared_secret\""
+    
+    timeout 5 curl -s -X POST "$api_url/api/health-reports" \
+        -H "Content-Type: application/json" \
+        $auth_header \
+        -d "$payload" >/dev/null 2>&1 &
+}
+
+# Attempt rollback before entering fail-open mode
+attempt_rollback_recovery() {
+    log "[WATCHDOG] Intentando restaurar desde checkpoint antes de entrar en modo fail-open..."
+    
+    if has_checkpoint; then
+        local prev=$(get_previous_checkpoint)
+        if [ -n "$prev" ]; then
+            restore_checkpoint "$prev"
+            sleep 3
+            
+            # Check if rollback fixed the issue
+            if check_dnsmasq_running && check_dns_resolving; then
+                log "[WATCHDOG] ✓ Rollback exitoso - sistema recuperado"
+                reset_fail_count
+                return 0
+            fi
+        fi
+    fi
+    
+    log "[WATCHDOG] Rollback falló o no hay checkpoint disponible"
+    return 1
 }
 
 main "$@"

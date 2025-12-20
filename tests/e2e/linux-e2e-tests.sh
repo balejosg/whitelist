@@ -283,6 +283,117 @@ test_firefox_extension_installed() {
     fi
 }
 
+# ============== Failure Scenario Tests ==============
+
+test_corrupted_whitelist_recovery() {
+    test_section "10/12" "Corrupted whitelist recovery"
+    
+    local whitelist_file="/var/lib/url-whitelist/whitelist.txt"
+    local backup_file="/tmp/whitelist-backup.txt"
+    
+    # Backup original
+    if [ -f "$whitelist_file" ]; then
+        cp "$whitelist_file" "$backup_file"
+    fi
+    
+    # Corrupt the whitelist
+    echo "CORRUPTED_CONTENT_$RANDOM" > "$whitelist_file"
+    
+    # Run whitelist update and check it handles corruption gracefully
+    if /usr/local/bin/dnsmasq-whitelist.sh 2>/dev/null; then
+        # Check dnsmasq is still running
+        if systemctl is-active --quiet dnsmasq; then
+            test_pass "System survived corrupted whitelist"
+        else
+            test_fail "dnsmasq crashed after corrupted whitelist"
+        fi
+    else
+        # Script may fail, but system should remain stable
+        if systemctl is-active --quiet dnsmasq; then
+            test_pass "System stable after whitelist update failure"
+        else
+            test_fail "dnsmasq not running after failure"
+        fi
+    fi
+    
+    # Restore original
+    if [ -f "$backup_file" ]; then
+        cp "$backup_file" "$whitelist_file"
+        rm -f "$backup_file"
+    fi
+}
+
+test_emergency_disable() {
+    test_section "11/12" "Emergency disable detection"
+    
+    local whitelist_file="/var/lib/url-whitelist/whitelist.txt"
+    local backup_file="/tmp/whitelist-backup.txt"
+    
+    # Backup original
+    if [ -f "$whitelist_file" ]; then
+        cp "$whitelist_file" "$backup_file"
+    fi
+    
+    # Create emergency disable whitelist
+    cat > "$whitelist_file" << 'EOF'
+# DESACTIVADO
+# Emergency disable triggered
+google.com
+EOF
+    
+    # Run whitelist update
+    /usr/local/bin/dnsmasq-whitelist.sh 2>/dev/null || true
+    
+    # Check system entered fail-open mode
+    if [ -f "/var/lib/url-whitelist/system-disabled.flag" ]; then
+        test_pass "Emergency disable detected and activated"
+    else
+        echo -e "  ${YELLOW}⚠${NC} Emergency disable flag not set (may be expected)"
+    fi
+    
+    # Restore original and reactivate
+    if [ -f "$backup_file" ]; then
+        cp "$backup_file" "$whitelist_file"
+        rm -f "$backup_file"
+        rm -f "/var/lib/url-whitelist/system-disabled.flag" 2>/dev/null || true
+        /usr/local/bin/dnsmasq-whitelist.sh 2>/dev/null || true
+    fi
+}
+
+test_watchdog_recovery() {
+    test_section "12/12" "Watchdog recovery mechanism"
+    
+    # Check watchdog health file exists
+    local health_file="/var/lib/url-whitelist/health-status"
+    
+    if [ -f "$health_file" ]; then
+        test_pass "Health status file exists"
+        
+        # Parse status
+        local status=$(grep -o '"status": "[^"]*"' "$health_file" | cut -d'"' -f4)
+        if [ "$status" = "OK" ] || [ "$status" = "RECOVERED" ]; then
+            test_pass "Watchdog reports healthy status: $status"
+        else
+            echo -e "  ${YELLOW}⚠${NC} Watchdog status: $status"
+        fi
+    else
+        echo -e "  ${YELLOW}⚠${NC} Health status file not found (watchdog may not have run yet)"
+    fi
+    
+    # Check checkpoint directory exists
+    local checkpoint_dir="/var/lib/url-whitelist/checkpoints"
+    if [ -d "$checkpoint_dir" ]; then
+        local checkpoint_count=$(ls -d "$checkpoint_dir"/checkpoint-* 2>/dev/null | wc -l)
+        if [ "$checkpoint_count" -gt 0 ]; then
+            test_pass "Rollback checkpoints available: $checkpoint_count"
+        else
+            echo -e "  ${YELLOW}ℹ${NC} No checkpoints yet (first run)"
+        fi
+    else
+        echo -e "  ${YELLOW}ℹ${NC} Checkpoint directory not created yet"
+    fi
+}
+
 # ============== Main ==============
 
 main() {
@@ -300,6 +411,11 @@ main() {
     test_iptables_rules
     test_firefox_esr_installed
     test_firefox_extension_installed
+    
+    # Failure scenario tests
+    test_corrupted_whitelist_recovery
+    test_emergency_disable
+    test_watchdog_recovery
     
     # Summary
     echo ""

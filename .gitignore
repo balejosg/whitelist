@@ -23,3 +23,7 @@ Thumbs.db
 
 # Archivos de configuración local
 .claude/
+
+# USB installer secrets
+.usb-config
+usb-package/

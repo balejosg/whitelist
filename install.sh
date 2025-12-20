@@ -32,11 +32,21 @@ WHITELIST_URL="$DEFAULT_WHITELIST_URL"
 UNATTENDED=false
 INSTALL_EXTENSION=true
 INSTALL_NATIVE_HOST=false
+HEALTH_API_URL=""
+HEALTH_API_SECRET=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --whitelist-url)
+        --whitelist-url|--url)
             WHITELIST_URL="$2"
+            shift 2
+            ;;
+        --health-api-url)
+            HEALTH_API_URL="$2"
+            shift 2
+            ;;
+        --health-api-secret)
+            HEALTH_API_SECRET="$2"
             shift 2
             ;;
         --unattended)
@@ -85,6 +95,7 @@ cp "$SCRIPT_DIR/lib/dns.sh" "$INSTALL_DIR/lib/"
 cp "$SCRIPT_DIR/lib/firewall.sh" "$INSTALL_DIR/lib/"
 cp "$SCRIPT_DIR/lib/browser.sh" "$INSTALL_DIR/lib/"
 cp "$SCRIPT_DIR/lib/services.sh" "$INSTALL_DIR/lib/"
+cp "$SCRIPT_DIR/lib/rollback.sh" "$INSTALL_DIR/lib/"
 
 chmod +x "$INSTALL_DIR/lib/"*.sh
 echo "✓ Librerías instaladas"
@@ -167,6 +178,17 @@ create_dns_init_script
 
 # Guardar URL del whitelist
 echo "$WHITELIST_URL" > "$CONFIG_DIR/whitelist-url.conf"
+
+# Guardar configuración de health API (para monitoreo centralizado)
+if [ -n "$HEALTH_API_URL" ]; then
+    echo "$HEALTH_API_URL" > "$CONFIG_DIR/health-api-url.conf"
+    echo "  → Health API URL configurada"
+fi
+if [ -n "$HEALTH_API_SECRET" ]; then
+    echo "$HEALTH_API_SECRET" > "$CONFIG_DIR/health-api-secret.conf"
+    chmod 600 "$CONFIG_DIR/health-api-secret.conf"
+    echo "  → Health API secret configurado"
+fi
 
 echo "✓ Scripts instalados"
 

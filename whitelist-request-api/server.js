@@ -20,6 +20,7 @@ const path = require('path');
 require('dotenv').config();
 
 const requestsRouter = require('./routes/requests');
+const healthReportsRouter = require('./routes/health-reports');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -132,13 +133,20 @@ app.get('/api', (req, res) => {
             'POST /api/requests/:id/approve': 'Approve request (admin)',
             'POST /api/requests/:id/reject': 'Reject request (admin)',
             'DELETE /api/requests/:id': 'Delete request (admin)',
-            'GET /api/requests/groups/list': 'List whitelist groups (admin)'
+            'GET /api/requests/groups/list': 'List whitelist groups (admin)',
+            'POST /api/health-reports': 'Submit health report (shared secret)',
+            'GET /api/health-reports': 'List all hosts status (admin)',
+            'GET /api/health-reports/:hostname': 'Get host history (admin)',
+            'GET /api/health-reports/alerts/active': 'Get active alerts (admin)'
         }
     });
 });
 
 // Request routes
 app.use('/api/requests', requestsRouter);
+
+// Health reports from student machines
+app.use('/api/health-reports', healthReportsRouter);
 
 // =============================================================================
 // Error Handling

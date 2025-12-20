@@ -32,6 +32,7 @@ source "$INSTALL_DIR/lib/common.sh"
 source "$INSTALL_DIR/lib/dns.sh"
 source "$INSTALL_DIR/lib/firewall.sh"
 source "$INSTALL_DIR/lib/browser.sh"
+source "$INSTALL_DIR/lib/rollback.sh"
 
 # URL del whitelist (leer de config si existe)
 if [ -f "$CONFIG_DIR/whitelist-url.conf" ]; then
@@ -201,6 +202,9 @@ main() {
     if [ "$(check_firewall_status)" != "active" ]; then
         firewall_was_inactive=true
     fi
+
+    # Save checkpoint before applying changes (for rollback if something breaks)
+    save_checkpoint "pre-update"
 
     # Generar configuración
     generate_dnsmasq_config
