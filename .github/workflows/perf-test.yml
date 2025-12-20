@@ -1,0 +1,57 @@
+name: Performance Tests
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 5 * * 0'  # Weekly on Sunday at 5am UTC
+
+jobs:
+  load-test:
+    name: API Load Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        working-directory: whitelist-request-api
+        run: npm ci || npm install
+      
+      - name: Start API server
+        working-directory: whitelist-request-api
+        run: |
+          node server.js &
+          sleep 5
+        env:
+          PORT: 3000
+          ADMIN_TOKEN: test-token
+          SHARED_SECRET: test-secret
+      
+      - name: Run load test
+        run: |
+          echo "🔥 Running load test..."
+          
+          # Simple load test with curl
+          for i in {1..100}; do
+            curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/health &
+          done
+          wait
+          
+          # Summary
+          echo ""
+          echo "✅ Load test complete (100 concurrent requests)"
+      
+      - name: Health check summary
+        run: |
+          response=$(curl -s http://localhost:3000/health)
+          echo "## 🏋️ Load Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Endpoint:** \`/health\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Requests:** 100 concurrent" >> $GITHUB_STEP_SUMMARY
+          echo "**Response:** \`$response\`" >> $GITHUB_STEP_SUMMARY
