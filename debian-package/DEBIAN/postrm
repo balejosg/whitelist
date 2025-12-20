@@ -1,0 +1,101 @@
+#!/bin/bash
+################################################################################
+# postrm - Post-removal script for whitelist-dnsmasq package
+# Cleans up system state after package removal
+################################################################################
+
+set -e
+
+case "$1" in
+    purge)
+        echo "Limpiando configuración whitelist..."
+        
+        # Remove configuration and state
+        rm -rf /var/lib/url-whitelist
+        rm -f /etc/dnsmasq.d/url-whitelist.conf
+        rm -rf /etc/systemd/system/dnsmasq.service.d
+        rm -f /var/log/url-whitelist.log
+        rm -f /var/log/captive-portal-detector.log
+        rm -f /etc/tmpfiles.d/dnsmasq-whitelist.conf
+        rm -f /etc/logrotate.d/dnsmasq-whitelist
+        rm -rf /run/dnsmasq
+        
+        # Unprotect resolv.conf
+        chattr -i /etc/resolv.conf 2>/dev/null || true
+        
+        # Restore systemd-resolved
+        echo "Restaurando systemd-resolved..."
+        systemctl unmask systemd-resolved.socket 2>/dev/null || true
+        systemctl unmask systemd-resolved 2>/dev/null || true
+        systemctl enable systemd-resolved.socket 2>/dev/null || true
+        systemctl enable systemd-resolved 2>/dev/null || true
+        systemctl start systemd-resolved.socket 2>/dev/null || true
+        systemctl start systemd-resolved 2>/dev/null || true
+        
+        # Wait for systemd-resolved to be ready
+        for i in $(seq 1 10); do
+            if [ -f /run/systemd/resolve/stub-resolv.conf ]; then
+                break
+            fi
+            sleep 1
+        done
+        
+        # Restore resolv.conf
+        if [ -f /run/systemd/resolve/stub-resolv.conf ]; then
+            rm -f /etc/resolv.conf 2>/dev/null || true
+            ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+        else
+            # Fallback to basic DNS
+            cat > /etc/resolv.conf << 'EOF'
+# Restored by whitelist-dnsmasq removal
+nameserver 8.8.8.8
+nameserver 8.8.4.4
+EOF
+        fi
+        
+        # Clear firewall rules
+        echo "Restaurando firewall..."
+        iptables -F OUTPUT 2>/dev/null || true
+        iptables -P OUTPUT ACCEPT 2>/dev/null || true
+        iptables-save > /etc/iptables/rules.v4 2>/dev/null || true
+        
+        # Clean browser policies
+        echo "Limpiando políticas de navegadores..."
+        mkdir -p /etc/firefox/policies
+        echo '{"policies": {}}' > /etc/firefox/policies/policies.json 2>/dev/null || true
+        rm -f /etc/chromium/policies/managed/url-whitelist.json 2>/dev/null || true
+        rm -f /etc/chromium-browser/policies/managed/url-whitelist.json 2>/dev/null || true
+        rm -f /etc/opt/chrome/policies/managed/url-whitelist.json 2>/dev/null || true
+        
+        # Remove Firefox extension
+        rm -rf /usr/share/mozilla/extensions/{ec8030f7-c20a-464f-9b0e-13a3a9e97384}/monitor-bloqueos@whitelist-system 2>/dev/null || true
+        rm -f /usr/lib/mozilla/native-messaging-hosts/whitelist_native_host.json 2>/dev/null || true
+        
+        # Remove autoconfig
+        for firefox_dir in /usr/lib/firefox-esr /usr/lib/firefox /opt/firefox; do
+            if [ -d "$firefox_dir" ]; then
+                rm -f "$firefox_dir/defaults/pref/autoconfig.js" 2>/dev/null || true
+                rm -f "$firefox_dir/mozilla.cfg" 2>/dev/null || true
+            fi
+        done
+        
+        systemctl daemon-reload
+        
+        echo "✓ Sistema restaurado"
+        ;;
+    
+    remove)
+        # Just reload systemd on normal remove (keep config)
+        systemctl daemon-reload
+        ;;
+    
+    upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+        ;;
+    
+    *)
+        echo "postrm called with unknown argument '$1'" >&2
+        exit 1
+        ;;
+esac
+
+exit 0

@@ -1,0 +1,6 @@
+# Whitelist System - sudo permissions
+# Allows all users to execute whitelist commands without password
+
+ALL ALL=(root) NOPASSWD: /usr/local/bin/whitelist *
+ALL ALL=(root) NOPASSWD: /usr/local/bin/dnsmasq-whitelist.sh
+ALL ALL=(root) NOPASSWD: /usr/local/bin/dnsmasq-watchdog.sh

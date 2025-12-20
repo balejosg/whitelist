@@ -1,0 +1,14 @@
+[Unit]
+Description=dnsmasq Health Check and Auto-Recovery
+After=dnsmasq.service
+Wants=dnsmasq.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/dnsmasq-watchdog.sh
+StandardOutput=journal
+StandardError=journal
+SuccessExitStatus=0 1
+
+[Install]
+WantedBy=multi-user.target
