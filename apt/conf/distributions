@@ -1,0 +1,8 @@
+Origin: Whitelist System
+Label: Whitelist System
+Suite: stable
+Codename: stable
+Architectures: amd64
+Components: main
+Description: DNS Whitelist System for Educational Environments
+SignWith: B91EC2E7

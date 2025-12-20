@@ -1,0 +1,20 @@
+Origin: Whitelist System
+Label: Whitelist System
+Suite: stable
+Codename: stable
+Date: Sat, 20 Dec 2025 13:30:56 UTC
+Architectures: amd64
+Components: main
+Description: DNS Whitelist System for Educational Environments
+MD5Sum:
+ 657a121d9366ddb4807f74c3da7e4b16 1015 main/binary-amd64/Packages
+ 5fe841f2488600e32d46e3df726abb6d 645 main/binary-amd64/Packages.gz
+ 9ea852398d33da76aa825d6e38064b58 164 main/binary-amd64/Release
+SHA1:
+ 4babd47ac5337cf5caebe1584c2811e4cabe1942 1015 main/binary-amd64/Packages
+ 8f18bedc7cb3c95fc4c048118003cb202bf6410a 645 main/binary-amd64/Packages.gz
+ a3557d276e924c29a68ad5f811fb9c29152fd996 164 main/binary-amd64/Release
+SHA256:
+ 44976cc7490b8270f5c12cb2482726771bc7c574f687e527040e4fc9ed78489a 1015 main/binary-amd64/Packages
+ 476cb0cdf1321b3729bc8bb3d168852720e4639cba7fabe06a7e03b1e54418e4 645 main/binary-amd64/Packages.gz
+ 80d990de28f19e24b618c7d9565531485647af1944e0416c04f72e1743c6c918 164 main/binary-amd64/Release

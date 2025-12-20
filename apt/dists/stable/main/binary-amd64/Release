@@ -1,0 +1,6 @@
+Archive: stable
+Component: main
+Origin: Whitelist System
+Label: Whitelist System
+Architecture: amd64
+Description: DNS Whitelist System for Educational Environments
