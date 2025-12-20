@@ -6,7 +6,8 @@
     "scripts": {
         "start": "node server/index.js",
         "dev": "node server/index.js",
-        "test": "jest --coverage --forceExit --detectOpenHandles"
+        "test": "jest --coverage --forceExit --detectOpenHandles",
+        "lint": "eslint server/"
     },
     "dependencies": {
         "bcryptjs": "^2.4.3",
@@ -16,6 +17,7 @@
         "uuid": "^9.0.0"
     },
     "devDependencies": {
+        "eslint": "^8.57.0",
         "jest": "^29.7.0",
         "supertest": "^6.3.4"
     },
