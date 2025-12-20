@@ -30,18 +30,19 @@ case "$1" in
         db_get whitelist-dnsmasq/health-api-secret
         HEALTH_API_SECRET="${RET:-}"
         
-        # Create state directory
-        mkdir -p /var/lib/url-whitelist
+        # Create directories (Debian FHS compliant)
+        mkdir -p "$ETC_CONFIG_DIR"     # /etc/whitelist-system - config (preserved)
+        mkdir -p "$VAR_STATE_DIR"      # /var/lib/url-whitelist - state/cache
         
-        # Save configuration
-        echo "$WHITELIST_URL" > /var/lib/url-whitelist/whitelist-url.conf
+        # Save configuration to /etc/ (preserved on upgrade)
+        echo "$WHITELIST_URL" > "$WHITELIST_URL_CONF"
         
         if [ -n "$HEALTH_API_URL" ]; then
-            echo "$HEALTH_API_URL" > /var/lib/url-whitelist/health-api-url.conf
+            echo "$HEALTH_API_URL" > "$HEALTH_API_URL_CONF"
         fi
         if [ -n "$HEALTH_API_SECRET" ]; then
-            echo "$HEALTH_API_SECRET" > /var/lib/url-whitelist/health-api-secret.conf
-            chmod 600 /var/lib/url-whitelist/health-api-secret.conf
+            echo "$HEALTH_API_SECRET" > "$HEALTH_API_SECRET_CONF"
+            chmod 600 "$HEALTH_API_SECRET_CONF"
         fi
         
         # Step 1: Free port 53 (disable systemd-resolved)
@@ -51,7 +52,7 @@ case "$1" in
         # Step 2: Detect and save primary DNS
         echo "  Detectando DNS primario..."
         PRIMARY_DNS=$(detect_primary_dns)
-        echo "$PRIMARY_DNS" > /var/lib/url-whitelist/original-dns.conf
+        echo "$PRIMARY_DNS" > "$ORIGINAL_DNS_FILE"
         
         # Step 3: Configure DNS
         echo "  Configurando DNS..."

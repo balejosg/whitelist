@@ -1,1 +1,4 @@
-/etc/whitelist-system/config.default
+/etc/whitelist-system/whitelist-url.conf
+/etc/whitelist-system/health-api-url.conf
+/etc/whitelist-system/health-api-secret.conf
+/etc/whitelist-system/original-dns.conf

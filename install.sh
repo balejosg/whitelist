@@ -176,17 +176,20 @@ chmod +x "$SCRIPTS_DIR/whitelist"
 # Script de inicialización DNS
 create_dns_init_script
 
+# Create config directory (Debian FHS compliant)
+mkdir -p "$ETC_CONFIG_DIR"
+
 # Guardar URL del whitelist
-echo "$WHITELIST_URL" > "$CONFIG_DIR/whitelist-url.conf"
+echo "$WHITELIST_URL" > "$WHITELIST_URL_CONF"
 
 # Guardar configuración de health API (para monitoreo centralizado)
 if [ -n "$HEALTH_API_URL" ]; then
-    echo "$HEALTH_API_URL" > "$CONFIG_DIR/health-api-url.conf"
+    echo "$HEALTH_API_URL" > "$HEALTH_API_URL_CONF"
     echo "  → Health API URL configurada"
 fi
 if [ -n "$HEALTH_API_SECRET" ]; then
-    echo "$HEALTH_API_SECRET" > "$CONFIG_DIR/health-api-secret.conf"
-    chmod 600 "$CONFIG_DIR/health-api-secret.conf"
+    echo "$HEALTH_API_SECRET" > "$HEALTH_API_SECRET_CONF"
+    chmod 600 "$HEALTH_API_SECRET_CONF"
     echo "  → Health API secret configurado"
 fi
 

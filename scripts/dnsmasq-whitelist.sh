@@ -35,8 +35,8 @@ source "$INSTALL_DIR/lib/browser.sh"
 source "$INSTALL_DIR/lib/rollback.sh"
 
 # URL del whitelist (leer de config si existe)
-if [ -f "$CONFIG_DIR/whitelist-url.conf" ]; then
-    WHITELIST_URL=$(cat "$CONFIG_DIR/whitelist-url.conf")
+if [ -f "$WHITELIST_URL_CONF" ]; then
+    WHITELIST_URL=$(cat "$WHITELIST_URL_CONF")
 else
     WHITELIST_URL="${WHITELIST_URL:-$DEFAULT_WHITELIST_URL}"
 fi

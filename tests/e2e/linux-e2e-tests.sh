@@ -110,7 +110,7 @@ test_config_files_exist() {
     
     local required_files=(
         "/etc/dnsmasq.d/url-whitelist.conf"
-        "/var/lib/url-whitelist/whitelist-url.conf"
+        "/etc/whitelist-system/whitelist-url.conf"
     )
     
     for file in "${required_files[@]}"; do

@@ -157,7 +157,8 @@ test_config_files() {
         test_warn "Whitelist no descargada aún (el timer lo hará)"
     fi
     
-    if [ -f /var/lib/url-whitelist/whitelist-url.conf ]; then
+    # Config in /etc/ (Debian FHS compliant)
+    if [ -f /etc/whitelist-system/whitelist-url.conf ]; then
         test_pass "URL de whitelist configurada"
     else
         test_fail "URL de whitelist no configurada"

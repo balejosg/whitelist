@@ -10,8 +10,13 @@ case "$1" in
     purge)
         echo "Limpiando configuración whitelist..."
         
-        # Remove configuration and state
+        # Remove configuration directory (Debian FHS compliant - /etc/)
+        rm -rf /etc/whitelist-system
+        
+        # Remove state/cache directory (/var/lib/)
         rm -rf /var/lib/url-whitelist
+        
+        # Remove other system files
         rm -f /etc/dnsmasq.d/url-whitelist.conf
         rm -rf /etc/systemd/system/dnsmasq.service.d
         rm -f /var/log/url-whitelist.log

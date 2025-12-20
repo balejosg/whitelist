@@ -10,16 +10,29 @@ VERSION="3.5"
 # Directorios y archivos
 INSTALL_DIR="/usr/local/lib/whitelist-system"
 SCRIPTS_DIR="/usr/local/bin"
-CONFIG_DIR="/var/lib/url-whitelist"
+
+# Debian FHS compliant paths:
+# - /etc/ for configuration (preserved on upgrade)
+# - /var/lib/ for state/cache (can be regenerated)
+ETC_CONFIG_DIR="/etc/whitelist-system"
+VAR_STATE_DIR="/var/lib/url-whitelist"
 LOG_FILE="/var/log/url-whitelist.log"
 
-# Archivos de configuración
+# Configuration files (in /etc/, preserved on upgrade)
+WHITELIST_URL_CONF="$ETC_CONFIG_DIR/whitelist-url.conf"
+HEALTH_API_URL_CONF="$ETC_CONFIG_DIR/health-api-url.conf"
+HEALTH_API_SECRET_CONF="$ETC_CONFIG_DIR/health-api-secret.conf"
+ORIGINAL_DNS_FILE="$ETC_CONFIG_DIR/original-dns.conf"
+
+# State/cache files (in /var/lib/, regenerated)
 DNSMASQ_CONF="/etc/dnsmasq.d/url-whitelist.conf"
-DNSMASQ_CONF_HASH="$CONFIG_DIR/dnsmasq.hash"
-BROWSER_POLICIES_HASH="$CONFIG_DIR/browser-policies.hash"
-SYSTEM_DISABLED_FLAG="$CONFIG_DIR/system-disabled.flag"
-WHITELIST_FILE="$CONFIG_DIR/whitelist.txt"
-ORIGINAL_DNS_FILE="$CONFIG_DIR/original-dns.conf"
+DNSMASQ_CONF_HASH="$VAR_STATE_DIR/dnsmasq.hash"
+BROWSER_POLICIES_HASH="$VAR_STATE_DIR/browser-policies.hash"
+SYSTEM_DISABLED_FLAG="$VAR_STATE_DIR/system-disabled.flag"
+WHITELIST_FILE="$VAR_STATE_DIR/whitelist.txt"
+
+# Legacy compatibility (for migration)
+CONFIG_DIR="$VAR_STATE_DIR"
 
 # Políticas de navegadores
 FIREFOX_POLICIES="/etc/firefox/policies/policies.json"
@@ -64,7 +77,8 @@ log_debug() {
 
 # Crear directorios necesarios
 init_directories() {
-    mkdir -p "$CONFIG_DIR"
+    mkdir -p "$ETC_CONFIG_DIR"
+    mkdir -p "$VAR_STATE_DIR"
     mkdir -p "$(dirname "$LOG_FILE")"
     mkdir -p "$INSTALL_DIR/lib"
 }
