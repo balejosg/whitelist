@@ -30,27 +30,62 @@ jobs:
       
       - name: Build Docker image
         run: |
-          echo "🐳 Building E2E test Docker image..."
+          echo "🐳 Building systemd-enabled E2E test Docker image..."
           docker build -t whitelist-e2e:latest -f tests/e2e/Dockerfile .
       
-      - name: Run E2E tests in container
+      - name: Run E2E tests in systemd container
         run: |
-          echo "🧪 Running E2E tests in Docker container..."
-          docker run --rm \
+          echo "🧪 Starting systemd container..."
+          
+          # Start container with systemd
+          docker run -d --name e2e-test \
             --privileged \
-            --cap-add=NET_ADMIN \
-            --cap-add=NET_RAW \
+            --cgroupns=host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
             --dns 8.8.8.8 \
             -e CI=true \
             whitelist-e2e:latest
+          
+          echo "⏳ Waiting for systemd to boot and tests to complete..."
+          sleep 10
+          
+          # Wait for e2e-tests.service to complete (max 5 minutes)
+          for i in {1..60}; do
+            status=$(docker exec e2e-test systemctl is-active e2e-tests.service 2>/dev/null || echo "unknown")
+            if [ "$status" = "inactive" ] || [ "$status" = "failed" ]; then
+              break
+            fi
+            echo "  [$i/60] Tests still running..."
+            sleep 5
+          done
+          
+          echo ""
+          echo "📋 Test output:"
+          docker exec e2e-test journalctl -u e2e-tests.service --no-pager
+          
+          echo ""
+          echo "🔍 Service status:"
+          docker exec e2e-test systemctl status e2e-tests.service --no-pager || true
+          
+          # Check if tests passed
+          result=$(docker exec e2e-test systemctl is-active e2e-tests.service 2>/dev/null || echo "failed")
+          docker stop e2e-test > /dev/null
+          docker rm e2e-test > /dev/null
+          
+          if [ "$result" = "inactive" ]; then
+            echo "✅ E2E tests passed"
+            exit 0
+          else
+            echo "❌ E2E tests failed"
+            exit 1
+          fi
       
       - name: Debug on failure
         if: failure()
         run: |
           echo "📋 Debug information..."
-          docker run --rm \
-            --privileged \
-            whitelist-e2e:latest cat /var/log/url-whitelist.log 2>/dev/null || echo "No log file"
+          docker logs e2e-test 2>/dev/null || echo "Container logs not available"
+          docker rm -f e2e-test 2>/dev/null || true
 
 
   # ============================================
