@@ -195,22 +195,24 @@ teardown() {
 
 @test "init_directories crea CONFIG_DIR" {
     source "$PROJECT_DIR/lib/common.sh"
-    # Override paths after sourcing
-    CONFIG_DIR="$TEST_TMP_DIR/newconfig"
-    LOG_FILE="$TEST_TMP_DIR/log/test.log"
+    # Override paths after sourcing - use actual variables the function uses
+    ETC_CONFIG_DIR="$TEST_TMP_DIR/etc_config"
+    VAR_STATE_DIR="$TEST_TMP_DIR/var_state"
+    LOG_FILE="$TEST_TMP_DIR/logs/test.log"
     INSTALL_DIR="$TEST_TMP_DIR/install"
     
     init_directories
     
-    [ -d "$CONFIG_DIR" ]
+    [ -d "$ETC_CONFIG_DIR" ]
 }
 
 @test "init_directories crea directorio de log" {
     source "$PROJECT_DIR/lib/common.sh"
-    # Override paths after sourcing
-    CONFIG_DIR="$TEST_TMP_DIR/config2"
+    # Override paths after sourcing - use actual variables the function uses
+    ETC_CONFIG_DIR="$TEST_TMP_DIR/etc_config2"
+    VAR_STATE_DIR="$TEST_TMP_DIR/var_state2"
     LOG_FILE="$TEST_TMP_DIR/logs/url-whitelist.log"
-    INSTALL_DIR="$TEST_TMP_DIR/install"
+    INSTALL_DIR="$TEST_TMP_DIR/install2"
     
     init_directories
     
