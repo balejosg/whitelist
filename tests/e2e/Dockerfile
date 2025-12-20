@@ -34,5 +34,5 @@ COPY . .
 # Make scripts executable
 RUN chmod +x install.sh uninstall.sh scripts/*.sh tests/e2e/*.sh lib/*.sh || true
 
-# Default command runs the E2E tests with setup
-CMD ["/bin/bash", "-c", "rm -f /etc/resolv.conf && echo 'nameserver 8.8.8.8' > /etc/resolv.conf && /whitelist/tests/e2e/docker-e2e-runner.sh"]
+# Default command runs the E2E tests
+CMD ["/whitelist/tests/e2e/docker-e2e-runner.sh"]

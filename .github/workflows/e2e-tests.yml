@@ -40,6 +40,7 @@ jobs:
             --privileged \
             --cap-add=NET_ADMIN \
             --cap-add=NET_RAW \
+            --dns 8.8.8.8 \
             -e CI=true \
             whitelist-e2e:latest
       
