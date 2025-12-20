@@ -96,7 +96,7 @@ function requireAdmin(req, res, next) {
 
     // Use timing-safe comparison to prevent timing attacks
     if (!secureCompare(token, adminToken)) {
-        return res.status(403).json({
+        return res.status(401).json({
             success: false,
             error: 'Invalid admin token'
         });
@@ -187,7 +187,7 @@ router.post('/auto', autoInclusionLimiter, async (req, res) => {
     const expectedToken = generateToken(hostname, sharedSecret);
     if (!secureCompare(token, expectedToken)) {
         console.warn(`Invalid token attempt from hostname: ${hostname}`);
-        return res.status(403).json({
+        return res.status(401).json({
             success: false,
             error: 'Invalid token',
             code: 'INVALID_TOKEN'
