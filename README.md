@@ -1,12 +1,12 @@
-# Whitelist Manager
+# OpenPath
 
 **Strict Internet Access Control. Zero Administration Headaches.**
 
-Whitelist Manager is a robust, "default-deny" internet access control system designed for classrooms, laboratories, and corporate environments. It blocks everything by default, allowing only explicitly approved domains.
+OpenPath is a robust, "default-deny" internet access control system designed for classrooms, laboratories, and corporate environments. It blocks everything by default, allowing only explicitly approved domains.
 
-Unlike traditional firewalls that require manual rule updates and complex VPNs, Whitelist Manager decentralizes enforcement to the endpoints while centralizing control in a modern web dashboard.
+Unlike traditional firewalls that require manual rule updates and complex VPNs, OpenPath decentralizes enforcement to the endpoints while centralizing control in a modern web dashboard.
 
-## Why Whitelist Manager?
+## Why OpenPath?
 
 *   **🚫 Default Deny Security**: If it's not whitelisted, it doesn't exist. Eliminate distractions and security risks at the DNS level.
 *   **🧠 GitOps Logic**: Your whitelist is just a text file in a GitHub repository. Every change is a commit. You get version history, audit logs, and instant rollbacks for free.

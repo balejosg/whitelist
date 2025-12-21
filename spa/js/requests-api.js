@@ -35,6 +35,32 @@ const RequestsAPI = {
         }
 
         const url = `${this.config.baseUrl}${endpoint}`;
+
+        // Use Auth.fetch if Auth module is available
+        if (window.Auth) {
+            try {
+                const response = await Auth.fetch(url, {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: body ? JSON.stringify(body) : null
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || `HTTP ${response.status}`);
+                }
+
+                return data;
+            } catch (error) {
+                console.error('RequestsAPI.request failed:', error);
+                throw error;
+            }
+        }
+
+        // Fallback for when Auth is not available (initialization/legacy)
         const headers = {
             'Content-Type': 'application/json'
         };
@@ -65,7 +91,7 @@ const RequestsAPI = {
             return data;
         } catch (error) {
             clearTimeout(timeout);
-            
+
             if (error.name === 'AbortError') {
                 throw new Error('Request timeout - server not responding');
             }

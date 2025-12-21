@@ -1,4 +1,4 @@
-# Análisis de Mercado: Descripción Técnica del Sistema "Whitelist Manager"
+# Análisis de Mercado: Descripción Técnica del Sistema "OpenPath"
 
 Este documento contiene una descripción detallada de la aplicación "Whitelist Manager" basada estrictamente en el análisis de su código fuente. Su propósito es servir como referencia para el análisis de mercado y benchmarking.
 
