@@ -24,37 +24,43 @@ jobs:
             # Navigate to repo
             cd ~/whitelist
             
+            # Handle migration from old directory name
+            if [ -d "whitelist-request-api" ] && [ ! -d "api" ]; then
+              echo "🔄 Migrating from whitelist-request-api to api..."
+              mv whitelist-request-api api
+            fi
+            
             # Backup current version
             echo "📦 Creating backup..."
-            cp -r whitelist-request-api whitelist-request-api.backup 2>/dev/null || true
+            cp -r api api.backup 2>/dev/null || true
             
             # Pull latest changes
             echo "📥 Pulling latest changes from GitHub..."
             git pull origin main
             
             # Navigate to API directory
-            cd whitelist-request-api
+            cd api
             
             # Install/update dependencies
             echo "📦 Installing dependencies..."
             npm ci --production
             
-            # Restart service
+            # Restart service (try new name first, fallback to old)
             echo "🔄 Restarting API service..."
-            rc-service whitelist-request-api restart
+            rc-service whitelist-api restart 2>/dev/null || rc-service whitelist-request-api restart
             
             # Verify health
             sleep 3
             if curl -f http://localhost:3000/health > /dev/null 2>&1; then
               echo "✅ Deployment successful! API is healthy."
               # Remove backup on success
-              cd ~/whitelist && rm -rf whitelist-request-api.backup
+              cd ~/whitelist && rm -rf api.backup
             else
               echo "❌ Deployment failed! Rolling back..."
               cd ~/whitelist
-              rm -rf whitelist-request-api
-              mv whitelist-request-api.backup whitelist-request-api
-              rc-service whitelist-request-api restart
+              rm -rf api
+              mv api.backup api
+              rc-service whitelist-api restart 2>/dev/null || rc-service whitelist-request-api restart
               echo "🔄 Rolled back to previous version"
               exit 1
             fi

@@ -1,5 +1,5 @@
 {
-    "name": "whitelist-web",
+    "name": "dashboard",
     "version": "1.0.0",
     "description": "Portal web para gestión de whitelist DNS",
     "main": "server/index.js",

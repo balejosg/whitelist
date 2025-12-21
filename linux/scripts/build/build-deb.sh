@@ -14,7 +14,7 @@ set -e
 VERSION="${1:-3.5.0}"
 RELEASE="${2:-1}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+ROOT_DIR="$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")"
 BUILD_DIR="$ROOT_DIR/build/whitelist-dnsmasq_${VERSION}-${RELEASE}_amd64"
 PACKAGE_NAME="whitelist-dnsmasq_${VERSION}-${RELEASE}_amd64.deb"
 
@@ -45,11 +45,11 @@ chmod +x "$BUILD_DIR/usr/local/lib/whitelist-system/lib/"*.sh
 # Copy scripts
 echo "[5/8] Copying scripts..."
 mkdir -p "$BUILD_DIR/usr/local/bin"
-cp "$ROOT_DIR/scripts/dnsmasq-whitelist.sh" "$BUILD_DIR/usr/local/bin/"
-cp "$ROOT_DIR/scripts/dnsmasq-watchdog.sh" "$BUILD_DIR/usr/local/bin/"
-cp "$ROOT_DIR/scripts/captive-portal-detector.sh" "$BUILD_DIR/usr/local/bin/"
-cp "$ROOT_DIR/scripts/smoke-test.sh" "$BUILD_DIR/usr/local/bin/"
-cp "$ROOT_DIR/scripts/whitelist-cmd.sh" "$BUILD_DIR/usr/local/bin/whitelist"
+cp "$ROOT_DIR/scripts/runtime/dnsmasq-whitelist.sh" "$BUILD_DIR/usr/local/bin/"
+cp "$ROOT_DIR/scripts/runtime/dnsmasq-watchdog.sh" "$BUILD_DIR/usr/local/bin/"
+cp "$ROOT_DIR/scripts/runtime/captive-portal-detector.sh" "$BUILD_DIR/usr/local/bin/"
+cp "$ROOT_DIR/scripts/runtime/smoke-test.sh" "$BUILD_DIR/usr/local/bin/"
+cp "$ROOT_DIR/scripts/runtime/whitelist-cmd.sh" "$BUILD_DIR/usr/local/bin/whitelist"
 chmod +x "$BUILD_DIR/usr/local/bin/"*
 
 # Copy Firefox extension

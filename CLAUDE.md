@@ -32,19 +32,19 @@ This is a **multi-platform DNS-based URL whitelist enforcement system** (v3.5) t
    - Chromium/Chrome: Enforces URLBlocklist via managed policies
    - Forces DuckDuckGo as default search engine, blocks Google search
 
-4. **Whitelist Management** (`scripts/dnsmasq-whitelist.sh`)
+4. **Whitelist Management** (`linux/scripts/runtime/dnsmasq-whitelist.sh`)
    - Downloads whitelist from configurable URL (default: GitHub)
    - Parses three sections: `## WHITELIST`, `## BLOCKED-SUBDOMAINS`, `## BLOCKED-PATHS`
    - Supports remote emergency disable via `# DESACTIVADO` marker
    - Runs every 5 minutes via systemd timer
    - Closes browsers only when policies change (to avoid disruption)
 
-5. **Watchdog** (`scripts/dnsmasq-watchdog.sh`)
+5. **Watchdog** (`linux/scripts/runtime/dnsmasq-watchdog.sh`)
    - Health checks every 1 minute
    - Auto-recovers dnsmasq, upstream DNS config, and resolv.conf
    - Enters fail-open mode after 3 consecutive failures
 
-6. **Captive Portal Detector** (`scripts/captive-portal-detector.sh`)
+6. **Captive Portal Detector** (`linux/scripts/runtime/captive-portal-detector.sh`)
    - Detects captive portals via `http://detectportal.firefox.com/success.txt`
    - Temporarily disables firewall when captive portal detected
    - Re-enables firewall after authentication
@@ -52,30 +52,30 @@ This is a **multi-platform DNS-based URL whitelist enforcement system** (v3.5) t
 
 ### Modular Library Structure
 
-All functionality is split into reusable libraries in `/usr/local/lib/whitelist-system/lib/`:
+All functionality is split into reusable libraries in `/usr/local/lib/whitelist-system/lib/` (source in `linux/lib/`):
 - `common.sh` - Shared variables, logging, whitelist parsing
 - `dns.sh` - DNS configuration, dnsmasq management
 - `firewall.sh` - iptables rules, connection flushing
 - `browser.sh` - Browser policy generation and enforcement
 - `services.sh` - systemd service creation and management
 
-### Web Management (whitelist-web-static)
+### Web Management (spa)
 
-7. **Static SPA** (`whitelist-web-static/`)
+7. **Static SPA** (`spa/`)
    - Client-side only, deployable on GitHub Pages
    - Manages whitelist rules via GitHub API
    - Supports GitHub OAuth authentication via Cloudflare Worker
    - Permission-based access (repo write access required for edits)
    - Includes domain request management panel (connects to home server API)
 
-8. **OAuth Worker** (`oauth-worker/`)
+8. **Auth Worker** (`auth-worker/`)
    - Cloudflare Worker handling GitHub OAuth flow
    - Exchanges authorization codes for access tokens
    - Validates repository permissions
 
-### Home Server API (whitelist-request-api)
+### Home Server API (api)
 
-9. **Request API** (`whitelist-request-api/`)
+9. **Request API** (`api/`)
    - Express.js REST API for domain requests
    - Designed for home server deployment (Raspberry Pi, NAS, Docker)
    - Endpoints:
@@ -95,7 +95,7 @@ All functionality is split into reusable libraries in `/usr/local/lib/whitelist-
     - Native Messaging integration for local whitelist verification
     - Domain request feature (submits to home server API)
 
-### Windows Implementation (whitelist-windows)
+### Windows Implementation (windows)
 
 11. **Acrylic DNS Proxy** - Windows DNS sinkhole equivalent
 12. **Windows Firewall** - PowerShell-managed firewall rules
@@ -110,7 +110,7 @@ All functionality is split into reusable libraries in `/usr/local/lib/whitelist-
   - `dnsmasq-init-resolv.sh` - DNS upstream initialization
   - `whitelist` - Unified CLI command
 
-- **Libraries**: `/usr/local/lib/whitelist-system/lib/*.sh`
+- **Libraries**: `/usr/local/lib/whitelist-system/lib/*.sh` (source: `linux/lib/`)
 
 - **Configuration**: `/var/lib/url-whitelist/`
   - `whitelist.txt` - Downloaded whitelist
@@ -129,6 +129,7 @@ There is no build process. This is a bash-based system.
 
 **Install the system:**
 ```bash
+cd linux
 sudo ./install.sh
 # Or with custom whitelist URL:
 sudo ./install.sh --whitelist-url "https://example.com/whitelist.txt"
@@ -160,6 +161,7 @@ sudo whitelist restart   # Restart all services
 
 **Uninstall:**
 ```bash
+cd linux
 sudo ./uninstall.sh
 # Or unattended:
 sudo ./uninstall.sh --unattended
@@ -182,7 +184,7 @@ After modifying scripts in the repository:
 
 2. **For main scripts** (`scripts/*.sh`):
    ```bash
-   sudo cp scripts/dnsmasq-whitelist.sh /usr/local/bin/
+   sudo cp linux/scripts/runtime/dnsmasq-whitelist.sh /usr/local/bin/
    sudo systemctl restart dnsmasq-whitelist.timer
    ```
 
@@ -348,7 +350,7 @@ cd tests && bats *.bats
 
 ### Web API Tests
 ```bash
-cd whitelist-web && npm test
+cd dashboard && npm test
 ```
 
 ### CI/CD

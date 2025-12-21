@@ -158,19 +158,19 @@ echo ""
 echo "[5/13] Instalando scripts..."
 
 # Script principal de actualización
-cp "$SCRIPT_DIR/scripts/dnsmasq-whitelist.sh" "$SCRIPTS_DIR/"
+cp "$SCRIPT_DIR/scripts/runtime/dnsmasq-whitelist.sh" "$SCRIPTS_DIR/"
 chmod +x "$SCRIPTS_DIR/dnsmasq-whitelist.sh"
 
 # Script watchdog
-cp "$SCRIPT_DIR/scripts/dnsmasq-watchdog.sh" "$SCRIPTS_DIR/"
+cp "$SCRIPT_DIR/scripts/runtime/dnsmasq-watchdog.sh" "$SCRIPTS_DIR/"
 chmod +x "$SCRIPTS_DIR/dnsmasq-watchdog.sh"
 
 # Script detector portal cautivo
-cp "$SCRIPT_DIR/scripts/captive-portal-detector.sh" "$SCRIPTS_DIR/"
+cp "$SCRIPT_DIR/scripts/runtime/captive-portal-detector.sh" "$SCRIPTS_DIR/"
 chmod +x "$SCRIPTS_DIR/captive-portal-detector.sh"
 
 # Comando unificado
-cp "$SCRIPT_DIR/scripts/whitelist-cmd.sh" "$SCRIPTS_DIR/whitelist"
+cp "$SCRIPT_DIR/scripts/runtime/whitelist-cmd.sh" "$SCRIPTS_DIR/whitelist"
 chmod +x "$SCRIPTS_DIR/whitelist"
 
 # Script de inicialización DNS
@@ -323,8 +323,8 @@ echo "✓ Servicios habilitados"
 # ============================================================================
 
 # Instalar script de smoke tests
-if [ -f "$SCRIPT_DIR/scripts/smoke-test.sh" ]; then
-    cp "$SCRIPT_DIR/scripts/smoke-test.sh" "$SCRIPTS_DIR/"
+if [ -f "$SCRIPT_DIR/scripts/runtime/smoke-test.sh" ]; then
+    cp "$SCRIPT_DIR/scripts/runtime/smoke-test.sh" "$SCRIPTS_DIR/"
     chmod +x "$SCRIPTS_DIR/smoke-test.sh"
 fi
 

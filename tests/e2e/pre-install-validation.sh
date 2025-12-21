@@ -95,15 +95,18 @@ test_required_directories() {
     test_section "2/5" "Required directory structure"
     
     local required_dirs=(
-        "lib"
-        "scripts"
+        "linux/lib"
+        "linux/scripts"
+        "linux/scripts/runtime"
+        "linux/scripts/build"
+        "linux/scripts/dev"
         "firefox-extension"
         "firefox-extension/icons"
         "firefox-extension/popup"
         "firefox-extension/native"
-        "whitelist-windows"
-        "whitelist-windows/lib"
-        "whitelist-windows/scripts"
+        "windows"
+        "windows/lib"
+        "windows/scripts"
         "tests"
         "tests/e2e"
     )
@@ -113,7 +116,7 @@ test_required_directories() {
         if [ -d "$dir_path" ]; then
             test_pass "Directory $dir exists"
         else
-            if [[ "$dir" == "whitelist-windows"* ]]; then
+            if [[ "$dir" == "windows"* ]]; then
                 test_warn "Directory $dir missing (Windows-specific)"
             else
                 test_fail "Directory $dir missing"
@@ -127,22 +130,22 @@ test_required_files() {
     
     local required_files=(
         # Core installers
-        "install.sh"
-        "uninstall.sh"
+        "linux/install.sh"
+        "linux/uninstall.sh"
         
         # Library modules
-        "lib/common.sh"
-        "lib/dns.sh"
-        "lib/firewall.sh"
-        "lib/browser.sh"
-        "lib/services.sh"
-        "lib/rollback.sh"
+        "linux/lib/common.sh"
+        "linux/lib/dns.sh"
+        "linux/lib/firewall.sh"
+        "linux/lib/browser.sh"
+        "linux/lib/services.sh"
+        "linux/lib/rollback.sh"
         
         # Runtime scripts
-        "scripts/dnsmasq-whitelist.sh"
-        "scripts/dnsmasq-watchdog.sh"
-        "scripts/captive-portal-detector.sh"
-        "scripts/whitelist-cmd.sh"
+        "linux/scripts/runtime/dnsmasq-whitelist.sh"
+        "linux/scripts/runtime/dnsmasq-watchdog.sh"
+        "linux/scripts/runtime/captive-portal-detector.sh"
+        "linux/scripts/runtime/whitelist-cmd.sh"
         
         # Firefox extension
         "firefox-extension/manifest.json"
@@ -212,10 +215,10 @@ test_release_tarball_simulation() {
     
     # Simulate what would be in the Linux release tarball
     local tarball_contents=(
-        "install.sh"
-        "uninstall.sh"
-        "lib/"
-        "scripts/"
+        "linux/install.sh"
+        "linux/uninstall.sh"
+        "linux/lib/"
+        "linux/scripts/"
         "firefox-extension/"
     )
     

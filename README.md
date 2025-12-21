@@ -53,14 +53,14 @@ sudo apt install whitelist-dnsmasq
 
 ```bash
 git clone https://github.com/balejosg/whitelist.git
-cd whitelist
+cd whitelist/linux
 sudo ./install.sh
 ```
 
 Con URL de whitelist personalizada:
 
 ```bash
-sudo ./install.sh --whitelist-url "https://tu-url.com/whitelist.txt"
+sudo ./linux/install.sh --whitelist-url "https://tu-url.com/whitelist.txt"
 ```
 
 ## Desinstalación
@@ -71,42 +71,30 @@ sudo apt remove whitelist-dnsmasq    # Mantiene configuración
 sudo apt purge whitelist-dnsmasq     # Elimina todo
 
 # Instalación manual
-sudo ./uninstall.sh
+sudo ./linux/uninstall.sh
 ```
 
 ## Estructura del proyecto
 
 ```
 whitelist/
-├── install.sh                      # Script de instalación principal (Linux)
-├── uninstall.sh                    # Script de desinstalación (Linux)
-├── lib/                            # Módulos de funcionalidad (Linux)
-│   ├── common.sh                   # Variables y funciones comunes
-│   ├── dns.sh                      # Gestión de dnsmasq
-│   ├── firewall.sh                 # Reglas de iptables
-│   ├── browser.sh                  # Políticas de navegadores
-│   └── services.sh                 # Integración con systemd
-├── scripts/                        # Scripts de ejecución (Linux)
-│   ├── dnsmasq-whitelist.sh        # Actualiza whitelist (timer)
-│   ├── dnsmasq-watchdog.sh         # Monitoreo de salud (timer)
-│   ├── captive-portal-detector.sh  # Detección de portales WiFi
-│   └── whitelist-cmd.sh            # Comando de usuario whitelist
-├── whitelist-windows/              # Implementación Windows
-│   ├── Install-Whitelist.ps1       # Instalador PowerShell
-│   ├── Uninstall-Whitelist.ps1     # Desinstalador
-│   └── lib/                        # Módulos PowerShell
-├── whitelist-web-static/           # SPA para gestión de reglas
-│   ├── index.html                  # Aplicación web
-│   └── js/                         # Lógica JavaScript + GitHub OAuth
-├── oauth-worker/                   # Cloudflare Worker para OAuth
-│   └── worker.js                   # Backend serverless
-├── firefox-extension/              # Extensión de monitoreo
-│   └── manifest.json               # Firefox WebExtension
-├── whitelist-request-api/          # API para solicitudes de dominios
-│   └── server.js                   # Express.js REST API
-└── tests/                          # Suite de tests
-    ├── *.bats                      # 72 tests BATS para Linux
-    └── e2e/                        # Tests E2E Linux/Windows
+├── linux/                          # Implementación Linux
+│   ├── install.sh                  # Instalador principal
+│   ├── uninstall.sh                # Desinstalador
+│   ├── lib/                        # Módulos de funcionalidad
+│   ├── scripts/runtime|build|dev/  # Scripts organizados
+│   └── debian-package/             # Empaquetado .deb
+├── windows/                        # Implementación Windows
+│   ├── Install-Whitelist.ps1
+│   ├── lib/
+│   └── scripts/
+├── api/                            # API REST
+├── dashboard/                      # Portal web
+├── spa/                            # SPA GitHub Pages
+├── auth-worker/                    # Cloudflare OAuth
+├── firefox-extension/              # Extensión navegador
+├── tests/                          # Tests (Linux/Windows)
+└── docs/                           # Documentación
 ```
 
 ## Directorios de instalación
@@ -226,20 +214,20 @@ Integración systemd:
 - Creación de units de timer
 - Activación de servicios
 
-### scripts/dnsmasq-whitelist.sh
+### linux/scripts/runtime/dnsmasq-whitelist.sh
 Actualización periódica:
 - Descarga whitelist desde URL
 - Regenera configuración dnsmasq
 - Aplica políticas de navegadores
 - Detecta desactivación remota (#DESACTIVADO)
 
-### scripts/dnsmasq-watchdog.sh
+### linux/scripts/runtime/dnsmasq-watchdog.sh
 Monitoreo de salud (cada 1 minuto):
 - Verifica dnsmasq en ejecución
 - Valida configuración DNS
 - Auto-recuperación en fallos
 
-### scripts/captive-portal-detector.sh
+### linux/scripts/runtime/captive-portal-detector.sh
 Detección de portales cautivos:
 - Detecta WiFi con autenticación
 - Desactiva firewall temporalmente
@@ -425,11 +413,11 @@ Sistema para uso educativo e institucional.
 
 | Componente | Plataforma | Documentación |
 |------------|------------|---------------|
-| [whitelist-windows](./whitelist-windows/) | Windows 10/11 | DNS con Acrylic Proxy |
-| [whitelist-web](./whitelist-web/) | Docker | Gestión web con autenticación |
-| [whitelist-web-static](./whitelist-web-static/) | Web (GitHub Pages) | SPA para gestión centralizada |
-| [whitelist-request-api](./whitelist-request-api/) | Node.js | API REST para solicitudes de dominios |
-| [oauth-worker](./oauth-worker/) | Cloudflare Workers | Backend OAuth para SPA |
+| [windows](./windows/) | Windows 10/11 | DNS con Acrylic Proxy |
+| [dashboard](./dashboard/) | Docker | Gestión web con autenticación |
+| [spa](./spa/) | Web (GitHub Pages) | SPA para gestión centralizada |
+| [api](./api/) | Node.js | API REST para solicitudes de dominios |
+| [auth-worker](./auth-worker/) | Cloudflare Workers | Backend OAuth para SPA |
 | [firefox-extension](./firefox-extension/) | Firefox | Monitoreo de bloqueos |
 | [tests/e2e](./tests/e2e/) | Linux/Windows | Tests End-to-End |
 

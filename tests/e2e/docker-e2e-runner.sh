@@ -69,7 +69,7 @@ fi
 # Step 5: Run smoke tests
 echo ""
 echo -e "${BLUE}[5/6]${NC} Running smoke tests..."
-./scripts/smoke-test.sh --quick || echo -e "${YELLOW}⚠${NC} Smoke tests had issues"
+./scripts/runtime/smoke-test.sh --quick || echo -e "${YELLOW}⚠${NC} Smoke tests had issues"
 
 # Step 6: Run E2E tests
 echo ""
