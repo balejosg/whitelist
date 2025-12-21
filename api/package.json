@@ -8,7 +8,7 @@
     "dev": "node --watch server.js",
     "test": "node --test tests/api.test.js",
     "test:auth": "node --test tests/auth.test.js",
-    "test:all": "node --test tests/*.test.js",
+    "test:all": "node tests/run-all.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
