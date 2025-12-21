@@ -30,25 +30,35 @@ jobs:
               mv whitelist-request-api api
             fi
             
-            # Backup current version
+            # Backup current version (exclude data directory)
             echo "📦 Creating backup..."
             cp -r api api.backup 2>/dev/null || true
+            
+            # Clean up data directory permissions before reset
+            echo "🔧 Fixing permissions..."
+            chmod -R u+w api/data 2>/dev/null || true
             
             # Pull latest changes (force to handle local modifications)
             echo "📥 Pulling latest changes from GitHub..."
             git fetch origin main
+            git checkout -- . 2>/dev/null || true
+            git clean -fd 2>/dev/null || true
             git reset --hard origin/main
             
             # Navigate to API directory
             cd api
             
+            # Ensure data directory exists with proper permissions
+            mkdir -p data
+            chmod 755 data
+            
             # Install/update dependencies
             echo "📦 Installing dependencies..."
-            npm ci --production
+            npm ci --omit=dev
             
-            # Restart service (try new name first, fallback to old)
+            # Restart service
             echo "🔄 Restarting API service..."
-            rc-service whitelist-api restart 2>/dev/null || rc-service whitelist-request-api restart
+            rc-service whitelist-api restart
             
             # Verify health
             sleep 3
@@ -61,7 +71,7 @@ jobs:
               cd ~/whitelist
               rm -rf api
               mv api.backup api
-              rc-service whitelist-api restart 2>/dev/null || rc-service whitelist-request-api restart
+              rc-service whitelist-api restart
               echo "🔄 Rolled back to previous version"
               exit 1
             fi
