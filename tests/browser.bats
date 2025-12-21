@@ -290,7 +290,7 @@ teardown() {
     touch "$ext_dir/icons/icon-48.png"
     
     # Mock the system extension directory to be in TEST_TMP_DIR
-    local ext_install_dir="$TEST_TMP_DIR/share/mozilla/extensions/{ec8030f7-c20a-464f-9b0e-13a3a9e97384}/monitor-bloqueos@whitelist-system"
+    local ext_install_dir="$TEST_TMP_DIR/share/mozilla/extensions/{ec8030f7-c20a-464f-9b0e-13a3a9e97384}/monitor-bloqueos@openpath"
     
     source "$PROJECT_DIR/linux/lib/browser.sh"
     
@@ -370,7 +370,7 @@ teardown() {
     
     # Mock paths to use test directory
     local native_manifest_dir="$TEST_TMP_DIR/lib/mozilla/native-messaging-hosts"
-    local native_script_dir="$TEST_TMP_DIR/local/lib/whitelist-system"
+    local native_script_dir="$TEST_TMP_DIR/local/lib/openpath"
     
     source "$PROJECT_DIR/linux/lib/browser.sh"
     
@@ -402,7 +402,7 @@ teardown() {
 
 @test "remove_firefox_extension elimina directorio de extensión" {
     # Create mock extension directory in test tmp
-    local ext_dir="$TEST_TMP_DIR/share/mozilla/extensions/{ec8030f7-c20a-464f-9b0e-13a3a9e97384}/monitor-bloqueos@whitelist-system"
+    local ext_dir="$TEST_TMP_DIR/share/mozilla/extensions/{ec8030f7-c20a-464f-9b0e-13a3a9e97384}/monitor-bloqueos@openpath"
     mkdir -p "$ext_dir"
     touch "$ext_dir/manifest.json"
     
@@ -427,7 +427,7 @@ teardown() {
 @test "remove_firefox_extension elimina native host" {
     # Create mock files in test tmp
     local native_manifest="$TEST_TMP_DIR/lib/mozilla/native-messaging-hosts/whitelist_native_host.json"
-    local native_script="$TEST_TMP_DIR/local/lib/whitelist-system/whitelist-native-host.py"
+    local native_script="$TEST_TMP_DIR/local/lib/openpath/whitelist-native-host.py"
     
     mkdir -p "$(dirname "$native_manifest")" "$(dirname "$native_script")"
     touch "$native_manifest" "$native_script"

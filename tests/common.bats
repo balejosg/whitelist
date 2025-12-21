@@ -211,7 +211,7 @@ teardown() {
     # Override paths after sourcing - use actual variables the function uses
     ETC_CONFIG_DIR="$TEST_TMP_DIR/etc_config2"
     VAR_STATE_DIR="$TEST_TMP_DIR/var_state2"
-    LOG_FILE="$TEST_TMP_DIR/logs/url-whitelist.log"
+    LOG_FILE="$TEST_TMP_DIR/logs/openpath.log"
     INSTALL_DIR="$TEST_TMP_DIR/install2"
     
     init_directories
