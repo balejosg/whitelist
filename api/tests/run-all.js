@@ -10,7 +10,8 @@ const path = require('path');
 
 const testFiles = [
     'tests/api.test.js',
-    'tests/auth.test.js'
+    'tests/auth.test.js',
+    'tests/e2e.test.js'
 ];
 
 let currentIndex = 0;
