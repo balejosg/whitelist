@@ -102,4 +102,4 @@ Add `#DESACTIVADO` to the start of your remote whitelist file. Endpoints will pi
 
 ---
 
-**License**: [AGPL-3.0](LICENSE) (Open Source) / Commercial License (SaaS). See [LICENSING.md](LICENSING.md) for details.
+**License**: [AGPL-3.0](LICENSE) (Open Source). See [LICENSING.md](LICENSING.md) for details.
