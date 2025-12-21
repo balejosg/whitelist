@@ -286,7 +286,7 @@ jobs:
   # ============================================
   build-prerelease-deb:
     name: Build Prerelease Deb
-    needs: [ci-success]
+    needs: [lint, test-web, test-bash, test-api, build-docker, build-docker-api]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     uses: ./.github/workflows/build-deb.yml
     with:
