@@ -280,16 +280,3 @@ jobs:
             exit 1
           fi
           echo "✅ All CI checks passed"
-
-  # ============================================
-  # Job 7: Build Prerelease Deb Package
-  # ============================================
-  build-prerelease-deb:
-    name: Build Prerelease Deb
-    needs: [lint, test-web, test-bash, test-api, build-docker, build-docker-api]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    uses: ./.github/workflows/build-deb.yml
-    with:
-      version: 0.0.${{ github.run_number }}
-      suite: unstable
-    secrets: inherit
