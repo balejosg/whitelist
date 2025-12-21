@@ -20,7 +20,7 @@ setup() {
     mkdir -p "$TEST_TMP_DIR/tmpfiles.d"
     
     # Copy libs
-    cp "$PROJECT_DIR/lib/"*.sh "$INSTALL_DIR/lib/" 2>/dev/null || true
+    cp "$PROJECT_DIR/linux/lib/"*.sh "$INSTALL_DIR/lib/" 2>/dev/null || true
     
     # Mock log function
     log() { echo "$1"; }
@@ -252,7 +252,7 @@ EOF
 # ============== Tests de enable_services / disable_services ==============
 
 @test "enable_services ejecuta sin errores" {
-    source "$PROJECT_DIR/lib/services.sh"
+    source "$PROJECT_DIR/linux/lib/services.sh"
     
     run enable_services
     [ "$status" -eq 0 ]
@@ -260,7 +260,7 @@ EOF
 }
 
 @test "disable_services ejecuta sin errores" {
-    source "$PROJECT_DIR/lib/services.sh"
+    source "$PROJECT_DIR/linux/lib/services.sh"
     
     run disable_services
     [ "$status" -eq 0 ]

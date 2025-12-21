@@ -37,17 +37,17 @@ jobs:
           
           # List files to be deployed
           echo ""
-          echo "Files in whitelist-web-static/:"
-          ls -la whitelist-web-static/
+          echo "Files in spa/:"
+          ls -la spa/
           
           echo ""
           echo "Total size:"
-          du -sh whitelist-web-static/
+          du -sh spa/
       
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: whitelist-web-static/
+          path: spa/
 
   # ============================================
   # Deploy Job

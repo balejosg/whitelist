@@ -8,7 +8,7 @@ on:
       - 'uninstall.sh'
       - 'lib/**'
       - 'scripts/**'
-      - 'whitelist-windows/**'
+      - 'windows/**'
       - '.github/workflows/release-scripts.yml'
   workflow_dispatch:
 
@@ -94,11 +94,11 @@ jobs:
           echo "🪟 Packaging Windows installation scripts..."
           
           VERSION="${{ steps.vars.outputs.version }}"
-          PACKAGE_NAME="whitelist-windows-v${VERSION}.zip"
+          PACKAGE_NAME="windows-v${VERSION}.zip"
           
           # Create ZIP with all Windows files
           echo "  → Creating ZIP archive..."
-          zip -r -q "$PACKAGE_NAME" whitelist-windows/
+          zip -r -q "$PACKAGE_NAME" windows/
           
           # Verify
           if [ -f "$PACKAGE_NAME" ]; then
@@ -122,7 +122,7 @@ jobs:
           generate_release_notes: true
           files: |
             whitelist-linux-v${{ steps.vars.outputs.version }}.tar.gz
-            whitelist-windows-v${{ steps.vars.outputs.version }}.zip
+            windows-v${{ steps.vars.outputs.version }}.zip
           body: |
             ## 🚀 Installation Scripts Release
             
@@ -132,7 +132,7 @@ jobs:
             ### 📦 Assets
             
             - **`whitelist-linux-v${{ steps.vars.outputs.version }}.tar.gz`** - Linux installation scripts
-            - **`whitelist-windows-v${{ steps.vars.outputs.version }}.zip`** - Windows installation scripts
+            - **`windows-v${{ steps.vars.outputs.version }}.zip`** - Windows installation scripts
             
             ### 📝 Installation
             
@@ -149,11 +149,11 @@ jobs:
             **Windows (PowerShell as Administrator):**
             ```powershell
             # Download and extract
-            Invoke-WebRequest -Uri "https://github.com/balejosg/whitelist/releases/download/${{ steps.vars.outputs.tag }}/whitelist-windows-v${{ steps.vars.outputs.version }}.zip" -OutFile "whitelist-windows.zip"
-            Expand-Archive -Path "whitelist-windows.zip" -DestinationPath "."
+            Invoke-WebRequest -Uri "https://github.com/balejosg/whitelist/releases/download/${{ steps.vars.outputs.tag }}/windows-v${{ steps.vars.outputs.version }}.zip" -OutFile "windows.zip"
+            Expand-Archive -Path "windows.zip" -DestinationPath "."
             
             # Run installer
-            cd whitelist-windows
+            cd windows
             .\Install-Whitelist.ps1
             ```
             
@@ -188,6 +188,6 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📦 Released Artifacts" >> $GITHUB_STEP_SUMMARY
           echo "- whitelist-linux-v${{ steps.vars.outputs.version }}.tar.gz" >> $GITHUB_STEP_SUMMARY
-          echo "- whitelist-windows-v${{ steps.vars.outputs.version }}.zip" >> $GITHUB_STEP_SUMMARY
+          echo "- windows-v${{ steps.vars.outputs.version }}.zip" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🔗 [View Release](https://github.com/${{ github.repository }}/releases/tag/${{ steps.vars.outputs.tag }})" >> $GITHUB_STEP_SUMMARY

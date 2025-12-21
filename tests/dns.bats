@@ -14,7 +14,7 @@ setup() {
     mkdir -p "$INSTALL_DIR/lib"
     
     # Copy libs
-    cp "$PROJECT_DIR/lib/"*.sh "$INSTALL_DIR/lib/" 2>/dev/null || true
+    cp "$PROJECT_DIR/linux/lib/"*.sh "$INSTALL_DIR/lib/" 2>/dev/null || true
 }
 
 teardown() {
@@ -104,7 +104,7 @@ github.com"
     log() { echo "$1"; }
     export -f log
     
-    source "$PROJECT_DIR/lib/dns.sh"
+    source "$PROJECT_DIR/linux/lib/dns.sh"
     
     run generate_dnsmasq_config
     [ "$status" -eq 0 ]
@@ -124,7 +124,7 @@ github.com"
     log() { echo "$1"; }
     export -f log
     
-    source "$PROJECT_DIR/lib/dns.sh"
+    source "$PROJECT_DIR/linux/lib/dns.sh"
     
     generate_dnsmasq_config
     
@@ -144,7 +144,7 @@ github.com"
     log() { echo "$1"; }
     export -f log
     
-    source "$PROJECT_DIR/lib/dns.sh"
+    source "$PROJECT_DIR/linux/lib/dns.sh"
     
     generate_dnsmasq_config
     
@@ -165,7 +165,7 @@ github.com"
     log() { echo "$1"; }
     export -f log
     
-    source "$PROJECT_DIR/lib/dns.sh"
+    source "$PROJECT_DIR/linux/lib/dns.sh"
     
     generate_dnsmasq_config
     
@@ -185,7 +185,7 @@ github.com"
     log() { echo "$1"; }
     export -f log
     
-    source "$PROJECT_DIR/lib/dns.sh"
+    source "$PROJECT_DIR/linux/lib/dns.sh"
     
     run validate_dnsmasq_config
     [ "$status" -eq 0 ]
@@ -202,7 +202,7 @@ github.com"
     log() { echo "$1"; }
     export -f log
     
-    source "$PROJECT_DIR/lib/dns.sh"
+    source "$PROJECT_DIR/linux/lib/dns.sh"
     
     run validate_dnsmasq_config
     [ "$status" -eq 1 ]
@@ -225,7 +225,7 @@ github.com"
     }
     export -f timeout
     
-    source "$PROJECT_DIR/lib/dns.sh"
+    source "$PROJECT_DIR/linux/lib/dns.sh"
     
     run verify_dns
     [ "$status" -eq 0 ]
@@ -243,7 +243,7 @@ github.com"
     }
     export -f timeout
     
-    source "$PROJECT_DIR/lib/dns.sh"
+    source "$PROJECT_DIR/linux/lib/dns.sh"
     
     run verify_dns
     [ "$status" -eq 1 ]
