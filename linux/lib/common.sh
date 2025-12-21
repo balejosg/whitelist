@@ -25,7 +25,7 @@ HEALTH_API_SECRET_CONF="$ETC_CONFIG_DIR/health-api-secret.conf"
 ORIGINAL_DNS_FILE="$ETC_CONFIG_DIR/original-dns.conf"
 
 # State/cache files (in /var/lib/, regenerated)
-DNSMASQ_CONF="/etc/dnsmasq.d/url-whitelist.conf"
+DNSMASQ_CONF="/etc/dnsmasq.d/openpath.conf"
 DNSMASQ_CONF_HASH="$VAR_STATE_DIR/dnsmasq.hash"
 BROWSER_POLICIES_HASH="$VAR_STATE_DIR/browser-policies.hash"
 SYSTEM_DISABLED_FLAG="$VAR_STATE_DIR/system-disabled.flag"
