@@ -3,10 +3,10 @@
 # quick-install.sh - One-liner installation script
 #
 # Usage (run on each student PC):
-#   curl -sSL https://raw.githubusercontent.com/balejosg/whitelist/main/quick-install.sh | sudo bash
+#   curl -sSL https://raw.githubusercontent.com/balejosg/openpath/main/quick-install.sh | sudo bash
 #
 # Or with wget:
-#   wget -qO- https://raw.githubusercontent.com/balejosg/whitelist/main/quick-install.sh | sudo bash
+#   wget -qO- https://raw.githubusercontent.com/balejosg/openpath/main/quick-install.sh | sudo bash
 ################################################################################
 
 set -e
@@ -17,7 +17,7 @@ HEALTH_API_URL="https://your-api-host.duckdns.org"
 HEALTH_API_SECRET="your-shared-secret-here"
 # =============================================
 
-REPO_URL="https://github.com/balejosg/whitelist"
+REPO_URL="https://github.com/balejosg/openpath"
 BRANCH="main"
 
 echo ""

@@ -10,8 +10,8 @@ Cloudflare Worker para manejar OAuth con GitHub.
 2. Click "New OAuth App"
 3. Completa:
    - **Application name**: OpenPath
-   - **Homepage URL**: https://balejosg.github.io/whitelist
-   - **Authorization callback URL**: `https://whitelist-oauth.<TU_SUBDOMINIO>.workers.dev/auth/callback`
+   - **Homepage URL**: https://balejosg.github.io/openpath
+   - **Authorization callback URL**: `https://openpath-oauth.<TU_SUBDOMINIO>.workers.dev/auth/callback`
 4. Guarda Client ID y Client Secret
 
 ### 2. Desplegar Worker

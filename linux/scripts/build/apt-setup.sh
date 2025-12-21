@@ -4,10 +4,10 @@
 #
 # Usage (one-liner install):
 #   # Stable (recommended):
-#   curl -fsSL https://balejosg.github.io/whitelist/apt/apt-setup.sh | sudo bash
+#   curl -fsSL https://balejosg.github.io/openpath/apt/apt-setup.sh | sudo bash
 #
 #   # Unstable (development builds):
-#   curl -fsSL https://balejosg.github.io/whitelist/apt/apt-setup.sh | sudo bash -s -- --unstable
+#   curl -fsSL https://balejosg.github.io/openpath/apt/apt-setup.sh | sudo bash -s -- --unstable
 #
 # After running:
 #   sudo apt install openpath-dnsmasq
@@ -16,7 +16,7 @@
 set -e
 
 # Configuration
-REPO_URL="https://balejosg.github.io/whitelist/apt"
+REPO_URL="https://balejosg.github.io/openpath/apt"
 GPG_KEY_URL="$REPO_URL/pubkey.gpg"
 KEYRING_PATH="/usr/share/keyrings/openpath.gpg"
 SOURCES_PATH="/etc/apt/sources.list.d/openpath.list"
@@ -73,7 +73,7 @@ echo "  ✓ GPG key installed"
 echo "[2/3] Adding repository ($SUITE)..."
 cat > "$SOURCES_PATH" << EOF
 # OpenPath System APT Repository
-# https://github.com/balejosg/whitelist
+# https://github.com/balejosg/openpath
 # Suite: $SUITE
 deb [signed-by=$KEYRING_PATH] $REPO_URL $SUITE main
 EOF

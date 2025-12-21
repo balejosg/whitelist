@@ -32,8 +32,8 @@ One-line installation via APT. Sets up `dnsmasq`, `iptables` rules, and the upda
 
 ```bash
 # Setup repository and install
-curl -fsSL https://balejosg.github.io/whitelist/apt/apt-setup.sh | sudo bash
-sudo apt install whitelist-dnsmasq
+curl -fsSL https://balejosg.github.io/openpath/apt/apt-setup.sh | sudo bash
+sudo apt install openpath-dnsmasq
 ```
 
 ### Windows
@@ -41,7 +41,7 @@ sudo apt install whitelist-dnsmasq
 PowerShell-based installation using Acrylic DNS Proxy.
 
 ```powershell
-./windows/Install-Whitelist.ps1
+./windows/Install-OpenPath.ps1
 ```
 
 ## System Architecture

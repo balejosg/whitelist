@@ -5,8 +5,8 @@
 ### Install on a Single PC
 
 ```bash
-curl -fsSL https://balejosg.github.io/whitelist/apt/apt-setup.sh | sudo bash
-sudo apt install whitelist-dnsmasq
+curl -fsSL https://balejosg.github.io/openpath/apt/apt-setup.sh | sudo bash
+sudo apt install openpath-dnsmasq
 ```
 
 The system will be active immediately.
@@ -35,44 +35,44 @@ sudo dpkg-reconfigure whitelist-dnsmasq
 ### Option 1: One-liner via SSH
 
 ```bash
-ssh user@pc-01 "curl -fsSL https://balejosg.github.io/whitelist/apt/apt-setup.sh | sudo bash && sudo apt install -y whitelist-dnsmasq"
+ssh user@pc-01 "curl -fsSL https://balejosg.github.io/openpath/apt/apt-setup.sh | sudo bash && sudo apt install -y openpath-dnsmasq"
 ```
 
 ### Option 2: Ansible Playbook
 
 ```yaml
-# whitelist-install.yml
+# openpath-install.yml
 - hosts: classroom_pcs
   become: yes
   tasks:
     - name: Add GPG key
       apt_key:
-        url: https://balejosg.github.io/whitelist/apt/pubkey.gpg
-        keyring: /usr/share/keyrings/whitelist-system.gpg
+        url: https://balejosg.github.io/openpath/apt/pubkey.gpg
+        keyring: /usr/share/keyrings/openpath.gpg
 
     - name: Add APT repository
       apt_repository:
-        repo: "deb [signed-by=/usr/share/keyrings/whitelist-system.gpg] https://balejosg.github.io/whitelist/apt stable main"
-        filename: whitelist-system
+        repo: "deb [signed-by=/usr/share/keyrings/openpath.gpg] https://balejosg.github.io/openpath/apt stable main"
+        filename: openpath
 
-    - name: Install whitelist-dnsmasq
+    - name: Install openpath-dnsmasq
       apt:
-        name: whitelist-dnsmasq
+        name: openpath-dnsmasq
         state: present
         update_cache: yes
 
     - name: Set whitelist URL
       copy:
         content: "https://your-url.com/whitelist.txt"
-        dest: /etc/whitelist-system/whitelist-url.conf
+        dest: /etc/openpath/whitelist-url.conf
 
     - name: Apply configuration
-      command: whitelist update
+      command: openpath update
 ```
 
 Run with:
 ```bash
-ansible-playbook -i inventory.ini whitelist-install.yml
+ansible-playbook -i inventory.ini openpath-install.yml
 ```
 
 ---
@@ -82,26 +82,26 @@ ansible-playbook -i inventory.ini whitelist-install.yml
 ### Check System Status
 
 ```bash
-whitelist status
+openpath status
 ```
 
 ### Test DNS Resolution
 
 ```bash
-whitelist test
+openpath test
 ```
 
 ### Force Whitelist Update
 
 ```bash
-sudo whitelist update
+sudo openpath update
 ```
 
 ### View Logs
 
 ```bash
 sudo journalctl -u dnsmasq -f
-sudo tail -f /var/log/url-whitelist.log
+sudo tail -f /var/log/openpath.log
 ```
 
 ### Temporarily Disable (Fail-open)
@@ -155,8 +155,8 @@ sudo /usr/local/bin/openpath-update.sh
 | `/etc/openpath/whitelist-url.conf` | URL to fetch whitelist from |
 | `/etc/openpath/health-api-url.conf` | Health API endpoint (optional) |
 | `/etc/openpath/health-api-secret.conf` | Health API secret (optional) |
-| `/var/lib/url-whitelist/whitelist.txt` | Downloaded whitelist (cache) |
-| `/etc/dnsmasq.d/url-whitelist.conf` | dnsmasq configuration |
+| `/var/lib/openpath/whitelist.txt` | Downloaded whitelist (cache) |
+| `/etc/dnsmasq.d/openpath.conf` | dnsmasq configuration |
 
 ---
 
@@ -164,7 +164,7 @@ sudo /usr/local/bin/openpath-update.sh
 
 ```bash
 sudo apt update
-sudo apt upgrade whitelist-dnsmasq
+sudo apt upgrade openpath-dnsmasq
 ```
 
 ---
@@ -174,21 +174,21 @@ sudo apt upgrade whitelist-dnsmasq
 ### Keep configuration (can reinstall later)
 
 ```bash
-sudo apt remove whitelist-dnsmasq
+sudo apt remove openpath-dnsmasq
 ```
 
 ### Complete removal
 
 ```bash
-sudo apt purge whitelist-dnsmasq
+sudo apt purge openpath-dnsmasq
 ```
 
 ---
 
 ## APT Repository Details
 
-- **URL**: https://balejosg.github.io/whitelist/apt/
+- **URL**: https://balejosg.github.io/openpath/apt/
 - **Distribution**: stable
 - **Component**: main
 - **Architecture**: amd64
-- **GPG Key**: https://balejosg.github.io/whitelist/apt/pubkey.gpg
+- **GPG Key**: https://balejosg.github.io/openpath/apt/pubkey.gpg

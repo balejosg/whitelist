@@ -139,7 +139,7 @@ jobs:
             **Linux:**
             ```bash
             # Download and extract
-            wget https://github.com/balejosg/whitelist/releases/download/${{ steps.vars.outputs.tag }}/openpath-linux-v${{ steps.vars.outputs.version }}.tar.gz
+            wget https://github.com/balejosg/openpath/releases/download/${{ steps.vars.outputs.tag }}/openpath-linux-v${{ steps.vars.outputs.version }}.tar.gz
             tar -xzf openpath-linux-v${{ steps.vars.outputs.version }}.tar.gz
             
             # Run installer
@@ -149,7 +149,7 @@ jobs:
             **Windows (PowerShell as Administrator):**
             ```powershell
             # Download and extract
-            Invoke-WebRequest -Uri "https://github.com/balejosg/whitelist/releases/download/${{ steps.vars.outputs.tag }}/windows-v${{ steps.vars.outputs.version }}.zip" -OutFile "windows.zip"
+            Invoke-WebRequest -Uri "https://github.com/balejosg/openpath/releases/download/${{ steps.vars.outputs.tag }}/windows-v${{ steps.vars.outputs.version }}.zip" -OutFile "windows.zip"
             Expand-Archive -Path "windows.zip" -DestinationPath "."
             
             # Run installer

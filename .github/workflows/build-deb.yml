@@ -215,7 +215,7 @@ jobs:
           <body>
           <h1>OpenPath System APT Repository</h1>
           <h2>Quick Install</h2>
-          <pre>curl -fsSL https://balejosg.github.io/whitelist/apt/apt-setup.sh | sudo bash
+          <pre>curl -fsSL https://balejosg.github.io/openpath/apt/apt-setup.sh | sudo bash
           sudo apt install openpath-dnsmasq</pre>
           <h2>Files</h2>
           <ul>
