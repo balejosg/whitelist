@@ -195,3 +195,10 @@ create_logrotate_config() {
 }
 EOF
 }
+
+# Configurar tmpfiles (para crear directorio en /run)
+create_tmpfiles_config() {
+    cat > /etc/tmpfiles.d/openpath-dnsmasq.conf << 'EOF'
+d /run/dnsmasq 0755 root root -
+EOF
+}

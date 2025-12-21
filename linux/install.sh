@@ -22,7 +22,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Directorios de instalación
 INSTALL_DIR="/usr/local/lib/openpath"
 SCRIPTS_DIR="/usr/local/bin"
-CONFIG_DIR="/var/lib/url-whitelist"
+CONFIG_DIR="/var/lib/openpath"
 
 # URL por defecto
 DEFAULT_WHITELIST_URL="https://raw.githubusercontent.com/LasEncinasIT/Whitelist-por-aula/refs/heads/main/Informatica%203.txt"
@@ -248,7 +248,7 @@ if [ -f /etc/dnsmasq.conf ]; then
 fi
 
 # Configuración inicial permisiva
-cat > /etc/dnsmasq.d/url-whitelist.conf << EOF
+cat > /etc/dnsmasq.d/openpath.conf << EOF
 # Configuración inicial - será sobrescrita por dnsmasq-whitelist.sh
 no-resolv
 resolv-file=/run/dnsmasq/resolv.conf
