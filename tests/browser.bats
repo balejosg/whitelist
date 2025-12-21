@@ -130,7 +130,7 @@ teardown() {
     
     run generate_chromium_policies
     [ "$status" -eq 0 ]
-    [ -f "$CHROMIUM_POLICIES_BASE/url-whitelist.json" ]
+    [ -f "$CHROMIUM_POLICIES_BASE/openpath.json" ]
 }
 
 @test "generate_chromium_policies JSON contiene URLBlocklist" {
@@ -140,7 +140,7 @@ teardown() {
     
     run generate_chromium_policies
     
-    grep -q "URLBlocklist" "$CHROMIUM_POLICIES_BASE/url-whitelist.json"
+    grep -q "URLBlocklist" "$CHROMIUM_POLICIES_BASE/openpath.json"
 }
 
 # ============== Tests de cleanup_browser_policies ==============
@@ -158,7 +158,7 @@ teardown() {
 }
 
 @test "cleanup_browser_policies elimina archivos Chromium" {
-    echo '{"URLBlocklist": ["test"]}' > "$CHROMIUM_POLICIES_BASE/url-whitelist.json"
+    echo '{"URLBlocklist": ["test"]}' > "$CHROMIUM_POLICIES_BASE/openpath.json"
     
     source "$PROJECT_DIR/linux/lib/browser.sh"
     
@@ -166,7 +166,7 @@ teardown() {
     [ "$status" -eq 0 ]
     
     # File should be removed
-    [ ! -f "$CHROMIUM_POLICIES_BASE/url-whitelist.json" ]
+    [ ! -f "$CHROMIUM_POLICIES_BASE/openpath.json" ]
 }
 
 # ============== Tests de apply_search_engine_policies ==============
