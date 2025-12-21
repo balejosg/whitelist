@@ -21,11 +21,9 @@ on:
   workflow_call:
     inputs:
       version:
-        description: 'Version number'
         required: true
         type: string
       suite:
-        description: 'APT suite (stable or unstable)'
         required: false
         type: string
         default: unstable
