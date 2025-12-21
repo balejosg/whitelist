@@ -1,10 +1,10 @@
 /**
  * OAuth Manager
- * Handles GitHub OAuth flow for whitelist SPA
+ * Handles GitHub OAuth flow for OpenPath SPA
  */
 const OAuth = {
     // Cloudflare Worker URL for OAuth
-    WORKER_URL: 'https://whitelist-oauth.bruno-alejosgomez.workers.dev',
+    WORKER_URL: 'https://openpath-oauth.bruno-alejosgomez.workers.dev',
 
     STORAGE_KEY: 'openpath-oauth-token',
 
@@ -69,7 +69,7 @@ const OAuth = {
      */
     logout() {
         localStorage.removeItem(this.STORAGE_KEY);
-        localStorage.removeItem('whitelist-spa-config');
+        localStorage.removeItem('openpath-spa-config');
     },
 
     /**

@@ -5,9 +5,9 @@
 
 const Auth = {
     // Storage keys
-    ACCESS_TOKEN_KEY: 'whitelist_access_token',
-    REFRESH_TOKEN_KEY: 'whitelist_refresh_token',
-    USER_KEY: 'whitelist_user',
+    ACCESS_TOKEN_KEY: 'openpath_access_token',
+    REFRESH_TOKEN_KEY: 'openpath_refresh_token',
+    USER_KEY: 'openpath_user',
 
     // API base URL (uses RequestsAPI config if available)
     getApiUrl() {

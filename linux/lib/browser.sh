@@ -516,15 +516,15 @@ install_native_host() {
     mkdir -p "$native_script_dir"
     
     # Copy Python script
-    cp "$native_source/whitelist-native-host.py" "$native_script_dir/"
-    chmod +x "$native_script_dir/whitelist-native-host.py"
+    cp "$native_source/openpath-native-host.py" "$native_script_dir/"
+    chmod +x "$native_script_dir/openpath-native-host.py"
     
     # Generate manifest with correct path
-    cat > "$native_manifest_dir/whitelist_native_host.json" << EOF
+    cat > "$native_manifest_dir/openpath_native_host.json" << EOF
 {
     "name": "whitelist_native_host",
     "description": "OpenPath System Native Messaging Host",
-    "path": "$native_script_dir/whitelist-native-host.py",
+    "path": "$native_script_dir/openpath-native-host.py",
     "type": "stdio",
     "allowed_extensions": ["monitor-bloqueos@openpath"]
 }
@@ -579,8 +579,8 @@ PYEOF
     fi
     
     # Remove native host
-    rm -f "/usr/lib/mozilla/native-messaging-hosts/whitelist_native_host.json" 2>/dev/null || true
-    rm -f "/usr/local/lib/openpath/whitelist-native-host.py" 2>/dev/null || true
+    rm -f "/usr/lib/mozilla/native-messaging-hosts/openpath_native_host.json" 2>/dev/null || true
+    rm -f "/usr/local/lib/openpath/openpath-native-host.py" 2>/dev/null || true
     
     # Remove autoconfig
     local firefox_dir=$(detect_firefox_dir 2>/dev/null)
