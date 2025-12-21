@@ -55,12 +55,13 @@ El sistema no es "fire and forget". Los agentes clientes reportan activamente:
 -   **Alertas**: El Dashboard muestra qué máquinas tienen problemas o han dejado de reportar (stale hosts).
 
 ### D. Seguridad y Administración
--   **Autenticación**:
-    -   Usuarios/Admins vía **GitHub OAuth**.
-    -   Tokens de API para comunicación entre servicios.
-    -   "Shared Secret" para autenticar reportes de los clientes.
--   **Rate Limiting**: Protección contra abuso en los endpoints públicos de solicitud.
--   **Modo Pánico**: Botón de "Sistema Activo/Desactivado" en el Dashboard para deshabilitar el filtrado globalmente en caso de emergencia.
+
+- **Autenticación**:
+  - Usuarios/Admins vía **GitHub OAuth**.
+  - Tokens de API para comunicación entre servicios.
+  - "Shared Secret" para autenticar reportes de los clientes.
+- **Rate Limiting**: Protección contra abuso en los endpoints públicos de solicitud.
+- **Modo Pánico**: Botón de "Sistema Activo/Desactivado" en el Dashboard para deshabilitar el filtrado globalmente en caso de emergencia.
 
 ## 4. Diferenciadores Tecnológicos (para el Analista)
 -   **Enfoque GitOps**: Al usar un repositorio como base de datos de reglas, se obtiene un historial de auditoría perfecto (quién aprobó qué y cuándo) y rollback sencillo.
@@ -68,7 +69,9 @@ El sistema no es "fire and forget". Los agentes clientes reportan activamente:
 -   **Transparencia**: El usuario final puede ver el estado de su solicitud.
 
 ## 5. Público Objetivo Inferido
+
 Instituciones educativas (K-12, Universidades) o centros de examen donde:
-1.  Se requiere bloqueo estricto por defecto.
-2.  Los profesores/instructores necesitan autonomía para desbloquear recursos rápidamente.
-3.  Se gestionan múltiples aulas con necesidades diferentes.
+
+1. Se requiere bloqueo estricto por defecto.
+2. Los profesores/instructores necesitan autonomía para desbloquear recursos rápidamente.
+3. Se gestionan múltiples aulas con necesidades diferentes.
