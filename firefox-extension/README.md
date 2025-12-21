@@ -52,13 +52,13 @@ Para publicar la extensión en [addons.mozilla.org](https://addons.mozilla.org):
 1. **Navega** a cualquier sitio web
 2. **Observa** el badge rojo en el icono si hay dominios bloqueados
 3. **Haz clic** en el icono para ver la lista de dominios
-4. **Copia la lista** para usarla con `whitelist-cmd.sh`:
+4. **Copia la lista** para usarla con `openpath-cmd.sh`:
 
 ```bash
 # Después de copiar la lista desde la extensión
 # Pega los dominios en un archivo o úsalos directamente:
 cat << 'EOF' | while read domain; do
-  sudo whitelist check "$domain"
+  sudo openpath check "$domain"
 done
 cdn.ejemplo.com
 api.terceros.com

@@ -1,4 +1,4 @@
-# Whitelist Web Manager
+# OpenPath Web Manager
 
 Portal web para gestionar reglas de whitelist DNS, sustituyendo el fichero alojado en GitHub.
 
@@ -19,7 +19,7 @@ Portal web para gestionar reglas de whitelist DNS, sustituyendo el fichero aloja
 ### Con Docker (Recomendado)
 
 ```bash
-cd whitelist-web
+cd dashboard
 
 # Copiar configuración (opcional)
 export ADMIN_PASSWORD="tu-contraseña-segura"
@@ -34,7 +34,7 @@ docker compose logs -f
 ### Sin Docker
 
 ```bash
-cd whitelist-web
+cd dashboard
 
 # Instalar dependencias
 npm install
@@ -73,10 +73,10 @@ npm start
 Actualiza la URL en el script `install.sh` o configura cada cliente:
 
 ```bash
-sudo whitelist --set-url "http://tu-servidor:3000/export/informatica-3.txt"
+sudo openpath --set-url "http://tu-servidor:3000/export/informatica-3.txt"
 ```
 
-O modifica `/var/lib/url-whitelist/whitelist-url.conf` con la nueva URL.
+O modifica `/etc/openpath/whitelist-url.conf` con la nueva URL.
 
 ## API
 
@@ -102,7 +102,7 @@ O modifica `/var/lib/url-whitelist/whitelist-url.conf` con la nueva URL.
 ## Estructura
 
 ```
-whitelist-web/
+dashboard/
 ├── server/
 │   ├── index.js       # Servidor Express
 │   └── db.js          # Base de datos SQLite

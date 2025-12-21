@@ -1,7 +1,7 @@
 {
     "name": "dashboard",
     "version": "1.0.0",
-    "description": "Portal web para gestión de whitelist DNS",
+    "description": "Portal web para gestión de OpenPath DNS",
     "main": "server/index.js",
     "scripts": {
         "start": "node server/index.js",

@@ -13,7 +13,7 @@ Sistema integral de control de acceso a internet diseñado para entornos educati
 ```mermaid
 graph TB
     subgraph "Capa de Administración"
-        WEB["🌐 Web App<br/>(whitelist-web)"]
+        WEB["🌐 Web App<br/>(dashboard)"]
         EXT["🦊 Firefox Extension"]
     end
     
@@ -31,7 +31,7 @@ graph TB
     
     subgraph "Capa de Datos"
         REMOTE["☁️ GitHub/URL Remoto<br/>whitelist.txt"]
-        LOCAL["/var/lib/url-whitelist/<br/>Estado local"]
+        LOCAL["/etc/openpath/<br/>Estado local"]
     end
     
     WEB --> REMOTE
@@ -206,7 +206,7 @@ firefox-extension/
 ├── manifest.json       # Manifest V2
 ├── background.js       # Escucha webRequest.onErrorOccurred
 ├── popup/              # UI para listar dominios bloqueados
-└── native/             # Native Messaging → whitelist-cmd.sh
+└── native/             # Native Messaging → openpath-cmd.sh
 ```
 
 **Flujo**:
@@ -234,7 +234,7 @@ firefox-extension/
 
 **Arquitectura**:
 ```
-whitelist-web/
+dashboard/
 ├── server/
 │   ├── index.js    # API REST: /api/groups, /api/rules, /api/auth
 │   └── db.js       # Operaciones CRUD sobre JSON
@@ -271,7 +271,7 @@ whitelist-web/
 
 **Arquitectura**:
 ```
-whitelist-request-api/
+api/
 ├── routes/
 │   └── requests.js     # Endpoints de solicitudes
 ├── middleware/
@@ -306,25 +306,25 @@ La extensión detecta dominios bloqueados y permite al usuario solicitar su incl
 | `openpath-update.sh` | `/usr/local/bin/` | Actualización periódica |
 | `dnsmasq-watchdog.sh` | `/usr/local/bin/` | Monitoreo de salud |
 | `captive-portal-detector.sh` | `/usr/local/bin/` | Detección WiFi portales |
-| `whitelist-cmd.sh` | `/usr/local/bin/whitelist` | CLI para usuarios |
+| `openpath-cmd.sh` | `/usr/local/bin/openpath` | CLI para usuarios |
 | Firefox Extension | `firefox-extension/` | Diagnóstico de bloqueos |
-| Web App | `whitelist-web/` | Administración centralizada |
-| Request API | `whitelist-request-api/` | API para solicitudes de dominios |
-| Static SPA | `whitelist-web-static/` | SPA en GitHub Pages |
-| OAuth Worker | `oauth-worker/` | Backend OAuth para SPA |
+| Web App | `dashboard/` | Administración centralizada |
+| Request API | `api/` | API para solicitudes de dominios |
+| Static SPA | `spa/` | SPA en GitHub Pages |
+| OAuth Worker | `auth-worker/` | Backend OAuth para SPA |
 
 ### Servicios systemd
 
 ```mermaid
 graph LR
     subgraph "Boot"
-        TIMER1["dnsmasq-whitelist.timer<br/>OnBootSec=2min"]
+        TIMER1["openpath-dnsmasq.timer<br/>OnBootSec=2min"]
         TIMER2["dnsmasq-watchdog.timer<br/>OnCalendar=*-*-* *:*:00"]
         CAPTIVE["captive-portal-detector.service"]
     end
     
     subgraph "Ejecución"
-        S1["dnsmasq-whitelist.service"]
+        S1["openpath-dnsmasq.service"]
         S2["dnsmasq-watchdog.service"]
         DNSMASQ["dnsmasq.service"]
     end
@@ -419,34 +419,37 @@ flowchart TD
 ## Directorios del Sistema
 
 ```
-/usr/local/lib/whitelist-system/    # Código fuente
-├── lib/                            # Módulos shell
-└── scripts/                        # Scripts auxiliares
+/usr/local/lib/openpath/              # Código fuente
+├── lib/                              # Módulos shell
+└── scripts/                          # Scripts auxiliares
 
-/usr/local/bin/                     # Ejecutables
-├── whitelist                       # CLI principal
-├── dnsmasq-whitelist.sh
+/usr/local/bin/                       # Ejecutables
+├── openpath                          # CLI principal
+├── openpath-update.sh
 ├── dnsmasq-watchdog.sh
 └── captive-portal-detector.sh
 
-/var/lib/url-whitelist/             # Estado persistente
-├── whitelist.txt                   # Whitelist descargada
-├── original-dns.conf               # DNS upstream detectado
-├── whitelist-url.conf              # URL de whitelist
-├── dnsmasq.hash                    # Hash config para cambios
-└── browser-policies.hash           # Hash policies
+/etc/openpath/                        # Configuración
+├── whitelist-url.conf                # URL de whitelist
+├── original-dns.conf                 # DNS upstream detectado
+└── health-api-*.conf                 # Config health API
+
+/var/lib/openpath/                    # Estado persistente
+├── whitelist.txt                     # Whitelist descargada
+├── dnsmasq.hash                      # Hash config para cambios
+└── browser-policies.hash             # Hash policies
 
 /etc/dnsmasq.d/
-└── url-whitelist.conf              # Config dnsmasq generada
+└── openpath.conf                     # Config dnsmasq generada
 
 /etc/firefox/policies/
-└── policies.json                   # Políticas Firefox
+└── policies.json                     # Políticas Firefox
 
 /etc/chromium/policies/managed/
-└── url-whitelist.json              # Políticas Chromium
+└── openpath.json                     # Políticas Chromium
 
 /var/log/
-└── url-whitelist.log               # Log principal
+└── openpath.log                      # Log principal
 ```
 
 ---

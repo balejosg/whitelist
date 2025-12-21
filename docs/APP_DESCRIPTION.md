@@ -12,7 +12,7 @@ Se distingue por delegar la aplicación de reglas a los clientes finales (endpoi
 
 El sistema se compone de cuatro pilares fundamentales:
 
-1. **API de Gestión de Solicitudes (`whitelist-request-api`)**:
+1. **API de Gestión de Solicitudes (`api`)**:
    - Backend centralizado (Node.js/Express).
    - Gestiona las peticiones de desbloqueo de los usuarios.
    - Recibe reportes de salud (telemetría) de los clientes.

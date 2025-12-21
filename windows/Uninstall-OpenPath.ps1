@@ -1,7 +1,7 @@
 #Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    Uninstalls the Whitelist DNS system for Windows
+    Uninstalls the OpenPath DNS system for Windows
 .DESCRIPTION
     Removes firewall rules, scheduled tasks, browser policies, 
     and restores original DNS settings.

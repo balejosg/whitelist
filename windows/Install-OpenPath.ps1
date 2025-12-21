@@ -1,7 +1,7 @@
 #Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    Installs the Whitelist DNS system for Windows
+    Installs the OpenPath DNS system for Windows
 .DESCRIPTION
     Installs Acrylic DNS Proxy, configures firewall, browser policies,
     and scheduled tasks for automatic whitelist updates.

@@ -19,13 +19,13 @@ The system will be active immediately.
 
 ```bash
 echo "https://your-url.com/whitelist.txt" | sudo tee /etc/openpath/whitelist-url.conf
-sudo whitelist update
+sudo openpath update
 ```
 
 ### Use Interactive Configuration
 
 ```bash
-sudo dpkg-reconfigure whitelist-dnsmasq
+sudo dpkg-reconfigure openpath-dnsmasq
 ```
 
 ---
@@ -140,7 +140,7 @@ sudo iptables -P OUTPUT ACCEPT
 
 ```bash
 # Check timer status
-systemctl status dnsmasq-whitelist.timer
+systemctl status openpath-dnsmasq.timer
 
 # Manual update
 sudo /usr/local/bin/openpath-update.sh

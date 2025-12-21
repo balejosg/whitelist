@@ -1,7 +1,7 @@
 #Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    Updates the whitelist from remote URL and applies all configurations
+    Updates the OpenPath whitelist from remote URL and applies all configurations
 .DESCRIPTION
     Downloads whitelist, updates Acrylic DNS hosts, configures firewall,
     and applies browser policies.

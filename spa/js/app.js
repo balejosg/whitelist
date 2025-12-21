@@ -1,5 +1,5 @@
 /**
- * Whitelist SPA - Main Application
+ * OpenPath SPA - Main Application
  * Static SPA for managing DNS whitelist via GitHub API with OAuth
  */
 

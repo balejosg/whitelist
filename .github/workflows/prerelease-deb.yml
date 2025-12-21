@@ -72,7 +72,7 @@ jobs:
           Key-Type: RSA
           Key-Length: 4096
           Name-Real: OpenPath System APT
-          Name-Email: apt@whitelist.local
+          Name-Email: apt@openpath.local
           Expire-Date: 1y
           %commit
           GPGEOF

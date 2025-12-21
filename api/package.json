@@ -1,7 +1,7 @@
 {
   "name": "api",
   "version": "1.0.4",
-  "description": "REST API for whitelist domain requests - Home server deployment",
+  "description": "REST API for OpenPath domain requests - Home server deployment",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -14,7 +14,7 @@
     "lint:fix": "eslint . --fix"
   },
   "keywords": [
-    "whitelist",
+    "openpath",
     "dns",
     "api"
   ],

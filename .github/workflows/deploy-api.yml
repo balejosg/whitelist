@@ -58,7 +58,7 @@ jobs:
             
             # Restart service
             echo "🔄 Restarting API service..."
-            rc-service whitelist-api restart
+            rc-service openpath-api restart
             
             # Verify health
             sleep 3
@@ -71,7 +71,7 @@ jobs:
               cd ~/whitelist
               rm -rf api
               mv api.backup api
-              rc-service whitelist-api restart
+              rc-service openpath-api restart
               echo "🔄 Rolled back to previous version"
               exit 1
             fi

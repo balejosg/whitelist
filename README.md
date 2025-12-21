@@ -61,7 +61,7 @@ Point your agents to your own repository:
 
 ```bash
 echo "https://your-repo.com/whitelist.txt" | sudo tee /etc/openpath/whitelist-url.conf
-sudo whitelist update
+sudo openpath update
 ```
 
 ### Whitelist Format
@@ -88,13 +88,13 @@ facebook.com/gaming
 ### Check Status
 
 ```bash
-whitelist status
+openpath status
 ```
 
 ### Force Update
 
 ```bash
-whitelist update
+openpath update
 ```
 
 **Emergency Disable**

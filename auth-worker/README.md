@@ -17,13 +17,13 @@ Cloudflare Worker para manejar OAuth con GitHub.
 ### 2. Desplegar Worker
 
 ```bash
-cd oauth-worker
+cd auth-worker
 npm install
 
 # Configurar secretos
 npx wrangler secret put GITHUB_CLIENT_ID
 npx wrangler secret put GITHUB_CLIENT_SECRET
-npx wrangler secret put WORKER_URL  # https://whitelist-oauth.<TU_SUBDOMINIO>.workers.dev
+npx wrangler secret put WORKER_URL  # https://openpath-oauth.<TU_SUBDOMINIO>.workers.dev
 
 # Desplegar
 npm run deploy
@@ -31,13 +31,13 @@ npm run deploy
 
 ### 3. Actualizar SPA
 
-En `whitelist-web-static/js/oauth.js`, actualiza `WORKER_URL` con la URL de tu Worker desplegado.
+En `spa/js/oauth.js`, actualiza `WORKER_URL` con la URL de tu Worker desplegado.
 
 ### 4. Redesplegar SPA
 
 ```bash
 git checkout gh-pages
-cp ../whitelist-web-static/* . -r
+cp ../spa/* . -r
 git add .
 git commit -m "Add OAuth support"
 git push
