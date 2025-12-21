@@ -10,9 +10,28 @@ on:
         description: 'Version number (e.g., 3.5.0)'
         required: true
         type: string
+      suite:
+        description: 'APT suite to publish to'
+        required: false
+        type: choice
+        options:
+          - stable
+          - unstable
+        default: stable
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version number'
+        required: true
+        type: string
+      suite:
+        description: 'APT suite (stable or unstable)'
+        required: false
+        type: string
+        default: unstable
 
 concurrency:
-  group: build-deb-${{ github.ref }}
+  group: build-deb-${{ github.ref }}-${{ inputs.suite || 'stable' }}
   cancel-in-progress: true
 
 permissions:
@@ -27,6 +46,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       package_name: ${{ steps.version.outputs.package_name }}
+      suite: ${{ steps.version.outputs.suite }}
     
     steps:
       - name: Checkout repository
@@ -35,14 +55,31 @@ jobs:
       - name: Extract version
         id: version
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
+          # Determine version
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          elif [ "${{ github.event_name }}" = "push" ] && [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            # Fallback: read from version.txt or use 0.0.0
+            VERSION=$(cat version.txt 2>/dev/null || echo "0.0.0")
           fi
+          
+          # Determine suite
+          SUITE="${{ inputs.suite }}"
+          if [ -z "$SUITE" ]; then
+            # Default: stable for tag pushes, unstable otherwise
+            if [ "${{ github.event_name }}" = "push" ] && [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+              SUITE="stable"
+            else
+              SUITE="unstable"
+            fi
+          fi
+          
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "package_name=whitelist-dnsmasq_${VERSION}-1_amd64.deb" >> $GITHUB_OUTPUT
-          echo "Building version: $VERSION"
+          echo "suite=$SUITE" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION for suite: $SUITE"
       
       - name: Build Debian package
         run: |
@@ -66,10 +103,9 @@ jobs:
           retention-days: 30
 
   publish:
-    name: Publish to APT Repository
+    name: Publish to APT Repository (${{ needs.build.outputs.suite }})
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
     
     steps:
       - name: Checkout repository
@@ -125,9 +161,11 @@ jobs:
       
       - name: Setup APT repository structure
         run: |
+          SUITE="${{ needs.build.outputs.suite }}"
           mkdir -p gh-pages/apt/conf
           mkdir -p gh-pages/apt/pool/main
           
+          # Create distributions file with both stable and unstable
           cat > gh-pages/apt/conf/distributions << EOF
           Origin: Whitelist System
           Label: Whitelist System
@@ -135,7 +173,16 @@ jobs:
           Codename: stable
           Architectures: amd64
           Components: main
-          Description: DNS Whitelist System for Educational Environments
+          Description: DNS Whitelist System - Stable releases
+          SignWith: ${{ env.GPG_KEY_ID }}
+
+          Origin: Whitelist System
+          Label: Whitelist System
+          Suite: unstable
+          Codename: unstable
+          Architectures: amd64
+          Components: main
+          Description: DNS Whitelist System - Development builds
           SignWith: ${{ env.GPG_KEY_ID }}
           EOF
           
@@ -143,11 +190,14 @@ jobs:
           verbose
           basedir .
           EOF
+          
+          echo "SUITE=$SUITE" >> $GITHUB_ENV
       
       - name: Add package to repository
         working-directory: gh-pages/apt
         run: |
-          reprepro includedeb stable ../../packages/*.deb
+          echo "Adding package to ${{ env.SUITE }} suite..."
+          reprepro includedeb ${{ env.SUITE }} ../../packages/*.deb
       
       - name: Export GPG public key
         run: |
