@@ -6,7 +6,7 @@ const OAuth = {
     // Cloudflare Worker URL for OAuth
     WORKER_URL: 'https://whitelist-oauth.bruno-alejosgomez.workers.dev',
 
-    STORAGE_KEY: 'whitelist-oauth-token',
+    STORAGE_KEY: 'openpath-oauth-token',
 
     /**
      * Start OAuth login flow - redirects to worker

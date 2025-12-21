@@ -4,6 +4,6 @@
     "path": "/usr/local/bin/whitelist-native-host.py",
     "type": "stdio",
     "allowed_extensions": [
-        "monitor-bloqueos@whitelist-system"
+        "monitor-bloqueos@openpath"
     ]
 }
