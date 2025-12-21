@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
-# dnsmasq-whitelist.sh - Script de actualización de whitelist
-# Parte del sistema dnsmasq URL Whitelist v3.5
+# openpath-update.sh - Script de actualización de whitelist
+# Parte del sistema OpenPath DNS v3.5
 #
 # Este script se ejecuta periódicamente (via timer) para:
 # - Descargar el whitelist desde GitHub
@@ -27,7 +27,7 @@ if ! flock -n 200; then
 fi
 
 # Cargar librerías
-INSTALL_DIR="/usr/local/lib/whitelist-system"
+INSTALL_DIR="/usr/local/lib/openpath"
 source "$INSTALL_DIR/lib/common.sh"
 source "$INSTALL_DIR/lib/dns.sh"
 source "$INSTALL_DIR/lib/firewall.sh"

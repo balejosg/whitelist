@@ -75,7 +75,7 @@ jobs:
           fi
           
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "package_name=whitelist-dnsmasq_${VERSION}-1_amd64.deb" >> $GITHUB_OUTPUT
+          echo "package_name=openpath-dnsmasq_${VERSION}-1_amd64.deb" >> $GITHUB_OUTPUT
           echo "suite=$SUITE" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION for suite: $SUITE"
       
@@ -146,7 +146,7 @@ jobs:
           %no-protection
           Key-Type: RSA
           Key-Length: 4096
-          Name-Real: Whitelist System APT
+          Name-Real: OpenPath System APT
           Name-Email: apt@whitelist.local
           Expire-Date: 1y
           %commit
@@ -165,22 +165,22 @@ jobs:
           
           # Create distributions file with both stable and unstable
           cat > gh-pages/apt/conf/distributions << EOF
-          Origin: Whitelist System
-          Label: Whitelist System
+          Origin: OpenPath System
+          Label: OpenPath System
           Suite: stable
           Codename: stable
           Architectures: amd64
           Components: main
-          Description: DNS Whitelist System - Stable releases
+          Description: OpenPath DNS System - Stable releases
           SignWith: ${{ env.GPG_KEY_ID }}
 
-          Origin: Whitelist System
-          Label: Whitelist System
+          Origin: OpenPath System
+          Label: OpenPath System
           Suite: unstable
           Codename: unstable
           Architectures: amd64
           Components: main
-          Description: DNS Whitelist System - Development builds
+          Description: OpenPath DNS System - Development builds
           SignWith: ${{ env.GPG_KEY_ID }}
           EOF
           
@@ -211,12 +211,12 @@ jobs:
           cat > gh-pages/apt/index.html << 'EOF'
           <!DOCTYPE html>
           <html>
-          <head><title>Whitelist System APT Repository</title></head>
+          <head><title>OpenPath System APT Repository</title></head>
           <body>
-          <h1>Whitelist System APT Repository</h1>
+          <h1>OpenPath System APT Repository</h1>
           <h2>Quick Install</h2>
           <pre>curl -fsSL https://balejosg.github.io/whitelist/apt/apt-setup.sh | sudo bash
-          sudo apt install whitelist-dnsmasq</pre>
+          sudo apt install openpath-dnsmasq</pre>
           <h2>Files</h2>
           <ul>
             <li><a href="apt-setup.sh">apt-setup.sh</a> - Setup script</li>

@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# apt-setup.sh - Set up Whitelist System APT repository on a client machine
+# apt-setup.sh - Set up OpenPath System APT repository on a client machine
 #
 # Usage (one-liner install):
 #   # Stable (recommended):
@@ -10,7 +10,7 @@
 #   curl -fsSL https://balejosg.github.io/whitelist/apt/apt-setup.sh | sudo bash -s -- --unstable
 #
 # After running:
-#   sudo apt install whitelist-dnsmasq
+#   sudo apt install openpath-dnsmasq
 ################################################################################
 
 set -e
@@ -18,8 +18,8 @@ set -e
 # Configuration
 REPO_URL="https://balejosg.github.io/whitelist/apt"
 GPG_KEY_URL="$REPO_URL/pubkey.gpg"
-KEYRING_PATH="/usr/share/keyrings/whitelist-system.gpg"
-SOURCES_PATH="/etc/apt/sources.list.d/whitelist-system.list"
+KEYRING_PATH="/usr/share/keyrings/openpath.gpg"
+SOURCES_PATH="/etc/apt/sources.list.d/openpath.list"
 
 # Default to stable suite
 SUITE="stable"
@@ -44,7 +44,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "=============================================="
-echo "  Whitelist System APT Repository Setup"
+echo "  OpenPath System APT Repository Setup"
 echo "=============================================="
 echo ""
 echo "  Suite: $SUITE"
@@ -72,7 +72,7 @@ echo "  ✓ GPG key installed"
 # Step 2: Add repository to sources.list
 echo "[2/3] Adding repository ($SUITE)..."
 cat > "$SOURCES_PATH" << EOF
-# Whitelist System APT Repository
+# OpenPath System APT Repository
 # https://github.com/balejosg/whitelist
 # Suite: $SUITE
 deb [signed-by=$KEYRING_PATH] $REPO_URL $SUITE main
@@ -88,8 +88,8 @@ echo "=============================================="
 echo "  ✓ Repository configured successfully!"
 echo "=============================================="
 echo ""
-echo "To install the whitelist system:"
-echo "  sudo apt install whitelist-dnsmasq"
+echo "To install the openpath system:"
+echo "  sudo apt install openpath-dnsmasq"
 echo ""
 if [ "$SUITE" = "unstable" ]; then
     echo "⚠️  You are using the UNSTABLE track."
@@ -98,6 +98,6 @@ if [ "$SUITE" = "unstable" ]; then
     echo ""
 fi
 echo "To remove:"
-echo "  sudo apt remove whitelist-dnsmasq     # Keep configuration"
-echo "  sudo apt purge whitelist-dnsmasq      # Remove everything"
+echo "  sudo apt remove openpath-dnsmasq     # Keep configuration"
+echo "  sudo apt purge openpath-dnsmasq      # Remove everything"
 echo ""

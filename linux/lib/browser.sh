@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # browser.sh - Funciones de gestión de políticas de navegadores
-# Parte del sistema dnsmasq URL Whitelist v3.5
+# Parte del sistema OpenPath DNS v3.5
 ################################################################################
 
 # Calcular hash de las políticas actuales
@@ -114,11 +114,11 @@ normalized = [normalize_path(p) for p in blocked_paths if p.strip()]
 
 policy = {"URLBlocklist": normalized}
 
-with open("$dir/url-whitelist.json", 'w') as f:
+with open("$dir/openpath.json", 'w') as f:
     json.dump(policy, f, indent=2)
 PYEOF
         else
-            echo '{"URLBlocklist": []}' > "$dir/url-whitelist.json"
+            echo '{"URLBlocklist": []}' > "$dir/openpath.json"
         fi
     done
     
@@ -223,6 +223,7 @@ cleanup_browser_policies() {
     )
     
     for dir in "${dirs[@]}"; do
+        rm -f "$dir/openpath.json" 2>/dev/null || true
         rm -f "$dir/url-whitelist.json" 2>/dev/null || true
         rm -f "$dir/search-engines.json" 2>/dev/null || true
     done
@@ -370,14 +371,14 @@ generate_firefox_autoconfig() {
     # Create autoconfig.js in defaults/pref
     mkdir -p "$firefox_dir/defaults/pref"
     cat > "$firefox_dir/defaults/pref/autoconfig.js" << 'EOF'
-// Autoconfig para Whitelist System
+// Autoconfig para OpenPath System
 pref("general.config.filename", "mozilla.cfg");
 pref("general.config.obscure_value", 0);
 EOF
     
     # Create mozilla.cfg (must start with comment line - it's a JS file)
     cat > "$firefox_dir/mozilla.cfg" << 'EOF'
-// Whitelist System Configuration
+// OpenPath System Configuration
 // Disable signature requirement for local extensions
 lockPref("xpinstall.signatures.required", false);
 lockPref("extensions.langpacks.signatures.required", false);
@@ -396,7 +397,7 @@ EOF
 # Install Firefox extension system-wide
 install_firefox_extension() {
     local ext_source="${1:-$INSTALL_DIR/firefox-extension}"
-    local ext_id="monitor-bloqueos@whitelist-system"
+    local ext_id="monitor-bloqueos@openpath"
     local firefox_app_id="{ec8030f7-c20a-464f-9b0e-13a3a9e97384}"
     local ext_dir="/usr/share/mozilla/extensions/$firefox_app_id"
     
@@ -501,7 +502,7 @@ PYEOF
 install_native_host() {
     local native_source="${1:-$INSTALL_DIR/firefox-extension/native}"
     local native_manifest_dir="/usr/lib/mozilla/native-messaging-hosts"
-    local native_script_dir="/usr/local/lib/whitelist-system"
+    local native_script_dir="/usr/local/lib/openpath"
     
     if [ ! -d "$native_source" ]; then
         log "⚠ Directorio native host no encontrado: $native_source"
@@ -522,10 +523,10 @@ install_native_host() {
     cat > "$native_manifest_dir/whitelist_native_host.json" << EOF
 {
     "name": "whitelist_native_host",
-    "description": "Whitelist System Native Messaging Host",
+    "description": "OpenPath System Native Messaging Host",
     "path": "$native_script_dir/whitelist-native-host.py",
     "type": "stdio",
-    "allowed_extensions": ["monitor-bloqueos@whitelist-system"]
+    "allowed_extensions": ["monitor-bloqueos@openpath"]
 }
 EOF
     
@@ -535,7 +536,7 @@ EOF
 
 # Remove Firefox extension (for uninstall)
 remove_firefox_extension() {
-    local ext_id="monitor-bloqueos@whitelist-system"
+    local ext_id="monitor-bloqueos@openpath"
     local firefox_app_id="{ec8030f7-c20a-464f-9b0e-13a3a9e97384}"
     local ext_dir="/usr/share/mozilla/extensions/$firefox_app_id/$ext_id"
     
@@ -579,7 +580,7 @@ PYEOF
     
     # Remove native host
     rm -f "/usr/lib/mozilla/native-messaging-hosts/whitelist_native_host.json" 2>/dev/null || true
-    rm -f "/usr/local/lib/whitelist-system/whitelist-native-host.py" 2>/dev/null || true
+    rm -f "/usr/local/lib/openpath/whitelist-native-host.py" 2>/dev/null || true
     
     # Remove autoconfig
     local firefox_dir=$(detect_firefox_dir 2>/dev/null)

@@ -1,11 +1,11 @@
 #!/bin/bash
 ################################################################################
-# whitelist - Comando unificado de gestión
-# Parte del sistema dnsmasq URL Whitelist v3.4
+# openpath - Comando unificado de gestión
+# Parte del sistema OpenPath DNS v3.4
 ################################################################################
 
 # Cargar librerías
-INSTALL_DIR="/usr/local/lib/whitelist-system"
+INSTALL_DIR="/usr/local/lib/openpath"
 source "$INSTALL_DIR/lib/common.sh" 2>/dev/null || {
     echo "ERROR: Sistema no instalado correctamente"
     exit 1
@@ -40,7 +40,7 @@ cmd_status() {
     echo ""
     
     echo -e "${YELLOW}Servicios:${NC}"
-    for svc in dnsmasq dnsmasq-whitelist.timer dnsmasq-watchdog.timer captive-portal-detector; do
+    for svc in dnsmasq openpath-dnsmasq.timer dnsmasq-watchdog.timer captive-portal-detector; do
         if systemctl is-active --quiet $svc 2>/dev/null; then
             echo -e "  $svc: ${GREEN}● activo${NC}"
         else
@@ -73,7 +73,7 @@ cmd_status() {
 # Forzar actualización
 cmd_update() {
     echo -e "${BLUE}Actualizando whitelist...${NC}"
-    /usr/local/bin/dnsmasq-whitelist.sh
+    /usr/local/bin/openpath-update.sh
 }
 
 # Test DNS
@@ -176,7 +176,7 @@ cmd_enable() {
 
     echo -e "${BLUE}Habilitando sistema...${NC}"
     enable_services
-    /usr/local/bin/dnsmasq-whitelist.sh
+    /usr/local/bin/openpath-update.sh
 
     # Forzar cierre de navegadores y limpieza de conexiones
     force_browser_close
@@ -192,7 +192,7 @@ cmd_disable() {
     
     echo -e "${YELLOW}Deshabilitando sistema...${NC}"
     
-    systemctl stop dnsmasq-whitelist.timer
+    systemctl stop openpath-dnsmasq.timer
     systemctl stop dnsmasq-watchdog.timer
     
     deactivate_firewall
@@ -218,7 +218,7 @@ cmd_restart() {
     echo -e "${BLUE}Reiniciando servicios...${NC}"
     
     systemctl restart dnsmasq
-    systemctl restart dnsmasq-whitelist.timer
+    systemctl restart openpath-dnsmasq.timer
     systemctl restart dnsmasq-watchdog.timer
     systemctl restart captive-portal-detector.service 2>/dev/null || true
     
@@ -228,9 +228,9 @@ cmd_restart() {
 
 # Ayuda
 cmd_help() {
-    echo -e "${BLUE}whitelist - Gestión del sistema URL Whitelist v$VERSION${NC}"
+    echo -e "${BLUE}openpath - Gestión del sistema OpenPath DNS v$VERSION${NC}"
     echo ""
-    echo "Uso: whitelist <comando> [opciones]"
+    echo "Uso: openpath <comando> [opciones]"
     echo ""
     echo "Comandos:"
     echo "  status          Estado del sistema"

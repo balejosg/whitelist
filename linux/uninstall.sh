@@ -163,20 +163,20 @@ iptables -P OUTPUT ACCEPT 2>/dev/null || true
 iptables-save > /etc/iptables/rules.v4 2>/dev/null || true
 
 echo "[6/7] Eliminando archivos..."
-rm -f /usr/local/bin/dnsmasq-whitelist.sh
+rm -f /usr/local/bin/openpath-update.sh
 rm -f /usr/local/bin/dnsmasq-watchdog.sh
 rm -f /usr/local/bin/dnsmasq-init-resolv.sh
 rm -f /usr/local/bin/captive-portal-detector.sh
-rm -f /usr/local/bin/whitelist
+rm -f /usr/local/bin/openpath
 rm -rf /usr/local/lib/whitelist-system
 rm -f /etc/dnsmasq.d/url-whitelist.conf
 rm -rf /var/lib/url-whitelist
-rm -f /var/log/url-whitelist.log
+rm -f /var/log/openpath.log
 rm -f /var/log/captive-portal-detector.log
 rm -f /etc/tmpfiles.d/dnsmasq-whitelist.conf
-rm -f /etc/logrotate.d/dnsmasq-whitelist
+rm -f /etc/logrotate.d/openpath-dnsmasq
 rm -rf /run/dnsmasq
-rm -f /etc/sudoers.d/whitelist
+rm -f /etc/sudoers.d/openpath
 
 # Limpiar políticas de navegadores
 echo '{"policies": {}}' > /etc/firefox/policies/policies.json 2>/dev/null || true

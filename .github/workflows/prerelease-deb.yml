@@ -27,7 +27,7 @@ jobs:
           # Use workflow run number as version
           VERSION="0.0.${{ github.event.workflow_run.run_number }}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "package_name=whitelist-dnsmasq_${VERSION}-1_amd64.deb" >> $GITHUB_OUTPUT
+          echo "package_name=openpath-dnsmasq_${VERSION}-1_amd64.deb" >> $GITHUB_OUTPUT
           echo "Building prerelease version: $VERSION"
       
       - name: Build Debian package
@@ -71,7 +71,7 @@ jobs:
           %no-protection
           Key-Type: RSA
           Key-Length: 4096
-          Name-Real: Whitelist System APT
+          Name-Real: OpenPath System APT
           Name-Email: apt@whitelist.local
           Expire-Date: 1y
           %commit
@@ -88,22 +88,22 @@ jobs:
           mkdir -p gh-pages/apt/pool/main
           
           cat > gh-pages/apt/conf/distributions << EOF
-          Origin: Whitelist System
-          Label: Whitelist System
+          Origin: OpenPath System
+          Label: OpenPath System
           Suite: stable
           Codename: stable
           Architectures: amd64
           Components: main
-          Description: DNS Whitelist System - Stable releases
+          Description: OpenPath DNS System - Stable releases
           SignWith: ${{ env.GPG_KEY_ID }}
 
-          Origin: Whitelist System
-          Label: Whitelist System
+          Origin: OpenPath System
+          Label: OpenPath System
           Suite: unstable
           Codename: unstable
           Architectures: amd64
           Components: main
-          Description: DNS Whitelist System - Development builds
+          Description: OpenPath DNS System - Development builds
           SignWith: ${{ env.GPG_KEY_ID }}
           EOF
           
@@ -149,5 +149,5 @@ jobs:
           echo "Install with:" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
           echo 'curl -fsSL https://balejosg.github.io/whitelist/apt/apt-setup.sh | sudo bash -s -- --unstable' >> $GITHUB_STEP_SUMMARY
-          echo 'sudo apt install whitelist-dnsmasq' >> $GITHUB_STEP_SUMMARY
+          echo 'sudo apt install openpath-dnsmasq' >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY

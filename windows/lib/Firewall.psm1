@@ -1,13 +1,13 @@
-# Whitelist Firewall Module for Windows
+# OpenPath Firewall Module for Windows
 # Manages Windows Firewall rules to prevent DNS bypass
 
 # Import common functions
 $modulePath = Split-Path $PSScriptRoot -Parent
 Import-Module "$modulePath\lib\Common.psm1" -Force -ErrorAction SilentlyContinue
 
-$script:RulePrefix = "Whitelist-DNS"
+$script:RulePrefix = "OpenPath-DNS"
 
-function Set-WhitelistFirewall {
+function Set-OpenPathFirewall {
     <#
     .SYNOPSIS
         Configures Windows Firewall to block external DNS and VPNs
@@ -22,14 +22,14 @@ function Set-WhitelistFirewall {
     )
     
     if (-not (Test-AdminPrivileges)) {
-        Write-WhitelistLog "Administrator privileges required for firewall configuration" -Level ERROR
+        Write-OpenPathLog "Administrator privileges required for firewall configuration" -Level ERROR
         return $false
     }
     
-    Write-WhitelistLog "Configuring Windows Firewall..."
+    Write-OpenPathLog "Configuring Windows Firewall..."
     
     # Remove existing rules first
-    Remove-WhitelistFirewall
+    Remove-OpenPathFirewall
     
     try {
         # 1. Allow loopback DNS (for applications -> Acrylic)
@@ -134,31 +134,31 @@ function Set-WhitelistFirewall {
                 -Description "Block Tor traffic on port $port" | Out-Null
         }
         
-        Write-WhitelistLog "Windows Firewall configured successfully"
+        Write-OpenPathLog "Windows Firewall configured successfully"
         return $true
     }
     catch {
-        Write-WhitelistLog "Failed to configure firewall: $_" -Level ERROR
+        Write-OpenPathLog "Failed to configure firewall: $_" -Level ERROR
         return $false
     }
 }
 
-function Remove-WhitelistFirewall {
+function Remove-OpenPathFirewall {
     <#
     .SYNOPSIS
         Removes all whitelist firewall rules
     #>
-    Write-WhitelistLog "Removing whitelist firewall rules..."
+    Write-OpenPathLog "Removing openpath firewall rules..."
     
     try {
         Get-NetFirewallRule -DisplayName "$script:RulePrefix-*" -ErrorAction SilentlyContinue | 
             Remove-NetFirewallRule -ErrorAction SilentlyContinue
         
-        Write-WhitelistLog "Firewall rules removed"
+        Write-OpenPathLog "Firewall rules removed"
         return $true
     }
     catch {
-        Write-WhitelistLog "Error removing firewall rules: $_" -Level WARN
+        Write-OpenPathLog "Error removing firewall rules: $_" -Level WARN
         return $false
     }
 }
@@ -193,52 +193,52 @@ function Get-FirewallStatus {
     return [PSCustomObject]$status
 }
 
-function Disable-WhitelistFirewall {
+function Disable-OpenPathFirewall {
     <#
     .SYNOPSIS
         Temporarily disables whitelist firewall rules without removing them
     #>
-    Write-WhitelistLog "Disabling whitelist firewall rules..."
+    Write-OpenPathLog "Disabling openpath firewall rules..."
     
     try {
         Get-NetFirewallRule -DisplayName "$script:RulePrefix-*" -ErrorAction SilentlyContinue | 
             Disable-NetFirewallRule -ErrorAction SilentlyContinue
         
-        Write-WhitelistLog "Firewall rules disabled"
+        Write-OpenPathLog "Firewall rules disabled"
         return $true
     }
     catch {
-        Write-WhitelistLog "Error disabling firewall rules: $_" -Level WARN
+        Write-OpenPathLog "Error disabling firewall rules: $_" -Level WARN
         return $false
     }
 }
 
-function Enable-WhitelistFirewall {
+function Enable-OpenPathFirewall {
     <#
     .SYNOPSIS
         Re-enables whitelist firewall rules
     #>
-    Write-WhitelistLog "Enabling whitelist firewall rules..."
+    Write-OpenPathLog "Enabling openpath firewall rules..."
     
     try {
         Get-NetFirewallRule -DisplayName "$script:RulePrefix-*" -ErrorAction SilentlyContinue | 
             Enable-NetFirewallRule -ErrorAction SilentlyContinue
         
-        Write-WhitelistLog "Firewall rules enabled"
+        Write-OpenPathLog "Firewall rules enabled"
         return $true
     }
     catch {
-        Write-WhitelistLog "Error enabling firewall rules: $_" -Level WARN
+        Write-OpenPathLog "Error enabling firewall rules: $_" -Level WARN
         return $false
     }
 }
 
 # Export module members
 Export-ModuleMember -Function @(
-    'Set-WhitelistFirewall',
-    'Remove-WhitelistFirewall',
+    'Set-OpenPathFirewall',
+    'Remove-OpenPathFirewall',
     'Test-FirewallActive',
     'Get-FirewallStatus',
-    'Disable-WhitelistFirewall',
-    'Enable-WhitelistFirewall'
+    'Disable-OpenPathFirewall',
+    'Enable-OpenPathFirewall'
 )

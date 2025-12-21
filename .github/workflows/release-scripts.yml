@@ -154,7 +154,7 @@ jobs:
             
             # Run installer
             cd windows
-            .\Install-Whitelist.ps1
+            .\Install-OpenPath.ps1
             ```
             
             ### 📋 What's Included
@@ -167,8 +167,8 @@ jobs:
             - Firefox extension (`firefox-extension/`)
             
             **Windows Package:**
-            - PowerShell installer (`Install-Whitelist.ps1`)
-            - PowerShell uninstaller (`Uninstall-Whitelist.ps1`)
+            - PowerShell installer (`Install-OpenPath.ps1`)
+            - PowerShell uninstaller (`Uninstall-OpenPath.ps1`)
             - Library modules (`lib/*.psm1`)
             - Runtime scripts (`scripts/*.ps1`)
             - Configuration files

@@ -17,39 +17,39 @@ param(
 )
 
 $ErrorActionPreference = "SilentlyContinue"
-$WhitelistRoot = "C:\Whitelist"
+$OpenPathRoot = "C:\OpenPath"
 
 Write-Host "============================================" -ForegroundColor Cyan
-Write-Host "  Whitelist DNS para Windows - Desinstalador" -ForegroundColor Cyan
+Write-Host "  OpenPath DNS para Windows - Desinstalador" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Import modules if available
-if (Test-Path "$WhitelistRoot\lib\Common.psm1") {
-    Import-Module "$WhitelistRoot\lib\Common.psm1" -Force -ErrorAction SilentlyContinue
+if (Test-Path "$OpenPathRoot\lib\Common.psm1") {
+    Import-Module "$OpenPathRoot\lib\Common.psm1" -Force -ErrorAction SilentlyContinue
 }
-if (Test-Path "$WhitelistRoot\lib\DNS.psm1") {
-    Import-Module "$WhitelistRoot\lib\DNS.psm1" -Force -ErrorAction SilentlyContinue
+if (Test-Path "$OpenPathRoot\lib\DNS.psm1") {
+    Import-Module "$OpenPathRoot\lib\DNS.psm1" -Force -ErrorAction SilentlyContinue
 }
-if (Test-Path "$WhitelistRoot\lib\Firewall.psm1") {
-    Import-Module "$WhitelistRoot\lib\Firewall.psm1" -Force -ErrorAction SilentlyContinue
+if (Test-Path "$OpenPathRoot\lib\Firewall.psm1") {
+    Import-Module "$OpenPathRoot\lib\Firewall.psm1" -Force -ErrorAction SilentlyContinue
 }
-if (Test-Path "$WhitelistRoot\lib\Browser.psm1") {
-    Import-Module "$WhitelistRoot\lib\Browser.psm1" -Force -ErrorAction SilentlyContinue
+if (Test-Path "$OpenPathRoot\lib\Browser.psm1") {
+    Import-Module "$OpenPathRoot\lib\Browser.psm1" -Force -ErrorAction SilentlyContinue
 }
-if (Test-Path "$WhitelistRoot\lib\Services.psm1") {
-    Import-Module "$WhitelistRoot\lib\Services.psm1" -Force -ErrorAction SilentlyContinue
+if (Test-Path "$OpenPathRoot\lib\Services.psm1") {
+    Import-Module "$OpenPathRoot\lib\Services.psm1" -Force -ErrorAction SilentlyContinue
 }
 
 # Step 1: Remove scheduled tasks
 Write-Host "[1/6] Eliminando tareas programadas..." -ForegroundColor Yellow
-Get-ScheduledTask -TaskName "Whitelist-*" -ErrorAction SilentlyContinue | 
+Get-ScheduledTask -TaskName "OpenPath-*" -ErrorAction SilentlyContinue | 
     Unregister-ScheduledTask -Confirm:$false -ErrorAction SilentlyContinue
 Write-Host "  Tareas eliminadas" -ForegroundColor Green
 
 # Step 2: Remove firewall rules
 Write-Host "[2/6] Eliminando reglas de firewall..." -ForegroundColor Yellow
-Get-NetFirewallRule -DisplayName "Whitelist-DNS-*" -ErrorAction SilentlyContinue | 
+Get-NetFirewallRule -DisplayName "OpenPath-DNS-*" -ErrorAction SilentlyContinue | 
     Remove-NetFirewallRule -ErrorAction SilentlyContinue
 Write-Host "  Reglas eliminadas" -ForegroundColor Green
 
@@ -111,15 +111,15 @@ else {
 
 # Step 6: Remove whitelist files
 Write-Host "[6/6] Eliminando archivos..." -ForegroundColor Yellow
-if (Test-Path $WhitelistRoot) {
+if (Test-Path $OpenPathRoot) {
     if ($KeepLogs) {
         # Keep logs directory
-        Get-ChildItem $WhitelistRoot -Exclude "data" | Remove-Item -Recurse -Force
-        Get-ChildItem "$WhitelistRoot\data" -Exclude "logs" | Remove-Item -Recurse -Force
+        Get-ChildItem $OpenPathRoot -Exclude "data" | Remove-Item -Recurse -Force
+        Get-ChildItem "$OpenPathRoot\data" -Exclude "logs" | Remove-Item -Recurse -Force
         Write-Host "  Archivos eliminados (logs conservados)" -ForegroundColor Green
     }
     else {
-        Remove-Item $WhitelistRoot -Recurse -Force
+        Remove-Item $OpenPathRoot -Recurse -Force
         Write-Host "  Archivos eliminados" -ForegroundColor Green
     }
 }

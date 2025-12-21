@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# build-deb.sh - Build the whitelist-dnsmasq Debian package
+# build-deb.sh - Build the openpath-dnsmasq Debian package
 #
 # Usage:
 #   ./scripts/build-deb.sh [VERSION] [RELEASE]
@@ -41,29 +41,29 @@ sed -i "s/^Version:.*/Version: ${VERSION}-${RELEASE}/" "$BUILD_DIR/DEBIAN/contro
 
 # Copy libraries
 echo "[4/8] Copying libraries..."
-mkdir -p "$BUILD_DIR/usr/local/lib/whitelist-system/lib"
-cp "$LINUX_DIR/lib/"*.sh "$BUILD_DIR/usr/local/lib/whitelist-system/lib/"
-chmod +x "$BUILD_DIR/usr/local/lib/whitelist-system/lib/"*.sh
+mkdir -p "$BUILD_DIR/usr/local/lib/openpath/lib"
+cp "$LINUX_DIR/lib/"*.sh "$BUILD_DIR/usr/local/lib/openpath/lib/"
+chmod +x "$BUILD_DIR/usr/local/lib/openpath/lib/"*.sh
 
 # Copy scripts
 echo "[5/8] Copying scripts..."
 mkdir -p "$BUILD_DIR/usr/local/bin"
-cp "$LINUX_DIR/scripts/runtime/dnsmasq-whitelist.sh" "$BUILD_DIR/usr/local/bin/"
+cp "$LINUX_DIR/scripts/runtime/openpath-update.sh" "$BUILD_DIR/usr/local/bin/"
 cp "$LINUX_DIR/scripts/runtime/dnsmasq-watchdog.sh" "$BUILD_DIR/usr/local/bin/"
 cp "$LINUX_DIR/scripts/runtime/captive-portal-detector.sh" "$BUILD_DIR/usr/local/bin/"
 cp "$LINUX_DIR/scripts/runtime/smoke-test.sh" "$BUILD_DIR/usr/local/bin/"
-cp "$LINUX_DIR/scripts/runtime/whitelist-cmd.sh" "$BUILD_DIR/usr/local/bin/whitelist"
+cp "$LINUX_DIR/scripts/runtime/openpath-cmd.sh" "$BUILD_DIR/usr/local/bin/openpath"
 chmod +x "$BUILD_DIR/usr/local/bin/"*
 
 # Copy Firefox extension
 echo "[6/8] Copying Firefox extension..."
-mkdir -p "$BUILD_DIR/usr/share/whitelist-system/firefox-extension"
+mkdir -p "$BUILD_DIR/usr/share/openpath/firefox-extension"
 # Copy extension files (excluding dev/build files)
-cp "$ROOT_DIR/firefox-extension/manifest.json" "$BUILD_DIR/usr/share/whitelist-system/firefox-extension/"
-cp "$ROOT_DIR/firefox-extension/background.js" "$BUILD_DIR/usr/share/whitelist-system/firefox-extension/"
-cp "$ROOT_DIR/firefox-extension/config.js" "$BUILD_DIR/usr/share/whitelist-system/firefox-extension/"
-cp -r "$ROOT_DIR/firefox-extension/popup" "$BUILD_DIR/usr/share/whitelist-system/firefox-extension/"
-cp -r "$ROOT_DIR/firefox-extension/icons" "$BUILD_DIR/usr/share/whitelist-system/firefox-extension/"
+cp "$ROOT_DIR/firefox-extension/manifest.json" "$BUILD_DIR/usr/share/openpath/firefox-extension/"
+cp "$ROOT_DIR/firefox-extension/background.js" "$BUILD_DIR/usr/share/openpath/firefox-extension/"
+cp "$ROOT_DIR/firefox-extension/config.js" "$BUILD_DIR/usr/share/openpath/firefox-extension/"
+cp -r "$ROOT_DIR/firefox-extension/popup" "$BUILD_DIR/usr/share/openpath/firefox-extension/"
+cp -r "$ROOT_DIR/firefox-extension/icons" "$BUILD_DIR/usr/share/openpath/firefox-extension/"
 
 # Set correct permissions
 echo "[7/8] Setting permissions..."
@@ -72,7 +72,7 @@ find "$BUILD_DIR/DEBIAN" -type f -exec chmod 644 {} \;
 chmod 755 "$BUILD_DIR/DEBIAN/postinst"
 chmod 755 "$BUILD_DIR/DEBIAN/prerm"
 chmod 755 "$BUILD_DIR/DEBIAN/postrm"
-chmod 440 "$BUILD_DIR/etc/sudoers.d/whitelist"
+chmod 440 "$BUILD_DIR/etc/sudoers.d/openpath"
 
 # Build package
 echo "[8/8] Building .deb package..."

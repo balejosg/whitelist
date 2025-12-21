@@ -8,15 +8,15 @@
 VERSION="3.5"
 
 # Directorios y archivos
-INSTALL_DIR="/usr/local/lib/whitelist-system"
+INSTALL_DIR="/usr/local/lib/openpath"
 SCRIPTS_DIR="/usr/local/bin"
 
 # Debian FHS compliant paths:
 # - /etc/ for configuration (preserved on upgrade)
 # - /var/lib/ for state/cache (can be regenerated)
-ETC_CONFIG_DIR="/etc/whitelist-system"
-VAR_STATE_DIR="/var/lib/url-whitelist"
-LOG_FILE="/var/log/url-whitelist.log"
+ETC_CONFIG_DIR="/etc/openpath"
+VAR_STATE_DIR="/var/lib/openpath"
+LOG_FILE="/var/log/openpath.log"
 
 # Configuration files (in /etc/, preserved on upgrade)
 WHITELIST_URL_CONF="$ETC_CONFIG_DIR/whitelist-url.conf"

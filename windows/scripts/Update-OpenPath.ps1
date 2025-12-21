@@ -8,42 +8,42 @@
 #>
 
 $ErrorActionPreference = "Stop"
-$WhitelistRoot = "C:\Whitelist"
+$OpenPathRoot = "C:\OpenPath"
 
 # Import modules
-Import-Module "$WhitelistRoot\lib\Common.psm1" -Force
-Import-Module "$WhitelistRoot\lib\DNS.psm1" -Force
-Import-Module "$WhitelistRoot\lib\Firewall.psm1" -Force
-Import-Module "$WhitelistRoot\lib\Browser.psm1" -Force
+Import-Module "$OpenPathRoot\lib\Common.psm1" -Force
+Import-Module "$OpenPathRoot\lib\DNS.psm1" -Force
+Import-Module "$OpenPathRoot\lib\Firewall.psm1" -Force
+Import-Module "$OpenPathRoot\lib\Browser.psm1" -Force
 
 try {
-    Write-WhitelistLog "=== Starting whitelist update ==="
+    Write-OpenPathLog "=== Starting openpath update ==="
     
     # Load configuration
-    $config = Get-WhitelistConfig
+    $config = Get-OpenPathConfig
     
     # Download and parse whitelist
-    $whitelist = Get-WhitelistFromUrl -Url $config.whitelistUrl
+    $whitelist = Get-OpenPathFromUrl -Url $config.whitelistUrl
     
     # Check for deactivation flag
     if ($whitelist.Whitelist -contains "#DESACTIVADO" -or $whitelist.Whitelist[0] -match "^#DESACTIVADO") {
-        Write-WhitelistLog "DEACTIVATION FLAG detected - entering fail-open mode" -Level WARN
+        Write-OpenPathLog "DEACTIVATION FLAG detected - entering fail-open mode" -Level WARN
         
         # Restore normal DNS
         Restore-OriginalDNS
         
         # Remove firewall rules
-        Remove-WhitelistFirewall
+        Remove-OpenPathFirewall
         
         # Remove browser policies
         Remove-BrowserPolicies
         
-        Write-WhitelistLog "System in fail-open mode"
+        Write-OpenPathLog "System in fail-open mode"
         exit 0
     }
     
     # Save whitelist to local file
-    $whitelist.Whitelist | Set-Content "$WhitelistRoot\data\whitelist.txt" -Encoding UTF8
+    $whitelist.Whitelist | Set-Content "$OpenPathRoot\data\whitelist.txt" -Encoding UTF8
     
     # Update Acrylic DNS hosts
     Update-AcrylicHosts -WhitelistedDomains $whitelist.Whitelist -BlockedSubdomains $whitelist.BlockedSubdomains
@@ -54,7 +54,7 @@ try {
     # Configure firewall (if enabled)
     if ($config.enableFirewall) {
         $acrylicPath = Get-AcrylicPath
-        Set-WhitelistFirewall -UpstreamDNS $config.primaryDNS -AcrylicPath $acrylicPath
+        Set-OpenPathFirewall -UpstreamDNS $config.primaryDNS -AcrylicPath $acrylicPath
     }
     
     # Configure browser policies (if enabled)
@@ -62,10 +62,10 @@ try {
         Set-AllBrowserPolicies -BlockedPaths $whitelist.BlockedPaths
     }
     
-    Write-WhitelistLog "=== Whitelist update completed successfully ==="
+    Write-OpenPathLog "=== OpenPath update completed successfully ==="
     
 }
 catch {
-    Write-WhitelistLog "Update failed: $_" -Level ERROR
+    Write-OpenPathLog "Update failed: $_" -Level ERROR
     exit 1
 }

@@ -1,12 +1,12 @@
 [Unit]
-Description=Update dnsmasq URL Whitelist
+Description=Update OpenPath DNS
 After=network-online.target dnsmasq.service
 Wants=network-online.target
 Requires=dnsmasq.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/dnsmasq-whitelist.sh
+ExecStart=/usr/local/bin/openpath-update.sh
 TimeoutStartSec=120
 StandardOutput=journal
 StandardError=journal

@@ -1,19 +1,19 @@
 #!/bin/bash
 ################################################################################
 # captive-portal-detector.sh - Detector de portal cautivo
-# Parte del sistema dnsmasq URL Whitelist v3.4
+# Parte del sistema OpenPath DNS v3.4
 #
 # Detecta si hay un portal cautivo (WiFi hotel, aeropuerto, etc.)
 # y desactiva temporalmente el firewall para permitir autenticación
 ################################################################################
 
 # Cargar librerías
-INSTALL_DIR="/usr/local/lib/whitelist-system"
+INSTALL_DIR="/usr/local/lib/openpath"
 source "$INSTALL_DIR/lib/common.sh"
 source "$INSTALL_DIR/lib/firewall.sh"
 
-# Lock file compartido con dnsmasq-whitelist.sh
-LOCK_FILE="/var/run/whitelist-update.lock"
+# Lock file compartido con openpath-update.sh
+LOCK_FILE="/var/run/openpath-update.lock"
 
 # Configuración
 CHECK_INTERVAL=30

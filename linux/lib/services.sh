@@ -23,16 +23,16 @@ create_systemd_services() {
 
 # Servicio de actualización de whitelist
 create_whitelist_service() {
-    cat > /etc/systemd/system/dnsmasq-whitelist.service << 'EOF'
+    cat > /etc/systemd/system/openpath-dnsmasq.service << 'EOF'
 [Unit]
-Description=Update dnsmasq URL Whitelist
+Description=Update OpenPath DNS Whitelist
 After=network-online.target dnsmasq.service
 Wants=network-online.target
 Requires=dnsmasq.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/dnsmasq-whitelist.sh
+ExecStart=/usr/local/bin/openpath-update.sh
 TimeoutStartSec=120
 StandardOutput=journal
 StandardError=journal
@@ -44,9 +44,9 @@ EOF
 
 # Timer para actualización periódica
 create_whitelist_timer() {
-    cat > /etc/systemd/system/dnsmasq-whitelist.timer << 'EOF'
+    cat > /etc/systemd/system/openpath-dnsmasq.timer << 'EOF'
 [Unit]
-Description=Timer for dnsmasq URL Whitelist Update
+Description=Timer for OpenPath DNS Whitelist Update
 After=network-online.target
 
 [Timer]
@@ -133,11 +133,11 @@ enable_services() {
     log "Habilitando servicios..."
     
     systemctl enable dnsmasq
-    systemctl enable dnsmasq-whitelist.timer
+    systemctl enable openpath-dnsmasq.timer
     systemctl enable dnsmasq-watchdog.timer
     systemctl enable captive-portal-detector.service
     
-    systemctl start dnsmasq-whitelist.timer
+    systemctl start openpath-dnsmasq.timer
     systemctl start dnsmasq-watchdog.timer
     systemctl start captive-portal-detector.service
     
@@ -166,8 +166,8 @@ remove_services() {
     
     disable_services
     
-    rm -f /etc/systemd/system/dnsmasq-whitelist.service
-    rm -f /etc/systemd/system/dnsmasq-whitelist.timer
+    rm -f /etc/systemd/system/openpath-dnsmasq.service
+    rm -f /etc/systemd/system/openpath-dnsmasq.timer
     rm -f /etc/systemd/system/dnsmasq-watchdog.service
     rm -f /etc/systemd/system/dnsmasq-watchdog.timer
     rm -f /etc/systemd/system/captive-portal-detector.service
@@ -180,8 +180,8 @@ remove_services() {
 
 # Configurar logrotate
 create_logrotate_config() {
-    cat > /etc/logrotate.d/dnsmasq-whitelist << 'EOF'
-/var/log/url-whitelist.log
+    cat > /etc/logrotate.d/openpath-dnsmasq << 'EOF'
+/var/log/openpath.log
 /var/log/captive-portal-detector.log
 {
     daily

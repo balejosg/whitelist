@@ -20,7 +20,7 @@ VERSION="3.5"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Directorios de instalación
-INSTALL_DIR="/usr/local/lib/whitelist-system"
+INSTALL_DIR="/usr/local/lib/openpath"
 SCRIPTS_DIR="/usr/local/bin"
 CONFIG_DIR="/var/lib/url-whitelist"
 
@@ -158,8 +158,8 @@ echo ""
 echo "[5/13] Instalando scripts..."
 
 # Script principal de actualización
-cp "$SCRIPT_DIR/scripts/runtime/dnsmasq-whitelist.sh" "$SCRIPTS_DIR/"
-chmod +x "$SCRIPTS_DIR/dnsmasq-whitelist.sh"
+cp "$SCRIPT_DIR/scripts/runtime/openpath-update.sh" "$SCRIPTS_DIR/"
+chmod +x "$SCRIPTS_DIR/openpath-update.sh"
 
 # Script watchdog
 cp "$SCRIPT_DIR/scripts/runtime/dnsmasq-watchdog.sh" "$SCRIPTS_DIR/"
@@ -170,8 +170,8 @@ cp "$SCRIPT_DIR/scripts/runtime/captive-portal-detector.sh" "$SCRIPTS_DIR/"
 chmod +x "$SCRIPTS_DIR/captive-portal-detector.sh"
 
 # Comando unificado
-cp "$SCRIPT_DIR/scripts/runtime/whitelist-cmd.sh" "$SCRIPTS_DIR/whitelist"
-chmod +x "$SCRIPTS_DIR/whitelist"
+cp "$SCRIPT_DIR/scripts/runtime/openpath-cmd.sh" "$SCRIPTS_DIR/openpath"
+chmod +x "$SCRIPTS_DIR/openpath"
 
 # Script de inicialización DNS
 create_dns_init_script
@@ -201,14 +201,14 @@ echo "✓ Scripts instalados"
 echo ""
 echo "[6/13] Configurando permisos sudo..."
 
-cat > /etc/sudoers.d/whitelist << 'EOF'
-# Permitir a todos los usuarios ejecutar comandos whitelist sin contraseña
-ALL ALL=(root) NOPASSWD: /usr/local/bin/whitelist *
-ALL ALL=(root) NOPASSWD: /usr/local/bin/dnsmasq-whitelist.sh
+cat > /etc/sudoers.d/openpath << 'EOF'
+# Permitir a todos los usuarios ejecutar comandos openpath sin contraseña
+ALL ALL=(root) NOPASSWD: /usr/local/bin/openpath *
+ALL ALL=(root) NOPASSWD: /usr/local/bin/openpath-update.sh
 ALL ALL=(root) NOPASSWD: /usr/local/bin/dnsmasq-watchdog.sh
 EOF
 
-chmod 440 /etc/sudoers.d/whitelist
+chmod 440 /etc/sudoers.d/openpath
 
 echo "✓ Permisos sudo configurados"
 
@@ -314,7 +314,7 @@ enable_services
 
 # Primera ejecución del whitelist
 echo "Ejecutando primera actualización..."
-"$SCRIPTS_DIR/dnsmasq-whitelist.sh" || echo "⚠ Primera actualización falló (el timer lo reintentará)"
+"$SCRIPTS_DIR/openpath-update.sh" || echo "⚠ Primera actualización falló (el timer lo reintentará)"
 
 echo "✓ Servicios habilitados"
 
@@ -346,7 +346,7 @@ echo "======================================================"
 echo ""
 echo "Estado:"
 echo "  - dnsmasq: $(systemctl is-active dnsmasq)"
-echo "  - Timer: $(systemctl is-active dnsmasq-whitelist.timer)"
+echo "  - Timer: $(systemctl is-active openpath-dnsmasq.timer)"
 echo "  - Watchdog: $(systemctl is-active dnsmasq-watchdog.timer)"
 echo "  - Smoke Tests: $SMOKE_STATUS"
 echo ""
@@ -354,11 +354,11 @@ echo "Configuración:"
 echo "  - Whitelist: $WHITELIST_URL"
 echo "  - DNS upstream: $PRIMARY_DNS"
 echo ""
-echo "Comando de gestión: whitelist"
-echo "  whitelist status  - Ver estado"
-echo "  whitelist test    - Probar DNS"
-echo "  whitelist update  - Forzar actualización"
-echo "  whitelist help    - Ver ayuda completa"
+echo "Comando de gestión: openpath"
+echo "  openpath status  - Ver estado"
+echo "  openpath test    - Probar DNS"
+echo "  openpath update  - Forzar actualización"
+echo "  openpath help    - Ver ayuda completa"
 echo ""
 echo "Tests manuales:"
 echo "  sudo smoke-test.sh        - Ejecutar smoke tests completos"

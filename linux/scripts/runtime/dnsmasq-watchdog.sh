@@ -1,13 +1,13 @@
 #!/bin/bash
 ################################################################################
 # dnsmasq-watchdog.sh - Watchdog para dnsmasq
-# Parte del sistema dnsmasq URL Whitelist v3.5
+# Parte del sistema OpenPath DNS v3.5
 #
 # Verifica la salud del sistema y recupera automáticamente si hay problemas
 ################################################################################
 
 # Cargar librerías
-INSTALL_DIR="/usr/local/lib/whitelist-system"
+INSTALL_DIR="/usr/local/lib/openpath"
 source "$INSTALL_DIR/lib/common.sh"
 source "$INSTALL_DIR/lib/dns.sh"
 source "$INSTALL_DIR/lib/rollback.sh"
