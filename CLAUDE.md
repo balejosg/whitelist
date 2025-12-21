@@ -52,7 +52,7 @@ This is a **multi-platform DNS-based URL whitelist enforcement system** (v3.5) t
 
 ### Modular Library Structure
 
-All functionality is split into reusable libraries in `/usr/local/lib/whitelist-system/lib/` (source in `linux/lib/`):
+All functionality is split into reusable libraries in `/usr/local/lib/openpath/lib/` (source in `linux/lib/`):
 - `common.sh` - Shared variables, logging, whitelist parsing
 - `dns.sh` - DNS configuration, dnsmasq management
 - `firewall.sh` - iptables rules, connection flushing
@@ -104,13 +104,13 @@ All functionality is split into reusable libraries in `/usr/local/lib/whitelist-
 ## Installation Paths
 
 - **Scripts**: `/usr/local/bin/`
-  - `dnsmasq-whitelist.sh` - Main update script
+  - `openpath-update.sh` - Main update script
   - `dnsmasq-watchdog.sh` - Health monitoring
   - `captive-portal-detector.sh` - Captive portal handling
   - `dnsmasq-init-resolv.sh` - DNS upstream initialization
   - `whitelist` - Unified CLI command
 
-- **Libraries**: `/usr/local/lib/whitelist-system/lib/*.sh` (source: `linux/lib/`)
+- **Libraries**: `/usr/local/lib/openpath/lib/*.sh` (source: `linux/lib/`)
 
 - **Configuration**: `/var/lib/url-whitelist/`
   - `whitelist.txt` - Downloaded whitelist
@@ -178,14 +178,14 @@ After modifying scripts in the repository:
 
 1. **For library changes** (`lib/*.sh`):
    ```bash
-   sudo cp lib/*.sh /usr/local/lib/whitelist-system/lib/
+   sudo cp lib/*.sh /usr/local/lib/openpath/lib/
    sudo whitelist restart
    ```
 
 2. **For main scripts** (`scripts/*.sh`):
    ```bash
-   sudo cp linux/scripts/runtime/dnsmasq-whitelist.sh /usr/local/bin/
-   sudo systemctl restart dnsmasq-whitelist.timer
+   sudo cp linux/scripts/runtime/openpath-update.sh /usr/local/bin/
+   sudo systemctl restart openpath-dnsmasq.timer
    ```
 
 3. **For full reinstall** (recommended during development):

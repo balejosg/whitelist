@@ -24,7 +24,7 @@ graph TB
     end
     
     subgraph "Capa de Automatización"
-        WHITELIST["📋 dnsmasq-whitelist.sh<br/>Actualización cada 5 min"]
+        WHITELIST["📋 openpath-update.sh<br/>Actualización cada 5 min"]
         WATCHDOG["🔍 dnsmasq-watchdog.sh<br/>Health check cada 1 min"]
         CAPTIVE["📶 captive-portal-detector.sh"]
     end
@@ -164,7 +164,7 @@ lib/
 ```mermaid
 sequenceDiagram
     participant Timer as systemd timer<br/>(cada 5 min)
-    participant Script as dnsmasq-whitelist.sh
+    participant Script as openpath-update.sh
     participant GitHub as GitHub Raw
     participant dnsmasq as dnsmasq
     participant Browser as Navegadores
@@ -302,8 +302,8 @@ La extensión detecta dominios bloqueados y permite al usuario solicitar su incl
 |------------|-----------|-----------|
 | `install.sh` | Raíz | Instalación completa del sistema |
 | `uninstall.sh` | Raíz | Desinstalación limpia |
-| `lib/*.sh` | `/usr/local/lib/whitelist-system/lib/` | Módulos de funcionalidad |
-| `dnsmasq-whitelist.sh` | `/usr/local/bin/` | Actualización periódica |
+| `lib/*.sh` | `/usr/local/lib/openpath/lib/` | Módulos de funcionalidad |
+| `openpath-update.sh` | `/usr/local/bin/` | Actualización periódica |
 | `dnsmasq-watchdog.sh` | `/usr/local/bin/` | Monitoreo de salud |
 | `captive-portal-detector.sh` | `/usr/local/bin/` | Detección WiFi portales |
 | `whitelist-cmd.sh` | `/usr/local/bin/whitelist` | CLI para usuarios |
@@ -360,7 +360,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["dnsmasq-whitelist.sh<br/>(timer 5 min)"] --> B{Obtener lock?}
+    A["openpath-update.sh<br/>(timer 5 min)"] --> B{Obtener lock?}
     B -->|No| Z[Salir]
     B -->|Sí| C[Descargar whitelist]
     C --> D{¿#DESACTIVADO?}

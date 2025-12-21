@@ -18,7 +18,7 @@ The system will be active immediately.
 ### Change Whitelist URL
 
 ```bash
-echo "https://your-url.com/whitelist.txt" | sudo tee /etc/whitelist-system/whitelist-url.conf
+echo "https://your-url.com/whitelist.txt" | sudo tee /etc/openpath/whitelist-url.conf
 sudo whitelist update
 ```
 
@@ -143,7 +143,7 @@ sudo iptables -P OUTPUT ACCEPT
 systemctl status dnsmasq-whitelist.timer
 
 # Manual update
-sudo /usr/local/bin/dnsmasq-whitelist.sh
+sudo /usr/local/bin/openpath-update.sh
 ```
 
 ---
@@ -152,9 +152,9 @@ sudo /usr/local/bin/dnsmasq-whitelist.sh
 
 | File | Purpose |
 |------|---------|
-| `/etc/whitelist-system/whitelist-url.conf` | URL to fetch whitelist from |
-| `/etc/whitelist-system/health-api-url.conf` | Health API endpoint (optional) |
-| `/etc/whitelist-system/health-api-secret.conf` | Health API secret (optional) |
+| `/etc/openpath/whitelist-url.conf` | URL to fetch whitelist from |
+| `/etc/openpath/health-api-url.conf` | Health API endpoint (optional) |
+| `/etc/openpath/health-api-secret.conf` | Health API secret (optional) |
 | `/var/lib/url-whitelist/whitelist.txt` | Downloaded whitelist (cache) |
 | `/etc/dnsmasq.d/url-whitelist.conf` | dnsmasq configuration |
 

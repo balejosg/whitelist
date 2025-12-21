@@ -4,10 +4,10 @@ on:
   push:
     branches: [main, master]
     paths:
-      - 'install.sh'
-      - 'uninstall.sh'
-      - 'lib/**'
-      - 'scripts/**'
+      - 'linux/install.sh'
+      - 'linux/uninstall.sh'
+      - 'linux/lib/**'
+      - 'linux/scripts/**'
       - 'windows/**'
       - 'tests/e2e/**'
       - '.github/workflows/e2e-tests.yml'
