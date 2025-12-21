@@ -290,6 +290,6 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     uses: ./.github/workflows/build-deb.yml
     with:
-      version: ${{ github.run_number }}.${{ github.run_attempt }}~git${{ github.sha }}
+      version: 0.0.${{ github.run_number }}
       suite: unstable
     secrets: inherit
