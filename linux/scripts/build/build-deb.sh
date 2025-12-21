@@ -6,7 +6,7 @@
 #   ./scripts/build-deb.sh [VERSION] [RELEASE]
 #   ./scripts/build-deb.sh 3.5.0 1
 #
-# Output: build/whitelist-dnsmasq_VERSION-RELEASE_amd64.deb
+# Output: build/openpath-dnsmasq_VERSION-RELEASE_amd64.deb
 ################################################################################
 
 set -e
@@ -18,11 +18,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")"
 # LINUX_DIR contains the linux-specific files
 LINUX_DIR="$ROOT_DIR/linux"
-BUILD_DIR="$ROOT_DIR/build/whitelist-dnsmasq_${VERSION}-${RELEASE}_amd64"
-PACKAGE_NAME="whitelist-dnsmasq_${VERSION}-${RELEASE}_amd64.deb"
+BUILD_DIR="$ROOT_DIR/build/openpath-dnsmasq_${VERSION}-${RELEASE}_amd64"
+PACKAGE_NAME="openpath-dnsmasq_${VERSION}-${RELEASE}_amd64.deb"
 
 echo "=============================================="
-echo "  Building whitelist-dnsmasq ${VERSION}-${RELEASE}"
+echo "  Building openpath-dnsmasq ${VERSION}-${RELEASE}"
 echo "=============================================="
 echo ""
 

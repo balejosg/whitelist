@@ -221,7 +221,7 @@ def handle_message(message):
     elif action == "update-whitelist":
         # Trigger whitelist update script
         try:
-            update_script = "/usr/local/bin/dnsmasq-whitelist.sh"
+            update_script = "/usr/local/bin/openpath-update.sh"
             if os.path.exists(update_script):
                 proc = subprocess.run(
                     [update_script, "--update"],
