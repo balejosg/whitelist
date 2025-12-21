@@ -22,7 +22,7 @@ echo -e "${BLUE}═════════════════════�
 echo ""
 
 # Ensure we're in the right directory
-cd /whitelist
+cd /openpath
 
 # Step 1: Verify port 53 is free
 echo -e "${BLUE}[1/6]${NC} Verifying port 53 is free..."
@@ -62,7 +62,7 @@ if ss -ulnp 2>/dev/null | grep -q ":53 "; then
 else
     echo -e "${RED}✗${NC} Port 53 is not listening"
     # Try to start dnsmasq manually
-    dnsmasq -C /etc/dnsmasq.d/url-whitelist.conf --no-daemon &
+    dnsmasq -C /etc/dnsmasq.d/openpath.conf --no-daemon &
     sleep 2
 fi
 

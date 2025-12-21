@@ -3,7 +3,7 @@
 # linux-e2e-tests.sh - End-to-End tests for Linux whitelist system
 # 
 # Validates the complete installation and operation of the dnsmasq-based
-# DNS whitelist system including DNS resolution, blocking, and firewall.
+# OpenPath system including DNS resolution, blocking, and firewall.
 #
 # Usage: sudo ./linux-e2e-tests.sh
 ################################################################################
@@ -110,8 +110,8 @@ test_config_files_exist() {
     test_section "5/7" "Configuration files"
     
     local required_files=(
-        "/etc/dnsmasq.d/url-whitelist.conf"
-        "/etc/whitelist-system/whitelist-url.conf"
+        "/etc/dnsmasq.d/openpath.conf"
+        "/etc/openpath/whitelist-url.conf"
     )
     
     for file in "${required_files[@]}"; do
@@ -123,9 +123,9 @@ test_config_files_exist() {
     done
     
     # Check whitelist was downloaded
-    if [ -f "/var/lib/url-whitelist/whitelist.txt" ]; then
+    if [ -f "/var/lib/openpath/whitelist.txt" ]; then
         local count
-        count=$(grep -v "^#" /var/lib/url-whitelist/whitelist.txt 2>/dev/null | grep -v "^$" | wc -l)
+        count=$(grep -v "^#" /var/lib/openpath/whitelist.txt 2>/dev/null | grep -v "^$" | wc -l)
         test_pass "Whitelist downloaded ($count entries)"
     else
         echo -e "  ${YELLOW}⚠${NC} Whitelist not yet downloaded (timer will fetch)"
@@ -135,10 +135,10 @@ test_config_files_exist() {
 test_systemd_timers() {
     test_section "6/7" "Systemd timers"
     
-    if systemctl is-active --quiet dnsmasq-whitelist.timer 2>/dev/null; then
-        test_pass "dnsmasq-whitelist.timer is active"
+    if systemctl is-active --quiet openpath-dnsmasq.timer 2>/dev/null; then
+        test_pass "openpath-dnsmasq.timer is active"
     else
-        echo -e "  ${YELLOW}⚠${NC} dnsmasq-whitelist.timer not active"
+        echo -e "  ${YELLOW}⚠${NC} openpath-dnsmasq.timer not active"
     fi
     
     if systemctl is-active --quiet dnsmasq-watchdog.timer 2>/dev/null; then
@@ -212,7 +212,7 @@ test_firefox_esr_installed() {
 test_firefox_extension_installed() {
     test_section "9/9" "Firefox extension installation"
     
-    local ext_id="monitor-bloqueos@whitelist-system"
+    local ext_id="monitor-bloqueos@openpath"
     local firefox_app_id="{ec8030f7-c20a-464f-9b0e-13a3a9e97384}"
     local ext_dir="/usr/share/mozilla/extensions/$firefox_app_id/$ext_id"
     
@@ -289,7 +289,7 @@ test_firefox_extension_installed() {
 test_corrupted_whitelist_recovery() {
     test_section "10/12" "Corrupted whitelist recovery"
     
-    local whitelist_file="/var/lib/url-whitelist/whitelist.txt"
+    local whitelist_file="/var/lib/openpath/whitelist.txt"
     local backup_file="/tmp/whitelist-backup.txt"
     
     # Backup original
@@ -301,7 +301,7 @@ test_corrupted_whitelist_recovery() {
     echo "CORRUPTED_CONTENT_$RANDOM" > "$whitelist_file"
     
     # Run whitelist update and check it handles corruption gracefully
-    if /usr/local/bin/dnsmasq-whitelist.sh 2>/dev/null; then
+    if /usr/local/bin/openpath-update.sh 2>/dev/null; then
         # Check dnsmasq is still running
         if systemctl is-active --quiet dnsmasq; then
             test_pass "System survived corrupted whitelist"
@@ -327,7 +327,7 @@ test_corrupted_whitelist_recovery() {
 test_emergency_disable() {
     test_section "11/12" "Emergency disable detection"
     
-    local whitelist_file="/var/lib/url-whitelist/whitelist.txt"
+    local whitelist_file="/var/lib/openpath/whitelist.txt"
     local backup_file="/tmp/whitelist-backup.txt"
     
     # Backup original
@@ -343,10 +343,10 @@ google.com
 EOF
     
     # Run whitelist update
-    /usr/local/bin/dnsmasq-whitelist.sh 2>/dev/null || true
+    /usr/local/bin/openpath-update.sh 2>/dev/null || true
     
     # Check system entered fail-open mode
-    if [ -f "/var/lib/url-whitelist/system-disabled.flag" ]; then
+    if [ -f "/var/lib/openpath/system-disabled.flag" ]; then
         test_pass "Emergency disable detected and activated"
     else
         echo -e "  ${YELLOW}⚠${NC} Emergency disable flag not set (may be expected)"
@@ -356,8 +356,8 @@ EOF
     if [ -f "$backup_file" ]; then
         cp "$backup_file" "$whitelist_file"
         rm -f "$backup_file"
-        rm -f "/var/lib/url-whitelist/system-disabled.flag" 2>/dev/null || true
-        /usr/local/bin/dnsmasq-whitelist.sh 2>/dev/null || true
+        rm -f "/var/lib/openpath/system-disabled.flag" 2>/dev/null || true
+        /usr/local/bin/openpath-update.sh 2>/dev/null || true
     fi
 }
 
@@ -365,7 +365,7 @@ test_watchdog_recovery() {
     test_section "12/12" "Watchdog recovery mechanism"
     
     # Check watchdog health file exists
-    local health_file="/var/lib/url-whitelist/health-status"
+    local health_file="/var/lib/openpath/health-status"
     
     if [ -f "$health_file" ]; then
         test_pass "Health status file exists"
@@ -382,7 +382,7 @@ test_watchdog_recovery() {
     fi
     
     # Check checkpoint directory exists
-    local checkpoint_dir="/var/lib/url-whitelist/checkpoints"
+    local checkpoint_dir="/var/lib/openpath/checkpoints"
     if [ -d "$checkpoint_dir" ]; then
         local checkpoint_count=$(ls -d "$checkpoint_dir"/checkpoint-* 2>/dev/null | wc -l)
         if [ "$checkpoint_count" -gt 0 ]; then
@@ -400,7 +400,7 @@ test_watchdog_recovery() {
 main() {
     echo ""
     echo -e "${BLUE}═══════════════════════════════════════════════════${NC}"
-    echo -e "${BLUE}  E2E Tests - Linux Whitelist System${NC}"
+    echo -e "${BLUE}  E2E Tests - OpenPath System${NC}"
     echo -e "${BLUE}═══════════════════════════════════════════════════${NC}"
     
     test_dnsmasq_active

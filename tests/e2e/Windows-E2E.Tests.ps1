@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    E2E tests for Windows Whitelist DNS system using Pester
+    E2E tests for OpenPath DNS system using Pester
 .DESCRIPTION
     Validates the installation and operation of the Acrylic DNS-based
     whitelist system including DNS resolution, sinkhole blocking,
@@ -11,13 +11,13 @@
 #>
 
 BeforeAll {
-    $WhitelistRoot = "C:\Whitelist"
+    $OpenPathRoot = "C:\OpenPath"
     
     # Import modules if they exist
     $modulesToImport = @(
-        "$WhitelistRoot\lib\Common.psm1",
-        "$WhitelistRoot\lib\DNS.psm1",
-        "$WhitelistRoot\lib\Firewall.psm1"
+        "$OpenPathRoot\lib\Common.psm1",
+        "$OpenPathRoot\lib\DNS.psm1",
+        "$OpenPathRoot\lib\Firewall.psm1"
     )
     
     foreach ($module in $modulesToImport) {
@@ -27,40 +27,40 @@ BeforeAll {
     }
 }
 
-Describe "Windows Whitelist E2E Tests" {
+Describe "OpenPath E2E Tests" {
     
     Context "Directory Structure" {
         
-        It "Whitelist root directory exists" {
-            Test-Path "C:\Whitelist" | Should -Be $true
+        It "OpenPath root directory exists" {
+            Test-Path "C:\OpenPath" | Should -Be $true
         }
         
         It "Lib directory exists" {
-            Test-Path "C:\Whitelist\lib" | Should -Be $true
+            Test-Path "C:\OpenPath\lib" | Should -Be $true
         }
         
         It "Scripts directory exists" {
-            Test-Path "C:\Whitelist\scripts" | Should -Be $true
+            Test-Path "C:\OpenPath\scripts" | Should -Be $true
         }
         
         It "Data directory exists" {
-            Test-Path "C:\Whitelist\data" | Should -Be $true
+            Test-Path "C:\OpenPath\data" | Should -Be $true
         }
     }
     
     Context "Configuration" {
         
         It "Config file exists" {
-            Test-Path "C:\Whitelist\data\config.json" | Should -Be $true
+            Test-Path "C:\OpenPath\data\config.json" | Should -Be $true
         }
         
         It "Config file is valid JSON" {
-            { Get-Content "C:\Whitelist\data\config.json" | ConvertFrom-Json } | 
+            { Get-Content "C:\OpenPath\data\config.json" | ConvertFrom-Json } | 
                 Should -Not -Throw
         }
         
         It "Config has required properties" {
-            $config = Get-Content "C:\Whitelist\data\config.json" | ConvertFrom-Json
+            $config = Get-Content "C:\OpenPath\data\config.json" | ConvertFrom-Json
             $config.whitelistUrl | Should -Not -BeNullOrEmpty
             $config.primaryDNS | Should -Not -BeNullOrEmpty
         }
@@ -69,24 +69,24 @@ Describe "Windows Whitelist E2E Tests" {
     Context "PowerShell Modules" {
         
         It "Common.psm1 exists" {
-            Test-Path "C:\Whitelist\lib\Common.psm1" | Should -Be $true
+            Test-Path "C:\OpenPath\lib\Common.psm1" | Should -Be $true
         }
         
         It "DNS.psm1 exists" {
-            Test-Path "C:\Whitelist\lib\DNS.psm1" | Should -Be $true
+            Test-Path "C:\OpenPath\lib\DNS.psm1" | Should -Be $true
         }
         
         It "Firewall.psm1 exists" {
-            Test-Path "C:\Whitelist\lib\Firewall.psm1" | Should -Be $true
+            Test-Path "C:\OpenPath\lib\Firewall.psm1" | Should -Be $true
         }
         
         It "Common module can be imported" {
-            { Import-Module "C:\Whitelist\lib\Common.psm1" -Force } | 
+            { Import-Module "C:\OpenPath\lib\Common.psm1" -Force } | 
                 Should -Not -Throw
         }
         
         It "DNS module can be imported" {
-            { Import-Module "C:\Whitelist\lib\DNS.psm1" -Force } | 
+            { Import-Module "C:\OpenPath\lib\DNS.psm1" -Force } | 
                 Should -Not -Throw
         }
     }
@@ -139,7 +139,7 @@ Describe "Windows Whitelist E2E Tests" {
         }
         
         It "Can create and remove a test task" {
-            $taskName = "Whitelist-Pester-Test-$(Get-Random)"
+            $taskName = "OpenPath-Pester-Test-$(Get-Random)"
             
             try {
                 $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-Command 'echo test'"
@@ -171,22 +171,22 @@ Describe "Windows Whitelist E2E Tests" {
     }
 }
 
-Describe "Windows Whitelist Scripts" {
+Describe "OpenPath Scripts" {
     
     Context "Script Files" {
         
-        It "Update-Whitelist.ps1 exists" -Skip:(-not (Test-Path "C:\Whitelist\scripts")) {
-            Test-Path "C:\Whitelist\scripts\Update-Whitelist.ps1" | Should -Be $true
+        It "Update-OpenPath.ps1 exists" -Skip:(-not (Test-Path "C:\OpenPath\scripts")) {
+            Test-Path "C:\OpenPath\scripts\Update-OpenPath.ps1" | Should -Be $true
         }
         
-        It "Test-DNSHealth.ps1 exists" -Skip:(-not (Test-Path "C:\Whitelist\scripts")) {
-            Test-Path "C:\Whitelist\scripts\Test-DNSHealth.ps1" | Should -Be $true
+        It "Test-DNSHealth.ps1 exists" -Skip:(-not (Test-Path "C:\OpenPath\scripts")) {
+            Test-Path "C:\OpenPath\scripts\Test-DNSHealth.ps1" | Should -Be $true
         }
     }
 }
 
-AfterAll {
+    AfterAll {
     # Cleanup any test artifacts
-    Get-ScheduledTask -TaskName "Whitelist-Pester-*" -ErrorAction SilentlyContinue | 
+    Get-ScheduledTask -TaskName "OpenPath-Pester-*" -ErrorAction SilentlyContinue | 
         Unregister-ScheduledTask -Confirm:$false -ErrorAction SilentlyContinue
 }
