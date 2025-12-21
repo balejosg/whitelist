@@ -269,6 +269,11 @@ async function loadDashboard() {
         let totalWhitelist = 0;
         let totalBlocked = 0;
 
+        // Determine visible groups for teachers
+        const isTeacher = Auth.isTeacher();
+        const isAdmin = Auth.isAdmin() || canEdit;
+        const assignedGroups = isTeacher && !isAdmin ? Auth.getAssignedGroups() : null;
+
         for (const group of allGroups) {
             try {
                 const { content } = await github.getFileContent(group.path);
@@ -276,15 +281,24 @@ async function loadDashboard() {
                 const stats = WhitelistParser.getStats(data);
                 group.stats = stats;
                 group.enabled = data.enabled;
-                totalWhitelist += stats.whitelist;
-                totalBlocked += stats.blocked_subdomains + stats.blocked_paths;
+
+                // Only count stats for visible groups
+                if (!assignedGroups || assignedGroups.includes(group.name)) {
+                    totalWhitelist += stats.whitelist;
+                    totalBlocked += stats.blocked_subdomains + stats.blocked_paths;
+                }
             } catch {
                 group.stats = { whitelist: 0, blocked_subdomains: 0, blocked_paths: 0 };
                 group.enabled = true;
             }
         }
 
-        document.getElementById('stat-groups').textContent = allGroups.length;
+        // Show filtered count for teachers
+        const visibleGroupCount = assignedGroups
+            ? allGroups.filter(g => assignedGroups.includes(g.name)).length
+            : allGroups.length;
+
+        document.getElementById('stat-groups').textContent = visibleGroupCount;
         document.getElementById('stat-whitelist').textContent = totalWhitelist;
         document.getElementById('stat-blocked').textContent = totalBlocked;
 
@@ -300,18 +314,27 @@ async function loadDashboard() {
 
 function renderGroupsList() {
     const list = document.getElementById('groups-list');
+    const isTeacher = Auth.isTeacher();
+    const isAdmin = Auth.isAdmin() || canEdit;
 
-    if (allGroups.length === 0) {
+    // Filter groups based on user role
+    let visibleGroups = allGroups;
+    if (isTeacher && !isAdmin) {
+        const assignedGroups = Auth.getAssignedGroups();
+        visibleGroups = allGroups.filter(g => assignedGroups.includes(g.name));
+    }
+
+    if (visibleGroups.length === 0) {
         list.innerHTML = `
             <div class="empty-state">
-                <p>No hay grupos configurados</p>
+                <p>${isTeacher ? 'No tienes grupos asignados' : 'No hay grupos configurados'}</p>
                 ${canEdit ? '<button class="btn btn-primary" onclick="openNewGroupModal()">Crear primer grupo</button>' : ''}
             </div>
         `;
         return;
     }
 
-    list.innerHTML = allGroups.map(g => `
+    list.innerHTML = visibleGroups.map(g => `
         <div class="group-card" onclick="openGroup('${escapeHtml(g.name)}')">
             <div class="group-info">
                 <h3>${escapeHtml(g.name)}</h3>
