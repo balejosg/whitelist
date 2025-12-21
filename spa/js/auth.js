@@ -1,6 +1,6 @@
 /**
  * Authentication API Client
- * Handles JWT-based authentication for the Whitelist Manager SPA
+ * Handles JWT-based authentication for the OpenPath SPA
  */
 
 const Auth = {

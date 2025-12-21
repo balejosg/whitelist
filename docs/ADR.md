@@ -1,4 +1,4 @@
-# ADR: Sistema de Whitelist DNS
+# ADR: Sistema OpenPath DNS
 
 **Fecha**: 2025-12-21  
 **Estado**: Implementado  

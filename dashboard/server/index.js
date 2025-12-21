@@ -200,7 +200,7 @@ app.use((err, req, res, next) => {
 // Iniciar servidor solo si no estamos en modo test
 if (require.main === module) {
     app.listen(PORT, () => {
-        console.log(`🛡️  Whitelist Manager corriendo en http://localhost:${PORT}`);
+        console.log(`🛡️  OpenPath corriendo en http://localhost:${PORT}`);
         console.log(`📁  Exportaciones en: ${db.EXPORT_DIR}`);
 
         // Exportar todos los grupos al iniciar

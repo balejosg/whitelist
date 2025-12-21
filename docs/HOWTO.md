@@ -1,4 +1,4 @@
-# How-To Guide: Whitelist DNS System
+# How-To Guide: OpenPath DNS System
 
 ## Quick Start
 

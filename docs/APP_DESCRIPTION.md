@@ -1,10 +1,10 @@
 # Análisis de Mercado: Descripción Técnica del Sistema "OpenPath"
 
-Este documento contiene una descripción detallada de la aplicación "Whitelist Manager" basada estrictamente en el análisis de su código fuente. Su propósito es servir como referencia para el análisis de mercado y benchmarking.
+Este documento contiene una descripción detallada de la aplicación "OpenPath" basada estrictamente en el análisis de su código fuente. Su propósito es servir como referencia para el análisis de mercado y benchmarking.
 
 ## 1. Resumen del Producto
 
-**Whitelist Manager** es una solución integral para la gestión centralizada de acceso a internet en entornos controlados (probablemente aulas educativas o laboratorios corporativos). El sistema opera bajo un modelo de "lista blanca" (whitelist), donde todo el tráfico está bloqueado por defecto excepto los dominios explícitamente permitidos.
+**OpenPath** es una solución integral para la gestión centralizada de acceso a internet en entornos controlados (probablemente aulas educativas o laboratorios corporativos). El sistema opera bajo un modelo de "lista blanca" (whitelist), donde todo el tráfico está bloqueado por defecto excepto los dominios explícitamente permitidos.
 
 Se distingue por delegar la aplicación de reglas a los clientes finales (endpoints) mientras centraliza la gestión y el monitoreo en un panel web moderno.
 
