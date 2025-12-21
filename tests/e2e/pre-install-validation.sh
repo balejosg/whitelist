@@ -142,10 +142,10 @@ test_required_files() {
         "linux/lib/rollback.sh"
         
         # Runtime scripts
-        "linux/scripts/runtime/dnsmasq-whitelist.sh"
+        "linux/scripts/runtime/openpath-update.sh"
         "linux/scripts/runtime/dnsmasq-watchdog.sh"
         "linux/scripts/runtime/captive-portal-detector.sh"
-        "linux/scripts/runtime/whitelist-cmd.sh"
+        "linux/scripts/runtime/openpath-cmd.sh"
         
         # Firefox extension
         "firefox-extension/manifest.json"
@@ -183,7 +183,7 @@ test_firefox_extension_structure() {
         fi
         
         # Check extension ID
-        if grep -q '"id":.*"monitor-bloqueos@whitelist-system"' "$ext_dir/manifest.json"; then
+        if grep -q '"id":.*"monitor-bloqueos@openpath"' "$ext_dir/manifest.json"; then
             test_pass "Extension ID correctly set"
         else
             test_fail "Extension ID missing or incorrect"
