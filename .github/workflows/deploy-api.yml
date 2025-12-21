@@ -34,9 +34,10 @@ jobs:
             echo "📦 Creating backup..."
             cp -r api api.backup 2>/dev/null || true
             
-            # Pull latest changes
+            # Pull latest changes (force to handle local modifications)
             echo "📥 Pulling latest changes from GitHub..."
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
             
             # Navigate to API directory
             cd api
