@@ -32,8 +32,8 @@ jobs:
       
       - name: Build Debian package
         run: |
-          chmod +x scripts/build-deb.sh
-          ./scripts/build-deb.sh ${{ steps.version.outputs.version }} 1
+          chmod +x linux/scripts/build/build-deb.sh
+          ./linux/scripts/build/build-deb.sh ${{ steps.version.outputs.version }} 1
       
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
@@ -124,7 +124,7 @@ jobs:
       
       - name: Copy setup script
         run: |
-          cp scripts/apt-setup.sh gh-pages/apt/apt-setup.sh
+          cp linux/scripts/runtime/apt-setup.sh gh-pages/apt/apt-setup.sh
           chmod +x gh-pages/apt/apt-setup.sh
       
       - name: Setup Pages
