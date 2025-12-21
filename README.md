@@ -1,456 +1,103 @@
-# Sistema de Whitelist DNS basado en dnsmasq
+# Whitelist Manager
 
-Sistema modular de control de acceso a internet mediante DNS sinkhole. Bloquea todos los dominios por defecto, permitiendo únicamente aquellos incluidos en una lista blanca centralizada.
+**Strict Internet Access Control. Zero Administration Headaches.**
 
-**Versión**: 3.6
+Whitelist Manager is a robust, "default-deny" internet access control system designed for classrooms, laboratories, and corporate environments. It blocks everything by default, allowing only explicitly approved domains.
 
-## Características principales
+Unlike traditional firewalls that require manual rule updates and complex VPNs, Whitelist Manager decentralizes enforcement to the endpoints while centralizing control in a modern web dashboard.
 
-✅ **DNS Sinkhole** - Bloquea todos los dominios excepto los de la whitelist
-✅ **Protección multi-capa** - DNS, firewall iptables y políticas de navegadores
-✅ **Detección de portales cautivos** - Autenticación automática en WiFi
-✅ **Actualización automática** - Descarga la whitelist cada 5 minutos
-✅ **Monitoreo de salud** - Verifica funcionamiento cada minuto
-✅ **Desactivación remota** - Control centralizado via whitelist
-✅ **Arquitectura modular** - Funcionalidad separada en librerías
-✅ **Distribución APT** - Instalación y actualizaciones via apt
-✅ **Multi-plataforma** - Soporte para Linux (dnsmasq) y Windows (Acrylic DNS)
-✅ **Gestión web** - SPA con autenticación GitHub OAuth para administrar reglas
-✅ **Extensión Firefox** - Monitoreo de bloqueos en tiempo real
+## Why Whitelist Manager?
 
-## Requisitos
+*   **🚫 Default Deny Security**: If it's not whitelisted, it doesn't exist. Eliminate distractions and security risks at the DNS level.
+*   **🧠 GitOps Logic**: Your whitelist is just a text file in a GitHub repository. Every change is a commit. You get version history, audit logs, and instant rollbacks for free.
+*   **⚡ Self-Service Workflow**: Users hitting a block page can request access instantly. Admins approve requests in a dashboard, and the system handles the rest.
+*   **🛡️ Resilient Architecture**: Endpoints download and cache rules locally. If your central server or internet connection goes down, the filtering rules remain active.
+*   **🔋 Batteries Included**: Comes with DNS sinkholing (dnsmasq), firewall rules (iptables), and browser policies (Firefox/Chrome) out of the box.
 
-- **Sistema operativo**: Ubuntu 20.04+ o Debian 10+
-- **Arquitectura**: x86_64/amd64
-- **Acceso**: root/sudo
-- **Red**: Conexión a internet durante instalación
+---
 
-## Instalación
+## How It Works
 
-### Vía APT (Recomendado)
+1.  **The User** tries to access `blocked-site.com`. Access is denied.
+2.  **The Request**: User submits an unblock request via the portal.
+3.  **The Decision**: Admin reviews the request in the Dashboard and clicks "Approve".
+4.  **The Magic**: The system commits the change to the GitHub repository.
+5.  **The Sync**: All connected endpoints pull the new whitelist within minutes.
+
+## Installation
+
+### Linux (Debian/Ubuntu)
+
+One-line installation via APT. Sets up `dnsmasq`, `iptables` rules, and the update watchdog.
 
 ```bash
-# Configurar repositorio e instalar
+# Setup repository and install
 curl -fsSL https://balejosg.github.io/whitelist/apt/apt-setup.sh | sudo bash
 sudo apt install whitelist-dnsmasq
 ```
 
-O manualmente:
+### Windows
+
+PowerShell-based installation using Acrylic DNS Proxy.
+
+```powershell
+./windows/Install-Whitelist.ps1
+```
+
+## System Architecture
+
+The ecosystem consists of four main pillars:
+
+1.  **Request API**: Node.js backend that handles user requests and telemetry.
+2.  **Dashboard**: Web interface for visualizing requests, managing domain groups, and monitoring endpoint health.
+3.  **Endpoint Agents**: Lightweight scripts (Bash/PowerShell) running on client machines. They enforce rules via `dnsmasq` or `Acrylic`.
+4.  **Git Storage**: The single source of truth. All rules live in `whitelist.txt` in your repo.
+
+## Configuration
+
+### Changing the Whitelist URL
+
+Point your agents to your own repository:
 
 ```bash
-# 1. Añadir clave GPG
-curl -fsSL https://balejosg.github.io/whitelist/apt/pubkey.gpg | sudo gpg --dearmor -o /usr/share/keyrings/whitelist-system.gpg
-
-# 2. Añadir repositorio
-echo "deb [signed-by=/usr/share/keyrings/whitelist-system.gpg] https://balejosg.github.io/whitelist/apt stable main" | sudo tee /etc/apt/sources.list.d/whitelist-system.list
-
-# 3. Instalar
-sudo apt update
-sudo apt install whitelist-dnsmasq
-```
-
-### Instalación manual (desde código fuente)
-
-```bash
-git clone https://github.com/balejosg/whitelist.git
-cd whitelist/linux
-sudo ./install.sh
-```
-
-Con URL de whitelist personalizada:
-
-```bash
-sudo ./linux/install.sh --whitelist-url "https://tu-url.com/whitelist.txt"
-```
-
-## Desinstalación
-
-```bash
-# Vía APT
-sudo apt remove whitelist-dnsmasq    # Mantiene configuración
-sudo apt purge whitelist-dnsmasq     # Elimina todo
-
-# Instalación manual
-sudo ./linux/uninstall.sh
-```
-
-## Estructura del proyecto
-
-```
-whitelist/
-├── linux/                          # Implementación Linux
-│   ├── install.sh                  # Instalador principal
-│   ├── uninstall.sh                # Desinstalador
-│   ├── lib/                        # Módulos de funcionalidad
-│   ├── scripts/runtime|build|dev/  # Scripts organizados
-│   └── debian-package/             # Empaquetado .deb
-├── windows/                        # Implementación Windows
-│   ├── Install-Whitelist.ps1
-│   ├── lib/
-│   └── scripts/
-├── api/                            # API REST
-├── dashboard/                      # Portal web
-├── spa/                            # SPA GitHub Pages
-├── auth-worker/                    # Cloudflare OAuth
-├── firefox-extension/              # Extensión navegador
-├── tests/                          # Tests (Linux/Windows)
-└── docs/                           # Documentación
-```
-
-## Directorios de instalación
-
-Después de instalar, el sistema se distribuye en:
-
-```
-/usr/local/lib/whitelist-system/    # Código y librerías
-/usr/local/bin/                     # Ejecutables
-  └── whitelist                     # Comando principal
-/etc/whitelist-system/              # Configuración (preservada en upgrades)
-  ├── whitelist-url.conf            # URL de la whitelist
-  ├── health-api-url.conf           # URL del API de salud (opcional)
-  └── health-api-secret.conf        # Secreto del API (opcional)
-/var/lib/url-whitelist/             # Estado y caché (regenerable)
-  └── whitelist.txt                 # Whitelist descargada
-/etc/dnsmasq.d/                     # Configuración dnsmasq
-/var/log/                           # Logs del sistema
-```
-
-## Configuración
-
-### Cambiar URL de whitelist
-
-```bash
-echo "https://tu-url.com/whitelist.txt" | sudo tee /etc/whitelist-system/whitelist-url.conf
+echo "https://your-repo.com/whitelist.txt" | sudo tee /etc/whitelist-system/whitelist-url.conf
 sudo whitelist update
 ```
 
-### Configurar Health API (monitoreo centralizado)
+### Whitelist Format
 
-```bash
-echo "https://tu-api.com" | sudo tee /etc/whitelist-system/health-api-url.conf
-echo "tu-secreto" | sudo tee /etc/whitelist-system/health-api-secret.conf
-sudo chmod 600 /etc/whitelist-system/health-api-secret.conf
-```
+Simple, readable text format.
 
-### Comandos útiles
-
-```bash
-whitelist status      # Ver estado del sistema
-whitelist test        # Probar resolución DNS
-whitelist update      # Forzar actualización
-whitelist help        # Ver todos los comandos
-```
-
-### Reconfigurar después de instalar
-
-```bash
-sudo dpkg-reconfigure whitelist-dnsmasq
-```
-
-## Formato de whitelist
-
-El archivo de whitelist soporta tres secciones:
-
-```
+```ini
 ## WHITELIST
-example.com
-subdomain.example.com
 google.com
+github.com
+# Comments are allowed
 
 ## BLOCKED-SUBDOMAINS
-ads.example.com
+# Allow domain.com but block ads.domain.com
+ads.domain.com
 
 ## BLOCKED-PATHS
-example.com/tracking
-facebook.com/ads
+# Browser-level blocking (advanced)
+facebook.com/gaming
 ```
-
-- **WHITELIST** - Dominios permitidos para resolución DNS
-- **BLOCKED-SUBDOMAINS** - Subdominios bloqueados (incluso si el padre está whitelisteado)
-- **BLOCKED-PATHS** - Rutas bloqueadas a nivel de navegador
-
-## Componentes principales
-
-### install.sh
-Script de instalación que:
-- Instala dependencias (dnsmasq, iptables, curl)
-- Despliega módulos de librerías
-- Configura servicios systemd
-- Descarga whitelist inicial
-- Configura firewall y políticas de navegadores
-
-### lib/common.sh
-Funciones compartidas:
-- Variables de configuración global
-- Funciones de logging
-- Parseo de whitelist
-- Detección de DNS upstream
-- Funciones de utilidad
-
-### lib/dns.sh
-Gestión del DNS:
-- Generación de configuración dnsmasq
-- Inicialización de servicios DNS
-- Validación de resolución DNS
-- Configuración DNS upstream
-
-### lib/firewall.sh
-Reglas de iptables:
-- Bloqueo de puertos alternativos
-- Prevención de bypass (VPN, Tor, DNS alternos)
-- Gestión de la tabla iptables
-- Activación/desactivación de firewall
-
-### lib/browser.sh
-Políticas de navegadores:
-- Generación de policies.json (Firefox)
-- Generación de listas de bloqueo (Chromium)
-- Configuración de motor de búsqueda
-- Bloqueo de rutas específicas
-
-### lib/services.sh
-Integración systemd:
-- Creación de units de servicio
-- Creación de units de timer
-- Activación de servicios
-
-### linux/scripts/runtime/dnsmasq-whitelist.sh
-Actualización periódica:
-- Descarga whitelist desde URL
-- Regenera configuración dnsmasq
-- Aplica políticas de navegadores
-- Detecta desactivación remota (#DESACTIVADO)
-
-### linux/scripts/runtime/dnsmasq-watchdog.sh
-Monitoreo de salud (cada 1 minuto):
-- Verifica dnsmasq en ejecución
-- Valida configuración DNS
-- Auto-recuperación en fallos
-
-### linux/scripts/runtime/captive-portal-detector.sh
-Detección de portales cautivos:
-- Detecta WiFi con autenticación
-- Desactiva firewall temporalmente
-- Re-activa tras autenticación
-
-## Servicios systemd
-
-El sistema instala y activa automáticamente:
-
-- **dnsmasq.service** - Servidor DNS principal
-- **dnsmasq-whitelist.timer** - Actualiza whitelist (cada 5 min, 2 min después de boot)
-- **dnsmasq-watchdog.timer** - Health check (cada 1 minuto)
-- **captive-portal-detector.service** - Detección continua de portales
-
-## Cómo funciona
-
-### 1. DNS Sinkhole
-dnsmasq se configura con:
-- `address=/#/127.0.0.1` - Bloquea TODOS los dominios por defecto
-- `server=/whitelisted.com/upstream.dns` - Solo resuelve whitelisteados
-
-### 2. Protección multi-capa
-1. **Capa DNS** - dnsmasq bloquea dominios no whitelisteados
-2. **Capa Firewall** - iptables bloquea puertos alternativos (53, 853, VPN, Tor)
-3. **Capa Navegador** - Firefox/Chromium bloquean rutas específicas
-
-### 3. Monitoreo de salud
-El watchdog:
-- Verifica que dnsmasq está activo
-- Comprueba configuración DNS upstream
-- Valida que el sinkhole funciona
-- Auto-recupera en caso de fallos
-
-### 4. Manejo de portales cautivos
-Sistema detecta automáticamente:
-- Conexiones WiFi con portales de autenticación
-- Desactiva firewall temporalmente para autenticación
-- Re-activa restricciones tras autenticarse
-- Comprueba cada 30 segundos
-
-## Desarrollo
-
-### Añadir nueva funcionalidad
-
-1. Crear función en módulo apropiado en `lib/`
-2. Importar con: `source "$INSTALL_DIR/lib/modulename.sh"`
-3. Probar con: `sudo ./install.sh`
-
-### Modificar configuración dnsmasq
-
-1. Editar `generate_dnsmasq_config()` en `lib/dns.sh`
-2. Aplicar cambios: `sudo systemctl restart dnsmasq`
-3. Validar: `dnsmasq --test -C /etc/dnsmasq.d/url-whitelist.conf`
-
-### Testing
-
-**Quick validation before committing:**
-```bash
-./tests/validate-release.sh
-```
-
-This validates file permissions, directory structure, and package completeness.
-
-**Manual DNS testing:**
-```bash
-# Probar resolución DNS local
-dig @127.0.0.1 example.com
-
-# Probar resolución del sistema
-dig example.com
-
-# Ver logs
-tail -f /var/log/url-whitelist.log
-
-# Estado del servicio
-sudo systemctl status dnsmasq
-sudo journalctl -u dnsmasq -f
-```
-
-## Seguridad
-
-### Qué se bloquea
-
-- ✓ Puertos DNS alternativos (53, 853)
-- ✓ Protocolos VPN (OpenVPN, WireGuard, PPTP)
-- ✓ Red Tor
-- ✓ Dominios no whitelisteados
-- ✓ Rutas bloqueadas en navegadores
-
-### Qué NO se bloquea
-
-- ✗ Conexiones SSH
-- ✗ Red local (LAN)
-- ✗ ICMP (ping)
-- ✗ NTP (reloj del sistema)
-- ✗ Direcciones IP hardcodeadas (requiere reglas adicionales)
-
-## Desactivación remota
-
-Modificar la whitelist para comenzar con:
-```
-#DESACTIVADO
-```
-
-El script la detectará y pasará a modo fail-open:
-- DNS sin restricciones
-- Firewall desactivado
-- Políticas de navegador desactivadas
 
 ## Troubleshooting
 
-### DNS no resuelve
-
+**Check Status**
 ```bash
-# Verificar status de dnsmasq
-sudo systemctl status dnsmasq
-
-# Probar configuración
-dnsmasq --test -C /etc/dnsmasq.d/url-whitelist.conf
-
-# Verificar puerto 53
-sudo ss -ulnp | grep :53
+whitelist status
 ```
 
-### Dominio no accesible
-
+**Force Update**
 ```bash
-# Ver whitelist
-sudo grep "^example.com" /var/lib/url-whitelist/whitelist.txt
-
-# Probar DNS directamente
-dig @127.0.0.1 example.com +short
-
-# Ver últimos logs
-tail -20 /var/log/url-whitelist.log
+whitelist update
 ```
 
-### Firewall bloqueando tráfico legítimo
-
-```bash
-# Desactivar temporalmente (debug)
-sudo systemctl stop dnsmasq-whitelist.service
-sudo iptables -F
-
-# Restaurar
-sudo systemctl restart dnsmasq
-```
-
-### Sistema en modo fail-safe
-
-Activado cuando:
-- Descarga de whitelist falla
-- Sin conexión a internet
-- Fallo de servicio crítico
-
-Recuperación:
-- Restaurar internet
-- `sudo systemctl restart dnsmasq`
-
-## Logs
-
-```bash
-# Logs principales
-tail -f /var/log/url-whitelist.log
-
-# Logs del servicio dnsmasq
-sudo journalctl -u dnsmasq -f
-
-# Logs de actualizaciones
-sudo journalctl -u dnsmasq-whitelist.service -n 50
-
-# Logs del watchdog
-sudo journalctl -u dnsmasq-watchdog.service -f
-```
-
-## Licencia
-
-Sistema para uso educativo e institucional.
+**Emergency Disable**
+Add `#DESACTIVADO` to the start of your remote whitelist file. Endpoints will pick it up and fail-open (disable all blocking) automatically.
 
 ---
 
-## Componentes adicionales
-
-| Componente | Plataforma | Documentación |
-|------------|------------|---------------|
-| [windows](./windows/) | Windows 10/11 | DNS con Acrylic Proxy |
-| [dashboard](./dashboard/) | Docker | Gestión web con autenticación |
-| [spa](./spa/) | Web (GitHub Pages) | SPA para gestión centralizada |
-| [api](./api/) | Node.js | API REST para solicitudes de dominios |
-| [auth-worker](./auth-worker/) | Cloudflare Workers | Backend OAuth para SPA |
-| [firefox-extension](./firefox-extension/) | Firefox | Monitoreo de bloqueos |
-| [tests/e2e](./tests/e2e/) | Linux/Windows | Tests End-to-End |
-
----
-
-**Versión**: 3.5
-**Última actualización**: Diciembre 2024
-
----
-
-## CI/CD
-
-Este proyecto utiliza GitHub Actions para integración y despliegue continuos.
-
-| Workflow | Propósito | Trigger |
-|----------|-----------|---------|
-| `ci.yml` | Tests, linting, Docker build | Push/PR a main |
-| `security.yml` | CodeQL, Shellcheck, Trivy, Gitleaks | Push/PR + semanal |
-| `e2e-tests.yml` | Tests E2E Linux/Windows | Push/PR |
-| `deploy.yml` | Deploy a GitHub Pages | Push a main |
-| `deploy-api.yml` | Deploy API via SSH (con rollback) | Push a main |
-| `release-please.yml` | Versionado semántico automático | Push a main |
-| `perf-test.yml` | Tests de rendimiento | Semanal + manual |
-| `release-extension.yml` | Release Firefox extension | Push a main |
-| `release-scripts.yml` | Release scripts instalación | Push a main |
-
-### Características CI/CD
-
-- ✅ Control de concurrencia (cancela runs duplicados)
-- ✅ Node.js 20 estandarizado
-- ✅ Linting (ESLint) en todas las apps Node.js
-- ✅ Rollback automático en deploy fallido
-- ✅ Versionado semántico con Release Please
-- ✅ Tests de rendimiento semanales
-- ✅ Escaneo de seguridad multi-capa
-
+**License**: Educational/Institutional Use.
