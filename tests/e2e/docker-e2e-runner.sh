@@ -42,7 +42,7 @@ echo -e "${BLUE}[2/6]${NC} Running pre-installation validation..."
 # Step 3: Run installation
 echo ""
 echo -e "${BLUE}[3/6]${NC} Running installation..."
-./install.sh --unattended --skip-firefox-setup 2>&1 | tail -20
+./linux/install.sh --unattended --skip-firefox-setup 2>&1 | tail -20
 
 # Step 4: Verify dnsmasq is running
 echo ""
@@ -69,7 +69,7 @@ fi
 # Step 5: Run smoke tests
 echo ""
 echo -e "${BLUE}[5/6]${NC} Running smoke tests..."
-./scripts/runtime/smoke-test.sh --quick || echo -e "${YELLOW}⚠${NC} Smoke tests had issues"
+./linux/scripts/runtime/smoke-test.sh --quick || echo -e "${YELLOW}⚠${NC} Smoke tests had issues"
 
 # Step 6: Run E2E tests
 echo ""
