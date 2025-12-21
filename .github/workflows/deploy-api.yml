@@ -4,9 +4,6 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths:
-      - 'whitelist-request-api/**'
-      - '.github/workflows/deploy-api.yml'
 
 jobs:
   deploy:

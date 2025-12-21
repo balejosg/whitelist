@@ -1,8 +1,8 @@
 # ADR: Sistema de Whitelist DNS
 
-**Fecha**: 2024-12-17  
+**Fecha**: 2025-12-21  
 **Estado**: Implementado  
-**Versión del Sistema**: 3.5
+**Versión del Sistema**: 3.7
 
 ---
 
@@ -257,6 +257,43 @@ whitelist-web/
 
 ---
 
+### ADR-008: API de Solicitudes de Dominios
+
+**Decisión**: Implementar API REST en servidor local para que los usuarios puedan solicitar nuevos dominios directamente desde la extensión de Firefox.
+
+**Stack Tecnológico**:
+| Componente | Tecnología |
+|------------|------------|
+| Backend | Node.js + Express |
+| Base de datos | SQLite |
+| Autenticación | API key compartida |
+| Despliegue | Servidor local (home server) |
+
+**Arquitectura**:
+```
+whitelist-request-api/
+├── routes/
+│   └── requests.js     # Endpoints de solicitudes
+├── middleware/
+│   └── auth.js         # Validación API key
+├── db/
+│   └── database.sqlite # Base de datos SQLite
+├── server.js           # Punto de entrada
+└── Dockerfile          # Containerización
+```
+
+**Endpoints API**:
+- `POST /api/request` - Solicitar nuevo dominio
+- `GET /api/requests` - Listar solicitudes pendientes
+- `POST /api/approve/:id` - Aprobar solicitud
+- `POST /api/reject/:id` - Rechazar solicitud
+- `GET /health` - Health check
+
+**Integración con Firefox Extension**:
+La extensión detecta dominios bloqueados y permite al usuario solicitar su inclusión en la whitelist. Las solicitudes se envían a esta API para revisión por el administrador.
+
+---
+
 ## Componentes del Sistema
 
 ### Resumen de Componentes
@@ -272,6 +309,9 @@ whitelist-web/
 | `whitelist-cmd.sh` | `/usr/local/bin/whitelist` | CLI para usuarios |
 | Firefox Extension | `firefox-extension/` | Diagnóstico de bloqueos |
 | Web App | `whitelist-web/` | Administración centralizada |
+| Request API | `whitelist-request-api/` | API para solicitudes de dominios |
+| Static SPA | `whitelist-web-static/` | SPA en GitHub Pages |
+| OAuth Worker | `oauth-worker/` | Backend OAuth para SPA |
 
 ### Servicios systemd
 
