@@ -1,0 +1,17 @@
+{
+    "name": "openpath-spa",
+    "version": "1.0.0",
+    "description": "OpenPath SPA Dashboard",
+    "scripts": {
+        "test": "node --test tests/",
+        "test:e2e": "npx playwright test",
+        "test:e2e:headed": "npx playwright test --headed",
+        "test:e2e:ui": "npx playwright test --ui"
+    },
+    "devDependencies": {
+        "@playwright/test": "^1.40.0"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}

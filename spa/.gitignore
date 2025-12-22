@@ -1,0 +1,10 @@
+# Dependencies
+node_modules/
+
+# Playwright
+playwright-report/
+test-results/
+.playwright/
+
+# Package lock - regenerate on install
+package-lock.json
