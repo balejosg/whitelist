@@ -74,7 +74,7 @@ jobs:
 
       - name: Deploy via SSH
         if: steps.resolve.outputs.skip != 'true'
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.4
         with:
           host: ${{ steps.resolve.outputs.ip }}
           username: ${{ secrets.DEPLOY_USER }}
