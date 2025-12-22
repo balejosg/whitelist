@@ -824,11 +824,37 @@ async function approveRequest(requestId, groupId) {
             // Refresh groups to show new domain
             await loadDashboard();
         } else {
-            showToast(`❌ Error: ${response.error}`, 'error');
+            // Handle blocked domain error specially
+            if (response.code === 'DOMAIN_BLOCKED') {
+                showBlockedDomainAlert(response.domain, response.matched_rule, response.hint);
+            } else {
+                showToast(`❌ Error: ${response.error}`, 'error');
+            }
         }
     } catch (error) {
-        showToast(`❌ Error: ${error.message}`, 'error');
+        // Also handle if error comes as exception
+        if (error.code === 'DOMAIN_BLOCKED') {
+            showBlockedDomainAlert(error.domain, error.matched_rule, error.hint);
+        } else {
+            showToast(`❌ Error: ${error.message}`, 'error');
+        }
     }
+}
+
+// Show blocked domain alert modal
+function showBlockedDomainAlert(domain, matchedRule, hint) {
+    const modal = document.getElementById('modal-blocked-domain');
+    if (!modal) {
+        // Fallback to toast if modal doesn't exist
+        showToast(`🚫 Este dominio está bloqueado por el administrador: ${matchedRule}`, 'error');
+        return;
+    }
+
+    document.getElementById('blocked-domain-name').textContent = domain || 'desconocido';
+    document.getElementById('blocked-domain-rule').textContent = matchedRule || 'regla no especificada';
+    document.getElementById('blocked-domain-hint').textContent = hint || 'Contacta al administrador para más información';
+
+    openModal('modal-blocked-domain');
 }
 
 // Reject a request

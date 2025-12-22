@@ -449,6 +449,67 @@ router.get('/groups/list', adminLimiter, requireAuth, filterByUserGroups, async 
 });
 
 /**
+ * GET /api/requests/domains/blocked
+ * List all blocked domains (admin only)
+ * Teachers can use check endpoint to verify specific domain
+ */
+router.get('/domains/blocked', adminLimiter, requireAuth, requireAdmin, async (req, res) => {
+    try {
+        const file = await github.getFileContent('blocked-subdomains.txt');
+        const lines = file.content.split('\n');
+
+        const blockedDomains = lines
+            .map(line => line.trim())
+            .filter(line => line && !line.startsWith('#'));
+
+        res.json({
+            success: true,
+            blocked_domains: blockedDomains,
+            count: blockedDomains.length
+        });
+
+    } catch (error) {
+        // File doesn't exist
+        res.json({
+            success: true,
+            blocked_domains: [],
+            count: 0,
+            note: 'No blocked-subdomains.txt file found'
+        });
+    }
+});
+
+/**
+ * POST /api/requests/domains/check
+ * Check if a domain is blocked (for teachers before approval)
+ */
+router.post('/domains/check', adminLimiter, requireAuth, async (req, res) => {
+    const { domain } = req.body;
+
+    if (!domain) {
+        return res.status(400).json({
+            success: false,
+            error: 'Domain is required'
+        });
+    }
+
+    try {
+        const result = await github.isDomainBlocked(domain);
+        res.json({
+            success: true,
+            domain,
+            blocked: result.blocked,
+            matched_rule: result.matchedRule
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Failed to check domain'
+        });
+    }
+});
+
+/**
  * GET /api/requests
  * List all requests (admin/teacher)
  * Teachers only see requests for their assigned groups
@@ -524,6 +585,21 @@ router.post('/:id/approve', adminLimiter, requireAuth, canApproveRequest, async 
                 success: false,
                 error: 'No permission to approve for this group',
                 group_id
+            });
+        }
+    }
+
+    // Teachers cannot approve blocked domains (admins can override)
+    if (!auth.isAdminToken(req.user)) {
+        const blockCheck = await github.isDomainBlocked(request.domain);
+        if (blockCheck.blocked) {
+            return res.status(403).json({
+                success: false,
+                error: 'Este dominio está bloqueado por el administrador',
+                code: 'DOMAIN_BLOCKED',
+                domain: request.domain,
+                matched_rule: blockCheck.matchedRule,
+                hint: 'Contacta al administrador para revisar esta restricción'
             });
         }
     }

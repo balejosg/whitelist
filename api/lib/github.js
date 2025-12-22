@@ -288,10 +288,55 @@ async function isDomainInWhitelist(domain, groupId) {
     }
 }
 
+/**
+ * Check if a domain is in the blocked-subdomains list
+ * @param {string} domain - Domain to check
+ * @returns {Promise<{blocked: boolean, matchedRule: string|null}>}
+ */
+async function isDomainBlocked(domain) {
+    try {
+        const file = await getFileContent('blocked-subdomains.txt');
+        const lines = file.content.split('\n');
+        const domainLower = domain.toLowerCase().trim();
+
+        for (const line of lines) {
+            const trimmed = line.trim().toLowerCase();
+
+            // Skip empty lines and comments
+            if (!trimmed || trimmed.startsWith('#')) continue;
+
+            // Exact match
+            if (trimmed === domainLower) {
+                return { blocked: true, matchedRule: trimmed };
+            }
+
+            // Subdomain match (e.g., "tiktok.com" blocks "www.tiktok.com")
+            if (domainLower.endsWith('.' + trimmed)) {
+                return { blocked: true, matchedRule: trimmed };
+            }
+
+            // Wildcard match (e.g., "*.tiktok.com")
+            if (trimmed.startsWith('*.')) {
+                const baseDomain = trimmed.slice(2);
+                if (domainLower === baseDomain || domainLower.endsWith('.' + baseDomain)) {
+                    return { blocked: true, matchedRule: trimmed };
+                }
+            }
+        }
+
+        return { blocked: false, matchedRule: null };
+    } catch (error) {
+        // File doesn't exist - no domains are blocked
+        console.log('No blocked-subdomains.txt found, no domains blocked');
+        return { blocked: false, matchedRule: null };
+    }
+}
+
 module.exports = {
     getFileContent,
     updateFile,
     addDomainToWhitelist,
     listWhitelistFiles,
-    isDomainInWhitelist
+    isDomainInWhitelist,
+    isDomainBlocked
 };

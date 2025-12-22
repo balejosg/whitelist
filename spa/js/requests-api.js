@@ -50,6 +50,11 @@ const RequestsAPI = {
                 const data = await response.json();
 
                 if (!response.ok) {
+                    // For specific error codes, return the data instead of throwing
+                    // This allows the UI to handle special cases like DOMAIN_BLOCKED
+                    if (data.code) {
+                        return data; // Return the error response with code
+                    }
                     throw new Error(data.error || `HTTP ${response.status}`);
                 }
 
@@ -85,6 +90,10 @@ const RequestsAPI = {
             const data = await response.json();
 
             if (!response.ok) {
+                // For specific error codes, return the data instead of throwing
+                if (data.code) {
+                    return data; // Return the error response with code
+                }
                 throw new Error(data.error || `HTTP ${response.status}`);
             }
 

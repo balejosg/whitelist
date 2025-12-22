@@ -173,6 +173,8 @@ app.get('/api', (req, res) => {
             'POST /api/requests/:id/reject': 'Reject request (admin/teacher)',
             'DELETE /api/requests/:id': 'Delete request (admin)',
             'GET /api/requests/groups/list': 'List whitelist groups (admin/teacher)',
+            'GET /api/requests/domains/blocked': 'List blocked domains (admin)',
+            'POST /api/requests/domains/check': 'Check if domain is blocked (admin/teacher)',
             // Health Reports
             'POST /api/health-reports': 'Submit health report (shared secret)',
             'GET /api/health-reports': 'List all hosts status (admin)',

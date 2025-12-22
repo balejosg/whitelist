@@ -1446,41 +1446,41 @@ a:hover {
     .request-item {
         padding: 1rem;
     }
-    
+
     .request-actions {
         width: 100%;
         justify-content: stretch;
         gap: 0.75rem;
         margin-top: 0.75rem;
     }
-    
+
     .request-actions .btn {
         flex: 1;
         min-height: 48px;
         font-size: 1.5rem;
     }
-    
+
     .request-actions .request-group-select {
         flex: 2;
         min-height: 48px;
         font-size: 1rem;
     }
-    
+
     /* Larger teacher banner on mobile */
     .teacher-banner {
         flex-direction: column;
         text-align: center;
     }
-    
+
     .teacher-banner .icon {
         font-size: 2rem;
     }
-    
+
     /* Stats section - 2 columns on small screens */
     .stats-section {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     /* Hide admin-only buttons for cleaner teacher view */
     .header .admin-only {
         display: none;
@@ -1492,12 +1492,114 @@ a:hover {
     .stats-section {
         grid-template-columns: 1fr;
     }
-    
+
     .stat-card {
         padding: 1rem;
     }
-    
+
     .stat-number {
         font-size: 1.5rem;
+    }
+}
+
+/* ============== Blocked Domain Alert Modal ============== */
+.modal-blocked-domain {
+    max-width: 480px;
+}
+
+.modal-header-warning {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(234, 179, 8, 0.1) 100%);
+    border-bottom: 2px solid var(--accent-danger);
+}
+
+.modal-header-warning h3 {
+    color: var(--accent-danger);
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.blocked-domain-alert {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+}
+
+.blocked-domain-icon {
+    font-size: 3rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.blocked-domain-info {
+    flex: 1;
+}
+
+.blocked-domain-message {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.blocked-domain-message strong {
+    color: var(--accent-danger);
+    font-weight: 600;
+}
+
+.blocked-domain-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--border-radius-sm);
+    border-left: 3px solid var(--accent-warning);
+    margin-bottom: 1rem;
+}
+
+.blocked-domain-details .detail-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.blocked-domain-details code {
+    font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 1rem;
+    color: var(--accent-warning);
+    font-weight: 600;
+}
+
+.blocked-domain-hint {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    padding: 0.75rem;
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: var(--border-radius-sm);
+    border-left: 3px solid var(--accent-primary);
+}
+
+/* Mobile responsive for blocked domain modal */
+@media (max-width: 480px) {
+    .blocked-domain-alert {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .blocked-domain-icon {
+        font-size: 4rem;
+        margin: 0 auto;
+    }
+
+    .blocked-domain-details {
+        border-left: none;
+        border-top: 3px solid var(--accent-warning);
+    }
+
+    .blocked-domain-hint {
+        border-left: none;
+        border-top: 3px solid var(--accent-primary);
     }
 }

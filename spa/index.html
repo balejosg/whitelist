@@ -432,6 +432,35 @@ wikipedia.org"></textarea>
             </form>
         </div>
     </div>
+    <!-- Modal: Blocked Domain Alert (for teachers) -->
+    <div id="modal-blocked-domain" class="modal hidden">
+        <div class="modal-content modal-blocked-domain">
+            <div class="modal-header modal-header-warning">
+                <h3>🚫 Dominio bloqueado</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="blocked-domain-alert">
+                    <div class="blocked-domain-icon">⛔</div>
+                    <div class="blocked-domain-info">
+                        <p class="blocked-domain-message">
+                            No puedes aprobar <strong id="blocked-domain-name">dominio</strong> porque está en la lista de dominios bloqueados.
+                        </p>
+                        <div class="blocked-domain-details">
+                            <span class="detail-label">Regla que lo bloquea:</span>
+                            <code id="blocked-domain-rule">regla</code>
+                        </div>
+                        <p class="blocked-domain-hint" id="blocked-domain-hint">
+                            Contacta al administrador para revisar esta restricción
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-primary modal-cancel">Entendido</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Toast notifications -->
     <div id="toast-container"></div>
