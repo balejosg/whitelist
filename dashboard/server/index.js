@@ -205,7 +205,7 @@ app.get('/export/:name.txt', (req, res) => {
 
 // ============== Fallback SPA ==============
 
-app.get('*', (req, res) => {
+app.get('/{*splat}', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
