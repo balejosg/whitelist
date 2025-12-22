@@ -1,0 +1,46 @@
+{
+    "name": "dashboard",
+    "version": "1.0.0",
+    "description": "Portal web para gestión de OpenPath DNS",
+    "main": "server/index.js",
+    "scripts": {
+        "start": "node server/index.js",
+        "dev": "node server/index.js",
+        "test": "jest --coverage --forceExit --detectOpenHandles",
+        "lint": "eslint server/"
+    },
+    "dependencies": {
+        "bcryptjs": "^2.4.3",
+        "cookie-parser": "^1.4.6",
+        "express": "^4.18.2",
+        "express-session": "^1.17.3",
+        "uuid": "^9.0.0"
+    },
+    "devDependencies": {
+        "eslint": "^8.57.0",
+        "jest": "^29.7.0",
+        "supertest": "^6.3.4"
+    },
+    "jest": {
+        "testEnvironment": "node",
+        "testMatch": [
+            "**/__tests__/**/*.test.js"
+        ],
+        "coverageDirectory": "coverage",
+        "collectCoverageFrom": [
+            "server/**/*.js",
+            "!server/__tests__/**"
+        ],
+        "coverageThreshold": {
+            "global": {
+                "branches": 0,
+                "functions": 0,
+                "lines": 0,
+                "statements": 0
+            }
+        }
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}

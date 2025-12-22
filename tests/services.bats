@@ -20,7 +20,7 @@ setup() {
     mkdir -p "$TEST_TMP_DIR/tmpfiles.d"
     
     # Copy libs
-    cp "$PROJECT_DIR/lib/"*.sh "$INSTALL_DIR/lib/" 2>/dev/null || true
+    cp "$PROJECT_DIR/linux/lib/"*.sh "$INSTALL_DIR/lib/" 2>/dev/null || true
     
     # Mock log function
     log() { echo "$1"; }
@@ -41,20 +41,20 @@ teardown() {
 
 @test "create_whitelist_service genera unit file" {
     # Temporarily redirect to test location
-    local service_file="$TEST_TMP_DIR/systemd/system/dnsmasq-whitelist.service"
+    local service_file="$TEST_TMP_DIR/systemd/system/openpath-dnsmasq.service"
     
     # Source and override the function to use test path
     create_whitelist_service() {
         cat > "$service_file" << 'EOF'
 [Unit]
-Description=Update dnsmasq URL Whitelist
+Description=Update OpenPath DNS
 After=network-online.target dnsmasq.service
 Wants=network-online.target
 Requires=dnsmasq.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/dnsmasq-whitelist.sh
+ExecStart=/usr/local/bin/openpath-update.sh
 TimeoutStartSec=120
 StandardOutput=journal
 StandardError=journal
@@ -70,16 +70,16 @@ EOF
 }
 
 @test "create_whitelist_service incluye secciones requeridas" {
-    local service_file="$TEST_TMP_DIR/systemd/system/dnsmasq-whitelist.service"
+    local service_file="$TEST_TMP_DIR/systemd/system/openpath-dnsmasq.service"
     
     create_whitelist_service() {
         cat > "$service_file" << 'EOF'
 [Unit]
-Description=Update dnsmasq URL Whitelist
+Description=Update OpenPath DNS
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/dnsmasq-whitelist.sh
+ExecStart=/usr/local/bin/openpath-update.sh
 
 [Install]
 WantedBy=multi-user.target
@@ -96,12 +96,12 @@ EOF
 # ============== Tests de create_whitelist_timer ==============
 
 @test "create_whitelist_timer genera timer file" {
-    local timer_file="$TEST_TMP_DIR/systemd/system/dnsmasq-whitelist.timer"
+    local timer_file="$TEST_TMP_DIR/systemd/system/openpath-dnsmasq.timer"
     
     create_whitelist_timer() {
         cat > "$timer_file" << 'EOF'
 [Unit]
-Description=Timer for dnsmasq URL Whitelist Update
+Description=Timer for OpenPath DNS Update
 
 [Timer]
 OnBootSec=2min
@@ -120,7 +120,7 @@ EOF
 }
 
 @test "create_whitelist_timer configura intervalo de 5 minutos" {
-    local timer_file="$TEST_TMP_DIR/systemd/system/dnsmasq-whitelist.timer"
+    local timer_file="$TEST_TMP_DIR/systemd/system/openpath-dnsmasq.timer"
     
     create_whitelist_timer() {
         cat > "$timer_file" << 'EOF'
@@ -142,7 +142,7 @@ EOF
     create_watchdog_service() {
         cat > "$service_file" << 'EOF'
 [Unit]
-Description=dnsmasq Health Check and Auto-Recovery
+Description=OpenPath DNS Health Check and Auto-Recovery
 
 [Service]
 Type=oneshot
@@ -161,11 +161,11 @@ EOF
 # ============== Tests de create_logrotate_config ==============
 
 @test "create_logrotate_config genera archivo de configuración" {
-    local logrotate_file="$TEST_TMP_DIR/logrotate.d/dnsmasq-whitelist"
+    local logrotate_file="$TEST_TMP_DIR/logrotate.d/openpath"
     
     create_logrotate_config() {
         cat > "$logrotate_file" << 'EOF'
-/var/log/url-whitelist.log
+/var/log/openpath.log
 {
     daily
     rotate 7
@@ -185,7 +185,7 @@ EOF
 }
 
 @test "create_logrotate_config incluye compresión" {
-    local logrotate_file="$TEST_TMP_DIR/logrotate.d/dnsmasq-whitelist"
+    local logrotate_file="$TEST_TMP_DIR/logrotate.d/openpath"
     
     create_logrotate_config() {
         cat > "$logrotate_file" << 'EOF'
@@ -202,7 +202,7 @@ EOF
 }
 
 @test "create_logrotate_config configura rotación diaria" {
-    local logrotate_file="$TEST_TMP_DIR/logrotate.d/dnsmasq-whitelist"
+    local logrotate_file="$TEST_TMP_DIR/logrotate.d/openpath"
     
     create_logrotate_config() {
         cat > "$logrotate_file" << 'EOF'
@@ -222,7 +222,7 @@ EOF
 # ============== Tests de create_tmpfiles_config ==============
 
 @test "create_tmpfiles_config genera configuración" {
-    local tmpfiles_file="$TEST_TMP_DIR/tmpfiles.d/dnsmasq-whitelist.conf"
+    local tmpfiles_file="$TEST_TMP_DIR/tmpfiles.d/openpath.conf"
     
     create_tmpfiles_config() {
         cat > "$tmpfiles_file" << 'EOF'
@@ -236,7 +236,7 @@ EOF
 }
 
 @test "create_tmpfiles_config crea directorio /run/dnsmasq" {
-    local tmpfiles_file="$TEST_TMP_DIR/tmpfiles.d/dnsmasq-whitelist.conf"
+    local tmpfiles_file="$TEST_TMP_DIR/tmpfiles.d/openpath.conf"
     
     create_tmpfiles_config() {
         cat > "$tmpfiles_file" << 'EOF'
@@ -252,7 +252,7 @@ EOF
 # ============== Tests de enable_services / disable_services ==============
 
 @test "enable_services ejecuta sin errores" {
-    source "$PROJECT_DIR/lib/services.sh"
+    source "$PROJECT_DIR/linux/lib/services.sh"
     
     run enable_services
     [ "$status" -eq 0 ]
@@ -260,7 +260,7 @@ EOF
 }
 
 @test "disable_services ejecuta sin errores" {
-    source "$PROJECT_DIR/lib/services.sh"
+    source "$PROJECT_DIR/linux/lib/services.sh"
     
     run disable_services
     [ "$status" -eq 0 ]

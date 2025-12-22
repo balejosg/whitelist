@@ -11,9 +11,9 @@ updates:
       - "dependencies"
       - "github-actions"
 
-  # whitelist-web (Node.js)
+  # dashboard (Node.js)
   - package-ecosystem: "npm"
-    directory: "/whitelist-web"
+    directory: "/dashboard"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -21,12 +21,12 @@ updates:
     labels:
       - "dependencies"
       - "npm"
-      - "whitelist-web"
+      - "dashboard"
     versioning-strategy: increase
 
-  # whitelist-request-api (Node.js)
+  # api (Node.js)
   - package-ecosystem: "npm"
-    directory: "/whitelist-request-api"
+    directory: "/api"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -34,12 +34,12 @@ updates:
     labels:
       - "dependencies"
       - "npm"
-      - "whitelist-request-api"
+      - "api"
     versioning-strategy: increase
 
-  # oauth-worker (Node.js)
+  # auth-worker (Node.js)
   - package-ecosystem: "npm"
-    directory: "/oauth-worker"
+    directory: "/auth-worker"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -47,5 +47,5 @@ updates:
     labels:
       - "dependencies"
       - "npm"
-      - "oauth-worker"
+      - "auth-worker"
     versioning-strategy: increase

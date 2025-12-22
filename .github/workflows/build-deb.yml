@@ -1,0 +1,262 @@
+name: Build and Publish Debian Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 3.5.0)'
+        required: true
+        type: string
+      suite:
+        description: 'APT suite to publish to'
+        required: false
+        type: choice
+        options:
+          - stable
+          - unstable
+        default: stable
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      suite:
+        required: false
+        type: string
+        default: unstable
+
+concurrency:
+  group: build-deb-${{ github.ref }}-${{ inputs.suite || 'stable' }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    name: Build Debian Package
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      package_name: ${{ steps.version.outputs.package_name }}
+      suite: ${{ steps.version.outputs.suite }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Extract version
+        id: version
+        run: |
+          # Determine version
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          elif [ "${{ github.event_name }}" = "push" ] && [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            # Fallback: read from version.txt or use 0.0.0
+            VERSION=$(cat version.txt 2>/dev/null || echo "0.0.0")
+          fi
+          
+          # Determine suite
+          SUITE="${{ inputs.suite }}"
+          if [ -z "$SUITE" ]; then
+            # Default: stable for tag pushes, unstable otherwise
+            if [ "${{ github.event_name }}" = "push" ] && [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+              SUITE="stable"
+            else
+              SUITE="unstable"
+            fi
+          fi
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "package_name=openpath-dnsmasq_${VERSION}-1_amd64.deb" >> $GITHUB_OUTPUT
+          echo "suite=$SUITE" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION for suite: $SUITE"
+      
+      - name: Build Debian package
+        run: |
+          chmod +x linux/scripts/build/build-deb.sh
+          ./linux/scripts/build/build-deb.sh ${{ steps.version.outputs.version }} 1
+      
+      - name: Verify package with lintian
+        run: |
+          sudo apt-get update && sudo apt-get install -y lintian
+          echo "Running lintian checks..."
+          lintian --no-tag-display-limit build/*.deb || true
+          echo ""
+          echo "Package info:"
+          dpkg-deb --info build/*.deb
+      
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: debian-package
+          path: build/*.deb
+          retention-days: 30
+
+  publish:
+    name: Publish to APT Repository (${{ needs.build.outputs.suite }})
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+        continue-on-error: true
+      
+      - name: Create gh-pages directory if not exists
+        run: |
+          if [ ! -d gh-pages ]; then
+            mkdir gh-pages
+          fi
+      
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: debian-package
+          path: packages/
+      
+      - name: Install reprepro and GPG
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y reprepro gnupg
+      
+      - name: Setup GPG key
+        run: |
+          # Check if secret is provided
+          if [ -n "${{ secrets.APT_GPG_PRIVATE_KEY }}" ]; then
+            echo "${{ secrets.APT_GPG_PRIVATE_KEY }}" | gpg --batch --import
+            GPG_KEY_ID=$(gpg --list-keys --keyid-format SHORT | grep -oP '(?<=rsa4096/)[A-F0-9]+' | head -1)
+          else
+            # Generate ephemeral key for unsigned repository
+            echo "No GPG secret found, creating ephemeral key..."
+            cat > /tmp/gpg-batch.txt << 'GPGEOF'
+          %no-protection
+          Key-Type: RSA
+          Key-Length: 4096
+          Name-Real: OpenPath System APT
+          Name-Email: apt@openpath.local
+          Expire-Date: 1y
+          %commit
+          GPGEOF
+            gpg --batch --gen-key /tmp/gpg-batch.txt
+            GPG_KEY_ID=$(gpg --list-keys --keyid-format SHORT | grep -oP '(?<=rsa4096/)[A-F0-9]+' | head -1)
+          fi
+          echo "GPG_KEY_ID=$GPG_KEY_ID" >> $GITHUB_ENV
+          echo "Using GPG key: $GPG_KEY_ID"
+      
+      - name: Setup APT repository structure
+        run: |
+          SUITE="${{ needs.build.outputs.suite }}"
+          mkdir -p gh-pages/apt/conf
+          mkdir -p gh-pages/apt/pool/main
+          
+          # Create distributions file with both stable and unstable
+          cat > gh-pages/apt/conf/distributions << EOF
+          Origin: OpenPath System
+          Label: OpenPath System
+          Suite: stable
+          Codename: stable
+          Architectures: amd64
+          Components: main
+          Description: OpenPath DNS System - Stable releases
+          SignWith: ${{ env.GPG_KEY_ID }}
+
+          Origin: OpenPath System
+          Label: OpenPath System
+          Suite: unstable
+          Codename: unstable
+          Architectures: amd64
+          Components: main
+          Description: OpenPath DNS System - Development builds
+          SignWith: ${{ env.GPG_KEY_ID }}
+          EOF
+          
+          cat > gh-pages/apt/conf/options << EOF
+          verbose
+          basedir .
+          EOF
+          
+          echo "SUITE=$SUITE" >> $GITHUB_ENV
+      
+      - name: Add package to repository
+        working-directory: gh-pages/apt
+        run: |
+          echo "Adding package to ${{ env.SUITE }} suite..."
+          reprepro includedeb ${{ env.SUITE }} ../../packages/*.deb
+      
+      - name: Export GPG public key
+        run: |
+          gpg --armor --export ${{ env.GPG_KEY_ID }} > gh-pages/apt/pubkey.gpg
+      
+      - name: Copy setup script
+        run: |
+          cp linux/scripts/build/apt-setup.sh gh-pages/apt/apt-setup.sh
+          chmod +x gh-pages/apt/apt-setup.sh
+      
+      - name: Create index.html for apt directory
+        run: |
+          cat > gh-pages/apt/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head><title>OpenPath System APT Repository</title></head>
+          <body>
+          <h1>OpenPath System APT Repository</h1>
+          <h2>Quick Install</h2>
+          <pre>curl -fsSL https://balejosg.github.io/openpath/apt/apt-setup.sh | sudo bash
+          sudo apt install openpath-dnsmasq</pre>
+          <h2>Files</h2>
+          <ul>
+            <li><a href="apt-setup.sh">apt-setup.sh</a> - Setup script</li>
+            <li><a href="pubkey.gpg">pubkey.gpg</a> - GPG public key</li>
+            <li><a href="dists/">dists/</a> - Distribution metadata</li>
+            <li><a href="pool/">pool/</a> - Package pool</li>
+          </ul>
+          </body>
+          </html>
+          EOF
+      
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./gh-pages
+      
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  release:
+    name: Upload to GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: debian-package
+          path: packages/
+      
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.build.outputs.version }}
+          files: packages/*.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

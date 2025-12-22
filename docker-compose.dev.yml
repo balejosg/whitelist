@@ -1,0 +1,63 @@
+version: '3.8'
+
+# Development Docker Compose for OpenPath System
+# Usage: docker-compose -f docker-compose.dev.yml up
+
+services:
+  # Request API Server
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: openpath-api-dev
+    volumes:
+      - ./api:/app
+      - /app/node_modules # Don't override node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - HOST=0.0.0.0
+      - DEBUG=1
+      # Set these in .env file
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-dev-admin-token}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - GITHUB_OWNER=${GITHUB_OWNER:-}
+      - GITHUB_REPO=${GITHUB_REPO:-}
+      - CORS_ORIGINS=*
+    restart: unless-stopped
+    command: npm run dev
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:3000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Web Management Interface
+  web:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: dashboard-dev
+    volumes:
+      - ./dashboard:/app
+      - /app/node_modules
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=development
+      - PORT=8080
+    depends_on:
+      - api
+    restart: unless-stopped
+    command: npm run dev
+
+# Persist data between restarts
+volumes:
+  api-data:
+    driver: local
+
+networks:
+  default:
+    name: openpath-dev-network

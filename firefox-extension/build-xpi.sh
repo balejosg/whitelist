@@ -1,4 +1,21 @@
 #!/bin/bash
+
+# OpenPath - Strict Internet Access Control
+# Copyright (C) 2025 OpenPath Authors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 ################################################################################
 # build-xpi.sh - Empaqueta la extensión como archivo XPI
 # Parte del sistema Monitor de Bloqueos de Red
@@ -33,6 +50,7 @@ echo "  → Copiando archivos..."
 cp "$SCRIPT_DIR/manifest.json" "$BUILD_DIR/"
 cp "$SCRIPT_DIR/background.js" "$BUILD_DIR/"
 cp "$SCRIPT_DIR/config.js" "$BUILD_DIR/"
+cp "$SCRIPT_DIR/PRIVACY.md" "$BUILD_DIR/"
 cp -r "$SCRIPT_DIR/popup" "$BUILD_DIR/"
 cp -r "$SCRIPT_DIR/icons" "$BUILD_DIR/"
 

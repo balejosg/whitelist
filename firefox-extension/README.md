@@ -34,18 +34,31 @@ Para instalar el XPI:
 
 > **Nota**: La extensión no está firmada. Solo funciona en Firefox Developer Edition/Nightly con `xpinstall.signatures.required = false` en `about:config`.
 
+### Publicar en Firefox Add-ons (AMO)
+
+Para publicar la extensión en [addons.mozilla.org](https://addons.mozilla.org):
+
+1. Crea una cuenta de desarrollador en AMO
+2. Genera el XPI: `./build-xpi.sh`
+3. Valida el XPI en https://addons.mozilla.org/developers/addon/validate
+4. Sube la extensión en https://addons.mozilla.org/developers/addon/submit/
+5. Usa las descripciones incluidas en [AMO.md](./AMO.md)
+6. Enlaza la política de privacidad: [PRIVACY.md](./PRIVACY.md)
+
+> **Tiempo de revisión**: Las extensiones nuevas suelen tardar 1-7 días en ser aprobadas.
+
 ## Uso
 
 1. **Navega** a cualquier sitio web
 2. **Observa** el badge rojo en el icono si hay dominios bloqueados
 3. **Haz clic** en el icono para ver la lista de dominios
-4. **Copia la lista** para usarla con `whitelist-cmd.sh`:
+4. **Copia la lista** para usarla con `openpath-cmd.sh`:
 
 ```bash
 # Después de copiar la lista desde la extensión
 # Pega los dominios en un archivo o úsalos directamente:
 cat << 'EOF' | while read domain; do
-  sudo whitelist check "$domain"
+  sudo openpath check "$domain"
 done
 cdn.ejemplo.com
 api.terceros.com
@@ -95,8 +108,8 @@ firefox-extension/
 │   ├── icon-48.png    # Icono 48x48
 │   └── icon-96.png    # Icono 96x96
 ├── native/            # Native Messaging
-│   ├── whitelist-native-host.py    # Host script
-│   ├── whitelist_native_host.json  # Manifest
+│   ├── openpath-native-host.py    # Host script
+│   ├── openpath_native_host.json  # Manifest
 │   └── install-native-host.sh      # Instalador
 ├── build-xpi.sh       # Script de empaquetado
 └── README.md          # Este archivo

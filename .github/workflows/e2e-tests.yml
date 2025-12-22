@@ -4,11 +4,11 @@ on:
   push:
     branches: [main, master]
     paths:
-      - 'install.sh'
-      - 'uninstall.sh'
-      - 'lib/**'
-      - 'scripts/**'
-      - 'whitelist-windows/**'
+      - 'linux/install.sh'
+      - 'linux/uninstall.sh'
+      - 'linux/lib/**'
+      - 'linux/scripts/**'
+      - 'windows/**'
       - 'tests/e2e/**'
       - '.github/workflows/e2e-tests.yml'
   pull_request:
@@ -17,111 +17,81 @@ on:
 
 jobs:
   # ============================================
-  # Linux E2E Tests
+  # Linux E2E Tests (Docker-based for full DNS control)
   # ============================================
   linux-e2e:
     name: Linux E2E Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Install system dependencies
+      - name: Build Docker image
         run: |
-          sudo apt-get update
-          sudo apt-get install -y dnsmasq iptables ipset dnsutils curl shellcheck
+          echo "🐳 Building systemd-enabled E2E test Docker image..."
+          docker build -t openpath-e2e:latest -f tests/e2e/Dockerfile .
       
-      - name: Make scripts executable
+      - name: Run E2E tests in systemd container
         run: |
-          chmod +x install.sh uninstall.sh
-          chmod +x scripts/*.sh
-          chmod +x tests/e2e/linux-e2e-tests.sh
-      
-      - name: Run installation
-        run: |
-          echo "🚀 Running install.sh..."
-          sudo ./install.sh --url "https://raw.githubusercontent.com/LasEncinasIT/Whitelist-por-aula/main/Informatica%203.txt"
-      
-      - name: Verify installation
-        run: |
-          echo "🔍 Checking dnsmasq status..."
-          sudo systemctl status dnsmasq --no-pager || true
+          echo "🧪 Starting systemd container..."
+          
+          # Start container with systemd
+          docker run -d --name e2e-test \
+            --privileged \
+            --cgroupns=host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
+            --dns 8.8.8.8 \
+            -e CI=true \
+            openpath-e2e:latest
+          
+          echo "⏳ Waiting for systemd to boot and tests to complete..."
+          sleep 15
+          
+          # Wait for e2e-tests.service to complete (max 8 minutes)
+          for i in {1..96}; do
+            status=$(docker exec e2e-test systemctl is-active e2e-tests.service 2>/dev/null || echo "unknown")
+            if [ "$status" = "inactive" ] || [ "$status" = "failed" ]; then
+              echo "  Service completed with status: $status"
+              break
+            fi
+            if [ "$((i % 12))" = "0" ]; then
+              echo "  [$i/96] Tests still running (${i}*5s = $((i*5))s elapsed)..."
+            fi
+            sleep 5
+          done
           
           echo ""
-          echo "🔍 Checking port 53..."
-          sudo ss -tulpn | grep ":53" || true
+          echo "📋 Test output:"
+          docker exec e2e-test journalctl -u e2e-tests.service --no-pager -n 100 || true
           
           echo ""
-          echo "🔍 Checking config files..."
-          ls -la /etc/dnsmasq.d/*.conf 2>/dev/null || true
-          ls -la /var/lib/url-whitelist/ 2>/dev/null || true
-      
-      - name: Run smoke tests
-        run: |
-          echo "🧪 Running smoke tests..."
-          sudo scripts/smoke-test.sh
-      
-      - name: Run E2E tests
-        run: |
-          echo "🧪 Running comprehensive E2E tests..."
-          sudo tests/e2e/linux-e2e-tests.sh
-      
-      - name: Test whitelist command
-        run: |
-          echo "🧪 Testing whitelist command..."
+          echo "🔍 Checking service result..."
           
-          # Check command exists
-          which whitelist || echo "whitelist command not in PATH"
+          # Get the actual result - "success" means tests passed
+          result=$(docker exec e2e-test systemctl show e2e-tests.service --property=Result --value 2>/dev/null || echo "failed")
+          echo "Service Result: $result"
           
-          # Test status command
-          sudo whitelist status || true
+          # Cleanup (force, ignore errors)
+          docker stop e2e-test 2>/dev/null || true
+          docker rm -f e2e-test 2>/dev/null || true
           
-          # Test check command
-          sudo whitelist check google.com || true
-          sudo whitelist check blocked-domain-test.com || true
-      
-      - name: Verify DNS resolution
-        run: |
-          echo "🔍 Testing DNS resolution..."
-          
-          # Test whitelisted domain
-          echo "Testing google.com (should resolve):"
-          dig @127.0.0.1 google.com +short || echo "FAILED"
-          
-          # Test blocked domain
-          echo ""
-          echo "Testing blocked-test-domain.com (should return empty/NXDOMAIN):"
-          result=$(dig @127.0.0.1 blocked-test-domain.com +short 2>/dev/null)
-          if [ -z "$result" ]; then
-            echo "✓ Correctly blocked (no response)"
+          if [ "$result" = "success" ]; then
+            echo "✅ E2E tests passed"
+            exit 0
           else
-            echo "⚠ Got response: $result"
+            echo "❌ E2E tests failed (result: $result)"
+            exit 1
           fi
       
-      - name: Run uninstall
+      - name: Debug on failure
+        if: failure()
         run: |
-          echo "🧹 Running uninstall..."
-          sudo ./uninstall.sh --force || true
-      
-      - name: Verify cleanup
-        run: |
-          echo "🔍 Verifying cleanup..."
-          
-          # Check dnsmasq stopped
-          if ! systemctl is-active --quiet dnsmasq 2>/dev/null; then
-            echo "✓ dnsmasq service stopped"
-          else
-            echo "⚠ dnsmasq still running"
-          fi
-          
-          # Check config removed
-          if [ ! -f /etc/dnsmasq.d/url-whitelist.conf ]; then
-            echo "✓ Config files removed"
-          else
-            echo "⚠ Config files still exist"
-          fi
+          echo "📋 Debug information..."
+          docker logs e2e-test 2>/dev/null || echo "Container logs not available"
+          docker rm -f e2e-test 2>/dev/null || true
+
 
   # ============================================
   # Windows E2E Tests
@@ -130,7 +100,7 @@ jobs:
     name: Windows E2E Tests
     runs-on: windows-latest
     timeout-minutes: 20
-    continue-on-error: true  # Windows E2E may have limitations
+    # Note: Windows failures now visible but don't block Linux-only users
     
     steps:
       - name: Checkout code
@@ -146,13 +116,13 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "📁 Creating directory structure..."
-          New-Item -ItemType Directory -Path "C:\Whitelist\lib" -Force | Out-Null
-          New-Item -ItemType Directory -Path "C:\Whitelist\scripts" -Force | Out-Null
-          New-Item -ItemType Directory -Path "C:\Whitelist\data\logs" -Force | Out-Null
+          New-Item -ItemType Directory -Path "C:\OpenPath\lib" -Force | Out-Null
+          New-Item -ItemType Directory -Path "C:\OpenPath\scripts" -Force | Out-Null
+          New-Item -ItemType Directory -Path "C:\OpenPath\data\logs" -Force | Out-Null
           
           Write-Host "📋 Copying modules..."
-          Copy-Item "whitelist-windows\lib\*.psm1" "C:\Whitelist\lib\" -Force
-          Copy-Item "whitelist-windows\scripts\*.ps1" "C:\Whitelist\scripts\" -Force
+          Copy-Item "windows\lib\*.psm1" "C:\OpenPath\lib\" -Force
+          Copy-Item "windows\scripts\*.ps1" "C:\OpenPath\scripts\" -Force
       
       - name: Create test configuration
         shell: pwsh
@@ -167,16 +137,16 @@ jobs:
               enableBrowserPolicies = $false
               installedAt = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
           }
-          $config | ConvertTo-Json -Depth 10 | Set-Content "C:\Whitelist\data\config.json" -Encoding UTF8
+          $config | ConvertTo-Json -Depth 10 | Set-Content "C:\OpenPath\data\config.json" -Encoding UTF8
           Write-Host "✓ Test configuration created"
       
       - name: Import and test modules
         shell: pwsh
         run: |
           Write-Host "📦 Importing modules..."
-          Import-Module "C:\Whitelist\lib\Common.psm1" -Force
-          Import-Module "C:\Whitelist\lib\DNS.psm1" -Force
-          Import-Module "C:\Whitelist\lib\Firewall.psm1" -Force
+          Import-Module "C:\OpenPath\lib\Common.psm1" -Force
+          Import-Module "C:\OpenPath\lib\DNS.psm1" -Force
+          Import-Module "C:\OpenPath\lib\Firewall.psm1" -Force
           
           Write-Host ""
           Write-Host "🔍 Testing module functions..."
@@ -204,7 +174,7 @@ jobs:
       - name: Test Firewall module
         shell: pwsh
         run: |
-          Import-Module "C:\Whitelist\lib\Firewall.psm1" -Force
+          Import-Module "C:\OpenPath\lib\Firewall.psm1" -Force
           
           Write-Host "🔍 Testing firewall functions..."
           
@@ -216,17 +186,17 @@ jobs:
           Write-Host ""
           Write-Host "Creating test firewall rule..."
           try {
-              New-NetFirewallRule -DisplayName "Whitelist-Test-Rule" -Direction Outbound -Action Block -Protocol UDP -RemotePort 12345 -ErrorAction Stop | Out-Null
+              New-NetFirewallRule -DisplayName "OpenPath-Test-Rule" -Direction Outbound -Action Block -Protocol UDP -RemotePort 12345 -ErrorAction Stop | Out-Null
               Write-Host "✓ Test rule created"
               
               # Verify rule exists
-              $rule = Get-NetFirewallRule -DisplayName "Whitelist-Test-Rule" -ErrorAction SilentlyContinue
+              $rule = Get-NetFirewallRule -DisplayName "OpenPath-Test-Rule" -ErrorAction SilentlyContinue
               if ($rule) {
                   Write-Host "✓ Test rule verified"
               }
               
               # Clean up
-              Remove-NetFirewallRule -DisplayName "Whitelist-Test-Rule" -ErrorAction SilentlyContinue
+              Remove-NetFirewallRule -DisplayName "OpenPath-Test-Rule" -ErrorAction SilentlyContinue
               Write-Host "✓ Test rule removed"
           }
           catch {
@@ -262,17 +232,17 @@ jobs:
               $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-Command 'echo test'"
               $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddHours(1)
               
-              Register-ScheduledTask -TaskName "Whitelist-E2E-Test" -Action $action -Trigger $trigger -Force | Out-Null
+              Register-ScheduledTask -TaskName "OpenPath-E2E-Test" -Action $action -Trigger $trigger -Force | Out-Null
               Write-Host "✓ Test task created"
               
               # Verify
-              $task = Get-ScheduledTask -TaskName "Whitelist-E2E-Test" -ErrorAction SilentlyContinue
+              $task = Get-ScheduledTask -TaskName "OpenPath-E2E-Test" -ErrorAction SilentlyContinue
               if ($task) {
                   Write-Host "✓ Test task verified"
               }
               
               # Cleanup
-              Unregister-ScheduledTask -TaskName "Whitelist-E2E-Test" -Confirm:$false
+              Unregister-ScheduledTask -TaskName "OpenPath-E2E-Test" -Confirm:$false
               Write-Host "✓ Test task removed"
           }
           catch {
@@ -286,17 +256,17 @@ jobs:
           Write-Host "🧹 Cleaning up..."
           
           # Remove test directories
-          if (Test-Path "C:\Whitelist") {
-              Remove-Item "C:\Whitelist" -Recurse -Force -ErrorAction SilentlyContinue
+          if (Test-Path "C:\OpenPath") {
+              Remove-Item "C:\OpenPath" -Recurse -Force -ErrorAction SilentlyContinue
               Write-Host "✓ Test directories removed"
           }
           
           # Remove any test firewall rules
-          Get-NetFirewallRule -DisplayName "Whitelist-*" -ErrorAction SilentlyContinue | 
+          Get-NetFirewallRule -DisplayName "OpenPath-*" -ErrorAction SilentlyContinue | 
               Remove-NetFirewallRule -ErrorAction SilentlyContinue
           
           # Remove any test scheduled tasks
-          Get-ScheduledTask -TaskName "Whitelist-*" -ErrorAction SilentlyContinue | 
+          Get-ScheduledTask -TaskName "OpenPath-*" -ErrorAction SilentlyContinue | 
               Unregister-ScheduledTask -Confirm:$false -ErrorAction SilentlyContinue
 
   # ============================================

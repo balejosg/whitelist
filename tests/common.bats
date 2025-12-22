@@ -14,10 +14,10 @@ setup() {
     mkdir -p "$INSTALL_DIR/lib"
     
     # Copy libs
-    cp "$PROJECT_DIR/lib/"*.sh "$INSTALL_DIR/lib/" 2>/dev/null || true
+    cp "$PROJECT_DIR/linux/lib/"*.sh "$INSTALL_DIR/lib/" 2>/dev/null || true
     
     # Load the library to test
-    source "$PROJECT_DIR/lib/common.sh"
+    source "$PROJECT_DIR/linux/lib/common.sh"
 }
 
 teardown() {
@@ -118,7 +118,7 @@ teardown() {
 @test "parse_whitelist_sections llena arrays correctamente" {
     local wl_file=$(create_test_whitelist)
     
-    source "$PROJECT_DIR/lib/common.sh"
+    source "$PROJECT_DIR/linux/lib/common.sh"
     # Override log to avoid permission issues
     log() { echo "$1"; }
     
@@ -133,7 +133,7 @@ teardown() {
 @test "parse_whitelist_sections extrae subdominios bloqueados" {
     local wl_file=$(create_test_whitelist)
     
-    source "$PROJECT_DIR/lib/common.sh"
+    source "$PROJECT_DIR/linux/lib/common.sh"
     log() { echo "$1"; }
     
     parse_whitelist_sections "$wl_file"
@@ -145,7 +145,7 @@ teardown() {
 @test "parse_whitelist_sections extrae paths bloqueados" {
     local wl_file=$(create_test_whitelist)
     
-    source "$PROJECT_DIR/lib/common.sh"
+    source "$PROJECT_DIR/linux/lib/common.sh"
     log() { echo "$1"; }
     
     parse_whitelist_sections "$wl_file"
@@ -155,7 +155,7 @@ teardown() {
 }
 
 @test "parse_whitelist_sections maneja archivo inexistente" {
-    source "$PROJECT_DIR/lib/common.sh"
+    source "$PROJECT_DIR/linux/lib/common.sh"
     
     run parse_whitelist_sections "/nonexistent/file.txt"
     [ "$status" -eq 1 ]
@@ -164,28 +164,28 @@ teardown() {
 # ============== Tests de validate_ip ==============
 
 @test "validate_ip acepta IP válida" {
-    source "$PROJECT_DIR/lib/common.sh"
+    source "$PROJECT_DIR/linux/lib/common.sh"
     
     run validate_ip "192.168.1.1"
     [ "$status" -eq 0 ]
 }
 
 @test "validate_ip acepta DNS Google" {
-    source "$PROJECT_DIR/lib/common.sh"
+    source "$PROJECT_DIR/linux/lib/common.sh"
     
     run validate_ip "8.8.8.8"
     [ "$status" -eq 0 ]
 }
 
 @test "validate_ip rechaza texto" {
-    source "$PROJECT_DIR/lib/common.sh"
+    source "$PROJECT_DIR/linux/lib/common.sh"
     
     run validate_ip "not-an-ip"
     [ "$status" -eq 1 ]
 }
 
 @test "validate_ip rechaza IPv6" {
-    source "$PROJECT_DIR/lib/common.sh"
+    source "$PROJECT_DIR/linux/lib/common.sh"
     
     run validate_ip "::1"
     [ "$status" -eq 1 ]
@@ -194,23 +194,25 @@ teardown() {
 # ============== Tests de init_directories ==============
 
 @test "init_directories crea CONFIG_DIR" {
-    source "$PROJECT_DIR/lib/common.sh"
-    # Override paths after sourcing
-    CONFIG_DIR="$TEST_TMP_DIR/newconfig"
-    LOG_FILE="$TEST_TMP_DIR/log/test.log"
+    source "$PROJECT_DIR/linux/lib/common.sh"
+    # Override paths after sourcing - use actual variables the function uses
+    ETC_CONFIG_DIR="$TEST_TMP_DIR/etc_config"
+    VAR_STATE_DIR="$TEST_TMP_DIR/var_state"
+    LOG_FILE="$TEST_TMP_DIR/logs/test.log"
     INSTALL_DIR="$TEST_TMP_DIR/install"
     
     init_directories
     
-    [ -d "$CONFIG_DIR" ]
+    [ -d "$ETC_CONFIG_DIR" ]
 }
 
 @test "init_directories crea directorio de log" {
-    source "$PROJECT_DIR/lib/common.sh"
-    # Override paths after sourcing
-    CONFIG_DIR="$TEST_TMP_DIR/config2"
-    LOG_FILE="$TEST_TMP_DIR/logs/url-whitelist.log"
-    INSTALL_DIR="$TEST_TMP_DIR/install"
+    source "$PROJECT_DIR/linux/lib/common.sh"
+    # Override paths after sourcing - use actual variables the function uses
+    ETC_CONFIG_DIR="$TEST_TMP_DIR/etc_config2"
+    VAR_STATE_DIR="$TEST_TMP_DIR/var_state2"
+    LOG_FILE="$TEST_TMP_DIR/logs/openpath.log"
+    INSTALL_DIR="$TEST_TMP_DIR/install2"
     
     init_directories
     

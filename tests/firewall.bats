@@ -16,10 +16,10 @@ setup() {
     mkdir -p "$TEST_TMP_DIR/iptables"
     
     # Copy libs
-    cp "$PROJECT_DIR/lib/"*.sh "$INSTALL_DIR/lib/" 2>/dev/null || true
+    cp "$PROJECT_DIR/linux/lib/"*.sh "$INSTALL_DIR/lib/" 2>/dev/null || true
     
     # Source the library (with mocked dependencies)
-    source "$PROJECT_DIR/lib/common.sh"
+    source "$PROJECT_DIR/linux/lib/common.sh"
     
     # Mock log function
     log() { echo "$1"; }
@@ -82,7 +82,7 @@ teardown() {
     }
     export -f iptables
     
-    source "$PROJECT_DIR/lib/firewall.sh"
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
     
     run check_firewall_status
     [ "$output" = "inactive" ]
@@ -101,7 +101,7 @@ EOF
     }
     export -f iptables
     
-    source "$PROJECT_DIR/lib/firewall.sh"
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
     
     run check_firewall_status
     [ "$output" = "active" ]
@@ -125,7 +125,7 @@ EOF
     }
     export -f pkill
     
-    source "$PROJECT_DIR/lib/firewall.sh"
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
     
     run flush_dns_cache
     [ "$status" -eq 0 ]
@@ -139,7 +139,7 @@ EOF
     }
     export -f systemctl
     
-    source "$PROJECT_DIR/lib/firewall.sh"
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
     
     run flush_dns_cache
     [ "$status" -eq 0 ]
@@ -190,7 +190,7 @@ EOF
     }
     export -f command
     
-    source "$PROJECT_DIR/lib/firewall.sh"
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
     
     run flush_connections
     [ "$status" -eq 0 ]
@@ -206,7 +206,7 @@ EOF
     }
     export -f command
     
-    source "$PROJECT_DIR/lib/firewall.sh"
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
     
     run flush_connections
     [ "$status" -eq 0 ]

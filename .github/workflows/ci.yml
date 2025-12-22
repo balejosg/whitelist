@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main, master]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # ============================================
   # Job 1: Lint All Code
@@ -31,13 +35,7 @@ jobs:
         uses: DavidAnson/markdownlint-cli2-action@v16
         with:
           globs: '**/*.md'
-          config: |
-            {
-              "default": true,
-              "MD013": false,
-              "MD033": false,
-              "MD041": false
-            }
+          config: '.markdownlint.json'
 
   # ============================================
   # Job 2: Test Web Application
@@ -48,7 +46,7 @@ jobs:
     
     defaults:
       run:
-        working-directory: whitelist-web
+        working-directory: dashboard
     
     steps:
       - name: Checkout code
@@ -57,12 +55,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
-          cache-dependency-path: whitelist-web/package-lock.json
+          cache-dependency-path: dashboard/package-lock.json
       
       - name: Install dependencies
         run: npm ci || npm install
+      
+      - name: Run linting
+        run: npm run lint
       
       - name: Run tests
         run: npm test
@@ -70,9 +71,9 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
-          files: whitelist-web/coverage/lcov.info
-          flags: whitelist-web
-          name: whitelist-web-coverage
+          files: dashboard/coverage/lcov.info
+          flags: dashboard
+          name: dashboard-coverage
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
       
@@ -81,7 +82,7 @@ jobs:
         if: always()
         with:
           name: coverage-report
-          path: whitelist-web/coverage/
+          path: dashboard/coverage/
           retention-days: 7
 
   # ============================================
@@ -114,7 +115,7 @@ jobs:
     
     defaults:
       run:
-        working-directory: whitelist-request-api
+        working-directory: api
     
     steps:
       - name: Checkout code
@@ -125,15 +126,21 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: whitelist-request-api/package-lock.json
+          cache-dependency-path: api/package-lock.json
       
       - name: Install dependencies
         run: npm ci || npm install
+      
+      - name: Run linting
+        run: npm run lint
       
       - name: Run tests
         run: npm test
         env:
           NODE_ENV: test
+          ADMIN_TOKEN: test-admin-token-for-ci
+          SHARED_SECRET: test-shared-secret-for-ci
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ============================================
   # Job 5: Build Docker Image
@@ -142,6 +149,9 @@ jobs:
     name: Build Docker
     runs-on: ubuntu-latest
     needs: [lint, test-web]
+    permissions:
+      contents: read
+      packages: write
     
     steps:
       - name: Checkout code
@@ -165,19 +175,19 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}/whitelist-web
+          images: ghcr.io/${{ github.repository }}/dashboard
           tags: |
             type=ref,event=branch
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix={{branch}}-
+            type=sha,prefix=sha-
             type=raw,value=latest,enable={{is_default_branch}}
       
-      - name: Build and push whitelist-web image
+      - name: Build and push dashboard image
         uses: docker/build-push-action@v5
         with:
-          context: ./whitelist-web
+          context: ./dashboard
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
@@ -190,11 +200,63 @@ jobs:
         run: |
           echo "## 🐳 Docker Image Published" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Repository:** ghcr.io/${{ github.repository }}/whitelist-web" >> $GITHUB_STEP_SUMMARY
+          echo "**Repository:** ghcr.io/${{ github.repository }}/dashboard" >> $GITHUB_STEP_SUMMARY
           echo "**Tags:**" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+
+  # ============================================
+  # Job 6: Build Docker Image for API
+  # ============================================
+  build-docker-api:
+    name: Build Docker API
+    runs-on: ubuntu-latest
+    needs: [lint, test-api]
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Login to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/api
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+      
+      - name: Build and push api image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./api
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   # ============================================
   # Summary Job
@@ -202,7 +264,7 @@ jobs:
   ci-success:
     name: CI Success
     runs-on: ubuntu-latest
-    needs: [lint, test-web, test-bash, test-api, build-docker]
+    needs: [lint, test-web, test-bash, test-api, build-docker, build-docker-api]
     if: always()
     
     steps:
@@ -212,7 +274,8 @@ jobs:
              [[ "${{ needs.test-web.result }}" == "failure" ]] || \
              [[ "${{ needs.test-bash.result }}" == "failure" ]] || \
              [[ "${{ needs.test-api.result }}" == "failure" ]] || \
-             [[ "${{ needs.build-docker.result }}" == "failure" ]]; then
+             [[ "${{ needs.build-docker.result }}" == "failure" ]] || \
+             [[ "${{ needs.build-docker-api.result }}" == "failure" ]]; then
             echo "❌ CI Failed"
             exit 1
           fi
