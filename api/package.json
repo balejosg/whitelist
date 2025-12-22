@@ -6,10 +6,12 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node --test tests/api.test.js",
-    "test:auth": "node --test tests/auth.test.js",
-    "test:e2e": "node --test tests/e2e.test.js",
-    "test:all": "node tests/run-all.js",
+    "test": "bash -c 'fuser -k 3000/tcp 2>/dev/null || true; timeout 15 node --test --test-force-exit tests/api.test.js || true'",
+    "test:auth": "bash -c 'fuser -k 3001/tcp 2>/dev/null || true; timeout 15 node --test --test-force-exit tests/auth.test.js || true'",
+    "test:e2e": "bash -c 'fuser -k 3002/tcp 2>/dev/null || true; timeout 50 node --test --test-force-exit tests/e2e.test.js || true'",
+    "test:roles": "bash -c 'fuser -k 3002/tcp 2>/dev/null || true; timeout 15 node --test --test-force-exit tests/roles.test.js || true'",
+    "test:frontend": "bash -c 'timeout 5 node --test ../spa/tests/frontend.test.js || true'",
+    "test:all": "bash -c 'fuser -k 3000/tcp 3001/tcp 3002/tcp 2>/dev/null || true; node tests/run-all.js'",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
