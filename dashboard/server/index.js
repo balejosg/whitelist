@@ -1,3 +1,21 @@
+/**
+ * OpenPath - Strict Internet Access Control
+ * Copyright (C) 2025 OpenPath Authors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 const express = require('express');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
@@ -200,7 +218,7 @@ app.use((err, req, res, next) => {
 // Iniciar servidor solo si no estamos en modo test
 if (require.main === module) {
     app.listen(PORT, () => {
-        console.log(`🛡️  Whitelist Manager corriendo en http://localhost:${PORT}`);
+        console.log(`🛡️  OpenPath corriendo en http://localhost:${PORT}`);
         console.log(`📁  Exportaciones en: ${db.EXPORT_DIR}`);
 
         // Exportar todos los grupos al iniciar

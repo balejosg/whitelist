@@ -1,4 +1,4 @@
-# Whitelist Browser Policies Module for Windows
+# OpenPath Browser Policies Module for Windows
 # Manages Firefox and Chrome/Edge policies
 
 # Import common functions
@@ -16,7 +16,7 @@ function Set-FirefoxPolicies {
         [string[]]$BlockedPaths = @()
     )
     
-    Write-WhitelistLog "Configuring Firefox policies..."
+    Write-OpenPathLog "Configuring Firefox policies..."
     
     # Firefox policy locations
     $firefoxPaths = @(
@@ -93,12 +93,12 @@ function Set-FirefoxPolicies {
         $policiesPath = "$firefoxPath\policies.json"
         $policies | ConvertTo-Json -Depth 10 | Set-Content $policiesPath -Encoding UTF8
         
-        Write-WhitelistLog "Firefox policies written to: $policiesPath"
+        Write-OpenPathLog "Firefox policies written to: $policiesPath"
         $policiesSet = $true
     }
     
     if (-not $policiesSet) {
-        Write-WhitelistLog "Firefox not found, skipping policies" -Level WARN
+        Write-OpenPathLog "Firefox not found, skipping policies" -Level WARN
     }
     
     return $policiesSet
@@ -115,7 +115,7 @@ function Set-ChromePolicies {
         [string[]]$BlockedPaths = @()
     )
     
-    Write-WhitelistLog "Configuring Chrome/Edge policies..."
+    Write-OpenPathLog "Configuring Chrome/Edge policies..."
     
     # Policy registry paths
     $regPaths = @(
@@ -153,10 +153,10 @@ function Set-ChromePolicies {
             Set-ItemProperty -Path $regPath -Name "DefaultSearchProviderName" -Value "DuckDuckGo"
             Set-ItemProperty -Path $regPath -Name "DefaultSearchProviderSearchURL" -Value "https://duckduckgo.com/?q={searchTerms}"
             
-            Write-WhitelistLog "Policies written to: $regPath"
+            Write-OpenPathLog "Policies written to: $regPath"
         }
         catch {
-            Write-WhitelistLog "Failed to set policies for $regPath : $_" -Level WARN
+            Write-OpenPathLog "Failed to set policies for $regPath : $_" -Level WARN
         }
     }
     
@@ -168,7 +168,7 @@ function Remove-BrowserPolicies {
     .SYNOPSIS
         Removes all whitelist browser policies
     #>
-    Write-WhitelistLog "Removing browser policies..."
+    Write-OpenPathLog "Removing browser policies..."
     
     # Firefox
     $firefoxPaths = @(
@@ -194,7 +194,7 @@ function Remove-BrowserPolicies {
         }
     }
     
-    Write-WhitelistLog "Browser policies removed"
+    Write-OpenPathLog "Browser policies removed"
 }
 
 function Set-AllBrowserPolicies {

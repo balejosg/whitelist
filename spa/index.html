@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Whitelist Manager - GitHub Pages</title>
-    <meta name="description" content="Panel de administración para gestión de whitelist DNS via GitHub">
+    <title>OpenPath</title>
+    <meta name="description" content="Panel de administración para gestión de DNS allowlist via GitHub">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
         <div class="login-container">
             <div class="login-header">
                 <div class="logo">🛡️</div>
-                <h1>Whitelist Manager</h1>
+                <h1>OpenPath</h1>
                 <p>Gestión de reglas DNS por aula</p>
             </div>
             <div class="login-form">
@@ -29,9 +29,28 @@
                     </svg>
                     Iniciar sesión con GitHub
                 </button>
+
+                <div class="login-separator">
+                    <span>o con tu cuenta del colegio</span>
+                </div>
+
+                <form id="email-login-form">
+                    <div class="form-group">
+                        <label for="login-email">Email</label>
+                        <input type="email" id="login-email" required placeholder="profesor@colegio.es">
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Contraseña</label>
+                        <input type="password" id="login-password" required placeholder="••••••••">
+                    </div>
+                    <button type="submit" id="email-login-btn" class="btn btn-primary btn-block">
+                        Acceder al Panel
+                    </button>
+                </form>
+
                 <div id="login-error" class="error-message"></div>
                 <p class="login-info">
-                    Los permisos de edición dependen de tu acceso al repositorio.
+                    Usa GitHub si eres administrador para gestionar el repositorio.
                 </p>
             </div>
         </div>
@@ -52,7 +71,7 @@
                 </div>
                 <div class="form-group">
                     <label for="config-repo">Repositorio</label>
-                    <input type="text" id="config-repo" name="repo" required placeholder="whitelist" value="whitelist">
+                    <input type="text" id="config-repo" name="repo" required placeholder="openpath" value="openpath">
                 </div>
                 <div class="form-group">
                     <label for="config-branch">Rama</label>
@@ -73,19 +92,29 @@
         <header class="header">
             <div class="header-left">
                 <span class="logo-small">🛡️</span>
-                <h1>Whitelist Manager</h1>
+                <h1>OpenPath</h1>
             </div>
             <div class="header-right">
+                <button id="admin-users-btn" class="btn btn-ghost admin-only hidden">👥 Gestión Usuarios</button>
                 <button id="system-toggle-btn" class="btn btn-danger system-toggle" title="Desactivar sistema">
                     <span class="toggle-icon">⚡</span>
                     <span class="toggle-text">Sistema Activo</span>
                 </button>
-                <span id="current-user" class="user-badge">Usuario</span>
-                <button id="logout-btn" class="btn btn-ghost">Cerrar sesión</button>
+                <span id="current-user" class="user-badge"></span>
+                <button id="logout-btn" class="btn btn-ghost btn-icon" title="Cerrar sesión">🚪</button>
             </div>
         </header>
 
         <main class="main-content">
+            <!-- Teacher Welcome Banner (Conditional) -->
+            <section id="teacher-banner" class="teacher-banner hidden">
+                <span class="icon">👨‍🏫</span>
+                <div class="info">
+                    <strong>¡Hola, <span id="teacher-name"></span>!</strong>
+                    <span>Gestionando solicitudes para: <em id="teacher-assigned-groups"></em></span>
+                </div>
+            </section>
+
             <!-- System Status Banner -->
             <section id="system-status-banner" class="system-status-banner hidden">
                 <div class="status-content">
@@ -142,7 +171,7 @@
                 <div id="requests-config" class="requests-config hidden">
                     <div class="form-group inline">
                         <label for="requests-api-url">URL del servidor:</label>
-                        <input type="text" id="requests-api-url" placeholder="https://whitelist-requests.duckdns.org">
+                        <input type="text" id="requests-api-url" placeholder="https://openpath-requests.duckdns.org">
                     </div>
                     <div class="form-group inline">
                         <label for="requests-api-token">Token admin:</label>
@@ -165,6 +194,19 @@
                 </div>
                 <div id="groups-list" class="groups-list">
                     <!-- Groups loaded dynamically -->
+                </div>
+            </section>
+
+            <!-- Users Management Section (Admin only) -->
+            <section id="users-section" class="users-section hidden">
+                <div class="section-header">
+                    <h2>👥 Gestión de Usuarios</h2>
+                    <button id="new-user-btn" class="btn btn-primary">
+                        <span>+</span> Nuevo usuario
+                    </button>
+                </div>
+                <div id="users-list" class="users-list">
+                    <p class="empty-message">Cargando usuarios...</p>
                 </div>
             </section>
         </main>
@@ -231,6 +273,18 @@
 
                 <div id="rules-list" class="rules-list">
                     <!-- Rules loaded dynamically -->
+                </div>
+            </section>
+
+            <!-- User Management Section (Admin Only) -->
+            <section id="users-section" class="users-section admin-only hidden">
+                <div class="section-header">
+                    <h2>👥 Gestión de Usuarios</h2>
+                    <button id="add-user-btn" class="btn btn-secondary" onclick="openModal('modal-new-user')">+ Añadir
+                        Usuario</button>
+                </div>
+                <div id="users-list" class="users-list">
+                    <!-- Users loaded dynamically -->
                 </div>
             </section>
         </main>
@@ -300,6 +354,85 @@ wikipedia.org"></textarea>
         </div>
     </div>
 
+    <!-- Modal: New User -->
+    <div id="modal-new-user" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nuevo usuario</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="new-user-form">
+                <div class="form-group">
+                    <label for="new-user-email">Email</label>
+                    <input type="email" id="new-user-email" required placeholder="profesor@colegio.es">
+                </div>
+                <div class="form-group">
+                    <label for="new-user-name">Nombre</label>
+                    <input type="text" id="new-user-name" required placeholder="Pedro García">
+                </div>
+                <div class="form-group">
+                    <label for="new-user-password">Contraseña</label>
+                    <input type="password" id="new-user-password" required minlength="8"
+                        placeholder="Mín. 8 caracteres">
+                </div>
+                <div class="form-group">
+                    <label for="new-user-role">Rol inicial</label>
+                    <select id="new-user-role">
+                        <option value="">Sin rol (pendiente)</option>
+                        <option value="teacher">👨‍🏫 Profesor</option>
+                        <option value="admin">👑 Administrador</option>
+                    </select>
+                </div>
+                <div id="new-user-groups-container" class="form-group hidden">
+                    <label>Grupos asignados</label>
+                    <div id="new-user-groups" class="checkbox-list">
+                        <!-- Groups loaded dynamically -->
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost modal-cancel">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear usuario</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Assign Role -->
+    <div id="modal-assign-role" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Asignar rol</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="assign-role-form">
+                <input type="hidden" id="assign-role-user-id">
+                <div class="form-group">
+                    <label>Usuario</label>
+                    <span id="assign-role-user-name" class="input-display"></span>
+                </div>
+                <div class="form-group">
+                    <label for="assign-role-type">Rol</label>
+                    <select id="assign-role-type" required>
+                        <option value="teacher">👨‍🏫 Profesor</option>
+                        <option value="admin">👑 Administrador</option>
+                        <option value="student">👨‍🎓 Estudiante</option>
+                    </select>
+                </div>
+                <div id="assign-role-groups-container" class="form-group">
+                    <label>Grupos para aprobar solicitudes</label>
+                    <div id="assign-role-groups" class="checkbox-list">
+                        <!-- Groups loaded dynamically -->
+                    </div>
+                    <small>Selecciona los grupos que este profesor podrá gestionar</small>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost modal-cancel">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Asignar rol</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Toast notifications -->
     <div id="toast-container"></div>
 
@@ -307,7 +440,9 @@ wikipedia.org"></textarea>
     <script src="js/config.js"></script>
     <script src="js/oauth.js"></script>
     <script src="js/github-api.js"></script>
-    <script src="js/whitelist-parser.js"></script>
+    <script src="js/openpath-parser.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/users-api.js"></script>
     <script src="js/requests-api.js"></script>
     <script src="js/app.js"></script>
 </body>

@@ -1,5 +1,23 @@
 /**
- * Configuration for Whitelist Firefox Extension
+ * OpenPath - Strict Internet Access Control
+ * Copyright (C) 2025 OpenPath Authors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/**
+ * Configuration for OpenPath Firefox Extension
  * 
  * Settings can be overridden via browser.storage.sync
  * Use the extension options page to configure.
@@ -8,7 +26,7 @@
 const DEFAULT_CONFIG = {
     // Home server URL for domain requests API
     // Change this to your DuckDNS domain when deployed
-    // Example: 'https://whitelist-requests.duckdns.org'
+    // Example: 'https://openpath-requests.duckdns.org'
     REQUEST_API_URL: 'http://localhost:3000',
 
     // Fallback API URLs (tried in order if primary fails)
@@ -36,7 +54,7 @@ const DEFAULT_CONFIG = {
 
     // Auto-inclusion settings
     AUTO_INCLUDE_ENABLED: true,
-    SHARED_SECRET: 'whitelist-secret-2024'  // Change in production
+    SHARED_SECRET: 'openpath-secret-2024'  // Change in production
 };
 
 // Runtime config (merged with stored settings)
@@ -94,15 +112,15 @@ function getAllApiUrls() {
 
 // Make config available globally
 if (typeof window !== 'undefined') {
-    window.WHITELIST_CONFIG = CONFIG;
-    window.loadWhitelistConfig = loadConfig;
-    window.saveWhitelistConfig = saveConfig;
+    window.OPENPATH_CONFIG = CONFIG;
+    window.loadOpenPathConfig = loadConfig;
+    window.saveOpenPathConfig = saveConfig;
 }
 
 if (typeof self !== 'undefined') {
-    self.WHITELIST_CONFIG = CONFIG;
-    self.loadWhitelistConfig = loadConfig;
-    self.saveWhitelistConfig = saveConfig;
+    self.OPENPATH_CONFIG = CONFIG;
+    self.loadOpenPathConfig = loadConfig;
+    self.saveOpenPathConfig = saveConfig;
 }
 
 // Export for modules

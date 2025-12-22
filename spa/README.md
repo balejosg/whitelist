@@ -1,4 +1,4 @@
-# Whitelist Web Static
+# OpenPath Web Static
 
 SPA estática para gestionar reglas de whitelist DNS directamente en GitHub, sin backend.
 
@@ -17,7 +17,7 @@ SPA estática para gestionar reglas de whitelist DNS directamente en GitHub, sin
 
 - Un repositorio GitHub
 - Credenciales (una de las siguientes):  
-  - **OAuth**: Requiere [oauth-worker](../oauth-worker/) desplegado  
+  - **OAuth**: Requiere [auth-worker](../auth-worker/) desplegado  
   - **PAT**: Personal Access Token con permisos `repo`
 - Navegador moderno
 
@@ -25,14 +25,14 @@ SPA estática para gestionar reglas de whitelist DNS directamente en GitHub, sin
 
 ### Opción 1: GitHub Pages (Recomendado)
 
-1. Copia el contenido de `whitelist-web-static/` a tu repositorio
+1. Copia el contenido de `spa/` a tu repositorio
 2. Crea el directorio `grupos/` con al menos un archivo `.txt`
 3. Activa GitHub Pages desde Settings → Pages → Branch: main / docs
 
 ### Opción 2: Servidor local
 
 ```bash
-cd whitelist-web-static
+cd spa
 python -m http.server 8080
 # Abrir http://localhost:8080
 ```
@@ -62,7 +62,7 @@ tu-repo/
 │   ├── informatica-1.txt
 │   ├── informatica-2.txt
 │   └── laboratorio.txt
-└── whitelist-web-static/  (o en rama gh-pages)
+└── spa/  (o en rama gh-pages)
     ├── index.html
     ├── css/style.css
     └── js/*.js
@@ -96,7 +96,7 @@ https://raw.githubusercontent.com/{usuario}/{repo}/main/grupos/{grupo}.txt
 
 Ejemplo:
 ```bash
-whitelist --set-url "https://raw.githubusercontent.com/mi-usuario/whitelist/main/grupos/informatica-1.txt"
+openpath --set-url "https://raw.githubusercontent.com/mi-usuario/openpath/main/grupos/informatica-1.txt"
 ```
 
 ## Seguridad
@@ -106,7 +106,7 @@ whitelist --set-url "https://raw.githubusercontent.com/mi-usuario/whitelist/main
 - Se elimina al limpiar datos del navegador
 - **No compartas tu token**
 
-## Migración desde whitelist-web (Node.js)
+## Migración desde versiones anteriores
 
 1. Exporta los grupos desde la versión anterior
 2. Coloca los archivos `.txt` en el directorio `grupos/`

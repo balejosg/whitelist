@@ -35,7 +35,7 @@ if ! command -v bats &>/dev/null; then
 fi
 
 echo -e "${BLUE}═══════════════════════════════════════════════════${NC}"
-echo -e "${BLUE}  Bats Tests - Whitelist System${NC}"
+echo -e "${BLUE}  Bats Tests - OpenPath System${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════════${NC}"
 echo ""
 

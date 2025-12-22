@@ -42,7 +42,7 @@ RUN rm -f /lib/systemd/system/multi-user.target.wants/* \
 RUN systemctl mask systemd-resolved.service systemd-resolved.socket
 
 # Create working directory
-WORKDIR /whitelist
+WORKDIR /openpath
 
 # Copy entire project
 COPY . .
@@ -57,7 +57,7 @@ RUN echo '[Unit]\n\
     \n\
     [Service]\n\
     Type=oneshot\n\
-    ExecStart=/whitelist/tests/e2e/docker-e2e-runner.sh\n\
+    ExecStart=/openpath/tests/e2e/docker-e2e-runner.sh\n\
     StandardOutput=journal+console\n\
     StandardError=journal+console\n\
     RemainAfterExit=yes\n\

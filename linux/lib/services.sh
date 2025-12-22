@@ -1,4 +1,21 @@
 #!/bin/bash
+
+# OpenPath - Strict Internet Access Control
+# Copyright (C) 2025 OpenPath Authors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 ################################################################################
 # services.sh - Funciones de gestión de servicios systemd
 # Parte del sistema dnsmasq URL Whitelist v3.5
@@ -23,16 +40,16 @@ create_systemd_services() {
 
 # Servicio de actualización de whitelist
 create_whitelist_service() {
-    cat > /etc/systemd/system/dnsmasq-whitelist.service << 'EOF'
+    cat > /etc/systemd/system/openpath-dnsmasq.service << 'EOF'
 [Unit]
-Description=Update dnsmasq URL Whitelist
+Description=Update OpenPath DNS Whitelist
 After=network-online.target dnsmasq.service
 Wants=network-online.target
 Requires=dnsmasq.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/dnsmasq-whitelist.sh
+ExecStart=/usr/local/bin/openpath-update.sh
 TimeoutStartSec=120
 StandardOutput=journal
 StandardError=journal
@@ -44,9 +61,9 @@ EOF
 
 # Timer para actualización periódica
 create_whitelist_timer() {
-    cat > /etc/systemd/system/dnsmasq-whitelist.timer << 'EOF'
+    cat > /etc/systemd/system/openpath-dnsmasq.timer << 'EOF'
 [Unit]
-Description=Timer for dnsmasq URL Whitelist Update
+Description=Timer for OpenPath DNS Whitelist Update
 After=network-online.target
 
 [Timer]
@@ -133,11 +150,11 @@ enable_services() {
     log "Habilitando servicios..."
     
     systemctl enable dnsmasq
-    systemctl enable dnsmasq-whitelist.timer
+    systemctl enable openpath-dnsmasq.timer
     systemctl enable dnsmasq-watchdog.timer
     systemctl enable captive-portal-detector.service
     
-    systemctl start dnsmasq-whitelist.timer
+    systemctl start openpath-dnsmasq.timer
     systemctl start dnsmasq-watchdog.timer
     systemctl start captive-portal-detector.service
     
@@ -166,8 +183,8 @@ remove_services() {
     
     disable_services
     
-    rm -f /etc/systemd/system/dnsmasq-whitelist.service
-    rm -f /etc/systemd/system/dnsmasq-whitelist.timer
+    rm -f /etc/systemd/system/openpath-dnsmasq.service
+    rm -f /etc/systemd/system/openpath-dnsmasq.timer
     rm -f /etc/systemd/system/dnsmasq-watchdog.service
     rm -f /etc/systemd/system/dnsmasq-watchdog.timer
     rm -f /etc/systemd/system/captive-portal-detector.service
@@ -180,8 +197,8 @@ remove_services() {
 
 # Configurar logrotate
 create_logrotate_config() {
-    cat > /etc/logrotate.d/dnsmasq-whitelist << 'EOF'
-/var/log/url-whitelist.log
+    cat > /etc/logrotate.d/openpath-dnsmasq << 'EOF'
+/var/log/openpath.log
 /var/log/captive-portal-detector.log
 {
     daily
@@ -193,5 +210,12 @@ create_logrotate_config() {
     create 644 root root
     size 10M
 }
+EOF
+}
+
+# Configurar tmpfiles (para crear directorio en /run)
+create_tmpfiles_config() {
+    cat > /etc/tmpfiles.d/openpath-dnsmasq.conf << 'EOF'
+d /run/dnsmasq 0755 root root -
 EOF
 }

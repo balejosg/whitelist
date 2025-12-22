@@ -1,5 +1,5 @@
 [Unit]
-Description=dnsmasq Health Check and Auto-Recovery
+Description=OpenPath DNS Health Check and Auto-Recovery
 After=dnsmasq.service
 Wants=dnsmasq.service
 

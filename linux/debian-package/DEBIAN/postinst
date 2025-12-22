@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# postinst - Post-installation script for whitelist-dnsmasq package
+# postinst - Post-installation script for openpath-dnsmasq package
 # Performs dynamic system configuration after package files are installed
 ################################################################################
 
@@ -11,28 +11,28 @@ set -e
 
 case "$1" in
     configure)
-        echo "Configuring whitelist-dnsmasq..."
+        echo "Configuring openpath-dnsmasq..."
         
         # Source installed libraries
-        source /usr/local/lib/whitelist-system/lib/common.sh
-        source /usr/local/lib/whitelist-system/lib/dns.sh
-        source /usr/local/lib/whitelist-system/lib/firewall.sh
-        source /usr/local/lib/whitelist-system/lib/browser.sh
-        source /usr/local/lib/whitelist-system/lib/services.sh
+        source /usr/local/lib/openpath/lib/common.sh
+        source /usr/local/lib/openpath/lib/dns.sh
+        source /usr/local/lib/openpath/lib/firewall.sh
+        source /usr/local/lib/openpath/lib/browser.sh
+        source /usr/local/lib/openpath/lib/services.sh
         
         # Get configuration from debconf
-        db_get whitelist-dnsmasq/whitelist-url
+        db_get openpath-dnsmasq/whitelist-url
         WHITELIST_URL="${RET:-https://raw.githubusercontent.com/LasEncinasIT/Whitelist-por-aula/main/Informatica%203.txt}"
         
-        db_get whitelist-dnsmasq/health-api-url
+        db_get openpath-dnsmasq/health-api-url
         HEALTH_API_URL="${RET:-}"
         
-        db_get whitelist-dnsmasq/health-api-secret
+        db_get openpath-dnsmasq/health-api-secret
         HEALTH_API_SECRET="${RET:-}"
         
         # Create directories (Debian FHS compliant)
-        mkdir -p "$ETC_CONFIG_DIR"     # /etc/whitelist-system - config (preserved)
-        mkdir -p "$VAR_STATE_DIR"      # /var/lib/url-whitelist - state/cache
+        mkdir -p "$ETC_CONFIG_DIR"     # /etc/openpath - config (preserved)
+        mkdir -p "$VAR_STATE_DIR"      # /var/lib/openpath - state/cache
         
         # Save configuration to /etc/ (preserved on upgrade)
         echo "$WHITELIST_URL" > "$WHITELIST_URL_CONF"
@@ -62,7 +62,7 @@ case "$1" in
         
         # Step 4: Create dnsmasq override
         mkdir -p /etc/systemd/system/dnsmasq.service.d
-        cat > /etc/systemd/system/dnsmasq.service.d/whitelist-override.conf << 'EOF'
+        cat > /etc/systemd/system/dnsmasq.service.d/openpath-override.conf << 'EOF'
 [Service]
 ExecStartPre=/usr/local/bin/dnsmasq-init-resolv.sh
 EOF
@@ -74,8 +74,8 @@ EOF
             sed -i 's/^cache-size=/#cache-size=/g' /etc/dnsmasq.conf 2>/dev/null || true
         fi
         
-        cat > /etc/dnsmasq.d/url-whitelist.conf << EOF
-# Configuración inicial - será sobrescrita por dnsmasq-whitelist.sh
+        cat > /etc/dnsmasq.d/openpath.conf << EOF
+# Configuración inicial - será sobrescrita por openpath-update.sh
 no-resolv
 resolv-file=/run/dnsmasq/resolv.conf
 listen-address=127.0.0.1
@@ -89,7 +89,7 @@ EOF
         
         # Step 7: Install Firefox extension
         echo "  Instalando extensión Firefox..."
-        install_firefox_extension /usr/share/whitelist-system/firefox-extension
+        install_firefox_extension /usr/share/openpath/firefox-extension
         
         # Step 8: Apply browser policies
         echo "  Aplicando políticas de navegadores..."
@@ -104,7 +104,7 @@ EOF
         systemctl daemon-reload
         
         systemctl enable dnsmasq
-        systemctl enable dnsmasq-whitelist.timer
+        systemctl enable openpath-dnsmasq.timer
         systemctl enable dnsmasq-watchdog.timer
         systemctl enable captive-portal-detector.service
         
@@ -118,15 +118,15 @@ EOF
             exit 1
         fi
         
-        systemctl start dnsmasq-whitelist.timer
+        systemctl start openpath-dnsmasq.timer
         systemctl start dnsmasq-watchdog.timer
         systemctl start captive-portal-detector.service
         
         # Step 12: Run initial whitelist update
         echo "  Ejecutando primera actualización..."
-        /usr/local/bin/dnsmasq-whitelist.sh || echo "⚠ Primera actualización falló (el timer lo reintentará)"
+        /usr/local/bin/openpath-update.sh || echo "⚠ Primera actualización falló (el timer lo reintentará)"
         
-        echo "✓ whitelist-dnsmasq configurado correctamente"
+        echo "✓ openpath-dnsmasq configurado correctamente"
         ;;
     
     abort-upgrade|abort-remove|abort-deconfigure)

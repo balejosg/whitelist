@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 ################################################################################
-# whitelist-cmd.bats - Tests para scripts/whitelist-cmd.sh
+# openpath-cmd.bats - Tests para scripts/runtime/openpath-cmd.sh
 ################################################################################
 
 load 'test_helper'

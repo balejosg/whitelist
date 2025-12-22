@@ -1,5 +1,5 @@
 /**
- * Whitelist File Parser
+ * OpenPath File Parser
  * Parses and serializes the whitelist.txt format with sections
  */
 const WhitelistParser = {

@@ -130,7 +130,7 @@ teardown() {
     
     run generate_chromium_policies
     [ "$status" -eq 0 ]
-    [ -f "$CHROMIUM_POLICIES_BASE/url-whitelist.json" ]
+    [ -f "$CHROMIUM_POLICIES_BASE/openpath.json" ]
 }
 
 @test "generate_chromium_policies JSON contiene URLBlocklist" {
@@ -140,7 +140,7 @@ teardown() {
     
     run generate_chromium_policies
     
-    grep -q "URLBlocklist" "$CHROMIUM_POLICIES_BASE/url-whitelist.json"
+    grep -q "URLBlocklist" "$CHROMIUM_POLICIES_BASE/openpath.json"
 }
 
 # ============== Tests de cleanup_browser_policies ==============
@@ -158,7 +158,7 @@ teardown() {
 }
 
 @test "cleanup_browser_policies elimina archivos Chromium" {
-    echo '{"URLBlocklist": ["test"]}' > "$CHROMIUM_POLICIES_BASE/url-whitelist.json"
+    echo '{"URLBlocklist": ["test"]}' > "$CHROMIUM_POLICIES_BASE/openpath.json"
     
     source "$PROJECT_DIR/linux/lib/browser.sh"
     
@@ -166,7 +166,7 @@ teardown() {
     [ "$status" -eq 0 ]
     
     # File should be removed
-    [ ! -f "$CHROMIUM_POLICIES_BASE/url-whitelist.json" ]
+    [ ! -f "$CHROMIUM_POLICIES_BASE/openpath.json" ]
 }
 
 # ============== Tests de apply_search_engine_policies ==============
@@ -290,7 +290,7 @@ teardown() {
     touch "$ext_dir/icons/icon-48.png"
     
     # Mock the system extension directory to be in TEST_TMP_DIR
-    local ext_install_dir="$TEST_TMP_DIR/share/mozilla/extensions/{ec8030f7-c20a-464f-9b0e-13a3a9e97384}/monitor-bloqueos@whitelist-system"
+    local ext_install_dir="$TEST_TMP_DIR/share/mozilla/extensions/{ec8030f7-c20a-464f-9b0e-13a3a9e97384}/monitor-bloqueos@openpath"
     
     source "$PROJECT_DIR/linux/lib/browser.sh"
     
@@ -366,11 +366,11 @@ teardown() {
     # Create mock native host directory
     local native_dir="$TEST_TMP_DIR/native"
     mkdir -p "$native_dir"
-    echo '#!/usr/bin/env python3' > "$native_dir/whitelist-native-host.py"
+    echo '#!/usr/bin/env python3' > "$native_dir/openpath-native-host.py"
     
     # Mock paths to use test directory
     local native_manifest_dir="$TEST_TMP_DIR/lib/mozilla/native-messaging-hosts"
-    local native_script_dir="$TEST_TMP_DIR/local/lib/whitelist-system"
+    local native_script_dir="$TEST_TMP_DIR/local/lib/openpath"
     
     source "$PROJECT_DIR/linux/lib/browser.sh"
     
@@ -378,8 +378,8 @@ teardown() {
     install_native_host() {
         local native_source="${1:-$INSTALL_DIR/firefox-extension/native}"
         mkdir -p "$native_manifest_dir" "$native_script_dir"
-        cp "$native_source/whitelist-native-host.py" "$native_script_dir/"
-        echo '{"name":"test"}' > "$native_manifest_dir/whitelist_native_host.json"
+        cp "$native_source/openpath-native-host.py" "$native_script_dir/"
+        echo '{"name":"test"}' > "$native_manifest_dir/openpath_native_host.json"
         return 0
     }
     export -f install_native_host
@@ -387,8 +387,8 @@ teardown() {
     run install_native_host "$native_dir"
     [ "$status" -eq 0 ]
     
-    [ -f "$native_script_dir/whitelist-native-host.py" ]
-    [ -f "$native_manifest_dir/whitelist_native_host.json" ]
+    [ -f "$native_script_dir/openpath-native-host.py" ]
+    [ -f "$native_manifest_dir/openpath_native_host.json" ]
 }
 
 @test "install_native_host maneja directorio inexistente" {
@@ -402,7 +402,7 @@ teardown() {
 
 @test "remove_firefox_extension elimina directorio de extensión" {
     # Create mock extension directory in test tmp
-    local ext_dir="$TEST_TMP_DIR/share/mozilla/extensions/{ec8030f7-c20a-464f-9b0e-13a3a9e97384}/monitor-bloqueos@whitelist-system"
+    local ext_dir="$TEST_TMP_DIR/share/mozilla/extensions/{ec8030f7-c20a-464f-9b0e-13a3a9e97384}/monitor-bloqueos@openpath"
     mkdir -p "$ext_dir"
     touch "$ext_dir/manifest.json"
     
@@ -426,8 +426,8 @@ teardown() {
 
 @test "remove_firefox_extension elimina native host" {
     # Create mock files in test tmp
-    local native_manifest="$TEST_TMP_DIR/lib/mozilla/native-messaging-hosts/whitelist_native_host.json"
-    local native_script="$TEST_TMP_DIR/local/lib/whitelist-system/whitelist-native-host.py"
+    local native_manifest="$TEST_TMP_DIR/lib/mozilla/native-messaging-hosts/openpath_native_host.json"
+    local native_script="$TEST_TMP_DIR/local/lib/openpath/openpath-native-host.py"
     
     mkdir -p "$(dirname "$native_manifest")" "$(dirname "$native_script")"
     touch "$native_manifest" "$native_script"

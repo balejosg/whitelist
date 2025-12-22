@@ -1,4 +1,22 @@
 /**
+ * OpenPath - Strict Internet Access Control
+ * Copyright (C) 2025 OpenPath Authors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/**
  * Request routes - Domain request endpoints
  */
 
@@ -70,8 +88,13 @@ function sanitize(str, maxLen = 500) {
 // Middleware
 // =============================================================================
 
-// Middleware: Validate admin token with timing-safe comparison
-function requireAdmin(req, res, next) {
+const auth = require('../lib/auth');
+
+/**
+ * Middleware: Authenticate user (supports both legacy ADMIN_TOKEN and JWT)
+ * Sets req.user with decoded token info
+ */
+function requireAuth(req, res, next) {
     const authHeader = req.headers.authorization;
 
     // Check for auth header first (returns 401)
@@ -82,26 +105,75 @@ function requireAdmin(req, res, next) {
         });
     }
 
-    const adminToken = process.env.ADMIN_TOKEN;
-
-    // Check if server is configured (returns 500)
-    if (!adminToken) {
-        return res.status(500).json({
-            success: false,
-            error: 'Server not configured: ADMIN_TOKEN missing'
-        });
-    }
-
     const token = authHeader.slice(7);
 
-    // Use timing-safe comparison to prevent timing attacks
-    if (!secureCompare(token, adminToken)) {
-        return res.status(401).json({
+    // Try JWT first
+    const decoded = auth.verifyAccessToken(token);
+    if (decoded) {
+        req.user = decoded;
+        return next();
+    }
+
+    // Fall back to legacy ADMIN_TOKEN
+    const adminToken = process.env.ADMIN_TOKEN;
+    if (adminToken && secureCompare(token, adminToken)) {
+        req.user = auth.createLegacyAdminPayload();
+        return next();
+    }
+
+    return res.status(401).json({
+        success: false,
+        error: 'Invalid or expired token'
+    });
+}
+
+/**
+ * Middleware: Require admin role
+ */
+function requireAdmin(req, res, next) {
+    if (!auth.isAdminToken(req.user)) {
+        return res.status(403).json({
             success: false,
-            error: 'Invalid admin token'
+            error: 'Admin access required'
+        });
+    }
+    next();
+}
+
+/**
+ * Middleware: Load request and check if user can approve it
+ * For teachers, only allows approving requests for their assigned groups
+ */
+function canApproveRequest(req, res, next) {
+    const request = storage.getRequestById(req.params.id);
+
+    if (!request) {
+        return res.status(404).json({
+            success: false,
+            error: 'Request not found'
         });
     }
 
+    req.request = request;
+
+    // Check if user can approve for this group
+    if (!auth.canApproveGroup(req.user, request.group_id)) {
+        return res.status(403).json({
+            success: false,
+            error: 'No permission to approve requests for this group',
+            group_id: request.group_id
+        });
+    }
+
+    next();
+}
+
+/**
+ * Middleware: Filter requests by user's accessible groups
+ * Admins see all, teachers see only their groups
+ */
+function filterByUserGroups(req, res, next) {
+    req.approvalGroups = auth.getApprovalGroups(req.user);
     next();
 }
 
@@ -343,17 +415,24 @@ router.get('/status/:id', (req, res) => {
 });
 
 // =============================================================================
-// ADMIN ENDPOINTS (require auth)
+// ADMIN/TEACHER ENDPOINTS (require auth with roles)
 // =============================================================================
 
 /**
  * GET /api/requests/groups/list
- * List available whitelist groups (admin only)
+ * List available whitelist groups (admin/teacher)
+ * Teachers only see groups they're assigned to
  * NOTE: This route MUST be before /:id to avoid being matched as an ID
  */
-router.get('/groups/list', adminLimiter, requireAdmin, async (req, res) => {
+router.get('/groups/list', adminLimiter, requireAuth, filterByUserGroups, async (req, res) => {
     try {
-        const groups = await github.listWhitelistFiles();
+        const allGroups = await github.listWhitelistFiles();
+
+        // Filter groups for teachers
+        let groups = allGroups;
+        if (req.approvalGroups !== 'all') {
+            groups = allGroups.filter(g => req.approvalGroups.includes(g.name));
+        }
 
         res.json({
             success: true,
@@ -371,14 +450,26 @@ router.get('/groups/list', adminLimiter, requireAdmin, async (req, res) => {
 
 /**
  * GET /api/requests
- * List all requests (admin only)
+ * List all requests (admin/teacher)
+ * Teachers only see requests for their assigned groups
  */
-router.get('/', adminLimiter, requireAdmin, (req, res) => {
+router.get('/', adminLimiter, requireAuth, filterByUserGroups, (req, res) => {
     const { status } = req.query;
 
     try {
-        const requests = storage.getAllRequests(status || null);
-        const stats = storage.getStats();
+        let requests = storage.getAllRequests(status || null);
+
+        // Filter by user's groups (teachers only see their groups)
+        if (req.approvalGroups !== 'all') {
+            requests = requests.filter(r => req.approvalGroups.includes(r.group_id));
+        }
+
+        const stats = {
+            total: requests.length,
+            pending: requests.filter(r => r.status === 'pending').length,
+            approved: requests.filter(r => r.status === 'approved').length,
+            rejected: requests.filter(r => r.status === 'rejected').length
+        };
 
         res.json({
             success: true,
@@ -399,38 +490,24 @@ router.get('/', adminLimiter, requireAdmin, (req, res) => {
 
 /**
  * GET /api/requests/:id
- * Get single request details (admin only)
+ * Get single request details (admin/teacher for their groups)
  */
-router.get('/:id', adminLimiter, requireAdmin, (req, res) => {
-    const request = storage.getRequestById(req.params.id);
-
-    if (!request) {
-        return res.status(404).json({
-            success: false,
-            error: 'Request not found'
-        });
-    }
-
+router.get('/:id', adminLimiter, requireAuth, canApproveRequest, (req, res) => {
+    // Request is already loaded by canApproveRequest middleware
     res.json({
         success: true,
-        request
+        request: req.request
     });
 });
 
 /**
  * POST /api/requests/:id/approve
  * Approve a request and add domain to whitelist
+ * Teachers can only approve for their assigned groups
  */
-router.post('/:id/approve', adminLimiter, requireAdmin, async (req, res) => {
+router.post('/:id/approve', adminLimiter, requireAuth, canApproveRequest, async (req, res) => {
     const { group_id } = req.body;
-    const request = storage.getRequestById(req.params.id);
-
-    if (!request) {
-        return res.status(404).json({
-            success: false,
-            error: 'Request not found'
-        });
-    }
+    const request = req.request; // Already loaded by canApproveRequest
 
     if (request.status !== 'pending') {
         return res.status(400).json({
@@ -439,7 +516,17 @@ router.post('/:id/approve', adminLimiter, requireAdmin, async (req, res) => {
         });
     }
 
+    // If changing group, check permission for new group
     const targetGroup = group_id || request.group_id;
+    if (group_id && group_id !== request.group_id) {
+        if (!auth.canApproveGroup(req.user, group_id)) {
+            return res.status(403).json({
+                success: false,
+                error: 'No permission to approve for this group',
+                group_id
+            });
+        }
+    }
 
     try {
         // Add domain to GitHub whitelist
@@ -455,11 +542,12 @@ router.post('/:id/approve', adminLimiter, requireAdmin, async (req, res) => {
             });
         }
 
-        // Update request status
+        // Update request status with approver info
+        const approverName = req.user.name || req.user.email || req.user.sub;
         const updated = storage.updateRequestStatus(
             request.id,
             'approved',
-            'admin',
+            approverName,
             `Added to ${targetGroup}`
         );
 
@@ -469,6 +557,7 @@ router.post('/:id/approve', adminLimiter, requireAdmin, async (req, res) => {
             domain: request.domain,
             group_id: targetGroup,
             status: 'approved',
+            approved_by: approverName,
             request: updated
         });
 
@@ -484,17 +573,11 @@ router.post('/:id/approve', adminLimiter, requireAdmin, async (req, res) => {
 /**
  * POST /api/requests/:id/reject
  * Reject a request
+ * Teachers can only reject for their assigned groups
  */
-router.post('/:id/reject', adminLimiter, requireAdmin, (req, res) => {
+router.post('/:id/reject', adminLimiter, requireAuth, canApproveRequest, (req, res) => {
     const { reason } = req.body;
-    const request = storage.getRequestById(req.params.id);
-
-    if (!request) {
-        return res.status(404).json({
-            success: false,
-            error: 'Request not found'
-        });
-    }
+    const request = req.request; // Already loaded by canApproveRequest
 
     if (request.status !== 'pending') {
         return res.status(400).json({
@@ -504,10 +587,11 @@ router.post('/:id/reject', adminLimiter, requireAdmin, (req, res) => {
     }
 
     try {
+        const rejecterName = req.user.name || req.user.email || req.user.sub;
         const updated = storage.updateRequestStatus(
             request.id,
             'rejected',
-            'admin',
+            rejecterName,
             sanitize(reason) || 'No reason provided'
         );
 
@@ -516,6 +600,7 @@ router.post('/:id/reject', adminLimiter, requireAdmin, (req, res) => {
             message: `Request for ${request.domain} rejected`,
             domain: request.domain,
             status: 'rejected',
+            rejected_by: rejecterName,
             request: updated
         });
 
@@ -532,7 +617,7 @@ router.post('/:id/reject', adminLimiter, requireAdmin, (req, res) => {
  * DELETE /api/requests/:id
  * Delete a request (admin only)
  */
-router.delete('/:id', adminLimiter, requireAdmin, (req, res) => {
+router.delete('/:id', adminLimiter, requireAuth, requireAdmin, (req, res) => {
     const deleted = storage.deleteRequest(req.params.id);
 
     if (!deleted) {

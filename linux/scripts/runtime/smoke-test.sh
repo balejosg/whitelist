@@ -1,7 +1,24 @@
 #!/bin/bash
+
+# OpenPath - Strict Internet Access Control
+# Copyright (C) 2025 OpenPath Authors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 ################################################################################
 # smoke-test.sh - Tests de validación post-instalación
-# Parte del sistema dnsmasq URL Whitelist v3.4
+# Parte del sistema OpenPath DNS v3.4
 #
 # Verifica que el sistema funciona correctamente después de instalar.
 # Retorna 0 si todo OK, 1 si hay fallos críticos.
@@ -144,22 +161,22 @@ test_config_files() {
     
     local all_ok=true
     
-    if [ -f /etc/dnsmasq.d/url-whitelist.conf ]; then
-        test_pass "/etc/dnsmasq.d/url-whitelist.conf existe"
+    if [ -f /etc/dnsmasq.d/openpath.conf ]; then
+        test_pass "/etc/dnsmasq.d/openpath.conf existe"
     else
         test_fail "Configuración dnsmasq no encontrada"
         all_ok=false
     fi
     
-    if [ -f /var/lib/url-whitelist/whitelist.txt ]; then
-        local count=$(grep -v "^#" /var/lib/url-whitelist/whitelist.txt 2>/dev/null | grep -v "^$" | wc -l)
+    if [ -f /var/lib/openpath/whitelist.txt ]; then
+        local count=$(grep -v "^#" /var/lib/openpath/whitelist.txt 2>/dev/null | grep -v "^$" | wc -l)
         test_pass "Whitelist descargada ($count dominios)"
     else
         test_warn "Whitelist no descargada aún (el timer lo hará)"
     fi
     
     # Config in /etc/ (Debian FHS compliant)
-    if [ -f /etc/whitelist-system/whitelist-url.conf ]; then
+    if [ -f /etc/openpath/whitelist-url.conf ]; then
         test_pass "URL de whitelist configurada"
     else
         test_fail "URL de whitelist no configurada"
@@ -174,7 +191,7 @@ test_config_files() {
 main() {
     echo ""
     echo -e "${BLUE}═══════════════════════════════════════════════════${NC}"
-    echo -e "${BLUE}  Smoke Tests - Whitelist System v3.4${NC}"
+    echo -e "${BLUE}  Smoke Tests - OpenPath System v3.4${NC}"
     echo -e "${BLUE}═══════════════════════════════════════════════════${NC}"
     
     # Tests críticos (siempre se ejecutan)
@@ -200,7 +217,7 @@ main() {
         echo -e "${RED}✗ SMOKE TESTS FAILED${NC}"
         echo ""
         echo "El sistema puede no funcionar correctamente."
-        echo "Ejecuta 'whitelist status' para más detalles."
+        echo "Ejecuta 'openpath status' para más detalles."
         return 1
     elif [ "$WARNINGS" -gt 0 ]; then
         echo -e "${YELLOW}⚠ SMOKE TESTS PASSED WITH WARNINGS${NC}"

@@ -1,5 +1,5 @@
 /**
- * Whitelist SPA - Main Application
+ * OpenPath SPA - Main Application
  * Static SPA for managing DNS whitelist via GitHub API with OAuth
  */
 
@@ -23,15 +23,32 @@ function showToast(message, type = 'success') {
     setTimeout(() => toast.remove(), 3000);
 }
 
+// Relative time formatter ("hace 5 min", "hace 2 horas")
+function relativeTime(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+
+    if (diffSec < 60) return 'ahora';
+    if (diffMin < 60) return `hace ${diffMin} min`;
+    if (diffHour < 24) return `hace ${diffHour}h`;
+    if (diffDay < 7) return `hace ${diffDay} días`;
+    return date.toLocaleDateString();
+}
+
 // ============== Screens ==============
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
     document.getElementById(screenId).classList.remove('hidden');
 }
 
-// ============== OAuth Flow ==============
+// ============== OAuth and JWT Flow ==============
 async function init() {
-    // Check for OAuth callback
+    // 1. Check for OAuth callback first
     const callbackResult = OAuth.handleCallback();
     if (callbackResult?.error) {
         showScreen('login-screen');
@@ -40,38 +57,75 @@ async function init() {
         return;
     }
 
-    // Check if logged in
-    if (!OAuth.isLoggedIn()) {
+    // 2. Check if logged in (either via GitHub OAuth or JWT)
+    const isGitHubLoggedIn = OAuth.isLoggedIn();
+    const isJWTLoggedIn = Auth.isAuthenticated();
+
+    if (!isGitHubLoggedIn && !isJWTLoggedIn) {
         showScreen('login-screen');
         return;
     }
 
-    // Get user info
-    currentUser = await OAuth.getUser();
+    // 3. Load user info
+    try {
+        if (isGitHubLoggedIn) {
+            currentUser = await OAuth.getUser();
+        } else if (isJWTLoggedIn) {
+            currentUser = Auth.getUser();
+            // Optional: refresh user info from server
+            try { await Auth.getMe(); currentUser = Auth.getUser(); } catch (e) { }
+        }
+    } catch (err) {
+        console.error('Failed to load user:', err);
+        showScreen('login-screen');
+        return;
+    }
+
     if (!currentUser) {
         showScreen('login-screen');
         return;
     }
 
-    // Check if repo config exists
-    const config = Config.get();
-    if (!config.owner || !config.repo) {
-        showConfigScreen();
-        return;
+    // 4. Setup Whitelist Requests API (Home Server)
+    const savedUrl = localStorage.getItem('requests_api_url') || '';
+    const savedToken = localStorage.getItem('requests_api_token') || '';
+    if (savedUrl) {
+        RequestsAPI.init(savedUrl, savedToken);
     }
 
-    // Initialize GitHub API with OAuth token
-    github = new GitHubAPI(
-        OAuth.getToken(),
-        config.owner,
-        config.repo,
-        config.branch || 'main'
-    );
+    // 5. Check if repo config exists (only for admins/github users)
+    const config = Config.get();
+    if (!config.owner || !config.repo) {
+        // If teacher, they don't need to configure the repo
+        if (Auth.isTeacher() && !Auth.isAdmin()) {
+            // But we need to make sure github-api is initialized with SOME credentials 
+            // if we want them to see group names. 
+            // Teachers use the home server API for most things.
+        } else {
+            showConfigScreen();
+            return;
+        }
+    }
 
-    // Check write permissions
-    canEdit = await OAuth.canWrite(config.owner, config.repo);
+    // 6. Initialize GitHub API if possible
+    if (isGitHubLoggedIn) {
+        github = new GitHubAPI(
+            OAuth.getToken(),
+            config.owner,
+            config.repo,
+            config.branch || 'main'
+        );
+        canEdit = await OAuth.canWrite(config.owner, config.repo);
+    } else if (isJWTLoggedIn) {
+        // Teachers/JWT users without GitHub OAuth have limited git access 
+        // through the requests server proxy for specific actions
+        canEdit = false;
+    }
 
-    document.getElementById('current-user').textContent = currentUser.login;
+    // Update UI and start
+    const userName = currentUser.login || currentUser.name || currentUser.email;
+    document.getElementById('current-user').textContent = userName;
+
     updateEditUI();
     showScreen('dashboard-screen');
     loadDashboard();
@@ -83,18 +137,49 @@ function showConfigScreen() {
 }
 
 function updateEditUI() {
+    const isAdmin = Auth.isAdmin() || canEdit;
+    const isTeacher = Auth.isTeacher();
+    const isStudent = Auth.isStudent();
+
     // Hide/show edit buttons based on permissions
     const editButtons = document.querySelectorAll(
         '#new-group-btn, #save-config-btn, #delete-group-btn, #add-rule-btn, #bulk-add-btn'
     );
     editButtons.forEach(btn => {
-        btn.style.display = canEdit ? '' : 'none';
+        btn.style.display = isAdmin ? '' : 'none';
     });
+
+    // Toggle users section for admins
+    const usersSection = document.getElementById('users-section');
+    if (usersSection) {
+        usersSection.classList.toggle('hidden', !Auth.isAdmin());
+        if (Auth.isAdmin()) {
+            loadUsers();
+            document.getElementById('admin-users-btn').classList.remove('hidden');
+        } else {
+            document.getElementById('admin-users-btn').classList.add('hidden');
+        }
+    }
+
+    // Teacher Banner
+    const teacherBanner = document.getElementById('teacher-banner');
+    if (teacherBanner) {
+        if (isTeacher && !isAdmin) {
+            teacherBanner.classList.remove('hidden');
+            document.getElementById('teacher-name').textContent = currentUser.name || currentUser.email;
+            const groups = Auth.getTeacherGroups();
+            document.getElementById('teacher-assigned-groups').textContent =
+                groups.length > 0 ? groups.join(', ') : 'ningún grupo aún';
+        } else {
+            teacherBanner.classList.add('hidden');
+        }
+    }
 
     // Show read-only badge if no write access
     const header = document.querySelector('.header-right');
     const existingBadge = document.getElementById('readonly-badge');
-    if (!canEdit && !existingBadge) {
+
+    if (!isAdmin && !existingBadge && !isTeacher) {
         const badge = document.createElement('span');
         badge.id = 'readonly-badge';
         badge.className = 'user-badge';
@@ -102,12 +187,42 @@ function updateEditUI() {
         badge.style.background = 'rgba(234, 179, 8, 0.2)';
         badge.style.color = '#eab308';
         header.insertBefore(badge, header.firstChild);
-    } else if (canEdit && existingBadge) {
+    } else if (isAdmin && existingBadge) {
         existingBadge.remove();
     }
 }
 
-// Login button
+// Navigation for Admins
+document.getElementById('admin-users-btn').addEventListener('click', () => {
+    document.getElementById('users-section').scrollIntoView({ behavior: 'smooth' });
+});
+
+// ============== Login Listeners ==============
+
+// Email Login
+document.getElementById('email-login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    const errorEl = document.getElementById('login-error');
+    const btn = document.getElementById('email-login-btn');
+
+    errorEl.textContent = '';
+    btn.disabled = true;
+    btn.textContent = 'Autenticando...';
+
+    try {
+        await Auth.login(email, password);
+        init(); // Re-initialize the app
+    } catch (err) {
+        errorEl.textContent = 'Error: ' + err.message;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Acceder al Panel';
+    }
+});
+
+// GitHub login button
 document.getElementById('github-login-btn').addEventListener('click', () => {
     OAuth.login();
 });
@@ -116,6 +231,7 @@ document.getElementById('github-login-btn').addEventListener('click', () => {
 document.getElementById('logout-btn').addEventListener('click', () => {
     if (confirm('¿Cerrar sesión?')) {
         OAuth.logout();
+        Auth.logout();
         showScreen('login-screen');
     }
 });
@@ -170,6 +286,11 @@ async function loadDashboard() {
         let totalWhitelist = 0;
         let totalBlocked = 0;
 
+        // Determine visible groups for teachers
+        const isTeacher = Auth.isTeacher();
+        const isAdmin = Auth.isAdmin() || canEdit;
+        const assignedGroups = isTeacher && !isAdmin ? Auth.getAssignedGroups() : null;
+
         for (const group of allGroups) {
             try {
                 const { content } = await github.getFileContent(group.path);
@@ -177,20 +298,29 @@ async function loadDashboard() {
                 const stats = WhitelistParser.getStats(data);
                 group.stats = stats;
                 group.enabled = data.enabled;
-                totalWhitelist += stats.whitelist;
-                totalBlocked += stats.blocked_subdomains + stats.blocked_paths;
+
+                // Only count stats for visible groups
+                if (!assignedGroups || assignedGroups.includes(group.name)) {
+                    totalWhitelist += stats.whitelist;
+                    totalBlocked += stats.blocked_subdomains + stats.blocked_paths;
+                }
             } catch {
                 group.stats = { whitelist: 0, blocked_subdomains: 0, blocked_paths: 0 };
                 group.enabled = true;
             }
         }
 
-        document.getElementById('stat-groups').textContent = allGroups.length;
+        // Show filtered count for teachers
+        const visibleGroupCount = assignedGroups
+            ? allGroups.filter(g => assignedGroups.includes(g.name)).length
+            : allGroups.length;
+
+        document.getElementById('stat-groups').textContent = visibleGroupCount;
         document.getElementById('stat-whitelist').textContent = totalWhitelist;
         document.getElementById('stat-blocked').textContent = totalBlocked;
 
         renderGroupsList();
-        
+
         // Initialize requests section (home server API)
         await initRequestsSection();
     } catch (err) {
@@ -201,18 +331,27 @@ async function loadDashboard() {
 
 function renderGroupsList() {
     const list = document.getElementById('groups-list');
+    const isTeacher = Auth.isTeacher();
+    const isAdmin = Auth.isAdmin() || canEdit;
 
-    if (allGroups.length === 0) {
+    // Filter groups based on user role
+    let visibleGroups = allGroups;
+    if (isTeacher && !isAdmin) {
+        const assignedGroups = Auth.getAssignedGroups();
+        visibleGroups = allGroups.filter(g => assignedGroups.includes(g.name));
+    }
+
+    if (visibleGroups.length === 0) {
         list.innerHTML = `
             <div class="empty-state">
-                <p>No hay grupos configurados</p>
+                <p>${isTeacher ? 'No tienes grupos asignados' : 'No hay grupos configurados'}</p>
                 ${canEdit ? '<button class="btn btn-primary" onclick="openNewGroupModal()">Crear primer grupo</button>' : ''}
             </div>
         `;
         return;
     }
 
-    list.innerHTML = allGroups.map(g => `
+    list.innerHTML = visibleGroups.map(g => `
         <div class="group-card" onclick="openGroup('${escapeHtml(g.name)}')">
             <div class="group-info">
                 <h3>${escapeHtml(g.name)}</h3>
@@ -524,16 +663,16 @@ async function initRequestsSection() {
     // Load saved config
     const savedUrl = localStorage.getItem('requests_api_url') || '';
     const savedToken = localStorage.getItem('requests_api_token') || '';
-    
+
     document.getElementById('requests-api-url').value = savedUrl;
     document.getElementById('requests-api-token').value = savedToken;
-    
+
     if (savedUrl && savedToken) {
         RequestsAPI.init(savedUrl, savedToken);
         await checkRequestsServerStatus();
         await loadPendingRequests();
     }
-    
+
     // Show requests section
     document.getElementById('requests-section').classList.remove('hidden');
 }
@@ -543,16 +682,16 @@ async function checkRequestsServerStatus() {
     const statusEl = document.getElementById('requests-server-status');
     const dotEl = statusEl.querySelector('.status-dot');
     const textEl = statusEl.querySelector('.status-text');
-    
+
     if (!RequestsAPI.isConfigured()) {
         dotEl.className = 'status-dot offline';
         textEl.textContent = 'No configurado';
         return false;
     }
-    
+
     try {
         const isOnline = await RequestsAPI.healthCheck();
-        
+
         if (isOnline) {
             dotEl.className = 'status-dot online';
             textEl.textContent = 'Conectado';
@@ -573,20 +712,20 @@ async function checkRequestsServerStatus() {
 async function loadPendingRequests() {
     const listEl = document.getElementById('requests-list');
     const statEl = document.getElementById('stat-pending-requests');
-    
-    if (!RequestsAPI.isConfigured()) {
-        listEl.innerHTML = '<p class="empty-message">Configura la URL del servidor y el token para ver solicitudes</p>';
+
+    if (!RequestsAPI.isConfigured() && !Auth.isAuthenticated()) {
+        listEl.innerHTML = '<p class="empty-message">Configura la URL del servidor o inicia sesión para ver solicitudes</p>';
         statEl.textContent = '—';
         return;
     }
-    
+
     try {
         const response = await RequestsAPI.getPendingRequests();
         const requests = response.requests || [];
-        
+
         // Update stat card
         statEl.textContent = requests.length;
-        
+
         // Highlight if there are pending requests
         const cardEl = document.getElementById('stat-requests-card');
         if (requests.length > 0) {
@@ -594,56 +733,80 @@ async function loadPendingRequests() {
         } else {
             cardEl.classList.remove('has-pending');
         }
-        
+
         if (requests.length === 0) {
-            listEl.innerHTML = '<p class="empty-message">✅ No hay solicitudes pendientes</p>';
+            listEl.innerHTML = '<p class="empty-message success">No hay solicitudes pendientes</p>';
             return;
         }
-        
-        listEl.innerHTML = requests.map(req => `
-            <div class="request-item" data-id="${req.id}">
-                <div class="request-info">
-                    <span class="request-domain">${escapeHtml(req.domain)}</span>
-                    <span class="request-meta">
-                        ${escapeHtml(req.reason || 'Sin motivo')} • 
-                        ${new Date(req.created_at).toLocaleString()}
-                    </span>
-                    <span class="request-group">Grupo: ${escapeHtml(req.group_id || 'default')}</span>
+
+        const isTeacher = Auth.isTeacher();
+        const isAdmin = Auth.isAdmin() || canEdit;
+        const teacherGroups = Auth.getTeacherGroups();
+
+        listEl.innerHTML = requests.map(req => {
+            const canApprove = isAdmin || (isTeacher && teacherGroups.includes(req.group_id));
+
+            // If teacher, only show groups they are assigned to in the select
+            const availableGroupsForSelect = isAdmin
+                ? allGroups.map(g => g.name)
+                : allGroups.map(g => g.name).filter(name => teacherGroups.includes(name));
+
+            return `
+                <div class="request-item ${!canApprove ? 'read-only' : ''}" data-id="${req.id}">
+                    <div class="request-info">
+                        <span class="request-domain">${escapeHtml(req.domain)}</span>
+                        <span class="request-time">${relativeTime(req.created_at)}</span>
+                        <span class="request-meta">
+                            ${escapeHtml(req.reason || 'Sin motivo')}
+                        </span>
+                        <span class="request-group">Grupo: <strong>${escapeHtml(req.group_id || 'default')}</strong></span>
+                    </div>
+                    <div class="request-actions">
+                        ${canApprove ? `
+                            <select class="request-group-select">
+                                ${availableGroupsForSelect.map(g => `
+                                    <option value="${g}" ${g === req.group_id ? 'selected' : ''}>${g}</option>
+                                `).join('')}
+                                ${!availableGroupsForSelect.includes(req.group_id) && req.group_id ?
+                        `<option value="${req.group_id}" selected>${req.group_id} (Sugerido)</option>` : ''}
+                            </select>
+                            <button class="btn btn-success btn-sm approve-request-btn" 
+                                    data-id="${req.id}" title="Aprobar">✓</button>
+                            <button class="btn btn-danger btn-sm reject-request-btn" 
+                                    data-id="${req.id}" title="Rechazar">✗</button>
+                        ` : `
+                            <span class="status-badge pending">Esperando profesor</span>
+                        `}
+                    </div>
                 </div>
-                <div class="request-actions">
-                    <select class="request-group-select">
-                        ${allGroups.map(g => `
-                            <option value="${g}" ${g === req.group_id ? 'selected' : ''}>${g}</option>
-                        `).join('')}
-                    </select>
-                    <button class="btn btn-success btn-sm approve-request-btn" 
-                            data-id="${req.id}" title="Aprobar">✓</button>
-                    <button class="btn btn-danger btn-sm reject-request-btn" 
-                            data-id="${req.id}" title="Rechazar">✗</button>
-                </div>
-            </div>
-        `).join('');
-        
-        // Add event listeners
+            `;
+        }).join('');
+
+        // Add event listeners (only for buttons that exist)
         listEl.querySelectorAll('.approve-request-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                const id = e.target.dataset.id;
-                const item = e.target.closest('.request-item');
+                const btnClicked = e.currentTarget;
+                const id = btnClicked.dataset.id;
+                const item = btnClicked.closest('.request-item');
                 const groupSelect = item.querySelector('.request-group-select');
                 const groupId = groupSelect.value;
-                
+
+                btnClicked.disabled = true;
                 await approveRequest(id, groupId);
             });
         });
-        
+
         listEl.querySelectorAll('.reject-request-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                const id = e.target.dataset.id;
+                const btnClicked = e.currentTarget;
+                const id = btnClicked.dataset.id;
                 const reason = prompt('Motivo del rechazo (opcional):');
+
+                btnClicked.disabled = true;
                 await rejectRequest(id, reason);
             });
         });
-        
+
     } catch (error) {
         listEl.innerHTML = `<p class="empty-message error">❌ Error: ${escapeHtml(error.message)}</p>`;
         statEl.textContent = '!';
@@ -654,7 +817,7 @@ async function loadPendingRequests() {
 async function approveRequest(requestId, groupId) {
     try {
         const response = await RequestsAPI.approveRequest(requestId, groupId);
-        
+
         if (response.success) {
             showToast(`✅ Dominio ${response.domain} añadido a ${groupId}`);
             await loadPendingRequests();
@@ -672,7 +835,7 @@ async function approveRequest(requestId, groupId) {
 async function rejectRequest(requestId, reason) {
     try {
         const response = await RequestsAPI.rejectRequest(requestId, reason);
-        
+
         if (response.success) {
             showToast('Solicitud rechazada');
             await loadPendingRequests();
@@ -688,14 +851,14 @@ async function rejectRequest(requestId, reason) {
 document.getElementById('save-requests-config-btn').addEventListener('click', async () => {
     const url = document.getElementById('requests-api-url').value.trim();
     const token = document.getElementById('requests-api-token').value.trim();
-    
+
     localStorage.setItem('requests_api_url', url);
     localStorage.setItem('requests_api_token', token);
-    
+
     RequestsAPI.init(url, token);
-    
+
     const isOnline = await checkRequestsServerStatus();
-    
+
     if (isOnline) {
         showToast('✅ Configuración guardada');
         await loadPendingRequests();
@@ -716,8 +879,119 @@ document.getElementById('stat-requests-card').addEventListener('click', () => {
     configEl.classList.toggle('hidden');
 });
 
+// ============== User Management (Admin) ==============
+
+async function loadUsers() {
+    const listEl = document.getElementById('users-list');
+    if (!listEl) return;
+
+    try {
+        const users = await UsersAPI.listUsers();
+
+        if (users.length === 0) {
+            listEl.innerHTML = '<p class="empty-message">No hay otros usuarios registrados</p>';
+            return;
+        }
+
+        listEl.innerHTML = users.map(user => `
+            <div class="user-card">
+                <div class="user-info">
+                    <h3>${escapeHtml(user.name || 'Sin nombre')} <span class="status-badge ${user.isActive ? 'active' : 'inactive'}">${user.isActive ? 'Activo' : 'Inactivo'}</span></h3>
+                    <p>${escapeHtml(user.email)}</p>
+                    <div class="user-roles" id="roles-${user.id}">
+                        <!-- Roles filled by sub-request or if included in user object -->
+                        ${(user.roles || []).map(r => `
+                            <span class="role-badge ${r.role}">
+                                ${r.role === 'admin' ? '👑 Admin' : r.role === 'teacher' ? '👨‍🏫 Profesor' : '👤 Estudiante'}
+                                ${r.groupIds?.length > 0 ? `<span class="group-count">${r.groupIds.length}</span>` : ''}
+                            </span>
+                        `).join('')}
+                    </div>
+                </div>
+                <div class="user-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="openAssignRoleModal('${user.id}', '${escapeHtml(user.email)}')">Gestionar Roles</button>
+                    <button class="btn btn-ghost btn-icon" onclick="deleteUser('${user.id}')" title="Eliminar usuario">🗑️</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        listEl.innerHTML = `<p class="empty-message error">Error: ${escapeHtml(error.message)}</p>`;
+    }
+}
+
+// Global functions for inline handlers
+window.openAssignRoleModal = async function (userId, email) {
+    document.getElementById('assign-role-user-id').value = userId;
+    document.getElementById('assign-role-user-name').textContent = email;
+
+    // Load groups into checkbox list
+    const groupList = document.getElementById('assign-role-groups');
+    groupList.innerHTML = allGroups.map(g => `
+        <div class="checkbox-item">
+            <input type="checkbox" id="grp-${g.name}" value="${g.name}" class="group-checkbox">
+            <label for="grp-${g.name}">${escapeHtml(g.name)}</label>
+        </div>
+    `).join('');
+
+    // Pre-select existing roles if we had them (simplified: teachers usually have one entry)
+    // For now, let user select from scratch
+
+    openModal('modal-assign-role');
+};
+
+window.deleteUser = async function (userId) {
+    if (!confirm('¿Seguro que quieres eliminar este usuario?')) return;
+    try {
+        await UsersAPI.deleteUser(userId);
+        showToast('Usuario eliminado');
+        loadUsers();
+    } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+    }
+};
+
+// Handle New User Form
+document.getElementById('new-user-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('new-user-name').value;
+    const email = document.getElementById('new-user-email').value;
+    const password = document.getElementById('new-user-password').value;
+    const role = document.getElementById('new-user-role').value;
+
+    try {
+        const result = await UsersAPI.createUser({ name, email, password });
+        if (role !== 'student') {
+            await UsersAPI.assignRole(result.id, role);
+        }
+        closeModal('modal-new-user');
+        showToast('Usuario creado correctamente');
+        loadUsers();
+    } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+    }
+});
+
+// Handle Assign Role Form
+document.getElementById('assign-role-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const userId = document.getElementById('assign-role-user-id').value;
+    const role = document.getElementById('assign-role-type').value;
+    const groupCheckboxes = document.querySelectorAll('.group-checkbox:checked');
+    const groupIds = Array.from(groupCheckboxes).map(cb => cb.value);
+
+    try {
+        await UsersAPI.assignRole(userId, role, groupIds);
+        closeModal('modal-assign-role');
+        showToast('Rol asignado correctamente');
+        loadUsers();
+    } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+    }
+});
+
 // ============== Helpers ==============
 function escapeHtml(text) {
+    if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;

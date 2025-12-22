@@ -1,0 +1,6 @@
+# OpenPath System - sudo permissions
+# Allows all users to execute openpath commands without password
+
+ALL ALL=(root) NOPASSWD: /usr/local/bin/openpath *
+ALL ALL=(root) NOPASSWD: /usr/local/bin/openpath-update.sh
+ALL ALL=(root) NOPASSWD: /usr/local/bin/dnsmasq-watchdog.sh

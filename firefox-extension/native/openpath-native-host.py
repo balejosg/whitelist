@@ -7,8 +7,8 @@ de whitelist. Recibe solicitudes de la extensión y ejecuta comandos del
 sistema para verificar o añadir dominios.
 
 Instalación:
-  1. Copiar a /usr/local/bin/whitelist-native-host.py
-  2. Hacer ejecutable: chmod +x /usr/local/bin/whitelist-native-host.py
+  1. Copiar a /usr/local/bin/openpath-native-host.py
+  2. Hacer ejecutable: chmod +x /usr/local/bin/openpath-native-host.py
   3. Registrar el manifest en Firefox
 
 Protocolo:
@@ -29,7 +29,7 @@ MAX_DOMAINS = 50  # Límite de dominios por solicitud
 def log_debug(message):
     """Escribe logs de debug al archivo de log del sistema"""
     try:
-        with open("/var/log/whitelist-native-host.log", "a") as f:
+        with open("/var/log/openpath-native-host.log", "a") as f:
             f.write(f"{message}\n")
     except:
         pass
@@ -221,7 +221,7 @@ def handle_message(message):
     elif action == "update-whitelist":
         # Trigger whitelist update script
         try:
-            update_script = "/usr/local/bin/dnsmasq-whitelist.sh"
+            update_script = "/usr/local/bin/openpath-update.sh"
             if os.path.exists(update_script):
                 proc = subprocess.run(
                     [update_script, "--update"],

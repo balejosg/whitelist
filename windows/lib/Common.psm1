@@ -1,10 +1,11 @@
-# Whitelist DNS Common Module for Windows
-# Provides shared functions for all whitelist components
+# OpenPath DNS Common Module for Windows
+# Provides shared functions for all openpath components
 
 # Configuration paths
-$script:WhitelistRoot = "C:\Whitelist"
-$script:ConfigPath = "$script:WhitelistRoot\data\config.json"
-$script:LogPath = "$script:WhitelistRoot\data\logs\whitelist.log"
+# Configuration paths
+$script:OpenPathRoot = "C:\OpenPath"
+$script:ConfigPath = "$script:OpenPathRoot\data\config.json"
+$script:LogPath = "$script:OpenPathRoot\data\logs\openpath.log"
 
 function Test-AdminPrivileges {
     <#
@@ -16,10 +17,10 @@ function Test-AdminPrivileges {
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-function Write-WhitelistLog {
+function Write-OpenPathLog {
     <#
     .SYNOPSIS
-        Writes a log entry to the whitelist log file
+        Writes a log entry to the openpath log file
     .PARAMETER Message
         The message to log
     .PARAMETER Level
@@ -53,22 +54,22 @@ function Write-WhitelistLog {
     }
 }
 
-function Get-WhitelistConfig {
+function Get-OpenPathConfig {
     <#
     .SYNOPSIS
-        Reads the whitelist configuration from config.json
+        Reads the openpath configuration from config.json
     .OUTPUTS
         PSCustomObject with configuration values
     #>
     if (-not (Test-Path $script:ConfigPath)) {
-        Write-WhitelistLog "Config file not found at $($script:ConfigPath)" -Level ERROR
+        Write-OpenPathLog "Config file not found at $($script:ConfigPath)" -Level ERROR
         throw "Configuration file not found"
     }
     
     return Get-Content $script:ConfigPath -Raw | ConvertFrom-Json
 }
 
-function Set-WhitelistConfig {
+function Set-OpenPathConfig {
     <#
     .SYNOPSIS
         Saves configuration to config.json
@@ -86,7 +87,7 @@ function Set-WhitelistConfig {
     }
     
     $Config | ConvertTo-Json -Depth 10 | Set-Content $script:ConfigPath -Encoding UTF8
-    Write-WhitelistLog "Configuration saved"
+    Write-OpenPathLog "Configuration saved"
 }
 
 function Get-PrimaryDNS {
@@ -114,7 +115,7 @@ function Get-PrimaryDNS {
     return "8.8.8.8"
 }
 
-function Get-WhitelistFromUrl {
+function Get-OpenPathFromUrl {
     <#
     .SYNOPSIS
         Downloads and parses whitelist from URL
@@ -128,14 +129,14 @@ function Get-WhitelistFromUrl {
         [string]$Url
     )
     
-    Write-WhitelistLog "Downloading whitelist from $Url"
+    Write-OpenPathLog "Downloading whitelist from $Url"
     
     try {
         $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 30
         $content = $response.Content
     }
     catch {
-        Write-WhitelistLog "Failed to download whitelist: $_" -Level ERROR
+        Write-OpenPathLog "Failed to download whitelist: $_" -Level ERROR
         throw
     }
     
@@ -170,7 +171,7 @@ function Get-WhitelistFromUrl {
         }
     }
     
-    Write-WhitelistLog "Parsed: $($result.Whitelist.Count) whitelisted, $($result.BlockedSubdomains.Count) blocked subdomains, $($result.BlockedPaths.Count) blocked paths"
+    Write-OpenPathLog "Parsed: $($result.Whitelist.Count) whitelisted, $($result.BlockedSubdomains.Count) blocked subdomains, $($result.BlockedPaths.Count) blocked paths"
     
     return $result
 }
@@ -192,10 +193,10 @@ function Test-InternetConnection {
 # Export module members
 Export-ModuleMember -Function @(
     'Test-AdminPrivileges',
-    'Write-WhitelistLog',
-    'Get-WhitelistConfig',
-    'Set-WhitelistConfig',
+    'Write-OpenPathLog',
+    'Get-OpenPathConfig',
+    'Set-OpenPathConfig',
     'Get-PrimaryDNS',
-    'Get-WhitelistFromUrl',
+    'Get-OpenPathFromUrl',
     'Test-InternetConnection'
 )
