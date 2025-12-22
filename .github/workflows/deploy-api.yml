@@ -4,16 +4,72 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    paths:
+      - 'api/**'
+      - '.github/workflows/deploy-api.yml'
 
 jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
+    # Only deploy if secrets are configured
+    if: ${{ secrets.DEPLOY_HOST != '' }}
     
     steps:
+      - name: Verify connectivity to deploy server
+        id: verify
+        run: |
+          echo "🔍 Verifying connectivity to deploy server..."
+          
+          # Try to resolve DNS with retries
+          MAX_RETRIES=3
+          RETRY_DELAY=5
+          
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "Attempt $i of $MAX_RETRIES..."
+            
+            # Try DNS resolution
+            if host "${{ secrets.DEPLOY_HOST }}" > /dev/null 2>&1 || \
+               nslookup "${{ secrets.DEPLOY_HOST }}" > /dev/null 2>&1 || \
+               getent hosts "${{ secrets.DEPLOY_HOST }}" > /dev/null 2>&1; then
+              echo "✅ DNS resolution successful"
+              
+              # Try TCP connection
+              if nc -z -w 10 "${{ secrets.DEPLOY_HOST }}" "${{ secrets.DEPLOY_PORT || 22 }}" 2>/dev/null; then
+                echo "✅ TCP connection successful"
+                echo "connected=true" >> $GITHUB_OUTPUT
+                exit 0
+              else
+                echo "⚠️ TCP connection failed, retrying..."
+              fi
+            else
+              echo "⚠️ DNS resolution failed, retrying..."
+            fi
+            
+            if [ $i -lt $MAX_RETRIES ]; then
+              sleep $RETRY_DELAY
+            fi
+          done
+          
+          echo "❌ Could not connect to deploy server after $MAX_RETRIES attempts"
+          echo "connected=false" >> $GITHUB_OUTPUT
+          # Don't fail here - we'll check in the next step
+        continue-on-error: true
+
+      - name: Check connectivity result
+        if: steps.verify.outputs.connected != 'true'
+        run: |
+          echo "::warning::Deploy server is not reachable. Skipping deployment."
+          echo "This could be due to:"
+          echo "  - Server is offline"
+          echo "  - Firewall blocking connection"
+          echo "  - DNS not resolving"
+          echo "  - Incorrect DEPLOY_HOST or DEPLOY_PORT secrets"
+          exit 0
+
       - name: Backup and Deploy to Alpine Container
+        if: steps.verify.outputs.connected == 'true'
         uses: appleboy/ssh-action@v1.0.0
-        continue-on-error: true  # Don't fail workflow on deploy issues
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
@@ -22,7 +78,6 @@ jobs:
           timeout: 60s
           command_timeout: 15m
           script: |
-
             echo "🚀 Starting deployment..."
             
             # Navigate to repo
@@ -81,4 +136,3 @@ jobs:
             fi
             
             echo "🎉 Deployment completed at $(date)"
-
