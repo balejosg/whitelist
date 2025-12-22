@@ -23,6 +23,23 @@ function showToast(message, type = 'success') {
     setTimeout(() => toast.remove(), 3000);
 }
 
+// Relative time formatter ("hace 5 min", "hace 2 horas")
+function relativeTime(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+
+    if (diffSec < 60) return 'ahora';
+    if (diffMin < 60) return `hace ${diffMin} min`;
+    if (diffHour < 24) return `hace ${diffHour}h`;
+    if (diffDay < 7) return `hace ${diffDay} días`;
+    return date.toLocaleDateString();
+}
+
 // ============== Screens ==============
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
@@ -718,7 +735,7 @@ async function loadPendingRequests() {
         }
 
         if (requests.length === 0) {
-            listEl.innerHTML = '<p class="empty-message">✅ No hay solicitudes pendientes</p>';
+            listEl.innerHTML = '<p class="empty-message success">No hay solicitudes pendientes</p>';
             return;
         }
 
@@ -738,11 +755,11 @@ async function loadPendingRequests() {
                 <div class="request-item ${!canApprove ? 'read-only' : ''}" data-id="${req.id}">
                     <div class="request-info">
                         <span class="request-domain">${escapeHtml(req.domain)}</span>
+                        <span class="request-time">${relativeTime(req.created_at)}</span>
                         <span class="request-meta">
-                            ${escapeHtml(req.reason || 'Sin motivo')} • 
-                            ${new Date(req.created_at).toLocaleString()}
+                            ${escapeHtml(req.reason || 'Sin motivo')}
                         </span>
-                        <span class="request-group">Grupo sugerido: <strong>${escapeHtml(req.group_id || 'default')}</strong></span>
+                        <span class="request-group">Grupo: <strong>${escapeHtml(req.group_id || 'default')}</strong></span>
                     </div>
                     <div class="request-actions">
                         ${canApprove ? `
@@ -905,7 +922,7 @@ async function loadUsers() {
 // Global functions for inline handlers
 window.openAssignRoleModal = async function (userId, email) {
     document.getElementById('assign-role-user-id').value = userId;
-    document.getElementById('assign-role-email').textContent = email;
+    document.getElementById('assign-role-user-name').textContent = email;
 
     // Load groups into checkbox list
     const groupList = document.getElementById('assign-role-groups');
