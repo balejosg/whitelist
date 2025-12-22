@@ -58,9 +58,9 @@ Any changes to this privacy policy will be reflected in the extension's reposito
 ## Contact
 
 For questions about this privacy policy, please open an issue at:
-https://github.com/balejosg/whitelist/issues
+https://github.com/balejosg/openpath/issues
 
 ## Open Source
 
 This extension is open source. You can review the complete source code at:
-https://github.com/balejosg/whitelist/tree/main/firefox-extension
+https://github.com/balejosg/openpath/tree/main/firefox-extension

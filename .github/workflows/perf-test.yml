@@ -20,11 +20,11 @@ jobs:
           node-version: '20'
       
       - name: Install dependencies
-        working-directory: whitelist-request-api
+        working-directory: api
         run: npm ci || npm install
       
       - name: Start API server
-        working-directory: whitelist-request-api
+        working-directory: api
         run: |
           node server.js &
           sleep 5

@@ -14,14 +14,14 @@
 /auto-reinstall*.sh @balejosg
 
 # Windows implementation
-/whitelist-windows/ @balejosg
+/windows/ @balejosg
 
 # Firefox extension
 /firefox-extension/ @balejosg
 
 # Web applications
 /whitelist-web/ @balejosg
-/whitelist-web-static/ @balejosg
+/spa/ @balejosg
 /whitelist-request-api/ @balejosg
 /oauth-worker/ @balejosg
 

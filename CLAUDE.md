@@ -16,7 +16,7 @@ This is a **multi-platform DNS-based URL whitelist enforcement system** (v3.5) t
 
 ### Core Components
 
-1. **dnsmasq DNS Sinkhole** (`/etc/dnsmasq.d/url-whitelist.conf`)
+1. **dnsmasq DNS Sinkhole** (`/etc/dnsmasq.d/openpath.conf`)
    - Returns NXDOMAIN for all domains by default via `address=/#/`
    - Explicitly allows whitelisted domains via `server=/domain.com/$PRIMARY_DNS`
    - Essential system domains (GitHub, captive portal detection, NTP) are always allowed
@@ -32,19 +32,19 @@ This is a **multi-platform DNS-based URL whitelist enforcement system** (v3.5) t
    - Chromium/Chrome: Enforces URLBlocklist via managed policies
    - Forces DuckDuckGo as default search engine, blocks Google search
 
-4. **Whitelist Management** (`scripts/dnsmasq-whitelist.sh`)
+4. **Whitelist Management** (`linux/scripts/runtime/openpath-update.sh`)
    - Downloads whitelist from configurable URL (default: GitHub)
    - Parses three sections: `## WHITELIST`, `## BLOCKED-SUBDOMAINS`, `## BLOCKED-PATHS`
    - Supports remote emergency disable via `# DESACTIVADO` marker
    - Runs every 5 minutes via systemd timer
    - Closes browsers only when policies change (to avoid disruption)
 
-5. **Watchdog** (`scripts/dnsmasq-watchdog.sh`)
+5. **Watchdog** (`linux/scripts/runtime/dnsmasq-watchdog.sh`)
    - Health checks every 1 minute
    - Auto-recovers dnsmasq, upstream DNS config, and resolv.conf
    - Enters fail-open mode after 3 consecutive failures
 
-6. **Captive Portal Detector** (`scripts/captive-portal-detector.sh`)
+6. **Captive Portal Detector** (`linux/scripts/runtime/captive-portal-detector.sh`)
    - Detects captive portals via `http://detectportal.firefox.com/success.txt`
    - Temporarily disables firewall when captive portal detected
    - Re-enables firewall after authentication
@@ -52,30 +52,30 @@ This is a **multi-platform DNS-based URL whitelist enforcement system** (v3.5) t
 
 ### Modular Library Structure
 
-All functionality is split into reusable libraries in `/usr/local/lib/whitelist-system/lib/`:
+All functionality is split into reusable libraries in `/usr/local/lib/openpath/lib/` (source in `linux/lib/`):
 - `common.sh` - Shared variables, logging, whitelist parsing
 - `dns.sh` - DNS configuration, dnsmasq management
 - `firewall.sh` - iptables rules, connection flushing
 - `browser.sh` - Browser policy generation and enforcement
 - `services.sh` - systemd service creation and management
 
-### Web Management (whitelist-web-static)
+### Web Management (spa)
 
-7. **Static SPA** (`whitelist-web-static/`)
+7. **Static SPA** (`spa/`)
    - Client-side only, deployable on GitHub Pages
    - Manages whitelist rules via GitHub API
    - Supports GitHub OAuth authentication via Cloudflare Worker
    - Permission-based access (repo write access required for edits)
    - Includes domain request management panel (connects to home server API)
 
-8. **OAuth Worker** (`oauth-worker/`)
+8. **Auth Worker** (`auth-worker/`)
    - Cloudflare Worker handling GitHub OAuth flow
    - Exchanges authorization codes for access tokens
    - Validates repository permissions
 
-### Home Server API (whitelist-request-api)
+### Home Server API (api)
 
-9. **Request API** (`whitelist-request-api/`)
+9. **Request API** (`api/`)
    - Express.js REST API for domain requests
    - Designed for home server deployment (Raspberry Pi, NAS, Docker)
    - Endpoints:
@@ -95,7 +95,7 @@ All functionality is split into reusable libraries in `/usr/local/lib/whitelist-
     - Native Messaging integration for local whitelist verification
     - Domain request feature (submits to home server API)
 
-### Windows Implementation (whitelist-windows)
+### Windows Implementation (windows)
 
 11. **Acrylic DNS Proxy** - Windows DNS sinkhole equivalent
 12. **Windows Firewall** - PowerShell-managed firewall rules
@@ -104,22 +104,22 @@ All functionality is split into reusable libraries in `/usr/local/lib/whitelist-
 ## Installation Paths
 
 - **Scripts**: `/usr/local/bin/`
-  - `dnsmasq-whitelist.sh` - Main update script
+  - `openpath-update.sh` - Main update script
   - `dnsmasq-watchdog.sh` - Health monitoring
   - `captive-portal-detector.sh` - Captive portal handling
   - `dnsmasq-init-resolv.sh` - DNS upstream initialization
   - `whitelist` - Unified CLI command
 
-- **Libraries**: `/usr/local/lib/whitelist-system/lib/*.sh`
+- **Libraries**: `/usr/local/lib/openpath/lib/*.sh` (source: `linux/lib/`)
 
-- **Configuration**: `/var/lib/url-whitelist/`
+- **Configuration**: `/etc/openpath/`
   - `whitelist.txt` - Downloaded whitelist
   - `original-dns.conf` - Detected upstream DNS
   - `whitelist-url.conf` - Whitelist source URL
   - `dnsmasq.hash` - Config change detection
   - `browser-policies.hash` - Browser policy change detection
 
-- **Logs**: `/var/log/url-whitelist.log` (rotated daily, 7 days)
+- **Logs**: `/var/log/openpath.log` (rotated daily, 7 days)
 
 ## Common Development Tasks
 
@@ -129,6 +129,7 @@ There is no build process. This is a bash-based system.
 
 **Install the system:**
 ```bash
+cd linux
 sudo ./install.sh
 # Or with custom whitelist URL:
 sudo ./install.sh --whitelist-url "https://example.com/whitelist.txt"
@@ -138,28 +139,29 @@ sudo ./install.sh --unattended
 
 **Test the system:**
 ```bash
-whitelist status    # Check all services and DNS
-whitelist test      # Test DNS resolution
-whitelist domains   # List whitelisted domains
-whitelist check google.com  # Check specific domain
-whitelist health    # Run health checks
+openpath status    # Check all services and DNS
+openpath test      # Test DNS resolution
+openpath domains   # List whitelisted domains
+openpath check google.com  # Check specific domain
+openpath health    # Run health checks
 ```
 
 **View logs:**
 ```bash
-whitelist logs      # Follow logs in real-time
-whitelist log 100   # Show last 100 lines
+openpath logs      # Follow logs in real-time
+openpath log 100   # Show last 100 lines
 ```
 
 **Force updates:**
 ```bash
-sudo whitelist update    # Force whitelist download and apply
-sudo whitelist force     # Force apply changes (closes browsers, flushes connections)
-sudo whitelist restart   # Restart all services
+sudo openpath update    # Force whitelist download and apply
+sudo openpath force     # Force apply changes (closes browsers, flushes connections)
+sudo openpath restart   # Restart all services
 ```
 
 **Uninstall:**
 ```bash
+cd linux
 sudo ./uninstall.sh
 # Or unattended:
 sudo ./uninstall.sh --unattended
@@ -176,14 +178,14 @@ After modifying scripts in the repository:
 
 1. **For library changes** (`lib/*.sh`):
    ```bash
-   sudo cp lib/*.sh /usr/local/lib/whitelist-system/lib/
-   sudo whitelist restart
+   sudo cp lib/*.sh /usr/local/lib/openpath/lib/
+   sudo openpath restart
    ```
 
 2. **For main scripts** (`scripts/*.sh`):
    ```bash
-   sudo cp scripts/dnsmasq-whitelist.sh /usr/local/bin/
-   sudo systemctl restart dnsmasq-whitelist.timer
+   sudo cp linux/scripts/runtime/openpath-update.sh /usr/local/bin/
+   sudo systemctl restart openpath-dnsmasq.timer
    ```
 
 3. **For full reinstall** (recommended during development):
@@ -196,7 +198,7 @@ After modifying scripts in the repository:
 **Check service status:**
 ```bash
 systemctl status dnsmasq
-systemctl status dnsmasq-whitelist.timer
+systemctl status openpath-dnsmasq.timer
 systemctl status dnsmasq-watchdog.timer
 systemctl status captive-portal-detector.service
 ```
@@ -204,7 +206,7 @@ systemctl status captive-portal-detector.service
 **View service logs:**
 ```bash
 journalctl -u dnsmasq -f
-journalctl -u dnsmasq-whitelist.service -f
+journalctl -u openpath-dnsmasq.service -f
 journalctl -u dnsmasq-watchdog.service -f
 ```
 
@@ -215,7 +217,7 @@ sudo iptables -L OUTPUT -n -v
 
 **Check DNS configuration:**
 ```bash
-cat /etc/dnsmasq.d/url-whitelist.conf
+cat /etc/dnsmasq.d/openpath.conf
 cat /etc/resolv.conf
 cat /run/dnsmasq/resolv.conf
 ```
@@ -230,7 +232,7 @@ nslookup google.com 127.0.0.1
 **Check browser policies:**
 ```bash
 cat /etc/firefox/policies/policies.json | python3 -m json.tool
-cat /etc/chromium/policies/managed/url-whitelist.json | python3 -m json.tool
+cat /etc/chromium/policies/managed/openpath.json | python3 -m json.tool
 ```
 
 ## Key Implementation Details
@@ -280,7 +282,7 @@ This minimizes disruption while ensuring policy enforcement.
 ### DNS Upstream Detection
 
 The system attempts to detect the upstream DNS in this order:
-1. Previously saved DNS from `/var/lib/url-whitelist/original-dns.conf`
+1. Previously saved DNS from `/etc/openpath/original-dns.conf`
 2. NetworkManager via `nmcli dev show`
 3. systemd-resolved from `/run/systemd/resolve/resolv.conf`
 4. Gateway IP as DNS
@@ -298,7 +300,7 @@ The system is designed to fail open (permissive) rather than fail closed (restri
 
 ### Locking and Race Conditions
 
-- `dnsmasq-whitelist.sh` and `captive-portal-detector.sh` share a lock file (`/var/run/whitelist-update.lock`) via `flock` to prevent concurrent firewall modifications
+- `openpath-update.sh` and `captive-portal-detector.sh` share a lock file (`/var/run/openpath-update.lock`) via `flock` to prevent concurrent firewall modifications
 - Lock is automatically released on script exit (via trap)
 
 ## Critical DNS Sinkhole Pattern
@@ -348,7 +350,7 @@ cd tests && bats *.bats
 
 ### Web API Tests
 ```bash
-cd whitelist-web && npm test
+cd dashboard && npm test
 ```
 
 ### CI/CD

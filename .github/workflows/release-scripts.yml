@@ -4,11 +4,11 @@ on:
   push:
     branches: [main, master]
     paths:
-      - 'install.sh'
-      - 'uninstall.sh'
-      - 'lib/**'
-      - 'scripts/**'
-      - 'whitelist-windows/**'
+      - 'linux/install.sh'
+      - 'linux/uninstall.sh'
+      - 'linux/lib/**'
+      - 'linux/scripts/**'
+      - 'windows/**'
       - '.github/workflows/release-scripts.yml'
   workflow_dispatch:
 
@@ -34,7 +34,7 @@ jobs:
         run: |
           echo "📦 Extracting version from install.sh..."
           
-          VERSION=$(grep -oP 'VERSION="\K[^"]+' install.sh)
+          VERSION=$(grep -oP 'VERSION="\K[^"]+' linux/install.sh)
           SHORT_SHA=$(git rev-parse --short HEAD)
           TAG="scripts-v${VERSION}-${SHORT_SHA}"
           
@@ -65,15 +65,15 @@ jobs:
           echo "🐧 Packaging Linux installation scripts..."
           
           VERSION="${{ steps.vars.outputs.version }}"
-          PACKAGE_NAME="whitelist-linux-v${VERSION}.tar.gz"
+          PACKAGE_NAME="openpath-linux-v${VERSION}.tar.gz"
           
           # Create tarball with all necessary Linux files
           echo "  → Creating tarball..."
           tar -czf "$PACKAGE_NAME" \
-            install.sh \
-            uninstall.sh \
-            lib/ \
-            scripts/ \
+            linux/install.sh \
+            linux/uninstall.sh \
+            linux/lib/ \
+            linux/scripts/ \
             firefox-extension/
           
           # Verify
@@ -94,11 +94,11 @@ jobs:
           echo "🪟 Packaging Windows installation scripts..."
           
           VERSION="${{ steps.vars.outputs.version }}"
-          PACKAGE_NAME="whitelist-windows-v${VERSION}.zip"
+          PACKAGE_NAME="windows-v${VERSION}.zip"
           
           # Create ZIP with all Windows files
           echo "  → Creating ZIP archive..."
-          zip -r -q "$PACKAGE_NAME" whitelist-windows/
+          zip -r -q "$PACKAGE_NAME" windows/
           
           # Verify
           if [ -f "$PACKAGE_NAME" ]; then
@@ -121,8 +121,8 @@ jobs:
           prerelease: true
           generate_release_notes: true
           files: |
-            whitelist-linux-v${{ steps.vars.outputs.version }}.tar.gz
-            whitelist-windows-v${{ steps.vars.outputs.version }}.zip
+            openpath-linux-v${{ steps.vars.outputs.version }}.tar.gz
+            windows-v${{ steps.vars.outputs.version }}.zip
           body: |
             ## 🚀 Installation Scripts Release
             
@@ -131,30 +131,30 @@ jobs:
             
             ### 📦 Assets
             
-            - **`whitelist-linux-v${{ steps.vars.outputs.version }}.tar.gz`** - Linux installation scripts
-            - **`whitelist-windows-v${{ steps.vars.outputs.version }}.zip`** - Windows installation scripts
+            - **`openpath-linux-v${{ steps.vars.outputs.version }}.tar.gz`** - Linux installation scripts
+            - **`windows-v${{ steps.vars.outputs.version }}.zip`** - Windows installation scripts
             
             ### 📝 Installation
             
             **Linux:**
             ```bash
             # Download and extract
-            wget https://github.com/balejosg/whitelist/releases/download/${{ steps.vars.outputs.tag }}/whitelist-linux-v${{ steps.vars.outputs.version }}.tar.gz
-            tar -xzf whitelist-linux-v${{ steps.vars.outputs.version }}.tar.gz
+            wget https://github.com/balejosg/openpath/releases/download/${{ steps.vars.outputs.tag }}/openpath-linux-v${{ steps.vars.outputs.version }}.tar.gz
+            tar -xzf openpath-linux-v${{ steps.vars.outputs.version }}.tar.gz
             
             # Run installer
-            sudo bash install.sh
+            cd linux && sudo bash install.sh
             ```
             
             **Windows (PowerShell as Administrator):**
             ```powershell
             # Download and extract
-            Invoke-WebRequest -Uri "https://github.com/balejosg/whitelist/releases/download/${{ steps.vars.outputs.tag }}/whitelist-windows-v${{ steps.vars.outputs.version }}.zip" -OutFile "whitelist-windows.zip"
-            Expand-Archive -Path "whitelist-windows.zip" -DestinationPath "."
+            Invoke-WebRequest -Uri "https://github.com/balejosg/openpath/releases/download/${{ steps.vars.outputs.tag }}/windows-v${{ steps.vars.outputs.version }}.zip" -OutFile "windows.zip"
+            Expand-Archive -Path "windows.zip" -DestinationPath "."
             
             # Run installer
-            cd whitelist-windows
-            .\Install-Whitelist.ps1
+            cd windows
+            .\Install-OpenPath.ps1
             ```
             
             ### 📋 What's Included
@@ -167,8 +167,8 @@ jobs:
             - Firefox extension (`firefox-extension/`)
             
             **Windows Package:**
-            - PowerShell installer (`Install-Whitelist.ps1`)
-            - PowerShell uninstaller (`Uninstall-Whitelist.ps1`)
+            - PowerShell installer (`Install-OpenPath.ps1`)
+            - PowerShell uninstaller (`Uninstall-OpenPath.ps1`)
             - Library modules (`lib/*.psm1`)
             - Runtime scripts (`scripts/*.ps1`)
             - Configuration files
@@ -187,7 +187,7 @@ jobs:
           echo "**Commit:** \`${{ steps.vars.outputs.short_sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📦 Released Artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "- whitelist-linux-v${{ steps.vars.outputs.version }}.tar.gz" >> $GITHUB_STEP_SUMMARY
-          echo "- whitelist-windows-v${{ steps.vars.outputs.version }}.zip" >> $GITHUB_STEP_SUMMARY
+          echo "- openpath-linux-v${{ steps.vars.outputs.version }}.tar.gz" >> $GITHUB_STEP_SUMMARY
+          echo "- windows-v${{ steps.vars.outputs.version }}.zip" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🔗 [View Release](https://github.com/${{ github.repository }}/releases/tag/${{ steps.vars.outputs.tag }})" >> $GITHUB_STEP_SUMMARY

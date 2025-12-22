@@ -83,10 +83,10 @@ test_file_permissions() {
             fi
         done
         
-        if [ $lib_count -eq 5 ]; then
-            test_pass "Found 5 library scripts in lib/"
+        if [ $lib_count -eq 6 ]; then
+            test_pass "Found 6 library scripts in lib/"
         else
-            test_fail "Expected 5 library scripts, found $lib_count"
+            test_fail "Expected 6 library scripts, found $lib_count"
         fi
     fi
 }
@@ -95,15 +95,18 @@ test_required_directories() {
     test_section "2/5" "Required directory structure"
     
     local required_dirs=(
-        "lib"
-        "scripts"
+        "linux/lib"
+        "linux/scripts"
+        "linux/scripts/runtime"
+        "linux/scripts/build"
+        "linux/scripts/dev"
         "firefox-extension"
         "firefox-extension/icons"
         "firefox-extension/popup"
         "firefox-extension/native"
-        "whitelist-windows"
-        "whitelist-windows/lib"
-        "whitelist-windows/scripts"
+        "windows"
+        "windows/lib"
+        "windows/scripts"
         "tests"
         "tests/e2e"
     )
@@ -113,7 +116,7 @@ test_required_directories() {
         if [ -d "$dir_path" ]; then
             test_pass "Directory $dir exists"
         else
-            if [[ "$dir" == "whitelist-windows"* ]]; then
+            if [[ "$dir" == "windows"* ]]; then
                 test_warn "Directory $dir missing (Windows-specific)"
             else
                 test_fail "Directory $dir missing"
@@ -127,21 +130,22 @@ test_required_files() {
     
     local required_files=(
         # Core installers
-        "install.sh"
-        "uninstall.sh"
+        "linux/install.sh"
+        "linux/uninstall.sh"
         
         # Library modules
-        "lib/common.sh"
-        "lib/dns.sh"
-        "lib/firewall.sh"
-        "lib/browser.sh"
-        "lib/services.sh"
+        "linux/lib/common.sh"
+        "linux/lib/dns.sh"
+        "linux/lib/firewall.sh"
+        "linux/lib/browser.sh"
+        "linux/lib/services.sh"
+        "linux/lib/rollback.sh"
         
         # Runtime scripts
-        "scripts/dnsmasq-whitelist.sh"
-        "scripts/dnsmasq-watchdog.sh"
-        "scripts/captive-portal-detector.sh"
-        "scripts/whitelist-cmd.sh"
+        "linux/scripts/runtime/openpath-update.sh"
+        "linux/scripts/runtime/dnsmasq-watchdog.sh"
+        "linux/scripts/runtime/captive-portal-detector.sh"
+        "linux/scripts/runtime/openpath-cmd.sh"
         
         # Firefox extension
         "firefox-extension/manifest.json"
@@ -150,8 +154,8 @@ test_required_files() {
         "firefox-extension/popup/popup.html"
         "firefox-extension/popup/popup.js"
         "firefox-extension/popup/popup.css"
-        "firefox-extension/native/whitelist-native-host.py"
-        "firefox-extension/native/whitelist_native_host.json"
+        "firefox-extension/native/openpath-native-host.py"
+        "firefox-extension/native/openpath_native_host.json"
         "firefox-extension/native/install-native-host.sh"
     )
     
@@ -179,7 +183,7 @@ test_firefox_extension_structure() {
         fi
         
         # Check extension ID
-        if grep -q '"id":.*"monitor-bloqueos@whitelist-system"' "$ext_dir/manifest.json"; then
+        if grep -q '"id":.*"monitor-bloqueos@openpath"' "$ext_dir/manifest.json"; then
             test_pass "Extension ID correctly set"
         else
             test_fail "Extension ID missing or incorrect"
@@ -197,8 +201,8 @@ test_firefox_extension_structure() {
     fi
     
     # Check native messaging host is executable
-    if [ -f "$ext_dir/native/whitelist-native-host.py" ]; then
-        if head -1 "$ext_dir/native/whitelist-native-host.py" | grep -q "^#!/usr/bin"; then
+    if [ -f "$ext_dir/native/openpath-native-host.py" ]; then
+        if head -1 "$ext_dir/native/openpath-native-host.py" | grep -q "^#!/usr/bin"; then
             test_pass "Native host has shebang"
         else
             test_warn "Native host missing shebang line"
@@ -211,10 +215,10 @@ test_release_tarball_simulation() {
     
     # Simulate what would be in the Linux release tarball
     local tarball_contents=(
-        "install.sh"
-        "uninstall.sh"
-        "lib/"
-        "scripts/"
+        "linux/install.sh"
+        "linux/uninstall.sh"
+        "linux/lib/"
+        "linux/scripts/"
         "firefox-extension/"
     )
     

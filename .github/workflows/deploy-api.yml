@@ -5,8 +5,12 @@ on:
   push:
     branches: [main]
     paths:
-      - 'whitelist-request-api/**'
+      - 'api/**'
       - '.github/workflows/deploy-api.yml'
+
+env:
+  DEPLOY_TIMEOUT: 60s
+  COMMAND_TIMEOUT: 15m
 
 jobs:
   deploy:
@@ -14,53 +18,125 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Backup and Deploy to Alpine Container
-        uses: appleboy/ssh-action@v1.0.0
+      - name: Resolve deploy host IP address
+        id: resolve
+        run: |
+          echo "🔍 Resolving deploy host..."
+          
+          HOST="${{ secrets.DEPLOY_HOST }}"
+          PORT="${{ secrets.DEPLOY_PORT }}"
+          PORT="${PORT:-22}"
+          
+          if [ -z "$HOST" ]; then
+            echo "⚠️ DEPLOY_HOST secret not configured. Skipping deployment."
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Try to resolve hostname to IP (with retries)
+          MAX_RETRIES=3
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "DNS resolution attempt $i of $MAX_RETRIES..."
+            
+            # Try multiple DNS resolution methods
+            IP=$(getent hosts "$HOST" 2>/dev/null | awk '{print $1}' | head -1)
+            
+            if [ -z "$IP" ]; then
+              IP=$(dig +short "$HOST" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+            fi
+            
+            if [ -z "$IP" ]; then
+              IP=$(nslookup "$HOST" 2>/dev/null | grep -A1 'Name:' | grep 'Address:' | awk '{print $2}' | head -1)
+            fi
+            
+            if [ -n "$IP" ]; then
+              echo "✅ Resolved $HOST to $IP"
+              echo "ip=$IP" >> $GITHUB_OUTPUT
+              echo "port=$PORT" >> $GITHUB_OUTPUT
+              echo "skip=false" >> $GITHUB_OUTPUT
+              
+              # Verify TCP connectivity
+              if nc -z -w 10 "$IP" "$PORT" 2>/dev/null; then
+                echo "✅ TCP connectivity verified"
+                exit 0
+              else
+                echo "⚠️ TCP connection failed, but will try SSH anyway"
+                exit 0
+              fi
+            fi
+            
+            echo "⚠️ DNS resolution failed, waiting 5s before retry..."
+            sleep 5
+          done
+          
+          echo "❌ Could not resolve $HOST after $MAX_RETRIES attempts"
+          echo "skip=true" >> $GITHUB_OUTPUT
+
+      - name: Deploy via SSH
+        if: steps.resolve.outputs.skip != 'true'
+        uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
+          host: ${{ steps.resolve.outputs.ip }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_PORT }}
+          port: ${{ steps.resolve.outputs.port }}
+          timeout: ${{ env.DEPLOY_TIMEOUT }}
+          command_timeout: ${{ env.COMMAND_TIMEOUT }}
           script: |
             echo "🚀 Starting deployment..."
             
-            # Navigate to repo
             cd ~/whitelist
+            
+            # Handle migration from old directory name
+            if [ -d "whitelist-request-api" ] && [ ! -d "api" ]; then
+              echo "🔄 Migrating from whitelist-request-api to api..."
+              mv whitelist-request-api api
+            fi
             
             # Backup current version
             echo "📦 Creating backup..."
-            cp -r whitelist-request-api whitelist-request-api.backup 2>/dev/null || true
+            cp -r api api.backup 2>/dev/null || true
+            
+            # Fix permissions before reset
+            chmod -R u+w api/data 2>/dev/null || true
             
             # Pull latest changes
-            echo "📥 Pulling latest changes from GitHub..."
-            git pull origin main
+            echo "📥 Pulling latest changes..."
+            git fetch origin main
+            git checkout -- . 2>/dev/null || true
+            git clean -fd 2>/dev/null || true
+            git reset --hard origin/main
             
-            # Navigate to API directory
-            cd whitelist-request-api
+            cd api
+            mkdir -p data
+            chmod 755 data
             
-            # Install/update dependencies
+            # Install dependencies
             echo "📦 Installing dependencies..."
-            npm ci --production
+            npm ci --omit=dev
             
             # Restart service
             echo "🔄 Restarting API service..."
-            rc-service whitelist-request-api restart
+            rc-service openpath-api restart
             
             # Verify health
             sleep 3
             if curl -f http://localhost:3000/health > /dev/null 2>&1; then
-              echo "✅ Deployment successful! API is healthy."
-              # Remove backup on success
-              cd ~/whitelist && rm -rf whitelist-request-api.backup
+              echo "✅ Deployment successful!"
+              cd ~/whitelist && rm -rf api.backup
             else
               echo "❌ Deployment failed! Rolling back..."
               cd ~/whitelist
-              rm -rf whitelist-request-api
-              mv whitelist-request-api.backup whitelist-request-api
-              rc-service whitelist-request-api restart
-              echo "🔄 Rolled back to previous version"
+              rm -rf api
+              mv api.backup api
+              rc-service openpath-api restart
+              echo "🔄 Rolled back"
               exit 1
             fi
             
             echo "🎉 Deployment completed at $(date)"
 
+      - name: Report skip
+        if: steps.resolve.outputs.skip == 'true'
+        run: |
+          echo "::warning::Deployment skipped - could not resolve or connect to deploy host"

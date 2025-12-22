@@ -110,7 +110,7 @@ jobs:
           fi
 
   # ============================================
-  # Docker Image Scanning with Trivy
+  # Docker Image Scanning with Trivy (API image)
   # ============================================
   trivy-scan:
     name: Container Security Scan
@@ -122,12 +122,12 @@ jobs:
       
       - name: Build Docker image
         run: |
-          docker build -t whitelist-web:scan ./whitelist-web
+          docker build -t openpath-api:scan ./api
       
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'whitelist-web:scan'
+          image-ref: 'openpath-api:scan'
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
@@ -141,7 +141,7 @@ jobs:
       - name: Run Trivy for human-readable output
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'whitelist-web:scan'
+          image-ref: 'openpath-api:scan'
           format: 'table'
           severity: 'CRITICAL,HIGH,MEDIUM'
 
@@ -155,9 +155,7 @@ jobs:
     strategy:
       matrix:
         package:
-          - whitelist-web
-          - whitelist-request-api
-          - oauth-worker
+          - api
     
     steps:
       - name: Checkout code

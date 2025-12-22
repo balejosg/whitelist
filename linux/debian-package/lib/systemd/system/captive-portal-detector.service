@@ -1,0 +1,15 @@
+[Unit]
+Description=Captive Portal Detector for URL Whitelist
+After=network-online.target dnsmasq.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/captive-portal-detector.sh
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

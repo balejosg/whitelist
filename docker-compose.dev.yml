@@ -1,18 +1,18 @@
 version: '3.8'
 
-# Development Docker Compose for Whitelist System
+# Development Docker Compose for OpenPath System
 # Usage: docker-compose -f docker-compose.dev.yml up
 
 services:
   # Request API Server
   api:
-    build: 
-      context: ./whitelist-request-api
+    build:
+      context: ./api
       dockerfile: Dockerfile
-    container_name: whitelist-api-dev
+    container_name: openpath-api-dev
     volumes:
-      - ./whitelist-request-api:/app
-      - /app/node_modules  # Don't override node_modules
+      - ./api:/app
+      - /app/node_modules # Don't override node_modules
     ports:
       - "3000:3000"
     environment:
@@ -29,7 +29,7 @@ services:
     restart: unless-stopped
     command: npm run dev
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:3000/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -37,11 +37,11 @@ services:
   # Web Management Interface
   web:
     build:
-      context: ./whitelist-web
+      context: ./dashboard
       dockerfile: Dockerfile
-    container_name: whitelist-web-dev
+    container_name: dashboard-dev
     volumes:
-      - ./whitelist-web:/app
+      - ./dashboard:/app
       - /app/node_modules
     ports:
       - "8080:8080"
@@ -60,4 +60,4 @@ volumes:
 
 networks:
   default:
-    name: whitelist-dev-network
+    name: openpath-dev-network

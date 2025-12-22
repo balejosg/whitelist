@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  openpath-dashboard:
+    build: .
+    container_name: openpath-dashboard
+    ports:
+      - "3000:3000"
+    volumes:
+      - openpath-data:/app/data
+    environment:
+      - NODE_ENV=production
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - SESSION_SECRET=${SESSION_SECRET:-}
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:3000/api/auth/check" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  openpath-data:

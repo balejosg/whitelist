@@ -3,15 +3,15 @@
   "name": "Monitor de Bloqueos de Red",
   "version": "1.1.0",
   "description": "Detecta dominios bloqueados por whitelists DNS y firewalls. Facilita la identificación de recursos que impiden el correcto funcionamiento de páginas web.",
-  "author": "Whitelist System",
-  "homepage_url": "https://github.com/balejosg/whitelist",
+  "author": "OpenPath System",
+  "homepage_url": "https://github.com/balejosg/openpath",
   "developer": {
-    "name": "Whitelist System",
-    "url": "https://github.com/balejosg/whitelist"
+    "name": "OpenPath System",
+    "url": "https://github.com/balejosg/openpath"
   },
   "browser_specific_settings": {
     "gecko": {
-      "id": "monitor-bloqueos@whitelist-system",
+      "id": "monitor-bloqueos@openpath",
       "strict_min_version": "78.0"
     }
   },

@@ -1,0 +1,144 @@
+#!/bin/bash
+################################################################################
+# postinst - Post-installation script for openpath-dnsmasq package
+# Performs dynamic system configuration after package files are installed
+################################################################################
+
+set -e
+
+# Load debconf library
+. /usr/share/debconf/confmodule
+
+case "$1" in
+    configure)
+        echo "Configuring openpath-dnsmasq..."
+        
+        # Source installed libraries
+        source /usr/local/lib/openpath/lib/common.sh
+        source /usr/local/lib/openpath/lib/dns.sh
+        source /usr/local/lib/openpath/lib/firewall.sh
+        source /usr/local/lib/openpath/lib/browser.sh
+        source /usr/local/lib/openpath/lib/services.sh
+        
+        # Get configuration from debconf
+        db_get openpath-dnsmasq/whitelist-url
+        WHITELIST_URL="${RET:-https://raw.githubusercontent.com/LasEncinasIT/Whitelist-por-aula/main/Informatica%203.txt}"
+        
+        db_get openpath-dnsmasq/health-api-url
+        HEALTH_API_URL="${RET:-}"
+        
+        db_get openpath-dnsmasq/health-api-secret
+        HEALTH_API_SECRET="${RET:-}"
+        
+        # Create directories (Debian FHS compliant)
+        mkdir -p "$ETC_CONFIG_DIR"     # /etc/openpath - config (preserved)
+        mkdir -p "$VAR_STATE_DIR"      # /var/lib/openpath - state/cache
+        
+        # Save configuration to /etc/ (preserved on upgrade)
+        echo "$WHITELIST_URL" > "$WHITELIST_URL_CONF"
+        
+        if [ -n "$HEALTH_API_URL" ]; then
+            echo "$HEALTH_API_URL" > "$HEALTH_API_URL_CONF"
+        fi
+        if [ -n "$HEALTH_API_SECRET" ]; then
+            echo "$HEALTH_API_SECRET" > "$HEALTH_API_SECRET_CONF"
+            chmod 600 "$HEALTH_API_SECRET_CONF"
+        fi
+        
+        # Step 1: Free port 53 (disable systemd-resolved)
+        echo "  Liberando puerto 53..."
+        free_port_53
+        
+        # Step 2: Detect and save primary DNS
+        echo "  Detectando DNS primario..."
+        PRIMARY_DNS=$(detect_primary_dns)
+        echo "$PRIMARY_DNS" > "$ORIGINAL_DNS_FILE"
+        
+        # Step 3: Configure DNS
+        echo "  Configurando DNS..."
+        configure_upstream_dns
+        configure_resolv_conf
+        create_dns_init_script
+        
+        # Step 4: Create dnsmasq override
+        mkdir -p /etc/systemd/system/dnsmasq.service.d
+        cat > /etc/systemd/system/dnsmasq.service.d/openpath-override.conf << 'EOF'
+[Service]
+ExecStartPre=/usr/local/bin/dnsmasq-init-resolv.sh
+EOF
+
+        # Step 5: Configure initial dnsmasq
+        echo "  Configurando dnsmasq..."
+        if [ -f /etc/dnsmasq.conf ]; then
+            sed -i 's/^no-resolv/#no-resolv/g' /etc/dnsmasq.conf 2>/dev/null || true
+            sed -i 's/^cache-size=/#cache-size=/g' /etc/dnsmasq.conf 2>/dev/null || true
+        fi
+        
+        cat > /etc/dnsmasq.d/openpath.conf << EOF
+# Configuración inicial - será sobrescrita por openpath-update.sh
+no-resolv
+resolv-file=/run/dnsmasq/resolv.conf
+listen-address=127.0.0.1
+bind-interfaces
+cache-size=1000
+server=$PRIMARY_DNS
+EOF
+
+        # Step 6: Give capabilities to dnsmasq
+        setcap 'cap_net_bind_service,cap_net_admin=+ep' /usr/sbin/dnsmasq 2>/dev/null || true
+        
+        # Step 7: Install Firefox extension
+        echo "  Instalando extensión Firefox..."
+        install_firefox_extension /usr/share/openpath/firefox-extension
+        
+        # Step 8: Apply browser policies
+        echo "  Aplicando políticas de navegadores..."
+        apply_search_engine_policies
+        
+        # Step 9: Create logrotate and tmpfiles config
+        create_logrotate_config
+        create_tmpfiles_config
+        
+        # Step 10: Reload systemd and enable services
+        echo "  Habilitando servicios..."
+        systemctl daemon-reload
+        
+        systemctl enable dnsmasq
+        systemctl enable openpath-dnsmasq.timer
+        systemctl enable dnsmasq-watchdog.timer
+        systemctl enable captive-portal-detector.service
+        
+        # Step 11: Start services
+        systemctl restart dnsmasq
+        sleep 2
+        
+        if ! systemctl is-active --quiet dnsmasq; then
+            echo "ERROR: dnsmasq no arrancó"
+            journalctl -u dnsmasq -n 10 --no-pager
+            exit 1
+        fi
+        
+        systemctl start openpath-dnsmasq.timer
+        systemctl start dnsmasq-watchdog.timer
+        systemctl start captive-portal-detector.service
+        
+        # Step 12: Run initial whitelist update
+        echo "  Ejecutando primera actualización..."
+        /usr/local/bin/openpath-update.sh || echo "⚠ Primera actualización falló (el timer lo reintentará)"
+        
+        echo "✓ openpath-dnsmasq configurado correctamente"
+        ;;
+    
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+    
+    *)
+        echo "postinst called with unknown argument '$1'" >&2
+        exit 1
+        ;;
+esac
+
+# Stop debconf
+db_stop
+
+exit 0
