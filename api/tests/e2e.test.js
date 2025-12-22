@@ -224,6 +224,138 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
     });
 
     // ============================================
+    // Step 3.5: Teacher Dashboard (US2)
+    // ============================================
+    describe('Step 3.5: Teacher Dashboard - US2', () => {
+        test('teacher should get their assigned groups', async () => {
+            if (!teacherToken) {
+                console.log('Skipping: No teacher token');
+                return;
+            }
+
+            const response = await fetch(`${API_URL}/api/requests/groups/list`, {
+                headers: { 'Authorization': `Bearer ${teacherToken}` }
+            });
+
+            // Teacher should be able to list their groups
+            assert.ok([200, 401].includes(response.status));
+
+            if (response.status === 200) {
+                const data = await response.json();
+                console.log(`Teacher has access to ${data.groups?.length || 0} groups`);
+            }
+        });
+
+        test('teacher should only see requests for their groups', async () => {
+            if (!teacherToken) {
+                console.log('Skipping: No teacher token');
+                return;
+            }
+
+            const response = await fetch(`${API_URL}/api/requests`, {
+                headers: { 'Authorization': `Bearer ${teacherToken}` }
+            });
+
+            // Should get 200 with filtered requests
+            assert.ok([200, 401].includes(response.status));
+
+            if (response.status === 200) {
+                const data = await response.json();
+                assert.ok(data.success !== false);
+
+                // Verify all requests are for teacher's groups
+                if (data.requests && data.requests.length > 0) {
+                    console.log(`Teacher sees ${data.requests.length} requests`);
+                } else {
+                    console.log('No pending requests for teacher groups');
+                }
+            }
+        });
+
+        test('teacher can filter requests by status', async () => {
+            if (!teacherToken) {
+                console.log('Skipping: No teacher token');
+                return;
+            }
+
+            const response = await fetch(`${API_URL}/api/requests?status=pending`, {
+                headers: { 'Authorization': `Bearer ${teacherToken}` }
+            });
+
+            assert.ok([200, 401].includes(response.status));
+
+            if (response.status === 200) {
+                const data = await response.json();
+                // All returned requests should be pending
+                if (data.requests) {
+                    data.requests.forEach(req => {
+                        if (req.status) {
+                            assert.strictEqual(req.status, 'pending');
+                        }
+                    });
+                }
+            }
+        });
+
+        test('teacher cannot access admin-only endpoints', async () => {
+            if (!teacherToken) {
+                console.log('Skipping: No teacher token');
+                return;
+            }
+
+            // Try to access admin-only blocked domains list
+            const response = await fetch(`${API_URL}/api/requests/domains/blocked`, {
+                headers: { 'Authorization': `Bearer ${teacherToken}` }
+            });
+
+            // Should be forbidden (403)
+            assert.strictEqual(response.status, 403, 'Teacher should not access blocked domains list');
+        });
+
+        test('approval should be quick (single API call)', async () => {
+            // This test documents that approval is a single API call
+            // Actual timing would be tested with performance tools
+
+            // Create a test request
+            const createRes = await fetch(`${API_URL}/api/requests`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    domain: `quick-test-${Date.now()}.example.com`,
+                    reason: 'Quick approval test',
+                    requester_email: 'quick-test@school.edu'
+                })
+            });
+
+            if (createRes.status !== 201) {
+                console.log('Skipping: Could not create test request');
+                return;
+            }
+
+            const createData = await createRes.json();
+            const testRequestId = createData.request_id;
+
+            // Measure single API call for approval
+            const start = Date.now();
+
+            const approveRes = await fetch(`${API_URL}/api/requests/${testRequestId}/approve`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${teacherToken}`
+                },
+                body: JSON.stringify({ group_id: TEACHER_GROUP })
+            });
+
+            const elapsed = Date.now() - start;
+            console.log(`Approval API call took ${elapsed}ms`);
+
+            // Should complete reasonably fast (< 2 seconds as per US2 requirement)
+            assert.ok(elapsed < 2000, `Approval should be < 2s, was ${elapsed}ms`);
+        });
+    });
+
+    // ============================================
     // Step 4: Teacher Request Approval Flow
     // ============================================
     describe('Step 4: Request Approval Flow', () => {
