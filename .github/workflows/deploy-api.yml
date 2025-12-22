@@ -12,10 +12,9 @@ jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    # Only deploy if secrets are configured
-    if: ${{ secrets.DEPLOY_HOST != '' }}
     
     steps:
+
       - name: Verify connectivity to deploy server
         id: verify
         run: |
@@ -34,11 +33,14 @@ jobs:
                getent hosts "${{ secrets.DEPLOY_HOST }}" > /dev/null 2>&1; then
               echo "✅ DNS resolution successful"
               
-              # Try TCP connection
-              if nc -z -w 10 "${{ secrets.DEPLOY_HOST }}" "${{ secrets.DEPLOY_PORT || 22 }}" 2>/dev/null; then
+              # Try TCP connection (default port 22 if not set)
+              DEPLOY_PORT="${{ secrets.DEPLOY_PORT }}"
+              DEPLOY_PORT="${DEPLOY_PORT:-22}"
+              if nc -z -w 10 "${{ secrets.DEPLOY_HOST }}" "$DEPLOY_PORT" 2>/dev/null; then
                 echo "✅ TCP connection successful"
                 echo "connected=true" >> $GITHUB_OUTPUT
                 exit 0
+
               else
                 echo "⚠️ TCP connection failed, retrying..."
               fi
