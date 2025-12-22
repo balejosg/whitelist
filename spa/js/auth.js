@@ -154,6 +154,31 @@ const Auth = {
         return Array.from(groups);
     },
 
+    /**
+     * Get groups assigned to teacher role
+     * @returns {Array<string>}
+     */
+    getTeacherGroups() {
+        const groups = this.getApprovalGroups();
+        return groups === 'all' ? [] : groups;
+    },
+
+    /**
+     * Alias for getTeacherGroups (used in app.js for clarity)
+     * @returns {Array<string>}
+     */
+    getAssignedGroups() {
+        return this.getTeacherGroups();
+    },
+
+    /**
+     * Check if user is student
+     * @returns {boolean}
+     */
+    isStudent() {
+        return this.hasRole('student');
+    },
+
     // ==========================================================================
     // API Methods
     // ==========================================================================
