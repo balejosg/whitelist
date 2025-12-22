@@ -1,6 +1,6 @@
 version: '3.8'
 
-# Development Docker Compose for Whitelist System
+# Development Docker Compose for OpenPath System
 # Usage: docker-compose -f docker-compose.dev.yml up
 
 services:
@@ -9,7 +9,7 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
-    container_name: whitelist-api-dev
+    container_name: openpath-api-dev
     volumes:
       - ./api:/app
       - /app/node_modules # Don't override node_modules
@@ -60,4 +60,4 @@ volumes:
 
 networks:
   default:
-    name: whitelist-dev-network
+    name: openpath-dev-network

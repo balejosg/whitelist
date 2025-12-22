@@ -22,7 +22,7 @@ echo -e "${BLUE}═════════════════════�
 echo ""
 
 # Ensure we're in the right directory
-cd /whitelist
+cd /openpath
 
 # Step 1: Verify port 53 is free
 echo -e "${BLUE}[1/6]${NC} Verifying port 53 is free..."
@@ -42,7 +42,7 @@ echo -e "${BLUE}[2/6]${NC} Running pre-installation validation..."
 # Step 3: Run installation
 echo ""
 echo -e "${BLUE}[3/6]${NC} Running installation..."
-./install.sh --unattended --skip-firefox-setup 2>&1 | tail -20
+./linux/install.sh --unattended --skip-firefox-setup 2>&1 | tail -20
 
 # Step 4: Verify dnsmasq is running
 echo ""
@@ -62,14 +62,14 @@ if ss -ulnp 2>/dev/null | grep -q ":53 "; then
 else
     echo -e "${RED}✗${NC} Port 53 is not listening"
     # Try to start dnsmasq manually
-    dnsmasq -C /etc/dnsmasq.d/url-whitelist.conf --no-daemon &
+    dnsmasq -C /etc/dnsmasq.d/openpath.conf --no-daemon &
     sleep 2
 fi
 
 # Step 5: Run smoke tests
 echo ""
 echo -e "${BLUE}[5/6]${NC} Running smoke tests..."
-./scripts/runtime/smoke-test.sh --quick || echo -e "${YELLOW}⚠${NC} Smoke tests had issues"
+./linux/scripts/runtime/smoke-test.sh --quick || echo -e "${YELLOW}⚠${NC} Smoke tests had issues"
 
 # Step 6: Run E2E tests
 echo ""

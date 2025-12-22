@@ -1,4 +1,21 @@
 #!/bin/bash
+
+# OpenPath - Strict Internet Access Control
+# Copyright (C) 2025 OpenPath Authors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 ################################################################################
 # uninstall.sh - Desinstalador del sistema whitelist
 # Parte del sistema dnsmasq URL Whitelist v3.5
@@ -31,7 +48,7 @@ fi
 
 echo ""
 echo "[1/7] Deteniendo servicios..."
-systemctl stop dnsmasq-whitelist.timer 2>/dev/null || true
+systemctl stop openpath-dnsmasq.timer 2>/dev/null || true
 systemctl stop dnsmasq-watchdog.timer 2>/dev/null || true
 systemctl stop captive-portal-detector.service 2>/dev/null || true
 systemctl stop dnsmasq 2>/dev/null || true
@@ -54,13 +71,13 @@ if ss -tulpn 2>/dev/null | grep -q ":53 "; then
 fi
 
 echo "[2/7] Deshabilitando servicios..."
-systemctl disable dnsmasq-whitelist.timer 2>/dev/null || true
+systemctl disable openpath-dnsmasq.timer 2>/dev/null || true
 systemctl disable dnsmasq-watchdog.timer 2>/dev/null || true
 systemctl disable captive-portal-detector.service 2>/dev/null || true
 
 echo "[3/7] Eliminando servicios systemd..."
-rm -f /etc/systemd/system/dnsmasq-whitelist.service
-rm -f /etc/systemd/system/dnsmasq-whitelist.timer
+rm -f /etc/systemd/system/openpath-dnsmasq.service
+rm -f /etc/systemd/system/openpath-dnsmasq.timer
 rm -f /etc/systemd/system/dnsmasq-watchdog.service
 rm -f /etc/systemd/system/dnsmasq-watchdog.timer
 rm -f /etc/systemd/system/captive-portal-detector.service
@@ -124,9 +141,9 @@ if systemctl is-active --quiet systemd-resolved; then
     # systemd-resolved funciona: usar su stub
     echo "  Usando systemd-resolved stub..."
     ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
-elif [ -f /var/lib/url-whitelist/resolv.conf.symlink.backup ]; then
+elif [ -f /var/lib/openpath/resolv.conf.symlink.backup ]; then
     # Intentar restaurar backup de symlink
-    target=$(cat /var/lib/url-whitelist/resolv.conf.symlink.backup)
+    target=$(cat /var/lib/openpath/resolv.conf.symlink.backup)
     if [ -f "$target" ]; then
         echo "  Restaurando symlink desde backup..."
         ln -sf "$target" /etc/resolv.conf
@@ -140,10 +157,10 @@ nameserver $FALLBACK_DNS
 nameserver 8.8.8.8
 EOF
     fi
-elif [ -f /var/lib/url-whitelist/resolv.conf.backup ]; then
+elif [ -f /var/lib/openpath/resolv.conf.backup ]; then
     # Restaurar backup de archivo
     echo "  Restaurando resolv.conf desde backup..."
-    cp /var/lib/url-whitelist/resolv.conf.backup /etc/resolv.conf
+    cp /var/lib/openpath/resolv.conf.backup /etc/resolv.conf
 else
     # Sin backups: crear resolv.conf con DNS inteligente
     # Usar gateway como DNS primario (funciona en portales cautivos)
@@ -163,20 +180,20 @@ iptables -P OUTPUT ACCEPT 2>/dev/null || true
 iptables-save > /etc/iptables/rules.v4 2>/dev/null || true
 
 echo "[6/7] Eliminando archivos..."
-rm -f /usr/local/bin/dnsmasq-whitelist.sh
+rm -f /usr/local/bin/openpath-update.sh
 rm -f /usr/local/bin/dnsmasq-watchdog.sh
 rm -f /usr/local/bin/dnsmasq-init-resolv.sh
 rm -f /usr/local/bin/captive-portal-detector.sh
-rm -f /usr/local/bin/whitelist
-rm -rf /usr/local/lib/whitelist-system
-rm -f /etc/dnsmasq.d/url-whitelist.conf
-rm -rf /var/lib/url-whitelist
-rm -f /var/log/url-whitelist.log
+rm -f /usr/local/bin/openpath
+rm -rf /usr/local/lib/openpath
+rm -f /etc/dnsmasq.d/openpath.conf
+rm -rf /var/lib/openpath
+rm -f /var/log/openpath.log
 rm -f /var/log/captive-portal-detector.log
-rm -f /etc/tmpfiles.d/dnsmasq-whitelist.conf
-rm -f /etc/logrotate.d/dnsmasq-whitelist
+rm -f /etc/tmpfiles.d/openpath-dnsmasq.conf
+rm -f /etc/logrotate.d/openpath-dnsmasq
 rm -rf /run/dnsmasq
-rm -f /etc/sudoers.d/whitelist
+rm -f /etc/sudoers.d/openpath
 
 # Limpiar políticas de navegadores
 echo '{"policies": {}}' > /etc/firefox/policies/policies.json 2>/dev/null || true

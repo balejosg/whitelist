@@ -1,4 +1,21 @@
 #!/bin/bash
+
+# OpenPath - Strict Internet Access Control
+# Copyright (C) 2025 OpenPath Authors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 ################################################################################
 # common.sh - Variables y funciones comunes
 # Parte del sistema dnsmasq URL Whitelist v3.5
@@ -8,15 +25,15 @@
 VERSION="3.5"
 
 # Directorios y archivos
-INSTALL_DIR="/usr/local/lib/whitelist-system"
+INSTALL_DIR="/usr/local/lib/openpath"
 SCRIPTS_DIR="/usr/local/bin"
 
 # Debian FHS compliant paths:
 # - /etc/ for configuration (preserved on upgrade)
 # - /var/lib/ for state/cache (can be regenerated)
-ETC_CONFIG_DIR="/etc/whitelist-system"
-VAR_STATE_DIR="/var/lib/url-whitelist"
-LOG_FILE="/var/log/url-whitelist.log"
+ETC_CONFIG_DIR="/etc/openpath"
+VAR_STATE_DIR="/var/lib/openpath"
+LOG_FILE="/var/log/openpath.log"
 
 # Configuration files (in /etc/, preserved on upgrade)
 WHITELIST_URL_CONF="$ETC_CONFIG_DIR/whitelist-url.conf"
@@ -25,7 +42,7 @@ HEALTH_API_SECRET_CONF="$ETC_CONFIG_DIR/health-api-secret.conf"
 ORIGINAL_DNS_FILE="$ETC_CONFIG_DIR/original-dns.conf"
 
 # State/cache files (in /var/lib/, regenerated)
-DNSMASQ_CONF="/etc/dnsmasq.d/url-whitelist.conf"
+DNSMASQ_CONF="/etc/dnsmasq.d/openpath.conf"
 DNSMASQ_CONF_HASH="$VAR_STATE_DIR/dnsmasq.hash"
 BROWSER_POLICIES_HASH="$VAR_STATE_DIR/browser-policies.hash"
 SYSTEM_DISABLED_FLAG="$VAR_STATE_DIR/system-disabled.flag"

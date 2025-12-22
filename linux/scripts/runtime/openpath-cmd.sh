@@ -1,11 +1,28 @@
 #!/bin/bash
+
+# OpenPath - Strict Internet Access Control
+# Copyright (C) 2025 OpenPath Authors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 ################################################################################
-# whitelist - Comando unificado de gestión
-# Parte del sistema dnsmasq URL Whitelist v3.4
+# openpath - Comando unificado de gestión
+# Parte del sistema OpenPath DNS v3.4
 ################################################################################
 
 # Cargar librerías
-INSTALL_DIR="/usr/local/lib/whitelist-system"
+INSTALL_DIR="/usr/local/lib/openpath"
 source "$INSTALL_DIR/lib/common.sh" 2>/dev/null || {
     echo "ERROR: Sistema no instalado correctamente"
     exit 1
@@ -40,7 +57,7 @@ cmd_status() {
     echo ""
     
     echo -e "${YELLOW}Servicios:${NC}"
-    for svc in dnsmasq dnsmasq-whitelist.timer dnsmasq-watchdog.timer captive-portal-detector; do
+    for svc in dnsmasq openpath-dnsmasq.timer dnsmasq-watchdog.timer captive-portal-detector; do
         if systemctl is-active --quiet $svc 2>/dev/null; then
             echo -e "  $svc: ${GREEN}● activo${NC}"
         else
@@ -73,7 +90,7 @@ cmd_status() {
 # Forzar actualización
 cmd_update() {
     echo -e "${BLUE}Actualizando whitelist...${NC}"
-    /usr/local/bin/dnsmasq-whitelist.sh
+    /usr/local/bin/openpath-update.sh
 }
 
 # Test DNS
@@ -176,7 +193,7 @@ cmd_enable() {
 
     echo -e "${BLUE}Habilitando sistema...${NC}"
     enable_services
-    /usr/local/bin/dnsmasq-whitelist.sh
+    /usr/local/bin/openpath-update.sh
 
     # Forzar cierre de navegadores y limpieza de conexiones
     force_browser_close
@@ -192,7 +209,7 @@ cmd_disable() {
     
     echo -e "${YELLOW}Deshabilitando sistema...${NC}"
     
-    systemctl stop dnsmasq-whitelist.timer
+    systemctl stop openpath-dnsmasq.timer
     systemctl stop dnsmasq-watchdog.timer
     
     deactivate_firewall
@@ -218,7 +235,7 @@ cmd_restart() {
     echo -e "${BLUE}Reiniciando servicios...${NC}"
     
     systemctl restart dnsmasq
-    systemctl restart dnsmasq-whitelist.timer
+    systemctl restart openpath-dnsmasq.timer
     systemctl restart dnsmasq-watchdog.timer
     systemctl restart captive-portal-detector.service 2>/dev/null || true
     
@@ -228,9 +245,9 @@ cmd_restart() {
 
 # Ayuda
 cmd_help() {
-    echo -e "${BLUE}whitelist - Gestión del sistema URL Whitelist v$VERSION${NC}"
+    echo -e "${BLUE}openpath - Gestión del sistema OpenPath DNS v$VERSION${NC}"
     echo ""
-    echo "Uso: whitelist <comando> [opciones]"
+    echo "Uso: openpath <comando> [opciones]"
     echo ""
     echo "Comandos:"
     echo "  status          Estado del sistema"

@@ -142,10 +142,10 @@ test_required_files() {
         "linux/lib/rollback.sh"
         
         # Runtime scripts
-        "linux/scripts/runtime/dnsmasq-whitelist.sh"
+        "linux/scripts/runtime/openpath-update.sh"
         "linux/scripts/runtime/dnsmasq-watchdog.sh"
         "linux/scripts/runtime/captive-portal-detector.sh"
-        "linux/scripts/runtime/whitelist-cmd.sh"
+        "linux/scripts/runtime/openpath-cmd.sh"
         
         # Firefox extension
         "firefox-extension/manifest.json"
@@ -154,8 +154,8 @@ test_required_files() {
         "firefox-extension/popup/popup.html"
         "firefox-extension/popup/popup.js"
         "firefox-extension/popup/popup.css"
-        "firefox-extension/native/whitelist-native-host.py"
-        "firefox-extension/native/whitelist_native_host.json"
+        "firefox-extension/native/openpath-native-host.py"
+        "firefox-extension/native/openpath_native_host.json"
         "firefox-extension/native/install-native-host.sh"
     )
     
@@ -183,7 +183,7 @@ test_firefox_extension_structure() {
         fi
         
         # Check extension ID
-        if grep -q '"id":.*"monitor-bloqueos@whitelist-system"' "$ext_dir/manifest.json"; then
+        if grep -q '"id":.*"monitor-bloqueos@openpath"' "$ext_dir/manifest.json"; then
             test_pass "Extension ID correctly set"
         else
             test_fail "Extension ID missing or incorrect"
@@ -201,8 +201,8 @@ test_firefox_extension_structure() {
     fi
     
     # Check native messaging host is executable
-    if [ -f "$ext_dir/native/whitelist-native-host.py" ]; then
-        if head -1 "$ext_dir/native/whitelist-native-host.py" | grep -q "^#!/usr/bin"; then
+    if [ -f "$ext_dir/native/openpath-native-host.py" ]; then
+        if head -1 "$ext_dir/native/openpath-native-host.py" | grep -q "^#!/usr/bin"; then
             test_pass "Native host has shebang"
         else
             test_warn "Native host missing shebang line"

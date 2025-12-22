@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 ################################################################################
-# whitelist-cmd.bats - Tests para scripts/whitelist-cmd.sh
+# openpath-cmd.bats - Tests para scripts/runtime/openpath-cmd.sh
 ################################################################################
 
 load 'test_helper'
@@ -14,7 +14,7 @@ setup() {
     mkdir -p "$INSTALL_DIR/lib"
     
     # Copy libs
-    cp "$PROJECT_DIR/lib/"*.sh "$INSTALL_DIR/lib/" 2>/dev/null || true
+    cp "$PROJECT_DIR/linux/lib/"*.sh "$INSTALL_DIR/lib/" 2>/dev/null || true
     
     # Create test whitelist
     create_test_whitelist "$CONFIG_DIR/whitelist.txt"

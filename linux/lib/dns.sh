@@ -1,7 +1,24 @@
 #!/bin/bash
+
+# OpenPath - Strict Internet Access Control
+# Copyright (C) 2025 OpenPath Authors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 ################################################################################
 # dns.sh - Funciones de gestión DNS
-# Parte del sistema dnsmasq URL Whitelist v3.5
+# Parte del sistema OpenPath DNS v3.5
 ################################################################################
 
 # Liberar puerto 53 (detener systemd-resolved)
@@ -47,7 +64,7 @@ configure_resolv_conf() {
     
     # Crear nuevo resolv.conf
     cat > /etc/resolv.conf << 'EOF'
-# Generado por whitelist-system
+# Generado por openpath
 # DNS local (dnsmasq)
 nameserver 127.0.0.1
 options edns0 trust-ad
@@ -92,8 +109,8 @@ create_dns_init_script() {
 mkdir -p /run/dnsmasq
 
 # Leer DNS guardado
-if [ -f /var/lib/url-whitelist/original-dns.conf ]; then
-    PRIMARY_DNS=$(cat /var/lib/url-whitelist/original-dns.conf | head -1)
+if [ -f /var/lib/openpath/original-dns.conf ]; then
+    PRIMARY_DNS=$(cat /var/lib/openpath/original-dns.conf | head -1)
 else
     # Detectar vía NetworkManager
     if command -v nmcli >/dev/null 2>&1; then
@@ -117,7 +134,7 @@ EOF
 
 # Crear configuración tmpfiles.d para /run/dnsmasq
 create_tmpfiles_config() {
-    cat > /etc/tmpfiles.d/dnsmasq-whitelist.conf << 'EOF'
+    cat > /etc/tmpfiles.d/openpath-dnsmasq.conf << 'EOF'
 # Crear directorio /run/dnsmasq en cada arranque
 d /run/dnsmasq 0755 root root -
 EOF
@@ -132,7 +149,7 @@ generate_dnsmasq_config() {
     # Cabecera con configuración base (SIN fecha para que el hash sea estable)
     cat > "$temp_conf" << EOF
 # =============================================
-# URL Whitelist - dnsmasq DNS Sinkhole v$VERSION
+# OpenPath - dnsmasq DNS Sinkhole v$VERSION
 # =============================================
 
 # Configuración base

@@ -1,12 +1,29 @@
 #!/bin/bash
+
+# OpenPath - Strict Internet Access Control
+# Copyright (C) 2025 OpenPath Authors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 ################################################################################
 # quick-install.sh - One-liner installation script
 #
 # Usage (run on each student PC):
-#   curl -sSL https://raw.githubusercontent.com/balejosg/whitelist/main/quick-install.sh | sudo bash
+#   curl -sSL https://raw.githubusercontent.com/balejosg/openpath/main/quick-install.sh | sudo bash
 #
 # Or with wget:
-#   wget -qO- https://raw.githubusercontent.com/balejosg/whitelist/main/quick-install.sh | sudo bash
+#   wget -qO- https://raw.githubusercontent.com/balejosg/openpath/main/quick-install.sh | sudo bash
 ################################################################################
 
 set -e
@@ -17,7 +34,7 @@ HEALTH_API_URL="https://your-api-host.duckdns.org"
 HEALTH_API_SECRET="your-shared-secret-here"
 # =============================================
 
-REPO_URL="https://github.com/balejosg/whitelist"
+REPO_URL="https://github.com/balejosg/openpath"
 BRANCH="main"
 
 echo ""

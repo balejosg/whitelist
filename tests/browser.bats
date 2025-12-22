@@ -20,7 +20,7 @@ setup() {
     mkdir -p "$CHROMIUM_POLICIES_BASE"
     
     # Copy libs
-    cp "$PROJECT_DIR/lib/"*.sh "$INSTALL_DIR/lib/" 2>/dev/null || true
+    cp "$PROJECT_DIR/linux/lib/"*.sh "$INSTALL_DIR/lib/" 2>/dev/null || true
     
     # Initialize arrays
     BLOCKED_PATHS=()
@@ -41,7 +41,7 @@ teardown() {
 # ============== Tests de get_policies_hash ==============
 
 @test "get_policies_hash retorna hash vacío sin archivos" {
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     run get_policies_hash
     [ "$status" -eq 0 ]
@@ -50,7 +50,7 @@ teardown() {
 }
 
 @test "get_policies_hash cambia con diferentes BLOCKED_PATHS" {
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     BLOCKED_PATHS=()
     hash1=$(get_policies_hash)
@@ -65,7 +65,7 @@ teardown() {
     # Create a Firefox policy file
     echo '{"policies": {}}' > "$FIREFOX_POLICIES"
     
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     run get_policies_hash
     [ "$status" -eq 0 ]
@@ -79,7 +79,7 @@ teardown() {
     
     BLOCKED_PATHS=()
     
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     run generate_firefox_policies
     [ "$status" -eq 0 ]
@@ -89,7 +89,7 @@ teardown() {
 @test "generate_firefox_policies crea JSON válido" {
     BLOCKED_PATHS=("example.com/ads" "test.org/tracking")
     
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     run generate_firefox_policies
     [ "$status" -eq 0 ]
@@ -102,7 +102,7 @@ teardown() {
 @test "generate_firefox_policies incluye WebsiteFilter" {
     BLOCKED_PATHS=("example.com/ads")
     
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     run generate_firefox_policies
     [ "$status" -eq 0 ]
@@ -116,7 +116,7 @@ teardown() {
 @test "generate_chromium_policies crea directorios" {
     BLOCKED_PATHS=("example.com/ads")
     
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     run generate_chromium_policies
     [ "$status" -eq 0 ]
@@ -126,21 +126,21 @@ teardown() {
 @test "generate_chromium_policies crea archivo de políticas" {
     BLOCKED_PATHS=("example.com/ads")
     
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     run generate_chromium_policies
     [ "$status" -eq 0 ]
-    [ -f "$CHROMIUM_POLICIES_BASE/url-whitelist.json" ]
+    [ -f "$CHROMIUM_POLICIES_BASE/openpath.json" ]
 }
 
 @test "generate_chromium_policies JSON contiene URLBlocklist" {
     BLOCKED_PATHS=("example.com/ads")
     
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     run generate_chromium_policies
     
-    grep -q "URLBlocklist" "$CHROMIUM_POLICIES_BASE/url-whitelist.json"
+    grep -q "URLBlocklist" "$CHROMIUM_POLICIES_BASE/openpath.json"
 }
 
 # ============== Tests de cleanup_browser_policies ==============
@@ -148,7 +148,7 @@ teardown() {
 @test "cleanup_browser_policies limpia Firefox" {
     echo '{"policies": {"WebsiteFilter": {"Block": ["test"]}}}' > "$FIREFOX_POLICIES"
     
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     run cleanup_browser_policies
     [ "$status" -eq 0 ]
@@ -158,21 +158,21 @@ teardown() {
 }
 
 @test "cleanup_browser_policies elimina archivos Chromium" {
-    echo '{"URLBlocklist": ["test"]}' > "$CHROMIUM_POLICIES_BASE/url-whitelist.json"
+    echo '{"URLBlocklist": ["test"]}' > "$CHROMIUM_POLICIES_BASE/openpath.json"
     
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     run cleanup_browser_policies
     [ "$status" -eq 0 ]
     
     # File should be removed
-    [ ! -f "$CHROMIUM_POLICIES_BASE/url-whitelist.json" ]
+    [ ! -f "$CHROMIUM_POLICIES_BASE/openpath.json" ]
 }
 
 # ============== Tests de apply_search_engine_policies ==============
 
 @test "apply_search_engine_policies añade SearchEngines" {
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     run apply_search_engine_policies
     [ "$status" -eq 0 ]
@@ -181,7 +181,7 @@ teardown() {
 }
 
 @test "apply_search_engine_policies configura DuckDuckGo" {
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     run apply_search_engine_policies
     [ "$status" -eq 0 ]
@@ -190,7 +190,7 @@ teardown() {
 }
 
 @test "apply_search_engine_policies bloquea búsqueda Google" {
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     run apply_search_engine_policies
     [ "$status" -eq 0 ]
@@ -204,7 +204,7 @@ teardown() {
     mkdir -p "$TEST_TMP_DIR/usr/lib/firefox-esr"
     touch "$TEST_TMP_DIR/usr/lib/firefox-esr/firefox"
     
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     # Mock the function to check our test directory
     detect_firefox_dir() {
@@ -224,7 +224,7 @@ teardown() {
 }
 
 @test "detect_firefox_dir retorna error si no existe Firefox" {
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     # Mock to return nothing
     detect_firefox_dir() { return 1; }
@@ -239,7 +239,7 @@ teardown() {
     mkdir -p "$TEST_TMP_DIR/usr/lib/firefox-esr"
     touch "$TEST_TMP_DIR/usr/lib/firefox-esr/firefox"
     
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     # Mock detect_firefox_dir
     detect_firefox_dir() { echo "$TEST_TMP_DIR/usr/lib/firefox-esr"; }
@@ -256,7 +256,7 @@ teardown() {
     mkdir -p "$TEST_TMP_DIR/usr/lib/firefox-esr"
     touch "$TEST_TMP_DIR/usr/lib/firefox-esr/firefox"
     
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     detect_firefox_dir() { echo "$TEST_TMP_DIR/usr/lib/firefox-esr"; }
     export -f detect_firefox_dir
@@ -269,7 +269,7 @@ teardown() {
 }
 
 @test "generate_firefox_autoconfig maneja ausencia de Firefox" {
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     detect_firefox_dir() { return 1; }
     export -f detect_firefox_dir
@@ -290,9 +290,9 @@ teardown() {
     touch "$ext_dir/icons/icon-48.png"
     
     # Mock the system extension directory to be in TEST_TMP_DIR
-    local ext_install_dir="$TEST_TMP_DIR/share/mozilla/extensions/{ec8030f7-c20a-464f-9b0e-13a3a9e97384}/monitor-bloqueos@whitelist-system"
+    local ext_install_dir="$TEST_TMP_DIR/share/mozilla/extensions/{ec8030f7-c20a-464f-9b0e-13a3a9e97384}/monitor-bloqueos@openpath"
     
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     # Mock functions to use test directory
     detect_firefox_dir() { echo "$TEST_TMP_DIR/usr/lib/firefox-esr"; }
@@ -323,7 +323,7 @@ teardown() {
 }
 
 @test "install_firefox_extension maneja directorio inexistente" {
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     run install_firefox_extension "/path/that/does/not/exist"
     [ "$status" -eq 1 ]
@@ -332,7 +332,7 @@ teardown() {
 # ============== Tests de add_extension_to_policies ==============
 
 @test "add_extension_to_policies añade ExtensionSettings" {
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     run add_extension_to_policies "test-ext@test" "/path/to/ext"
     [ "$status" -eq 0 ]
@@ -342,7 +342,7 @@ teardown() {
 }
 
 @test "add_extension_to_policies añade a Extensions.Install" {
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     run add_extension_to_policies "test-ext@test" "/path/to/ext"
     [ "$status" -eq 0 ]
@@ -352,7 +352,7 @@ teardown() {
 }
 
 @test "add_extension_to_policies bloquea extensión" {
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     run add_extension_to_policies "test-ext@test" "/path/to/ext"
     [ "$status" -eq 0 ]
@@ -366,20 +366,20 @@ teardown() {
     # Create mock native host directory
     local native_dir="$TEST_TMP_DIR/native"
     mkdir -p "$native_dir"
-    echo '#!/usr/bin/env python3' > "$native_dir/whitelist-native-host.py"
+    echo '#!/usr/bin/env python3' > "$native_dir/openpath-native-host.py"
     
     # Mock paths to use test directory
     local native_manifest_dir="$TEST_TMP_DIR/lib/mozilla/native-messaging-hosts"
-    local native_script_dir="$TEST_TMP_DIR/local/lib/whitelist-system"
+    local native_script_dir="$TEST_TMP_DIR/local/lib/openpath"
     
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     # Override function to use test directories
     install_native_host() {
         local native_source="${1:-$INSTALL_DIR/firefox-extension/native}"
         mkdir -p "$native_manifest_dir" "$native_script_dir"
-        cp "$native_source/whitelist-native-host.py" "$native_script_dir/"
-        echo '{"name":"test"}' > "$native_manifest_dir/whitelist_native_host.json"
+        cp "$native_source/openpath-native-host.py" "$native_script_dir/"
+        echo '{"name":"test"}' > "$native_manifest_dir/openpath_native_host.json"
         return 0
     }
     export -f install_native_host
@@ -387,12 +387,12 @@ teardown() {
     run install_native_host "$native_dir"
     [ "$status" -eq 0 ]
     
-    [ -f "$native_script_dir/whitelist-native-host.py" ]
-    [ -f "$native_manifest_dir/whitelist_native_host.json" ]
+    [ -f "$native_script_dir/openpath-native-host.py" ]
+    [ -f "$native_manifest_dir/openpath_native_host.json" ]
 }
 
 @test "install_native_host maneja directorio inexistente" {
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     run install_native_host "/path/that/does/not/exist"
     [ "$status" -eq 1 ]
@@ -402,11 +402,11 @@ teardown() {
 
 @test "remove_firefox_extension elimina directorio de extensión" {
     # Create mock extension directory in test tmp
-    local ext_dir="$TEST_TMP_DIR/share/mozilla/extensions/{ec8030f7-c20a-464f-9b0e-13a3a9e97384}/monitor-bloqueos@whitelist-system"
+    local ext_dir="$TEST_TMP_DIR/share/mozilla/extensions/{ec8030f7-c20a-464f-9b0e-13a3a9e97384}/monitor-bloqueos@openpath"
     mkdir -p "$ext_dir"
     touch "$ext_dir/manifest.json"
     
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     detect_firefox_dir() { return 1; }
     export -f detect_firefox_dir
@@ -426,13 +426,13 @@ teardown() {
 
 @test "remove_firefox_extension elimina native host" {
     # Create mock files in test tmp
-    local native_manifest="$TEST_TMP_DIR/lib/mozilla/native-messaging-hosts/whitelist_native_host.json"
-    local native_script="$TEST_TMP_DIR/local/lib/whitelist-system/whitelist-native-host.py"
+    local native_manifest="$TEST_TMP_DIR/lib/mozilla/native-messaging-hosts/openpath_native_host.json"
+    local native_script="$TEST_TMP_DIR/local/lib/openpath/openpath-native-host.py"
     
     mkdir -p "$(dirname "$native_manifest")" "$(dirname "$native_script")"
     touch "$native_manifest" "$native_script"
     
-    source "$PROJECT_DIR/lib/browser.sh"
+    source "$PROJECT_DIR/linux/lib/browser.sh"
     
     detect_firefox_dir() { return 1; }
     export -f detect_firefox_dir

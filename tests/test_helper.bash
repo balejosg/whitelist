@@ -20,7 +20,7 @@ setup() {
     mkdir -p "$INSTALL_DIR/lib"
     
     # Copiar librerías al directorio de test
-    cp "$PROJECT_DIR/lib/"*.sh "$INSTALL_DIR/lib/" 2>/dev/null || true
+    cp "$PROJECT_DIR/linux/lib/"*.sh "$INSTALL_DIR/lib/" 2>/dev/null || true
 }
 
 # Teardown después de cada test

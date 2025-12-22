@@ -1,4 +1,4 @@
-# Whitelist Request API
+# OpenPath Request API
 
 Home server REST API for handling domain whitelist requests.
 
@@ -19,7 +19,7 @@ Firefox Extension → Home Server (this API) → GitHub Repository
 ### 1. Install dependencies
 
 ```bash
-cd whitelist-request-api
+cd api
 npm install
 ```
 
@@ -143,7 +143,7 @@ npm start
 
 ```bash
 npm install -g pm2
-pm2 start server.js --name whitelist-api
+pm2 start server.js --name openpath-api
 pm2 save
 pm2 startup
 ```
@@ -151,32 +151,32 @@ pm2 startup
 ### Option C: Docker
 
 ```bash
-docker build -t whitelist-request-api .
+docker build -t openpath-api .
 docker run -d \
   -p 3000:3000 \
   -v $(pwd)/data:/app/data \
   --env-file .env \
   --restart unless-stopped \
-  whitelist-request-api
+  openpath-api
 ```
 
 ### Option D: Systemd service
 
-Create `/etc/systemd/system/whitelist-request-api.service`:
+Create `/etc/systemd/system/openpath-api.service`:
 
 ```ini
 [Unit]
-Description=Whitelist Request API
+Description=OpenPath Request API
 After=network.target
 
 [Service]
 Type=simple
 User=pi
-WorkingDirectory=/home/pi/whitelist-request-api
+WorkingDirectory=/home/pi/openpath/api
 ExecStart=/usr/bin/node server.js
 Restart=on-failure
 RestartSec=10
-EnvironmentFile=/home/pi/whitelist-request-api/.env
+EnvironmentFile=/home/pi/openpath/api/.env
 
 [Install]
 WantedBy=multi-user.target
@@ -185,8 +185,8 @@ WantedBy=multi-user.target
 Then:
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable whitelist-request-api
-sudo systemctl start whitelist-request-api
+sudo systemctl enable openpath-api
+sudo systemctl start openpath-api
 ```
 
 ## Network Setup
@@ -210,7 +210,7 @@ For HTTPS, use Caddy or nginx with Let's Encrypt.
 ## Files
 
 ```
-whitelist-request-api/
+api/
 ├── server.js           # Main entry point
 ├── package.json        # Dependencies
 ├── .env.example        # Environment template
@@ -233,11 +233,8 @@ whitelist-request-api/
 
 ## Continuous Deployment
 
-This API is automatically deployed to production on every push to `main` that modifies files in `whitelist-request-api/`. The GitHub Actions workflow handles:
+This API is automatically deployed to production on every push to `main` that modifies files in `api/`. The GitHub Actions workflow handles:
 - Pulling latest code
 - Installing dependencies
 - Restarting the service
 - Health check verification
-
-# Retry deployment
-# Test CD after SSH fix

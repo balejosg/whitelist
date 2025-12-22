@@ -4,11 +4,11 @@ on:
   push:
     branches: [main, master]
     paths:
-      - 'install.sh'
-      - 'uninstall.sh'
-      - 'lib/**'
-      - 'scripts/**'
-      - 'whitelist-windows/**'
+      - 'linux/install.sh'
+      - 'linux/uninstall.sh'
+      - 'linux/lib/**'
+      - 'linux/scripts/**'
+      - 'windows/**'
       - 'tests/e2e/**'
       - '.github/workflows/e2e-tests.yml'
   pull_request:
@@ -31,7 +31,7 @@ jobs:
       - name: Build Docker image
         run: |
           echo "🐳 Building systemd-enabled E2E test Docker image..."
-          docker build -t whitelist-e2e:latest -f tests/e2e/Dockerfile .
+          docker build -t openpath-e2e:latest -f tests/e2e/Dockerfile .
       
       - name: Run E2E tests in systemd container
         run: |
@@ -44,7 +44,7 @@ jobs:
             -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
             --dns 8.8.8.8 \
             -e CI=true \
-            whitelist-e2e:latest
+            openpath-e2e:latest
           
           echo "⏳ Waiting for systemd to boot and tests to complete..."
           sleep 15
@@ -116,13 +116,13 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "📁 Creating directory structure..."
-          New-Item -ItemType Directory -Path "C:\Whitelist\lib" -Force | Out-Null
-          New-Item -ItemType Directory -Path "C:\Whitelist\scripts" -Force | Out-Null
-          New-Item -ItemType Directory -Path "C:\Whitelist\data\logs" -Force | Out-Null
+          New-Item -ItemType Directory -Path "C:\OpenPath\lib" -Force | Out-Null
+          New-Item -ItemType Directory -Path "C:\OpenPath\scripts" -Force | Out-Null
+          New-Item -ItemType Directory -Path "C:\OpenPath\data\logs" -Force | Out-Null
           
           Write-Host "📋 Copying modules..."
-          Copy-Item "whitelist-windows\lib\*.psm1" "C:\Whitelist\lib\" -Force
-          Copy-Item "whitelist-windows\scripts\*.ps1" "C:\Whitelist\scripts\" -Force
+          Copy-Item "windows\lib\*.psm1" "C:\OpenPath\lib\" -Force
+          Copy-Item "windows\scripts\*.ps1" "C:\OpenPath\scripts\" -Force
       
       - name: Create test configuration
         shell: pwsh
@@ -137,16 +137,16 @@ jobs:
               enableBrowserPolicies = $false
               installedAt = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
           }
-          $config | ConvertTo-Json -Depth 10 | Set-Content "C:\Whitelist\data\config.json" -Encoding UTF8
+          $config | ConvertTo-Json -Depth 10 | Set-Content "C:\OpenPath\data\config.json" -Encoding UTF8
           Write-Host "✓ Test configuration created"
       
       - name: Import and test modules
         shell: pwsh
         run: |
           Write-Host "📦 Importing modules..."
-          Import-Module "C:\Whitelist\lib\Common.psm1" -Force
-          Import-Module "C:\Whitelist\lib\DNS.psm1" -Force
-          Import-Module "C:\Whitelist\lib\Firewall.psm1" -Force
+          Import-Module "C:\OpenPath\lib\Common.psm1" -Force
+          Import-Module "C:\OpenPath\lib\DNS.psm1" -Force
+          Import-Module "C:\OpenPath\lib\Firewall.psm1" -Force
           
           Write-Host ""
           Write-Host "🔍 Testing module functions..."
@@ -174,7 +174,7 @@ jobs:
       - name: Test Firewall module
         shell: pwsh
         run: |
-          Import-Module "C:\Whitelist\lib\Firewall.psm1" -Force
+          Import-Module "C:\OpenPath\lib\Firewall.psm1" -Force
           
           Write-Host "🔍 Testing firewall functions..."
           
@@ -186,17 +186,17 @@ jobs:
           Write-Host ""
           Write-Host "Creating test firewall rule..."
           try {
-              New-NetFirewallRule -DisplayName "Whitelist-Test-Rule" -Direction Outbound -Action Block -Protocol UDP -RemotePort 12345 -ErrorAction Stop | Out-Null
+              New-NetFirewallRule -DisplayName "OpenPath-Test-Rule" -Direction Outbound -Action Block -Protocol UDP -RemotePort 12345 -ErrorAction Stop | Out-Null
               Write-Host "✓ Test rule created"
               
               # Verify rule exists
-              $rule = Get-NetFirewallRule -DisplayName "Whitelist-Test-Rule" -ErrorAction SilentlyContinue
+              $rule = Get-NetFirewallRule -DisplayName "OpenPath-Test-Rule" -ErrorAction SilentlyContinue
               if ($rule) {
                   Write-Host "✓ Test rule verified"
               }
               
               # Clean up
-              Remove-NetFirewallRule -DisplayName "Whitelist-Test-Rule" -ErrorAction SilentlyContinue
+              Remove-NetFirewallRule -DisplayName "OpenPath-Test-Rule" -ErrorAction SilentlyContinue
               Write-Host "✓ Test rule removed"
           }
           catch {
@@ -232,17 +232,17 @@ jobs:
               $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-Command 'echo test'"
               $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddHours(1)
               
-              Register-ScheduledTask -TaskName "Whitelist-E2E-Test" -Action $action -Trigger $trigger -Force | Out-Null
+              Register-ScheduledTask -TaskName "OpenPath-E2E-Test" -Action $action -Trigger $trigger -Force | Out-Null
               Write-Host "✓ Test task created"
               
               # Verify
-              $task = Get-ScheduledTask -TaskName "Whitelist-E2E-Test" -ErrorAction SilentlyContinue
+              $task = Get-ScheduledTask -TaskName "OpenPath-E2E-Test" -ErrorAction SilentlyContinue
               if ($task) {
                   Write-Host "✓ Test task verified"
               }
               
               # Cleanup
-              Unregister-ScheduledTask -TaskName "Whitelist-E2E-Test" -Confirm:$false
+              Unregister-ScheduledTask -TaskName "OpenPath-E2E-Test" -Confirm:$false
               Write-Host "✓ Test task removed"
           }
           catch {
@@ -256,17 +256,17 @@ jobs:
           Write-Host "🧹 Cleaning up..."
           
           # Remove test directories
-          if (Test-Path "C:\Whitelist") {
-              Remove-Item "C:\Whitelist" -Recurse -Force -ErrorAction SilentlyContinue
+          if (Test-Path "C:\OpenPath") {
+              Remove-Item "C:\OpenPath" -Recurse -Force -ErrorAction SilentlyContinue
               Write-Host "✓ Test directories removed"
           }
           
           # Remove any test firewall rules
-          Get-NetFirewallRule -DisplayName "Whitelist-*" -ErrorAction SilentlyContinue | 
+          Get-NetFirewallRule -DisplayName "OpenPath-*" -ErrorAction SilentlyContinue | 
               Remove-NetFirewallRule -ErrorAction SilentlyContinue
           
           # Remove any test scheduled tasks
-          Get-ScheduledTask -TaskName "Whitelist-*" -ErrorAction SilentlyContinue | 
+          Get-ScheduledTask -TaskName "OpenPath-*" -ErrorAction SilentlyContinue | 
               Unregister-ScheduledTask -Confirm:$false -ErrorAction SilentlyContinue
 
   # ============================================

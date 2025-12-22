@@ -1,13 +1,13 @@
 version: '3.8'
 
 services:
-  whitelist-web:
+  openpath-dashboard:
     build: .
-    container_name: whitelist-web
+    container_name: openpath-dashboard
     ports:
       - "3000:3000"
     volumes:
-      - whitelist-data:/app/data
+      - openpath-data:/app/data
     environment:
       - NODE_ENV=production
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
@@ -20,4 +20,4 @@ services:
       retries: 3
 
 volumes:
-  whitelist-data:
+  openpath-data:

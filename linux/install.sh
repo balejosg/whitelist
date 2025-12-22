@@ -1,4 +1,21 @@
 #!/bin/bash
+
+# OpenPath - Strict Internet Access Control
+# Copyright (C) 2025 OpenPath Authors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 ################################################################################
 # install.sh - Instalador del sistema dnsmasq URL Whitelist v3.5
 #
@@ -20,9 +37,9 @@ VERSION="3.5"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Directorios de instalación
-INSTALL_DIR="/usr/local/lib/whitelist-system"
+INSTALL_DIR="/usr/local/lib/openpath"
 SCRIPTS_DIR="/usr/local/bin"
-CONFIG_DIR="/var/lib/url-whitelist"
+CONFIG_DIR="/var/lib/openpath"
 
 # URL por defecto
 DEFAULT_WHITELIST_URL="https://raw.githubusercontent.com/LasEncinasIT/Whitelist-por-aula/refs/heads/main/Informatica%203.txt"
@@ -158,8 +175,8 @@ echo ""
 echo "[5/13] Instalando scripts..."
 
 # Script principal de actualización
-cp "$SCRIPT_DIR/scripts/runtime/dnsmasq-whitelist.sh" "$SCRIPTS_DIR/"
-chmod +x "$SCRIPTS_DIR/dnsmasq-whitelist.sh"
+cp "$SCRIPT_DIR/scripts/runtime/openpath-update.sh" "$SCRIPTS_DIR/"
+chmod +x "$SCRIPTS_DIR/openpath-update.sh"
 
 # Script watchdog
 cp "$SCRIPT_DIR/scripts/runtime/dnsmasq-watchdog.sh" "$SCRIPTS_DIR/"
@@ -170,8 +187,8 @@ cp "$SCRIPT_DIR/scripts/runtime/captive-portal-detector.sh" "$SCRIPTS_DIR/"
 chmod +x "$SCRIPTS_DIR/captive-portal-detector.sh"
 
 # Comando unificado
-cp "$SCRIPT_DIR/scripts/runtime/whitelist-cmd.sh" "$SCRIPTS_DIR/whitelist"
-chmod +x "$SCRIPTS_DIR/whitelist"
+cp "$SCRIPT_DIR/scripts/runtime/openpath-cmd.sh" "$SCRIPTS_DIR/openpath"
+chmod +x "$SCRIPTS_DIR/openpath"
 
 # Script de inicialización DNS
 create_dns_init_script
@@ -201,14 +218,14 @@ echo "✓ Scripts instalados"
 echo ""
 echo "[6/13] Configurando permisos sudo..."
 
-cat > /etc/sudoers.d/whitelist << 'EOF'
-# Permitir a todos los usuarios ejecutar comandos whitelist sin contraseña
-ALL ALL=(root) NOPASSWD: /usr/local/bin/whitelist *
-ALL ALL=(root) NOPASSWD: /usr/local/bin/dnsmasq-whitelist.sh
+cat > /etc/sudoers.d/openpath << 'EOF'
+# Permitir a todos los usuarios ejecutar comandos openpath sin contraseña
+ALL ALL=(root) NOPASSWD: /usr/local/bin/openpath *
+ALL ALL=(root) NOPASSWD: /usr/local/bin/openpath-update.sh
 ALL ALL=(root) NOPASSWD: /usr/local/bin/dnsmasq-watchdog.sh
 EOF
 
-chmod 440 /etc/sudoers.d/whitelist
+chmod 440 /etc/sudoers.d/openpath
 
 echo "✓ Permisos sudo configurados"
 
@@ -248,7 +265,7 @@ if [ -f /etc/dnsmasq.conf ]; then
 fi
 
 # Configuración inicial permisiva
-cat > /etc/dnsmasq.d/url-whitelist.conf << EOF
+cat > /etc/dnsmasq.d/openpath.conf << EOF
 # Configuración inicial - será sobrescrita por dnsmasq-whitelist.sh
 no-resolv
 resolv-file=/run/dnsmasq/resolv.conf
@@ -314,7 +331,7 @@ enable_services
 
 # Primera ejecución del whitelist
 echo "Ejecutando primera actualización..."
-"$SCRIPTS_DIR/dnsmasq-whitelist.sh" || echo "⚠ Primera actualización falló (el timer lo reintentará)"
+"$SCRIPTS_DIR/openpath-update.sh" || echo "⚠ Primera actualización falló (el timer lo reintentará)"
 
 echo "✓ Servicios habilitados"
 
@@ -346,7 +363,7 @@ echo "======================================================"
 echo ""
 echo "Estado:"
 echo "  - dnsmasq: $(systemctl is-active dnsmasq)"
-echo "  - Timer: $(systemctl is-active dnsmasq-whitelist.timer)"
+echo "  - Timer: $(systemctl is-active openpath-dnsmasq.timer)"
 echo "  - Watchdog: $(systemctl is-active dnsmasq-watchdog.timer)"
 echo "  - Smoke Tests: $SMOKE_STATUS"
 echo ""
@@ -354,11 +371,11 @@ echo "Configuración:"
 echo "  - Whitelist: $WHITELIST_URL"
 echo "  - DNS upstream: $PRIMARY_DNS"
 echo ""
-echo "Comando de gestión: whitelist"
-echo "  whitelist status  - Ver estado"
-echo "  whitelist test    - Probar DNS"
-echo "  whitelist update  - Forzar actualización"
-echo "  whitelist help    - Ver ayuda completa"
+echo "Comando de gestión: openpath"
+echo "  openpath status  - Ver estado"
+echo "  openpath test    - Probar DNS"
+echo "  openpath update  - Forzar actualización"
+echo "  openpath help    - Ver ayuda completa"
 echo ""
 echo "Tests manuales:"
 echo "  sudo smoke-test.sh        - Ejecutar smoke tests completos"

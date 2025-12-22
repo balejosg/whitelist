@@ -3,7 +3,7 @@
  * Stores and retrieves app configuration from localStorage
  */
 const Config = {
-    STORAGE_KEY: 'whitelist-spa-config',
+    STORAGE_KEY: 'openpath-spa-config',
 
     get() {
         try {

@@ -1,13 +1,13 @@
-# Whitelist Services Module for Windows
+# OpenPath Services Module for Windows
 # Manages Task Scheduler tasks for periodic updates
 
 # Import common functions
 $modulePath = Split-Path $PSScriptRoot -Parent
 Import-Module "$modulePath\lib\Common.psm1" -Force -ErrorAction SilentlyContinue
 
-$script:TaskPrefix = "Whitelist"
+$script:TaskPrefix = "OpenPath"
 
-function Register-WhitelistTasks {
+function Register-OpenPathTasks {
     <#
     .SYNOPSIS
         Registers all scheduled tasks for whitelist system
@@ -17,13 +17,13 @@ function Register-WhitelistTasks {
         [int]$WatchdogIntervalMinutes = 1
     )
     
-    Write-WhitelistLog "Registering scheduled tasks..."
+    Write-OpenPathLog "Registering scheduled tasks..."
     
-    $whitelistRoot = "C:\Whitelist"
+    $openPathRoot = "C:\OpenPath"
     
-    # Task 1: Update Whitelist (every 5 minutes)
+    # Task 1: Update OpenPath (every 5 minutes)
     $updateAction = New-ScheduledTaskAction -Execute "PowerShell.exe" `
-        -Argument "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$whitelistRoot\scripts\Update-Whitelist.ps1`""
+        -Argument "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$openPathRoot\scripts\Update-OpenPath.ps1`""
     
     $updateTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(2) `
         -RepetitionInterval (New-TimeSpan -Minutes $UpdateIntervalMinutes) `
@@ -45,11 +45,11 @@ function Register-WhitelistTasks {
         -Settings $updateSettings `
         -Force | Out-Null
     
-    Write-WhitelistLog "Registered: $script:TaskPrefix-Update (every $UpdateIntervalMinutes min)"
+    Write-OpenPathLog "Registered: $script:TaskPrefix-Update (every $UpdateIntervalMinutes min)"
     
     # Task 2: Watchdog (every 1 minute)
     $watchdogAction = New-ScheduledTaskAction -Execute "PowerShell.exe" `
-        -Argument "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$whitelistRoot\scripts\Test-DNSHealth.ps1`""
+        -Argument "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$openPathRoot\scripts\Test-DNSHealth.ps1`""
     
     $watchdogTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
         -RepetitionInterval (New-TimeSpan -Minutes $WatchdogIntervalMinutes) `
@@ -62,7 +62,7 @@ function Register-WhitelistTasks {
         -Settings $updateSettings `
         -Force | Out-Null
     
-    Write-WhitelistLog "Registered: $script:TaskPrefix-Watchdog (every $WatchdogIntervalMinutes min)"
+    Write-OpenPathLog "Registered: $script:TaskPrefix-Watchdog (every $WatchdogIntervalMinutes min)"
     
     # Task 3: Startup task (run update on boot)
     $startupTrigger = New-ScheduledTaskTrigger -AtStartup
@@ -74,32 +74,32 @@ function Register-WhitelistTasks {
         -Settings $updateSettings `
         -Force | Out-Null
     
-    Write-WhitelistLog "Registered: $script:TaskPrefix-Startup (at boot)"
+    Write-OpenPathLog "Registered: $script:TaskPrefix-Startup (at boot)"
     
     return $true
 }
 
-function Unregister-WhitelistTasks {
+function Unregister-OpenPathTasks {
     <#
     .SYNOPSIS
         Removes all whitelist scheduled tasks
     #>
-    Write-WhitelistLog "Removing scheduled tasks..."
+    Write-OpenPathLog "Removing scheduled tasks..."
     
     $tasks = Get-ScheduledTask -TaskName "$script:TaskPrefix-*" -ErrorAction SilentlyContinue
     
     foreach ($task in $tasks) {
         try {
             Unregister-ScheduledTask -TaskName $task.TaskName -Confirm:$false
-            Write-WhitelistLog "Removed task: $($task.TaskName)"
+            Write-OpenPathLog "Removed task: $($task.TaskName)"
         }
         catch {
-            Write-WhitelistLog "Failed to remove $($task.TaskName): $_" -Level WARN
+            Write-OpenPathLog "Failed to remove $($task.TaskName): $_" -Level WARN
         }
     }
 }
 
-function Get-WhitelistTaskStatus {
+function Get-OpenPathTaskStatus {
     <#
     .SYNOPSIS
         Gets status of all whitelist tasks
@@ -121,7 +121,7 @@ function Get-WhitelistTaskStatus {
     return $status
 }
 
-function Start-WhitelistTask {
+function Start-OpenPathTask {
     <#
     .SYNOPSIS
         Manually starts a whitelist task
@@ -137,41 +137,41 @@ function Start-WhitelistTask {
     
     try {
         Start-ScheduledTask -TaskName $taskName
-        Write-WhitelistLog "Started task: $taskName"
+        Write-OpenPathLog "Started task: $taskName"
         return $true
     }
     catch {
-        Write-WhitelistLog "Failed to start $taskName : $_" -Level ERROR
+        Write-OpenPathLog "Failed to start $taskName : $_" -Level ERROR
         return $false
     }
 }
 
-function Enable-WhitelistTasks {
+function Enable-OpenPathTasks {
     <#
     .SYNOPSIS
         Enables all whitelist scheduled tasks
     #>
     Get-ScheduledTask -TaskName "$script:TaskPrefix-*" -ErrorAction SilentlyContinue | 
         Enable-ScheduledTask | Out-Null
-    Write-WhitelistLog "All whitelist tasks enabled"
+    Write-OpenPathLog "All openpath tasks enabled"
 }
 
-function Disable-WhitelistTasks {
+function Disable-OpenPathTasks {
     <#
     .SYNOPSIS
         Disables all whitelist scheduled tasks
     #>
     Get-ScheduledTask -TaskName "$script:TaskPrefix-*" -ErrorAction SilentlyContinue | 
         Disable-ScheduledTask | Out-Null
-    Write-WhitelistLog "All whitelist tasks disabled"
+    Write-OpenPathLog "All openpath tasks disabled"
 }
 
 # Export module members
 Export-ModuleMember -Function @(
-    'Register-WhitelistTasks',
-    'Unregister-WhitelistTasks',
-    'Get-WhitelistTaskStatus',
-    'Start-WhitelistTask',
-    'Enable-WhitelistTasks',
-    'Disable-WhitelistTasks'
+    'Register-OpenPathTasks',
+    'Unregister-OpenPathTasks',
+    'Get-OpenPathTaskStatus',
+    'Start-OpenPathTask',
+    'Enable-OpenPathTasks',
+    'Disable-OpenPathTasks'
 )

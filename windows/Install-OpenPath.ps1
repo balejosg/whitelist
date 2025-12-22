@@ -1,7 +1,23 @@
+# OpenPath - Strict Internet Access Control
+# Copyright (C) 2025 OpenPath Authors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    Installs the Whitelist DNS system for Windows
+    Installs the OpenPath DNS system for Windows
 .DESCRIPTION
     Installs Acrylic DNS Proxy, configures firewall, browser policies,
     and scheduled tasks for automatic whitelist updates.
@@ -19,10 +35,10 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$WhitelistRoot = "C:\Whitelist"
+$OpenPathRoot = "C:\OpenPath"
 
 Write-Host "==========================================" -ForegroundColor Cyan
-Write-Host "  Whitelist DNS para Windows - Instalador" -ForegroundColor Cyan
+Write-Host "  OpenPath DNS para Windows - Instalador" -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "URL: $WhitelistUrl"
@@ -32,9 +48,9 @@ Write-Host ""
 Write-Host "[1/7] Creando estructura de directorios..." -ForegroundColor Yellow
 
 $dirs = @(
-    "$WhitelistRoot\lib",
-    "$WhitelistRoot\scripts",
-    "$WhitelistRoot\data\logs"
+    "$OpenPathRoot\lib",
+    "$OpenPathRoot\scripts",
+    "$OpenPathRoot\data\logs"
 )
 
 foreach ($dir in $dirs) {
@@ -42,7 +58,7 @@ foreach ($dir in $dirs) {
         New-Item -ItemType Directory -Path $dir -Force | Out-Null
     }
 }
-Write-Host "  Estructura creada en $WhitelistRoot" -ForegroundColor Green
+Write-Host "  Estructura creada en $OpenPathRoot" -ForegroundColor Green
 
 # Step 2: Copy modules and scripts
 Write-Host "[2/7] Copiando módulos y scripts..." -ForegroundColor Yellow
@@ -52,11 +68,11 @@ if ($scriptDir -eq "") { $scriptDir = $PSScriptRoot }
 
 # Copy lib modules
 Get-ChildItem "$scriptDir\lib\*.psm1" -ErrorAction SilentlyContinue | 
-    Copy-Item -Destination "$WhitelistRoot\lib\" -Force
+    Copy-Item -Destination "$OpenPathRoot\lib\" -Force
 
 # Copy scripts
 Get-ChildItem "$scriptDir\scripts\*.ps1" -ErrorAction SilentlyContinue | 
-    Copy-Item -Destination "$WhitelistRoot\scripts\" -Force
+    Copy-Item -Destination "$OpenPathRoot\scripts\" -Force
 
 Write-Host "  Módulos copiados" -ForegroundColor Green
 
@@ -83,15 +99,15 @@ $config = @{
     installedAt = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
 }
 
-$config | ConvertTo-Json -Depth 10 | Set-Content "$WhitelistRoot\data\config.json" -Encoding UTF8
+$config | ConvertTo-Json -Depth 10 | Set-Content "$OpenPathRoot\data\config.json" -Encoding UTF8
 Write-Host "  DNS upstream: $primaryDNS" -ForegroundColor Green
 
 # Import modules
-Import-Module "$WhitelistRoot\lib\Common.psm1" -Force
-Import-Module "$WhitelistRoot\lib\DNS.psm1" -Force
-Import-Module "$WhitelistRoot\lib\Firewall.psm1" -Force
-Import-Module "$WhitelistRoot\lib\Browser.psm1" -Force
-Import-Module "$WhitelistRoot\lib\Services.psm1" -Force
+Import-Module "$OpenPathRoot\lib\Common.psm1" -Force
+Import-Module "$OpenPathRoot\lib\DNS.psm1" -Force
+Import-Module "$OpenPathRoot\lib\Firewall.psm1" -Force
+Import-Module "$OpenPathRoot\lib\Browser.psm1" -Force
+Import-Module "$OpenPathRoot\lib\Services.psm1" -Force
 
 # Step 4: Install Acrylic DNS
 Write-Host "[4/7] Instalando Acrylic DNS Proxy..." -ForegroundColor Yellow
@@ -125,14 +141,14 @@ Write-Host "  DNS configurado a 127.0.0.1" -ForegroundColor Green
 
 # Step 6: Register scheduled tasks
 Write-Host "[6/7] Registrando tareas programadas..." -ForegroundColor Yellow
-Register-WhitelistTasks -UpdateIntervalMinutes 5 -WatchdogIntervalMinutes 1
+Register-OpenPathTasks -UpdateIntervalMinutes 5 -WatchdogIntervalMinutes 1
 Write-Host "  Tareas registradas" -ForegroundColor Green
 
 # Step 7: First update
 Write-Host "[7/7] Ejecutando primera actualización..." -ForegroundColor Yellow
 
 try {
-    & "$WhitelistRoot\scripts\Update-Whitelist.ps1"
+    & "$OpenPathRoot\scripts\Update-Whitelist.ps1"
     Write-Host "  Primera actualización completada" -ForegroundColor Green
 }
 catch {
@@ -172,7 +188,7 @@ else {
 }
 
 # Check Tasks
-$tasks = Get-ScheduledTask -TaskName "Whitelist-*" -ErrorAction SilentlyContinue
+$tasks = Get-ScheduledTask -TaskName "OpenPath-*" -ErrorAction SilentlyContinue
 if ($tasks.Count -ge 2) {
     $checks += @{Name = "Tareas programadas"; Status = "OK"}
 }
@@ -201,7 +217,7 @@ Write-Host "  - Actualización: cada 5 minutos"
 Write-Host ""
 Write-Host "Comandos útiles:"
 Write-Host "  nslookup google.com 127.0.0.1  # Probar DNS"
-Write-Host "  Get-ScheduledTask Whitelist-*  # Ver tareas"
+Write-Host "  Get-ScheduledTask OpenPath-*  # Ver tareas"
 Write-Host ""
-Write-Host "Desinstalar: .\Uninstall-Whitelist.ps1"
+Write-Host "Desinstalar: .\Uninstall-OpenPath.ps1"
 Write-Host ""

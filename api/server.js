@@ -1,5 +1,23 @@
 /**
- * Whitelist Request API Server
+ * OpenPath - Strict Internet Access Control
+ * Copyright (C) 2025 OpenPath Authors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/**
+ * AulaFocus Request API Server
  * 
  * Home server deployment for handling domain requests.
  * Runs on your local network, exposed via DuckDNS.
@@ -21,6 +39,8 @@ require('dotenv').config();
 
 const requestsRouter = require('./routes/requests');
 const healthReportsRouter = require('./routes/health-reports');
+const authRouter = require('./routes/auth');
+const usersRouter = require('./routes/users');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -34,7 +54,7 @@ const HOST = process.env.HOST || '0.0.0.0';
 const corsOrigins = process.env.CORS_ORIGINS || '*';
 app.use(cors({
     origin: corsOrigins === '*' ? '*' : corsOrigins.split(',').map(o => o.trim()),
-    methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
@@ -93,8 +113,12 @@ app.get('/health', async (req, res) => {
 
     // Check admin configuration
     health.checks.auth = {
-        adminToken: process.env.ADMIN_TOKEN ? 'configured' : 'not_configured'
+        adminToken: process.env.ADMIN_TOKEN ? 'configured' : 'not_configured',
+        jwtSecret: process.env.JWT_SECRET ? 'configured' : 'using_random'
     };
+    if (!process.env.ADMIN_TOKEN && !process.env.JWT_SECRET) {
+        health.status = 'degraded';
+    }
     if (!process.env.ADMIN_TOKEN) {
         health.status = 'degraded';
     }
@@ -123,17 +147,33 @@ app.get('/health', async (req, res) => {
 // API info endpoint
 app.get('/api', (req, res) => {
     res.json({
-        name: 'Whitelist Request API',
-        version: '1.0.0',
+        name: 'AulaFocus Request API',
+        version: '2.0.0',
         endpoints: {
+            // Authentication
+            'POST /api/auth/register': 'Register new user',
+            'POST /api/auth/login': 'Login with email/password',
+            'POST /api/auth/refresh': 'Refresh access token',
+            'POST /api/auth/logout': 'Logout (invalidate tokens)',
+            'GET /api/auth/me': 'Get current user info',
+            // Users (admin only)
+            'GET /api/users': 'List all users',
+            'POST /api/users': 'Create user',
+            'PATCH /api/users/:id': 'Update user',
+            'DELETE /api/users/:id': 'Delete user',
+            'GET /api/users/:id/roles': 'List user roles',
+            'POST /api/users/:id/roles': 'Assign role to user',
+            'DELETE /api/users/:id/roles/:roleId': 'Revoke role',
+            // Requests
             'POST /api/requests': 'Submit a domain request (public)',
             'GET /api/requests/status/:id': 'Check request status (public)',
-            'GET /api/requests': 'List all requests (admin)',
-            'GET /api/requests/:id': 'Get request details (admin)',
-            'POST /api/requests/:id/approve': 'Approve request (admin)',
-            'POST /api/requests/:id/reject': 'Reject request (admin)',
+            'GET /api/requests': 'List all requests (admin/teacher)',
+            'GET /api/requests/:id': 'Get request details (admin/teacher)',
+            'POST /api/requests/:id/approve': 'Approve request (admin/teacher)',
+            'POST /api/requests/:id/reject': 'Reject request (admin/teacher)',
             'DELETE /api/requests/:id': 'Delete request (admin)',
-            'GET /api/requests/groups/list': 'List whitelist groups (admin)',
+            'GET /api/requests/groups/list': 'List whitelist groups (admin/teacher)',
+            // Health Reports
             'POST /api/health-reports': 'Submit health report (shared secret)',
             'GET /api/health-reports': 'List all hosts status (admin)',
             'GET /api/health-reports/:hostname': 'Get host history (admin)',
@@ -141,6 +181,12 @@ app.get('/api', (req, res) => {
         }
     });
 });
+
+// Authentication routes
+app.use('/api/auth', authRouter);
+
+// User management routes
+app.use('/api/users', usersRouter);
 
 // Request routes
 app.use('/api/requests', requestsRouter);
@@ -193,7 +239,7 @@ if (require.main === module) {
     server = app.listen(PORT, HOST, () => {
         console.log('');
         console.log('╔═══════════════════════════════════════════════════════╗');
-        console.log('║       🛡️  Whitelist Request API Server                ║');
+        console.log('║       🛡️  AulaFocus Request API Server                ║');
         console.log('╠═══════════════════════════════════════════════════════╣');
         console.log(`║  Running on: http://${HOST}:${PORT}                      ║`);
         console.log('║  Health:     /health                                  ║');

@@ -1,4 +1,4 @@
-# Whitelist DNS para Windows
+# OpenPath DNS para Windows
 
 Sistema de control de acceso a internet mediante DNS sinkhole para Windows, usando Acrylic DNS Proxy.
 
@@ -21,7 +21,7 @@ Sistema de control de acceso a internet mediante DNS sinkhole para Windows, usan
 
 ```powershell
 # Ejecutar como Administrador
-.\Install-Whitelist.ps1 -WhitelistUrl "http://tu-servidor:3000/export/grupo.txt"
+.\Install-OpenPath.ps1 -WhitelistUrl "http://tu-servidor:3000/export/grupo.txt"
 ```
 
 ## Verificar Instalación
@@ -34,18 +34,18 @@ nslookup google.com 127.0.0.1
 nslookup facebook.com 127.0.0.1
 
 # Ver tareas programadas
-Get-ScheduledTask -TaskName "Whitelist-*"
+Get-ScheduledTask -TaskName "OpenPath-*"
 
 # Ver reglas de firewall
-Get-NetFirewallRule -DisplayName "Whitelist-*"
+Get-NetFirewallRule -DisplayName "OpenPath-*"
 ```
 
 ## Estructura
 
 ```
-C:\Whitelist\
-├── Install-Whitelist.ps1       # Instalador
-├── Uninstall-Whitelist.ps1     # Desinstalador
+C:\OpenPath\
+├── Install-OpenPath.ps1        # Instalador
+├── Uninstall-OpenPath.ps1      # Desinstalador
 ├── lib\
 │   ├── Common.psm1             # Funciones comunes
 │   ├── DNS.psm1                # Gestión Acrylic
@@ -53,7 +53,7 @@ C:\Whitelist\
 │   ├── Browser.psm1            # Políticas navegadores
 │   └── Services.psm1           # Task Scheduler
 ├── scripts\
-│   ├── Update-Whitelist.ps1    # Actualización periódica
+│   ├── Update-OpenPath.ps1     # Actualización periódica
 │   └── Test-DNSHealth.ps1      # Watchdog
 └── data\
     ├── config.json             # Configuración
@@ -63,7 +63,7 @@ C:\Whitelist\
 
 ## Configuración
 
-Editar `C:\Whitelist\data\config.json`:
+Editar `C:\OpenPath\data\config.json`:
 
 ```json
 {
@@ -79,7 +79,7 @@ Editar `C:\Whitelist\data\config.json`:
 
 ```powershell
 # Ejecutar como Administrador
-.\Uninstall-Whitelist.ps1
+.\Uninstall-OpenPath.ps1
 ```
 
 ## Troubleshooting
@@ -94,17 +94,17 @@ Get-Service -DisplayName "*Acrylic*"
 Restart-Service -DisplayName "*Acrylic*"
 
 # Ver logs
-Get-Content C:\Whitelist\data\logs\whitelist.log -Tail 50
+Get-Content C:\OpenPath\data\logs\openpath.log -Tail 50
 ```
 
 ### Firewall bloqueando
 
 ```powershell
 # Verificar reglas
-Get-NetFirewallRule -DisplayName "Whitelist-*" | Format-Table
+Get-NetFirewallRule -DisplayName "OpenPath-*" | Format-Table
 
 # Deshabilitar temporalmente
-Get-NetFirewallRule -DisplayName "Whitelist-*" | Disable-NetFirewallRule
+Get-NetFirewallRule -DisplayName "OpenPath-*" | Disable-NetFirewallRule
 ```
 
 ## Compatibilidad con Linux
@@ -112,7 +112,7 @@ Get-NetFirewallRule -DisplayName "Whitelist-*" | Disable-NetFirewallRule
 Este sistema es el equivalente Windows del [sistema Linux](../README.md) basado en dnsmasq. Ambos sistemas:
 
 - Usan el mismo formato de whitelist
-- Son compatibles con [whitelist-web](../whitelist-web/) para gestión centralizada
+- Son compatibles con la [SPA](../spa/) para gestión centralizada
 - Implementan la misma lógica de sinkhole DNS
 
 ## Licencia
