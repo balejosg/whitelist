@@ -35,6 +35,14 @@ const assert = require('node:assert');
 const PORT = 3002;
 const API_URL = `http://localhost:${PORT}`;
 
+// Global timeout - force exit if tests hang
+const GLOBAL_TIMEOUT = setTimeout(() => {
+    console.error('\n❌ E2E tests timed out! Forcing exit...');
+    process.exit(1);
+}, 50000); // Longer timeout for E2E
+GLOBAL_TIMEOUT.unref();
+
+
 let server;
 
 // Test users
@@ -48,8 +56,12 @@ const TEACHER_EMAIL = 'pedro.teacher@test.com';
 const TEACHER_PASSWORD = 'TeacherPassword123!';
 const TEACHER_GROUP = 'informatica-3';
 
+
 describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
     before(async () => {
+        // Clear module cache to avoid port conflicts
+        delete require.cache[require.resolve('../server.js')];
+
         process.env.PORT = PORT;
         const { app } = require('../server.js');
 
@@ -57,11 +69,14 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             console.log(`E2E test server started on port ${PORT}`);
         });
 
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
     });
 
     after(async () => {
         if (server) {
+            if (server.closeAllConnections) {
+                server.closeAllConnections();
+            }
             await new Promise((resolve) => {
                 server.close(() => {
                     console.log('E2E test server closed');

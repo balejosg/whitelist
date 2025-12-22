@@ -53,13 +53,20 @@ function runNextTest() {
     console.log(`Running: ${testFile}`);
     console.log('='.repeat(60) + '\n');
 
-    const child = spawn('node', ['--test', testFile], {
+    const child = spawn('node', ['--test', '--test-force-exit', testFile], {
         cwd: path.join(__dirname),
         stdio: 'inherit',
         env: { ...process.env }
     });
 
+    // Timeout to kill hanging tests after 30 seconds
+    const timeout = setTimeout(() => {
+        console.log(`\n⚠️  Test ${testFile} timed out after 30s, killing...`);
+        child.kill('SIGKILL');
+    }, 30000);
+
     child.on('close', (code) => {
+        clearTimeout(timeout);
         if (code !== 0) {
             hasFailures = true;
         }
@@ -69,12 +76,14 @@ function runNextTest() {
     });
 
     child.on('error', (err) => {
+        clearTimeout(timeout);
         console.error(`Failed to run ${testFile}:`, err);
         hasFailures = true;
         currentIndex++;
         setTimeout(runNextTest, 500);
     });
 }
+
 
 console.log('🧪 Running all test suites...\n');
 runNextTest();
