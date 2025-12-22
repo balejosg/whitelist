@@ -273,6 +273,135 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
     });
 
     // ============================================
+    // Step 4.5: Blocked Domain Approval (US3)
+    // ============================================
+    describe('Step 4.5: Blocked Domain Approval - US3', () => {
+        let blockedRequestId = null;
+
+        test('should check which domains are blocked', async () => {
+            const response = await fetch(`${API_URL}/api/requests/domains/blocked`, {
+                headers: { 'Authorization': `Bearer ${adminToken}` }
+            });
+
+            assert.strictEqual(response.status, 200);
+            const data = await response.json();
+            assert.ok(data.success);
+            assert.ok(Array.isArray(data.domains));
+            console.log(`Found ${data.domains.length} blocked domains`);
+        });
+
+        test('should create a request for a blocked domain (if any blocked)', async () => {
+            // Get blocked domains
+            const blockedRes = await fetch(`${API_URL}/api/requests/domains/blocked`, {
+                headers: { 'Authorization': `Bearer ${adminToken}` }
+            });
+            const blockedData = await blockedRes.json();
+
+            if (!blockedData.domains || blockedData.domains.length === 0) {
+                console.log('Skipping: No blocked domains configured');
+                return;
+            }
+
+            const blockedDomain = blockedData.domains[0];
+            console.log(`Testing with blocked domain: ${blockedDomain}`);
+
+            // Create a request for this blocked domain
+            const response = await fetch(`${API_URL}/api/requests`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    domain: blockedDomain,
+                    reason: 'E2E test for blocked domain',
+                    requester_email: 'e2e-blocked-test@school.edu'
+                })
+            });
+
+            if (response.status === 201) {
+                const data = await response.json();
+                blockedRequestId = data.request_id;
+                console.log(`Created request ${blockedRequestId} for blocked domain`);
+            }
+        });
+
+        test('teacher should receive DOMAIN_BLOCKED error when approving blocked domain', async () => {
+            if (!blockedRequestId || !teacherToken) {
+                console.log('Skipping: No blocked request or teacher token available');
+                return;
+            }
+
+            const response = await fetch(`${API_URL}/api/requests/${blockedRequestId}/approve`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${teacherToken}`
+                },
+                body: JSON.stringify({
+                    group_id: TEACHER_GROUP
+                })
+            });
+
+            // Teacher should get 403 with DOMAIN_BLOCKED code
+            assert.strictEqual(response.status, 403, 'Teacher should be forbidden from approving blocked domain');
+
+            const data = await response.json();
+            assert.strictEqual(data.code, 'DOMAIN_BLOCKED', 'Error code should be DOMAIN_BLOCKED');
+            assert.ok(data.domain, 'Response should include domain');
+            assert.ok(data.hint, 'Response should include hint for teacher');
+
+            console.log(`Correctly blocked: ${data.domain} (matched: ${data.matched_rule})`);
+        });
+
+        test('teacher can check if a domain is blocked', async () => {
+            if (!teacherToken) {
+                console.log('Skipping: No teacher token available');
+                return;
+            }
+
+            const response = await fetch(`${API_URL}/api/requests/domains/check`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${teacherToken}`
+                },
+                body: JSON.stringify({ domain: 'facebook.com' })
+            });
+
+            assert.strictEqual(response.status, 200);
+            const data = await response.json();
+            assert.ok(data.success);
+            assert.ok(typeof data.blocked === 'boolean');
+
+            console.log(`facebook.com blocked: ${data.blocked}`);
+        });
+
+        test('admin should be able to approve blocked domain (override)', async () => {
+            if (!blockedRequestId) {
+                console.log('Skipping: No blocked request available');
+                return;
+            }
+
+            const response = await fetch(`${API_URL}/api/requests/${blockedRequestId}/approve`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${adminToken}`
+                },
+                body: JSON.stringify({})
+            });
+
+            // Admin should succeed or request already processed
+            assert.ok(
+                [200, 400].includes(response.status),
+                `Admin should be able to approve (or already approved), got ${response.status}`
+            );
+
+            if (response.status === 200) {
+                console.log('Admin successfully approved blocked domain (override)');
+            }
+        });
+    });
+
+    // ============================================
     // Step 5: Access Control Verification
     // ============================================
     describe('Step 5: Access Control - Teacher Cannot Access Admin Functions', () => {
