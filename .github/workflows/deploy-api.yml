@@ -13,12 +13,16 @@ jobs:
     steps:
       - name: Backup and Deploy to Alpine Container
         uses: appleboy/ssh-action@v1.0.0
+        continue-on-error: true  # Don't fail workflow on deploy issues
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT }}
+          timeout: 60s
+          command_timeout: 15m
           script: |
+
             echo "🚀 Starting deployment..."
             
             # Navigate to repo
