@@ -10,7 +10,7 @@
         "lint": "eslint server/"
     },
     "dependencies": {
-        "bcryptjs": "^2.4.3",
+        "bcryptjs": "^3.0.3",
         "cookie-parser": "^1.4.6",
         "express": "^5.2.1",
         "express-session": "^1.17.3",
