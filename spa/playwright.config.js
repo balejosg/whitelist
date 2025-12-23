@@ -54,11 +54,11 @@ module.exports = defineConfig({
         },
     ],
 
-    // Run local server before tests
-    webServer: {
+    // Run local server before tests (skip in CI where workflow starts it)
+    webServer: process.env.CI ? undefined : {
         command: 'cd ../api && npm start',
         url: 'http://localhost:3001/api',
-        reuseExistingServer: !process.env.CI,
+        reuseExistingServer: true,
         timeout: 120 * 1000,
     },
 });
