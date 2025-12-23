@@ -26,6 +26,7 @@ const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const storage = require('../lib/storage');
 const github = require('../lib/github');
+const push = require('../lib/push');
 
 // =============================================================================
 // Rate Limiting
@@ -367,6 +368,11 @@ router.post('/', publicLimiter, (req, res) => {
             requesterEmail: sanitize(requester_email, 100),
             groupId: group_id,
             priority
+        });
+
+        // Send push notifications to teachers (async, don't block response)
+        push.notifyTeachersOfNewRequest(request).catch(err => {
+            console.error('Push notification failed:', err.message);
         });
 
         res.status(201).json({

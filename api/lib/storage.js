@@ -102,7 +102,7 @@ function hasPendingRequest(domain) {
  */
 function createRequest(requestData) {
     const data = loadData();
-    
+
     const newRequest = {
         id: `req_${uuidv4().slice(0, 8)}`,
         domain: requestData.domain.toLowerCase().trim(),
@@ -116,10 +116,10 @@ function createRequest(requestData) {
         resolved_at: null,
         resolved_by: null
     };
-    
+
     data.requests.push(newRequest);
     saveData(data);
-    
+
     return newRequest;
 }
 
@@ -134,20 +134,20 @@ function createRequest(requestData) {
 function updateRequestStatus(id, status, resolvedBy = 'admin', note = null) {
     const data = loadData();
     const index = data.requests.findIndex(r => r.id === id);
-    
+
     if (index === -1) {
         return null;
     }
-    
+
     data.requests[index].status = status;
     data.requests[index].updated_at = new Date().toISOString();
     data.requests[index].resolved_at = new Date().toISOString();
     data.requests[index].resolved_by = resolvedBy;
-    
+
     if (note) {
         data.requests[index].resolution_note = note;
     }
-    
+
     saveData(data);
     return data.requests[index];
 }
@@ -161,7 +161,7 @@ function deleteRequest(id) {
     const data = loadData();
     const initialLength = data.requests.length;
     data.requests = data.requests.filter(r => r.id !== id);
-    
+
     if (data.requests.length < initialLength) {
         saveData(data);
         return true;

@@ -227,6 +227,47 @@ document.getElementById('github-login-btn').addEventListener('click', () => {
     OAuth.login();
 });
 
+// Notifications button
+document.getElementById('notifications-btn').addEventListener('click', async () => {
+    if (!PushManager.isSupported()) {
+        showToast('Tu navegador no soporta notificaciones push', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('notifications-btn');
+    const icon = document.getElementById('notifications-icon');
+
+    try {
+        const subscription = await PushManager.getSubscription();
+
+        if (subscription) {
+            // Already subscribed, offer to unsubscribe
+            if (confirm('¿Desactivar notificaciones push?')) {
+                await PushManager.unsubscribe();
+                icon.textContent = '🔕';
+                showToast('Notificaciones desactivadas');
+            }
+        } else {
+            // Not subscribed, subscribe
+            btn.disabled = true;
+            icon.textContent = '⏳';
+            await PushManager.subscribe();
+            icon.textContent = '🔔';
+            showToast('¡Notificaciones activadas! Recibirás alertas cuando un alumno solicite acceso.');
+        }
+    } catch (err) {
+        console.error('Push notification error:', err);
+        icon.textContent = '🔕';
+        if (err.message.includes('denied')) {
+            showToast('Permiso de notificaciones denegado. Habilítalo en la configuración del navegador.', 'error');
+        } else {
+            showToast('Error configurando notificaciones: ' + err.message, 'error');
+        }
+    } finally {
+        btn.disabled = false;
+    }
+});
+
 // Logout
 document.getElementById('logout-btn').addEventListener('click', () => {
     if (confirm('¿Cerrar sesión?')) {

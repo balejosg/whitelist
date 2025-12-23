@@ -41,6 +41,7 @@ const requestsRouter = require('./routes/requests');
 const healthReportsRouter = require('./routes/health-reports');
 const authRouter = require('./routes/auth');
 const usersRouter = require('./routes/users');
+const pushRouter = require('./routes/push');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -175,6 +176,11 @@ app.get('/api', (req, res) => {
             'GET /api/requests/groups/list': 'List whitelist groups (admin/teacher)',
             'GET /api/requests/domains/blocked': 'List blocked domains (admin)',
             'POST /api/requests/domains/check': 'Check if domain is blocked (admin/teacher)',
+            // Push Notifications
+            'GET /api/push/vapid-key': 'Get VAPID public key (public)',
+            'GET /api/push/status': 'Check push subscription status',
+            'POST /api/push/subscribe': 'Register push subscription',
+            'DELETE /api/push/subscribe': 'Remove push subscription',
             // Health Reports
             'POST /api/health-reports': 'Submit health report (shared secret)',
             'GET /api/health-reports': 'List all hosts status (admin)',
@@ -195,6 +201,9 @@ app.use('/api/requests', requestsRouter);
 
 // Health reports from student machines
 app.use('/api/health-reports', healthReportsRouter);
+
+// Push notifications
+app.use('/api/push', pushRouter);
 
 // =============================================================================
 // Error Handling
