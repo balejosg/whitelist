@@ -48,7 +48,7 @@ test.describe('Blocked Domain UI - US3', () => {
             await expect(modalBody).toBeAttached();
 
             // Should have a close/dismiss button
-            const closeBtn = blockedModal.locator('button');
+            const closeBtn = blockedModal.locator('button').first();
             await expect(closeBtn).toBeAttached();
         } else {
             console.log('Note: #modal-blocked-domain not found - may need to check HTML');
