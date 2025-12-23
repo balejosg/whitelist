@@ -1056,6 +1056,123 @@ document.getElementById('assign-role-form').addEventListener('submit', async (e)
     }
 });
 
+// ============== Classroom Management (Admin) ==============
+
+let allClassrooms = [];
+
+async function loadClassrooms() {
+    const section = document.getElementById('classrooms-section');
+    const listEl = document.getElementById('classrooms-list');
+
+    // Only show for admins
+    if (!Auth.isAdmin() && !canEdit) {
+        section.classList.add('hidden');
+        return;
+    }
+
+    section.classList.remove('hidden');
+
+    try {
+        allClassrooms = await ClassroomsAPI.listClassrooms();
+        renderClassroomsList();
+    } catch (error) {
+        listEl.innerHTML = `<p class="empty-message error">Error: ${escapeHtml(error.message)}</p>`;
+    }
+}
+
+function renderClassroomsList() {
+    const listEl = document.getElementById('classrooms-list');
+
+    if (allClassrooms.length === 0) {
+        listEl.innerHTML = `
+            <div class="empty-state">
+                <p>No hay aulas configuradas</p>
+                <button class="btn btn-primary" onclick="openModal('modal-new-classroom')">Crear primera aula</button>
+            </div>
+        `;
+        return;
+    }
+
+    listEl.innerHTML = allClassrooms.map(c => `
+        <div class="classroom-card" data-id="${c.id}">
+            <div class="classroom-info">
+                <h3>🏫 ${escapeHtml(c.display_name || c.name)}</h3>
+                <p>${c.machine_count || 0} ordenadores</p>
+            </div>
+            <div class="classroom-group">
+                <label>Grupo activo:</label>
+                <select class="active-group-select" onchange="changeClassroomGroup('${c.id}', this.value)">
+                    <option value="">-- Por defecto: ${escapeHtml(c.default_group_id || 'ninguno')} --</option>
+                    ${allGroups.map(g => `
+                        <option value="${g.name}" ${c.active_group_id === g.name ? 'selected' : ''}>${g.name}</option>
+                    `).join('')}
+                </select>
+            </div>
+            <div class="classroom-actions">
+                <button class="btn btn-ghost btn-icon" onclick="deleteClassroom('${c.id}')" title="Eliminar aula">🗑️</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+window.changeClassroomGroup = async function (classroomId, groupId) {
+    try {
+        await ClassroomsAPI.setActiveGroup(classroomId, groupId || null);
+        showToast(groupId ? `Grupo activo: ${groupId}` : 'Usando grupo por defecto');
+    } catch (error) {
+        showToast('Error: ' + error.message, 'error');
+        loadClassrooms(); // Reload to reset select
+    }
+};
+
+window.deleteClassroom = async function (classroomId) {
+    if (!confirm('¿Eliminar este aula y desvincular todas sus máquinas?')) return;
+    try {
+        await ClassroomsAPI.deleteClassroom(classroomId);
+        showToast('Aula eliminada');
+        loadClassrooms();
+    } catch (error) {
+        showToast('Error: ' + error.message, 'error');
+    }
+};
+
+// New Classroom button
+document.getElementById('new-classroom-btn')?.addEventListener('click', () => {
+    // Populate groups dropdown
+    const select = document.getElementById('new-classroom-default-group');
+    select.innerHTML = '<option value="">-- Seleccionar grupo --</option>' +
+        allGroups.map(g => `<option value="${g.name}">${g.name}</option>`).join('');
+    openModal('modal-new-classroom');
+});
+
+// New Classroom form
+document.getElementById('new-classroom-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('new-classroom-name').value;
+    const defaultGroupId = document.getElementById('new-classroom-default-group').value;
+
+    try {
+        await ClassroomsAPI.createClassroom({
+            name,
+            display_name: name,
+            default_group_id: defaultGroupId || null
+        });
+        closeModal('modal-new-classroom');
+        document.getElementById('new-classroom-form').reset();
+        showToast('Aula creada');
+        loadClassrooms();
+    } catch (error) {
+        showToast('Error: ' + error.message, 'error');
+    }
+});
+
+// Load classrooms when dashboard loads (add to loadDashboard)
+const originalLoadDashboard = loadDashboard;
+loadDashboard = async function () {
+    await originalLoadDashboard.call(this);
+    await loadClassrooms();
+};
+
 // ============== Helpers ==============
 function escapeHtml(text) {
     if (!text) return '';

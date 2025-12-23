@@ -42,6 +42,7 @@ const healthReportsRouter = require('./routes/health-reports');
 const authRouter = require('./routes/auth');
 const usersRouter = require('./routes/users');
 const pushRouter = require('./routes/push');
+const classroomsRouter = require('./routes/classrooms');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -185,7 +186,17 @@ app.get('/api', (req, res) => {
             'POST /api/health-reports': 'Submit health report (shared secret)',
             'GET /api/health-reports': 'List all hosts status (admin)',
             'GET /api/health-reports/:hostname': 'Get host history (admin)',
-            'GET /api/health-reports/alerts/active': 'Get active alerts (admin)'
+            'GET /api/health-reports/alerts/active': 'Get active alerts (admin)',
+            // Classrooms
+            'GET /api/classrooms': 'List all classrooms (admin)',
+            'POST /api/classrooms': 'Create classroom (admin)',
+            'GET /api/classrooms/:id': 'Get classroom details (admin)',
+            'PUT /api/classrooms/:id': 'Update classroom (admin)',
+            'PUT /api/classrooms/:id/active-group': 'Set active group (admin)',
+            'DELETE /api/classrooms/:id': 'Delete classroom (admin)',
+            'POST /api/classrooms/machines/register': 'Register machine (shared secret)',
+            'GET /api/classrooms/machines/:hostname/whitelist-url': 'Get whitelist URL (shared secret)',
+            'DELETE /api/classrooms/machines/:hostname': 'Remove machine (admin)'
         }
     });
 });
@@ -204,6 +215,9 @@ app.use('/api/health-reports', healthReportsRouter);
 
 // Push notifications
 app.use('/api/push', pushRouter);
+
+// Classroom management
+app.use('/api/classrooms', classroomsRouter);
 
 // =============================================================================
 // Error Handling

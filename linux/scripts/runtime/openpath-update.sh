@@ -51,12 +51,41 @@ source "$INSTALL_DIR/lib/firewall.sh"
 source "$INSTALL_DIR/lib/browser.sh"
 source "$INSTALL_DIR/lib/rollback.sh"
 
-# URL del whitelist (leer de config si existe)
-if [ -f "$WHITELIST_URL_CONF" ]; then
-    WHITELIST_URL=$(cat "$WHITELIST_URL_CONF")
-else
-    WHITELIST_URL="${WHITELIST_URL:-$DEFAULT_WHITELIST_URL}"
-fi
+# URL del whitelist - puede ser estática o dinámica (modo Aula)
+get_whitelist_url() {
+    # Modo Aula: obtener URL dinámica desde API
+    if [ -f "$ETC_CONFIG_DIR/api-url.conf" ] && [ -f "$ETC_CONFIG_DIR/classroom.conf" ]; then
+        local api_url=$(cat "$ETC_CONFIG_DIR/api-url.conf")
+        local hostname=$(hostname)
+        local secret=""
+        if [ -f "$ETC_CONFIG_DIR/api-secret.conf" ]; then
+            secret=$(cat "$ETC_CONFIG_DIR/api-secret.conf")
+        fi
+        
+        local response=$(timeout 10 curl -s \
+            -H "Authorization: Bearer $secret" \
+            "$api_url/api/classrooms/machines/$hostname/whitelist-url" 2>/dev/null)
+        
+        if echo "$response" | grep -q '"success":true'; then
+            local dynamic_url=$(echo "$response" | grep -o '"url":"[^"]*"' | cut -d'"' -f4)
+            if [ -n "$dynamic_url" ]; then
+                log "Modo Aula: URL dinámica obtenida del API"
+                echo "$dynamic_url"
+                return 0
+            fi
+        fi
+        log "⚠ Modo Aula: error al obtener URL dinámica, usando fallback"
+    fi
+    
+    # Modo estático: leer de archivo de configuración
+    if [ -f "$WHITELIST_URL_CONF" ]; then
+        cat "$WHITELIST_URL_CONF"
+    else
+        echo "${WHITELIST_URL:-$DEFAULT_WHITELIST_URL}"
+    fi
+}
+
+WHITELIST_URL=$(get_whitelist_url)
 
 # Verificar si hay portal cautivo (sin autenticar)
 check_captive_portal() {

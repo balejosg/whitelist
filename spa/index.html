@@ -187,6 +187,19 @@
                 </div>
             </section>
 
+            <!-- Classrooms Section (Admin only) -->
+            <section id="classrooms-section" class="classrooms-section admin-only hidden">
+                <div class="section-header">
+                    <h2>🏫 Gestión de Aulas</h2>
+                    <button id="new-classroom-btn" class="btn btn-primary">
+                        <span>+</span> Nueva aula
+                    </button>
+                </div>
+                <div id="classrooms-list" class="classrooms-list">
+                    <p class="empty-message">Cargando aulas...</p>
+                </div>
+            </section>
+
             <!-- Groups List -->
             <section class="groups-section">
                 <div class="section-header">
@@ -310,6 +323,35 @@
                 <div class="modal-actions">
                     <button type="button" class="btn btn-ghost modal-cancel">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Crear grupo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: New Classroom -->
+    <div id="modal-new-classroom" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🏫 Nueva aula</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="new-classroom-form">
+                <div class="form-group">
+                    <label for="new-classroom-name">Nombre del aula</label>
+                    <input type="text" id="new-classroom-name" placeholder="Informática 3" required>
+                    <small>Nombre legible del aula física</small>
+                </div>
+                <div class="form-group">
+                    <label for="new-classroom-default-group">Grupo por defecto</label>
+                    <select id="new-classroom-default-group">
+                        <option value="">-- Seleccionar grupo --</option>
+                        <!-- Groups loaded dynamically -->
+                    </select>
+                    <small>Whitelist aplicada fuera de horario</small>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost modal-cancel">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear aula</button>
                 </div>
             </form>
         </div>
@@ -447,7 +489,8 @@ wikipedia.org"></textarea>
                     <div class="blocked-domain-icon">⛔</div>
                     <div class="blocked-domain-info">
                         <p class="blocked-domain-message">
-                            No puedes aprobar <strong id="blocked-domain-name">dominio</strong> porque está en la lista de dominios bloqueados.
+                            No puedes aprobar <strong id="blocked-domain-name">dominio</strong> porque está en la lista
+                            de dominios bloqueados.
                         </p>
                         <div class="blocked-domain-details">
                             <span class="detail-label">Regla que lo bloquea:</span>
@@ -476,6 +519,7 @@ wikipedia.org"></textarea>
     <script src="js/auth.js"></script>
     <script src="js/users-api.js"></script>
     <script src="js/requests-api.js"></script>
+    <script src="js/classrooms-api.js"></script>
     <script src="js/push.js"></script>
     <script src="js/app.js"></script>
 </body>

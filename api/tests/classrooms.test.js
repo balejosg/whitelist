@@ -1,0 +1,291 @@
+/**
+ * OpenPath - Strict Internet Access Control
+ * Copyright (C) 2025 OpenPath Authors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/**
+ * Classroom API Tests
+ * Tests for classroom and machine management endpoints
+ */
+
+const { test, describe, before, after, beforeEach } = require('node:test');
+const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
+
+const API_URL = 'http://localhost:3004';
+const TEST_PORT = 3004;
+
+// Test admin token
+const ADMIN_TOKEN = 'test-admin-token-classrooms';
+const SHARED_SECRET = 'test-shared-secret';
+
+// Data files to clean up
+const DATA_DIR = path.join(__dirname, '..', 'data');
+const CLASSROOMS_FILE = path.join(DATA_DIR, 'classrooms.json');
+const MACHINES_FILE = path.join(DATA_DIR, 'machines.json');
+
+// Backup original files
+let originalClassrooms = null;
+let originalMachines = null;
+
+// Global timeout
+const GLOBAL_TIMEOUT = setTimeout(() => {
+    console.error('\n❌ Classroom tests timed out! Forcing exit...');
+    process.exit(1);
+}, 20000);
+GLOBAL_TIMEOUT.unref();
+
+let server;
+
+describe('Classroom API Tests', { timeout: 25000 }, () => {
+    before(async () => {
+        // Backup existing data files
+        if (fs.existsSync(CLASSROOMS_FILE)) {
+            originalClassrooms = fs.readFileSync(CLASSROOMS_FILE, 'utf-8');
+        }
+        if (fs.existsSync(MACHINES_FILE)) {
+            originalMachines = fs.readFileSync(MACHINES_FILE, 'utf-8');
+        }
+
+        // Reset data files for clean tests
+        fs.writeFileSync(CLASSROOMS_FILE, JSON.stringify({ classrooms: [] }, null, 2));
+        fs.writeFileSync(MACHINES_FILE, JSON.stringify({ machines: [] }, null, 2));
+
+        // Set environment variables
+        process.env.PORT = TEST_PORT;
+        process.env.ADMIN_TOKEN = ADMIN_TOKEN;
+        process.env.SHARED_SECRET = SHARED_SECRET;
+
+        // Clear module cache
+        delete require.cache[require.resolve('../server.js')];
+        delete require.cache[require.resolve('../lib/classroom-storage.js')];
+
+        // Start server
+        const { app } = require('../server.js');
+        server = app.listen(TEST_PORT, () => {
+            console.log(`Classroom test server started on port ${TEST_PORT}`);
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+    });
+
+    after(async () => {
+        // Restore original data files
+        if (originalClassrooms !== null) {
+            fs.writeFileSync(CLASSROOMS_FILE, originalClassrooms);
+        } else if (fs.existsSync(CLASSROOMS_FILE)) {
+            fs.unlinkSync(CLASSROOMS_FILE);
+        }
+
+        if (originalMachines !== null) {
+            fs.writeFileSync(MACHINES_FILE, originalMachines);
+        } else if (fs.existsSync(MACHINES_FILE)) {
+            fs.unlinkSync(MACHINES_FILE);
+        }
+
+        if (server) {
+            if (server.closeAllConnections) {
+                server.closeAllConnections();
+            }
+            await new Promise(resolve => {
+                server.close(() => {
+                    console.log('Classroom test server closed');
+                    resolve();
+                });
+            });
+        }
+    });
+
+    describe('Classroom CRUD', () => {
+        test('GET /api/classrooms - requires authentication', async () => {
+            const response = await fetch(`${API_URL}/api/classrooms`);
+            assert.strictEqual(response.status, 401);
+        });
+
+        test('GET /api/classrooms - returns empty list initially', async () => {
+            const response = await fetch(`${API_URL}/api/classrooms`, {
+                headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` }
+            });
+            assert.strictEqual(response.status, 200);
+
+            const data = await response.json();
+            assert.strictEqual(data.success, true);
+            assert.ok(Array.isArray(data.classrooms));
+        });
+
+        test('POST /api/classrooms - creates classroom', async () => {
+            const response = await fetch(`${API_URL}/api/classrooms`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${ADMIN_TOKEN}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: 'Informatica 3',
+                    display_name: 'Aula Informática 3',
+                    default_group_id: 'base-centro'
+                })
+            });
+
+            assert.strictEqual(response.status, 201);
+
+            const data = await response.json();
+            assert.strictEqual(data.success, true);
+            assert.ok(data.classroom.id);
+            assert.strictEqual(data.classroom.name, 'informatica-3');
+            assert.strictEqual(data.classroom.display_name, 'Aula Informática 3');
+            assert.strictEqual(data.classroom.default_group_id, 'base-centro');
+        });
+
+        test('POST /api/classrooms - rejects duplicate name', async () => {
+            const response = await fetch(`${API_URL}/api/classrooms`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${ADMIN_TOKEN}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: 'Informatica 3'
+                })
+            });
+
+            assert.strictEqual(response.status, 409);
+        });
+
+        test('GET /api/classrooms/:id - returns classroom with machines', async () => {
+            // First get list to get an id
+            const listResponse = await fetch(`${API_URL}/api/classrooms`, {
+                headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` }
+            });
+            const listData = await listResponse.json();
+            const classroomId = listData.classrooms[0].id;
+
+            const response = await fetch(`${API_URL}/api/classrooms/${classroomId}`, {
+                headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` }
+            });
+
+            assert.strictEqual(response.status, 200);
+
+            const data = await response.json();
+            assert.strictEqual(data.success, true);
+            assert.ok(data.classroom);
+            assert.ok(Array.isArray(data.classroom.machines));
+        });
+
+        test('PUT /api/classrooms/:id/active-group - sets active group', async () => {
+            // Get classroom id
+            const listResponse = await fetch(`${API_URL}/api/classrooms`, {
+                headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` }
+            });
+            const listData = await listResponse.json();
+            const classroomId = listData.classrooms[0].id;
+
+            const response = await fetch(`${API_URL}/api/classrooms/${classroomId}/active-group`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${ADMIN_TOKEN}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ group_id: 'lengua-2eso' })
+            });
+
+            assert.strictEqual(response.status, 200);
+
+            const data = await response.json();
+            assert.strictEqual(data.success, true);
+            assert.strictEqual(data.current_group_id, 'lengua-2eso');
+        });
+    });
+
+    describe('Machine Registration', () => {
+        test('POST /api/classrooms/machines/register - registers machine', async () => {
+            // Get classroom name
+            const listResponse = await fetch(`${API_URL}/api/classrooms`, {
+                headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` }
+            });
+            const listData = await listResponse.json();
+            const classroomName = listData.classrooms[0].name;
+
+            const response = await fetch(`${API_URL}/api/classrooms/machines/register`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${SHARED_SECRET}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    hostname: 'pc-01',
+                    classroom_name: classroomName,
+                    version: '3.5'
+                })
+            });
+
+            assert.strictEqual(response.status, 201);
+
+            const data = await response.json();
+            assert.strictEqual(data.success, true);
+            assert.ok(data.machine);
+            assert.strictEqual(data.machine.hostname, 'pc-01');
+        });
+
+        test('GET /api/classrooms/machines/:hostname/whitelist-url - returns URL', async () => {
+            const response = await fetch(`${API_URL}/api/classrooms/machines/pc-01/whitelist-url`, {
+                headers: { 'Authorization': `Bearer ${SHARED_SECRET}` }
+            });
+
+            assert.strictEqual(response.status, 200);
+
+            const data = await response.json();
+            assert.strictEqual(data.success, true);
+            assert.ok(data.url);
+            assert.strictEqual(data.group_id, 'lengua-2eso');
+        });
+
+        test('GET /api/classrooms/machines/:hostname/whitelist-url - 404 for unknown machine', async () => {
+            const response = await fetch(`${API_URL}/api/classrooms/machines/unknown-pc/whitelist-url`, {
+                headers: { 'Authorization': `Bearer ${SHARED_SECRET}` }
+            });
+
+            assert.strictEqual(response.status, 404);
+        });
+    });
+
+    describe('Cleanup', () => {
+        test('DELETE /api/classrooms/machines/:hostname - removes machine', async () => {
+            const response = await fetch(`${API_URL}/api/classrooms/machines/pc-01`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` }
+            });
+
+            assert.strictEqual(response.status, 200);
+        });
+
+        test('DELETE /api/classrooms/:id - deletes classroom', async () => {
+            const listResponse = await fetch(`${API_URL}/api/classrooms`, {
+                headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` }
+            });
+            const listData = await listResponse.json();
+            const classroomId = listData.classrooms[0].id;
+
+            const response = await fetch(`${API_URL}/api/classrooms/${classroomId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` }
+            });
+
+            assert.strictEqual(response.status, 200);
+        });
+    });
+});
