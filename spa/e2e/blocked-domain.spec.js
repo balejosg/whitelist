@@ -60,7 +60,7 @@ test.describe('Blocked Domain UI - US3', () => {
         await expect(page.locator('#email-login-form')).toBeVisible({ timeout: 10000 });
 
         // No JavaScript errors
-        const errors: string[] = [];
+        const errors = [];
         page.on('pageerror', error => errors.push(error.message));
 
         await page.waitForTimeout(1000);
