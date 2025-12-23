@@ -51,6 +51,8 @@ INSTALL_EXTENSION=true
 INSTALL_NATIVE_HOST=false
 HEALTH_API_URL=""
 HEALTH_API_SECRET=""
+CLASSROOM_NAME=""
+API_URL=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -78,11 +80,27 @@ while [[ $# -gt 0 ]]; do
             INSTALL_NATIVE_HOST=true
             shift
             ;;
+        --classroom)
+            CLASSROOM_NAME="$2"
+            shift 2
+            ;;
+        --api-url)
+            API_URL="$2"
+            shift 2
+            ;;
         *)
             shift
             ;;
     esac
 done
+
+# Auto-generate API secret if classroom mode is configured but no secret provided
+if [ -n "$CLASSROOM_NAME" ] && [ -n "$API_URL" ] && [ -z "$HEALTH_API_SECRET" ]; then
+    # Generate a random 32-character secret
+    HEALTH_API_SECRET=$(head -c 24 /dev/urandom | base64 | tr -d '/+=' | head -c 32)
+    echo "🔑 API Secret generado automáticamente para modo Aula"
+    echo "   Guarde este secret si necesita reinstalar: $HEALTH_API_SECRET"
+fi
 
 # Auto-elevación con sudo
 if [ "$EUID" -ne 0 ]; then
@@ -96,6 +114,10 @@ echo "======================================================"
 echo ""
 echo "URL Whitelist: $WHITELIST_URL"
 echo "Extensión Firefox: $INSTALL_EXTENSION"
+if [ -n "$CLASSROOM_NAME" ]; then
+    echo "Modo Aula: $CLASSROOM_NAME"
+    echo "API URL: $API_URL"
+fi
 echo ""
 
 # ============================================================================
@@ -208,6 +230,17 @@ if [ -n "$HEALTH_API_SECRET" ]; then
     echo "$HEALTH_API_SECRET" > "$HEALTH_API_SECRET_CONF"
     chmod 600 "$HEALTH_API_SECRET_CONF"
     echo "  → Health API secret configurado"
+fi
+
+# Guardar configuración de modo Aula (para whitelist dinámica)
+if [ -n "$CLASSROOM_NAME" ] && [ -n "$API_URL" ]; then
+    echo "$CLASSROOM_NAME" > "$ETC_CONFIG_DIR/classroom.conf"
+    echo "$API_URL" > "$ETC_CONFIG_DIR/api-url.conf"
+    # Copy shared secret for machine registration
+    if [ -n "$HEALTH_API_SECRET" ]; then
+        cp "$HEALTH_API_SECRET_CONF" "$ETC_CONFIG_DIR/api-secret.conf"
+    fi
+    echo "  → Modo Aula configurado: $CLASSROOM_NAME"
 fi
 
 echo "✓ Scripts instalados"
@@ -351,6 +384,34 @@ if "$SCRIPTS_DIR/smoke-test.sh" --quick 2>/dev/null; then
     SMOKE_STATUS="PASSED"
 else
     SMOKE_STATUS="FAILED"
+fi
+
+# ============================================================================
+# REGISTRAR MÁQUINA EN AULA (si está configurado el modo Aula)
+# ============================================================================
+MACHINE_REGISTERED=""
+if [ -n "$CLASSROOM_NAME" ] && [ -n "$API_URL" ]; then
+    echo ""
+    echo "Registrando máquina en aula..."
+    HOSTNAME=$(hostname)
+    SECRET=""
+    if [ -f "$ETC_CONFIG_DIR/api-secret.conf" ]; then
+        SECRET=$(cat "$ETC_CONFIG_DIR/api-secret.conf")
+    fi
+    
+    REGISTER_RESPONSE=$(curl -s -X POST \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $SECRET" \
+        -d "{\"hostname\":\"$HOSTNAME\",\"classroom_name\":\"$CLASSROOM_NAME\",\"version\":\"$VERSION\"}" \
+        "$API_URL/api/classrooms/machines/register" 2>/dev/null || echo "{\"success\":false}")
+    
+    if echo "$REGISTER_RESPONSE" | grep -q '"success":true'; then
+        MACHINE_REGISTERED="REGISTERED"
+        echo "✓ Máquina registrada en aula: $CLASSROOM_NAME"
+    else
+        MACHINE_REGISTERED="FAILED"
+        echo "⚠ Error al registrar máquina (el watchdog lo reintentará)"
+    fi
 fi
 
 # ============================================================================
