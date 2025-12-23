@@ -31,6 +31,8 @@ const testFiles = [
     'tests/auth.test.js',
     'tests/roles.test.js',
     'tests/blocked-domains.test.js',
+    'tests/classrooms.test.js',
+    'tests/push.test.js',
     'tests/e2e.test.js'
 ];
 
