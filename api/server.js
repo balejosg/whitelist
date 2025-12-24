@@ -44,6 +44,19 @@ const usersRouter = require('./routes/users');
 const pushRouter = require('./routes/push');
 const classroomsRouter = require('./routes/classrooms');
 const schedulesRouter = require('./routes/schedules');
+const healthcheckRouter = require('./routes/healthcheck');
+
+// Error tracking and request ID middleware
+const { requestIdMiddleware, errorTrackingMiddleware } = require('./lib/error-tracking');
+
+// Swagger/OpenAPI (optional - only load if dependencies installed)
+let swaggerUi, getSwaggerSpec;
+try {
+    swaggerUi = require('swagger-ui-express');
+    getSwaggerSpec = require('./lib/swagger').getSwaggerSpec;
+} catch (e) {
+    // Swagger dependencies not installed - skip
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -81,10 +94,13 @@ app.use(globalLimiter);
 // JSON body parser
 app.use(express.json({ limit: '10kb' }));
 
-// Request logging
+// Request ID middleware (adds X-Request-ID header)
+app.use(requestIdMiddleware);
+
+// Request logging with request ID
 app.use((req, res, next) => {
     const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] ${req.method} ${req.path}`);
+    console.log(`[${timestamp}] [${req.id}] ${req.method} ${req.path}`);
     next();
 });
 
@@ -92,77 +108,20 @@ app.use((req, res, next) => {
 // Routes
 // =============================================================================
 
-// Health check endpoint - enhanced with component checks
-app.get('/health', async (req, res) => {
-    const startTime = Date.now();
-    const health = {
-        status: 'ok',
-        service: 'whitelist-request-api',
-        version: '1.0.4',
-        uptime: Math.floor(process.uptime()),
-        timestamp: new Date().toISOString(),
-        checks: {}
-    };
+// Health check endpoints (liveness/readiness probes)
+app.use('/health', healthcheckRouter);
 
-    // Check storage health
-    try {
-        const storage = require('./lib/storage');
-        const stats = storage.getStats();
-        health.checks.storage = {
-            status: 'ok',
-            totalRequests: stats.total,
-            pendingRequests: stats.pending
-        };
-    } catch (error) {
-        health.checks.storage = {
-            status: 'error',
-            error: error.message
-        };
-        health.status = 'degraded';
-    }
-
-    // Check GitHub configuration
-    health.checks.github = {
-        status: process.env.GITHUB_TOKEN ? 'configured' : 'not_configured',
-        owner: process.env.GITHUB_OWNER ? 'set' : 'missing',
-        repo: process.env.GITHUB_REPO ? 'set' : 'missing'
-    };
-    if (!process.env.GITHUB_TOKEN) {
-        health.status = 'degraded';
-    }
-
-    // Check admin configuration
-    health.checks.auth = {
-        adminToken: process.env.ADMIN_TOKEN ? 'configured' : 'not_configured',
-        jwtSecret: process.env.JWT_SECRET ? 'configured' : 'using_random'
-    };
-    if (!process.env.ADMIN_TOKEN && !process.env.JWT_SECRET) {
-        health.status = 'degraded';
-    }
-    if (!process.env.ADMIN_TOKEN) {
-        health.status = 'degraded';
-    }
-
-    // Memory usage
-    const memUsage = process.memoryUsage();
-    health.system = {
-        memory: {
-            heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024) + 'MB',
-            heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024) + 'MB',
-            rss: Math.round(memUsage.rss / 1024 / 1024) + 'MB'
-        },
-        nodeVersion: process.version
-    };
-
-    // Response time
-    health.responseTime = Date.now() - startTime + 'ms';
-
-    // Set appropriate status code
-    const statusCode = health.status === 'ok' ? 200 :
-        health.status === 'degraded' ? 200 : 503;
-
-    res.status(statusCode).json(health);
-});
+// Swagger/OpenAPI documentation (if dependencies installed)
+if (swaggerUi && getSwaggerSpec) {
+    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(getSwaggerSpec(), {
+        customCss: '.swagger-ui .topbar { display: none }',
+        customSiteTitle: 'OpenPath API Documentation'
+    }));
+    app.get('/api-docs.json', (req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+        res.send(getSwaggerSpec());
+    });
+}
 
 // API info endpoint
 app.get('/api', (req, res) => {
@@ -276,14 +235,8 @@ app.use((req, res) => {
     });
 });
 
-// Global error handler
-app.use((err, req, res, next) => {
-    console.error('Unhandled error:', err.message || err);
-    res.status(500).json({
-        success: false,
-        error: 'Internal server error'
-    });
-});
+// Global error handler with structured logging
+app.use(errorTrackingMiddleware);
 
 // =============================================================================
 // Start Server
