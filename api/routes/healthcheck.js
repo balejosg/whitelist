@@ -63,7 +63,7 @@ router.get('/live', (req, res) => {
 router.get('/ready', async (req, res) => {
     const startTime = Date.now();
     const health = {
-        status: 'ready',
+        status: 'ok',
         service: 'openpath-api',
         version: '2.0.0',
         uptime: Math.floor(process.uptime()),
@@ -130,7 +130,7 @@ router.get('/ready', async (req, res) => {
     health.responseTime = `${Date.now() - startTime}ms`;
 
     // Set appropriate status code
-    const statusCode = health.status === 'ready' ? 200 :
+    const statusCode = health.status === 'ok' ? 200 :
         health.status === 'degraded' ? 200 : 503;
 
     res.status(statusCode).json(health);
