@@ -6,7 +6,7 @@ export async function loadUsers() {
     if (!Auth.isAdmin()) return;
 
     const listEl = document.getElementById('users-list');
-    listEl.innerHTML = '<div class="loading">Cargando usuarios...</div>';
+    listEl.innerHTML = '<div class="loading">Loading users...</div>';
 
     try {
         const response = await UsersAPI.getAllUsers();
@@ -18,11 +18,11 @@ export async function loadUsers() {
             <table class="users-table">
                 <thead>
                     <tr>
-                        <th>Usuario</th>
+                        <th>User</th>
                         <th>Email</th>
                         <th>Roles</th>
-                        <th>Estado</th>
-                        <th>Acciones</th>
+                        <th>Status</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -40,16 +40,16 @@ export async function loadUsers() {
                                             <span class="role-badge role-${r.role}">
                                                 ${r.role}
                                                 ${r.groupIds && r.groupIds.length > 0 ? `(${r.groupIds.length})` : ''}
-                                                <button onclick="window.revokeRole('${u.id}', '${r.id}')" title="Revocar rol">×</button>
+                                                <button onclick="window.revokeRole('${u.id}', '${r.id}')" title="Revoke role">×</button>
                                             </span>
                                         `).join('')
-                : '<span class="no-roles">Sin roles</span>'
+                : '<span class="no-roles">No roles</span>'
             }
-                                    <button class="btn-icon-small" onclick="window.openAssignRoleModal('${u.id}', '${escapeHtml(u.name)}')" title="Asignar rol">+</button>
+                                    <button class="btn-icon-small" onclick="window.openAssignRoleModal('${u.id}', '${escapeHtml(u.name)}')" title="Assign role">+</button>
                                 </div>
                             </td>
                             <td>
-                                ${u.isActive ? '<span class="status-active">Activo</span>' : '<span class="status-inactive">Inactivo</span>'}
+                                ${u.isActive ? '<span class="status-active">Active</span>' : '<span class="status-inactive">Inactive</span>'}
                             </td>
                             <td>
                                 <button class="btn btn-ghost btn-sm" onclick="window.editUser('${u.id}')">✏️</button>
@@ -66,30 +66,30 @@ export async function loadUsers() {
 
     } catch (err) {
         console.error('Error loading users:', err);
-        listEl.innerHTML = `<p class="error-message">Error cargando usuarios: ${err.message}</p>`;
+        listEl.innerHTML = `<p class="error-message">Error loading users: ${err.message}</p>`;
     }
 }
 
 // Global actions
 window.revokeRole = async (userId, roleId) => {
-    if (!confirm('¿Revocar este rol?')) return;
+    if (!confirm('Revoke this role?')) return;
     try {
         await UsersAPI.revokeRole(userId, roleId);
-        showToast('Rol revocado');
+        showToast('Role revoked');
         loadUsers();
     } catch (err) {
-        showToast('Error revocando rol: ' + err.message, 'error');
+        showToast('Error revoking role: ' + err.message, 'error');
     }
 };
 
 window.deleteUser = async (userId) => {
-    if (!confirm('¿Eliminar usuario? Esta acción no se puede deshacer.')) return;
+    if (!confirm('Delete user? This action cannot be undone.')) return;
     try {
         await UsersAPI.deleteUser(userId);
-        showToast('Usuario eliminado');
+        showToast('User deleted');
         loadUsers();
     } catch (err) {
-        showToast('Error eliminando usuario: ' + err.message, 'error');
+        showToast('Error deleting user: ' + err.message, 'error');
     }
 };
 
@@ -133,7 +133,7 @@ window.editUser = async (userId) => {
 
         openModal('modal-edit-user');
     } catch (err) {
-        showToast('Error cargando usuario: ' + err.message, 'error');
+        showToast('Error loading user: ' + err.message, 'error');
     }
 };
 
@@ -158,10 +158,10 @@ export function initUsersListeners() {
         try {
             await UsersAPI.createUser(data);
             closeModal('modal-new-user');
-            showToast('Usuario creado');
+            showToast('User created');
             loadUsers();
         } catch (err) {
-            showToast('Error creando usuario: ' + err.message, 'error');
+            showToast('Error creating user: ' + err.message, 'error');
         }
     });
 
@@ -178,10 +178,10 @@ export function initUsersListeners() {
         try {
             await UsersAPI.assignRole(userId, role, groupIds);
             closeModal('modal-assign-role');
-            showToast('Rol asignado');
+            showToast('Role assigned');
             loadUsers();
         } catch (err) {
-            showToast('Error asignando rol: ' + err.message, 'error');
+            showToast('Error assigning role: ' + err.message, 'error');
         }
     });
 
@@ -201,10 +201,10 @@ export function initUsersListeners() {
         try {
             await UsersAPI.updateUser(userId, updates);
             closeModal('modal-edit-user');
-            showToast('Usuario actualizado');
+            showToast('User updated');
             loadUsers();
         } catch (err) {
-            showToast('Error actualizando usuario: ' + err.message, 'error');
+            showToast('Error updating user: ' + err.message, 'error');
         }
     });
 }

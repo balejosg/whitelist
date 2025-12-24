@@ -148,7 +148,7 @@ export function renderRules() {
     if (displayed.length === 0) {
         list.innerHTML = `
             <div class="empty-state">
-                <p>${search ? 'No hay resultados' : 'No hay reglas en esta sección'}</p>
+                <p>${search ? 'No results' : 'No rules in this section'}</p>
             </div>
         `;
         return;
@@ -199,7 +199,7 @@ export async function saveCurrentGroup(message) {
 
 export async function deleteGroup() {
     if (!state.canEdit) return;
-    if (!confirm('¿Eliminar este grupo y todas sus reglas?')) return;
+    if (!confirm('Delete this group and all its rules?')) return;
 
     const config = Config.get();
     const gruposDir = config.gruposDir || 'grupos';

@@ -45,7 +45,7 @@ export async function checkRequestsServerStatus() {
             return true;
         } else {
             dotEl.className = 'status-dot offline';
-            textEl.textContent = 'Sin conexión';
+            textEl.textContent = 'Disconnected';
             return false;
         }
     } catch {
@@ -61,7 +61,7 @@ export async function loadPendingRequests() {
     const statEl = document.getElementById('stat-pending-requests');
 
     if (!RequestsAPI.isConfigured() && !Auth.isAuthenticated()) {
-        listEl.innerHTML = '<p class="empty-message">Configura la URL del servidor o inicia sesión para ver solicitudes</p>';
+        listEl.innerHTML = '<p class="empty-message">Configure the server URL or log in to see requests</p>';
         statEl.textContent = '—';
         return;
     }
@@ -104,7 +104,7 @@ export async function loadPendingRequests() {
                         <span class="request-domain">${escapeHtml(req.domain)}</span>
                         <span class="request-time">${relativeTime(req.created_at)}</span>
                         <span class="request-meta">
-                            ${escapeHtml(req.requester_email || 'Anónimo')} •
+                            ${escapeHtml(req.requester_email || 'Anonymous')} •
                             <span class="request-reason">${escapeHtml(req.reason)}</span>
                         </span>
                         ${req.group_id ? `<span class="request-group-tag">Grupo: ${escapeHtml(req.group_id)}</span>` : ''}
@@ -151,7 +151,7 @@ window.approveRequest = async (id, btn) => {
 };
 
 window.rejectRequest = async (id) => {
-    const reason = prompt('Razón del rechazo (opcional):');
+    const reason = prompt('Reason for rejection (optional):');
     if (reason === null) return; // Cancelled
 
     try {

@@ -241,7 +241,7 @@ const SchedulesModule = {
         const cell = e.target.closest('.schedule-cell');
         const scheduleId = cell.dataset.scheduleId;
 
-        if (!confirm('¿Eliminar esta reserva?')) return;
+        if (!confirm('Delete this reservation?')) return;
 
         const result = await window.SchedulesAPI.deleteSchedule(scheduleId);
 

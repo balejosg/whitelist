@@ -9,7 +9,7 @@ export async function init() {
     if (callbackResult?.error) {
         showScreen('login-screen');
         document.getElementById('login-error').textContent =
-            'Error de autenticación: ' + callbackResult.error;
+            'Authentication error: ' + callbackResult.error;
         return;
     }
 
@@ -127,7 +127,7 @@ export function updateEditUI() {
             document.getElementById('teacher-name').textContent = state.currentUser.name || state.currentUser.email;
             const groups = Auth.getTeacherGroups();
             document.getElementById('teacher-assigned-groups').textContent =
-                groups.length > 0 ? groups.join(', ') : 'ningún grupo aún';
+                groups.length > 0 ? groups.join(', ') : 'no groups yet';
         } else {
             teacherBanner.classList.add('hidden');
         }
@@ -141,7 +141,7 @@ export function updateEditUI() {
         const badge = document.createElement('span');
         badge.id = 'readonly-badge';
         badge.className = 'user-badge';
-        badge.textContent = '👁️ Solo lectura';
+        badge.textContent = '👁️ Read-only';
         badge.style.background = 'rgba(234, 179, 8, 0.2)';
         badge.style.color = '#eab308';
         header.insertBefore(badge, header.firstChild);
@@ -176,7 +176,7 @@ async function initScheduleSection() {
         const data = await response.json();
 
         if (data.success && data.classrooms) {
-            select.innerHTML = '<option value="">Seleccionar aula...</option>';
+            select.innerHTML = '<option value="">Select classroom...</option>';
             data.classrooms.forEach(c => {
                 const option = document.createElement('option');
                 option.value = c.id;
@@ -195,7 +195,7 @@ async function initScheduleSection() {
             await window.SchedulesModule.init(classroomId);
         } else {
             document.getElementById('schedule-grid-container').innerHTML =
-                '<p class="empty-message">Selecciona un aula para ver su horario</p>';
+                '<p class="empty-message">Select a classroom to view its schedule</p>';
         }
     });
 
