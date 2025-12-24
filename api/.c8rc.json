@@ -8,7 +8,10 @@
     "exclude": [
         "tests/**",
         "node_modules/**",
-        "coverage/**"
+        "coverage/**",
+        "lib/swagger.js",
+        "lib/error-tracking.js",
+        "lib/errors.js"
     ],
     "reporter": [
         "text",
