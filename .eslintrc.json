@@ -31,6 +31,7 @@
         "node_modules/",
         "coverage/",
         "build/",
-        "dist/"
+        "dist/",
+        "**/tests/load/"
     ]
 }
