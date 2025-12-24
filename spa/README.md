@@ -1,78 +1,87 @@
-# OpenPath Web Static
+# OpenPath SPA (Single Page Application)
 
-SPA estática para gestionar reglas de whitelist DNS directamente en GitHub, sin backend.
+Web dashboard for managing DNS whitelist and domain access requests.
 
-## Características
+## Features
 
-✅ **Sin backend** - Todo client-side via GitHub API  
-✅ **Autenticación dual** - GitHub OAuth o Personal Access Token  
-✅ Gestión de múltiples grupos  
-✅ Editor de reglas (whitelist, subdominios, paths bloqueados)  
-✅ Commit automático de cambios  
-✅ Compatible con clientes dnsmasq  
-✅ Desplegable en GitHub Pages  
-✅ Tema oscuro moderno  
+✅ **No backend required** - Client-side via GitHub API
+✅ **Dual authentication** - GitHub OAuth or JWT email/password
+✅ Multiple group management
+✅ Rule editor (whitelist, blocked subdomains, blocked paths)
+✅ Automatic commit of changes
+✅ Compatible with dnsmasq clients
+✅ Deployable on GitHub Pages
+✅ Modern dark theme
 
-## Requisitos
-
-- Un repositorio GitHub
-- Credenciales (una de las siguientes):  
-  - **OAuth**: Requiere [auth-worker](../auth-worker/) desplegado  
-  - **PAT**: Personal Access Token con permisos `repo`
-- Navegador moderno
-
-## Instalación
-
-### Opción 1: GitHub Pages (Recomendado)
-
-1. Copia el contenido de `spa/` a tu repositorio
-2. Crea el directorio `grupos/` con al menos un archivo `.txt`
-3. Activa GitHub Pages desde Settings → Pages → Branch: main / docs
-
-### Opción 2: Servidor local
+## Quick Start
 
 ```bash
+# Serve locally
 cd spa
 python -m http.server 8080
-# Abrir http://localhost:8080
+# Open http://localhost:8080
 ```
 
-## Configuración Inicial
+## Architecture
 
-1. Genera un Personal Access Token:
-   - Ve a https://github.com/settings/tokens
+The SPA uses vanilla JavaScript with ES6 modules. No build step required.
+
+### Module Structure
+
+```
+spa/js/
+├── app.js              # Standalone version (legacy)
+└── modules/            # Modular ES6 version
+    ├── app-core.js     # Init, auth, UI setup
+    ├── classrooms.js   # Classroom CRUD operations
+    ├── groups.js       # Group management
+    ├── main.js         # Event listeners, entry point
+    ├── requests.js     # Domain request handling
+    ├── schedules.js    # Reservation scheduling
+    ├── state.js        # Global application state
+    ├── ui.js           # Screen, modal, tabs
+    ├── users.js        # User management (admin)
+    └── utils.js        # Toast, escapeHtml, helpers
+```
+
+### External API Clients
+
+```
+spa/js/
+├── auth.js            # JWT authentication
+├── classrooms-api.js  # Classrooms REST client
+├── config.js          # Local storage config
+├── github-api.js      # GitHub API client
+├── oauth.js           # GitHub OAuth flow
+├── push.js            # Push notifications
+├── requests-api.js    # Domain requests client
+├── schedules-api.js   # Schedules REST client
+├── users-api.js       # Users REST client
+└── whitelist-parser.js # Whitelist file parser
+```
+
+## Initial Configuration
+
+1. Generate a Personal Access Token:
+   - Go to https://github.com/settings/tokens
    - Click "Generate new token (classic)"
-   - Selecciona scope `repo` (para repos públicos: `public_repo`)
-   - Copia el token generado
+   - Select scope `repo` (for public repos: `public_repo`)
+   - Copy the generated token
 
-2. Abre la SPA en el navegador
+2. Open the SPA in browser
 
-3. Configura:
-   - **Token**: Tu PAT
-   - **Usuario/Org**: Tu usuario o organización
-   - **Repositorio**: Nombre del repo
-   - **Rama**: `main` (o la que uses)
-   - **Directorio**: `grupos` (donde están los .txt)
+3. Configure:
+   - **Token**: Your PAT
+   - **User/Org**: Your username or organization
+   - **Repository**: Repo name
+   - **Branch**: `main` (or your branch)
+   - **Directory**: `grupos` (where .txt files are)
 
-## Estructura del Repo
+## File Format
 
-```
-tu-repo/
-├── grupos/
-│   ├── informatica-1.txt
-│   ├── informatica-2.txt
-│   └── laboratorio.txt
-└── spa/  (o en rama gh-pages)
-    ├── index.html
-    ├── css/style.css
-    └── js/*.js
-```
+Each `.txt` file represents a group:
 
-## Formato de Archivos
-
-Cada archivo `.txt` representa un grupo:
-
-```
+```ini
 ## WHITELIST
 google.com
 youtube.com
@@ -86,38 +95,30 @@ tracking.example.com
 facebook.com/games
 ```
 
-## URL para Clientes dnsmasq
+## URL for dnsmasq Clients
 
-Los clientes pueden obtener la whitelist desde:
+Clients can obtain the whitelist from:
 
 ```
-https://raw.githubusercontent.com/{usuario}/{repo}/main/grupos/{grupo}.txt
+https://raw.githubusercontent.com/{user}/{repo}/main/grupos/{group}.txt
 ```
 
-Ejemplo:
+## Testing
+
 ```bash
-openpath --set-url "https://raw.githubusercontent.com/mi-usuario/openpath/main/grupos/informatica-1.txt"
+# E2E tests with Playwright
+npm run test:e2e
+
+# With browser UI
+npm run test:e2e:headed
 ```
 
-## Seguridad
+## Technologies
 
-⚠️ El token se almacena en `localStorage` del navegador. Esto significa:
-- Solo es accesible desde el mismo origen
-- Se elimina al limpiar datos del navegador
-- **No compartas tu token**
-
-## Migración desde versiones anteriores
-
-1. Exporta los grupos desde la versión anterior
-2. Coloca los archivos `.txt` en el directorio `grupos/`
-3. Actualiza las URLs en los clientes
-
-## Tecnologías
-
-- HTML/CSS/JavaScript vanilla
+- HTML/CSS/JavaScript vanilla (ES6 modules)
 - GitHub REST API v3
-- Sin frameworks ni dependencias
+- No frameworks or external dependencies
 
-## Licencia
+## License
 
-MIT
+AGPL-3.0 - See [LICENSING.md](../LICENSING.md)
