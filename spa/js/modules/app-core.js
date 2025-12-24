@@ -148,4 +148,63 @@ export function updateEditUI() {
     } else if (isAdmin && existingBadge) {
         existingBadge.remove();
     }
+
+    // Schedule section (for teachers and admins)
+    const scheduleSection = document.getElementById('schedule-section');
+    if (scheduleSection) {
+        const showSchedule = isAdmin || isTeacher;
+        scheduleSection.classList.toggle('hidden', !showSchedule);
+
+        if (showSchedule) {
+            initScheduleSection();
+        }
+    }
+}
+
+// Initialize schedule section with classroom selector
+async function initScheduleSection() {
+    const select = document.getElementById('schedule-classroom-select');
+    if (!select || select.dataset.initialized) return;
+
+    select.dataset.initialized = 'true';
+
+    // Load classrooms
+    try {
+        const response = await fetch(`${RequestsAPI?.apiUrl || ''}/api/classrooms`, {
+            headers: Auth.getAuthHeaders()
+        });
+        const data = await response.json();
+
+        if (data.success && data.classrooms) {
+            select.innerHTML = '<option value="">Seleccionar aula...</option>';
+            data.classrooms.forEach(c => {
+                const option = document.createElement('option');
+                option.value = c.id;
+                option.textContent = c.display_name || c.name;
+                select.appendChild(option);
+            });
+        }
+    } catch (e) {
+        console.error('Failed to load classrooms for schedule:', e);
+    }
+
+    // Handle classroom selection
+    select.addEventListener('change', async () => {
+        const classroomId = select.value;
+        if (classroomId && window.SchedulesModule) {
+            await window.SchedulesModule.init(classroomId);
+        } else {
+            document.getElementById('schedule-grid-container').innerHTML =
+                '<p class="empty-message">Selecciona un aula para ver su horario</p>';
+        }
+    });
+
+    // Refresh button
+    document.getElementById('schedule-refresh-btn')?.addEventListener('click', async () => {
+        const classroomId = select.value;
+        if (classroomId && window.SchedulesModule) {
+            await window.SchedulesModule.loadSchedules();
+            window.SchedulesModule.render();
+        }
+    });
 }

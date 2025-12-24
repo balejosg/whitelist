@@ -43,6 +43,7 @@ const authRouter = require('./routes/auth');
 const usersRouter = require('./routes/users');
 const pushRouter = require('./routes/push');
 const classroomsRouter = require('./routes/classrooms');
+const schedulesRouter = require('./routes/schedules');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -213,7 +214,14 @@ app.get('/api', (req, res) => {
             'DELETE /api/classrooms/:id': 'Delete classroom (admin)',
             'POST /api/classrooms/machines/register': 'Register machine (shared secret)',
             'GET /api/classrooms/machines/:hostname/whitelist-url': 'Get whitelist URL (shared secret)',
-            'DELETE /api/classrooms/machines/:hostname': 'Remove machine (admin)'
+            'DELETE /api/classrooms/machines/:hostname': 'Remove machine (admin)',
+            // Schedules (Classroom Reservations)
+            'GET /api/schedules/classroom/:id': 'Get classroom schedule (auth)',
+            'GET /api/schedules/my': 'Get my reservations (auth)',
+            'POST /api/schedules': 'Create reservation (teacher/admin)',
+            'PUT /api/schedules/:id': 'Update reservation (owner/admin)',
+            'DELETE /api/schedules/:id': 'Delete reservation (owner/admin)',
+            'GET /api/schedules/classroom/:id/current': 'Get current active schedule (auth)'
         }
     });
 });
@@ -235,6 +243,9 @@ app.use('/api/push', pushRouter);
 
 // Classroom management
 app.use('/api/classrooms', classroomsRouter);
+
+// Schedule reservations
+app.use('/api/schedules', schedulesRouter);
 
 // Serve SPA static files
 app.use(express.static(path.join(__dirname, '../spa')));

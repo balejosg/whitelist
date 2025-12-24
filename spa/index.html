@@ -200,6 +200,22 @@
                 </div>
             </section>
 
+            <!-- Schedule Section -->
+            <section id="schedule-section" class="schedule-section hidden">
+                <div class="section-header">
+                    <h2>📅 Horario del Aula</h2>
+                    <div class="schedule-actions">
+                        <select id="schedule-classroom-select" class="form-control">
+                            <option value="">Seleccionar aula...</option>
+                        </select>
+                        <button id="schedule-refresh-btn" class="btn btn-ghost" title="Actualizar">🔄</button>
+                    </div>
+                </div>
+                <div id="schedule-grid-container">
+                    <p class="empty-message">Selecciona un aula para ver su horario</p>
+                </div>
+            </section>
+
             <!-- Groups List -->
             <section class="groups-section">
                 <div class="section-header">
@@ -520,7 +536,9 @@ wikipedia.org"></textarea>
     <script src="js/users-api.js"></script>
     <script src="js/requests-api.js"></script>
     <script src="js/classrooms-api.js"></script>
+    <script src="js/schedules-api.js"></script>
     <script src="js/push.js"></script>
+    <script src="js/modules/schedules.js"></script>
     <script type="module" src="js/modules/main.js"></script>
 </body>
 

@@ -370,8 +370,9 @@ function removeMachinesByClassroom(classroomId) {
 
 /**
  * Get the whitelist URL for a machine based on its classroom's active group
+ * Priority: 1) Manual override (active_group_id), 2) Current schedule, 3) Default group
  * @param {string} hostname 
- * @returns {Object} { url, groupId, classroomId } or null if not found
+ * @returns {Object} { url, groupId, classroomId, source } or null if not found
  */
 function getWhitelistUrlForMachine(hostname) {
     const machine = getMachineByHostname(hostname);
@@ -384,7 +385,31 @@ function getWhitelistUrlForMachine(hostname) {
         return null;
     }
 
-    const groupId = classroom.active_group_id || classroom.default_group_id;
+    // Priority 1: Manual override (active_group_id set by admin)
+    let groupId = classroom.active_group_id;
+    let source = 'manual';
+
+    // Priority 2: Check current schedule if no manual override
+    if (!groupId) {
+        try {
+            const scheduleStorage = require('./schedule-storage');
+            const currentSchedule = scheduleStorage.getCurrentSchedule(classroom.id);
+            if (currentSchedule) {
+                groupId = currentSchedule.group_id;
+                source = 'schedule';
+            }
+        } catch (e) {
+            // Schedule storage not available, continue without it
+            console.warn('Schedule storage not available:', e.message);
+        }
+    }
+
+    // Priority 3: Default group
+    if (!groupId) {
+        groupId = classroom.default_group_id;
+        source = 'default';
+    }
+
     if (!groupId) {
         return null;
     }
@@ -399,7 +424,8 @@ function getWhitelistUrlForMachine(hostname) {
         url,
         group_id: groupId,
         classroom_id: classroom.id,
-        classroom_name: classroom.name
+        classroom_name: classroom.name,
+        source // 'manual', 'schedule', or 'default'
     };
 }
 

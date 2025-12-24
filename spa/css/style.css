@@ -1689,3 +1689,214 @@ a:hover {
         width: 100%;
     }
 }
+
+/* ============== Schedule Grid ============== */
+.schedule-section {
+    margin-bottom: 2rem;
+}
+
+.schedule-grid-container {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    overflow-x: auto;
+}
+
+.schedule-grid {
+    min-width: 600px;
+}
+
+.schedule-header {
+    display: grid;
+    grid-template-columns: 100px repeat(5, 1fr);
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+.schedule-time-header,
+.schedule-day-header {
+    padding: 0.75rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--border-radius-sm);
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+.schedule-time-header {
+    color: var(--text-muted);
+}
+
+.schedule-day-header {
+    color: var(--text-primary);
+}
+
+.schedule-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.schedule-row {
+    display: grid;
+    grid-template-columns: 100px repeat(5, 1fr);
+    gap: 4px;
+}
+
+.schedule-time {
+    padding: 0.75rem 0.5rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--border-radius-sm);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.schedule-cell {
+    min-height: 60px;
+    border-radius: var(--border-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.schedule-cell-empty {
+    background: var(--bg-tertiary);
+    border: 2px dashed var(--border-color);
+    cursor: pointer;
+}
+
+.schedule-cell-empty:hover {
+    background: var(--bg-elevated);
+    border-color: var(--accent-primary);
+}
+
+.schedule-add-icon {
+    font-size: 1.5rem;
+    color: var(--text-muted);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.schedule-cell-empty:hover .schedule-add-icon {
+    opacity: 1;
+    color: var(--accent-primary);
+}
+
+.schedule-cell-occupied {
+    padding: 0.5rem;
+    text-align: center;
+}
+
+.schedule-cell-occupied.is-mine {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(139, 92, 246, 0.2) 100%);
+    border: 1px solid var(--accent-primary);
+}
+
+.schedule-cell-occupied.is-other {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+}
+
+.schedule-group-name {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.schedule-delete-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: var(--accent-danger);
+    color: white;
+    border-radius: 50%;
+    font-size: 0.875rem;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.schedule-cell-occupied:hover .schedule-delete-btn {
+    opacity: 1;
+}
+
+.schedule-delete-btn:hover {
+    background: var(--accent-danger-hover);
+}
+
+.schedule-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.schedule-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.schedule-legend-color {
+    width: 12px;
+    height: 12px;
+    background: var(--gradient-primary);
+    border-radius: 3px;
+}
+
+.schedule-no-groups {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    padding: 1rem;
+    text-align: center;
+}
+
+/* Mobile responsive for schedule grid */
+@media (max-width: 768px) {
+    .schedule-header {
+        grid-template-columns: 70px repeat(5, 1fr);
+    }
+    
+    .schedule-row {
+        grid-template-columns: 70px repeat(5, 1fr);
+    }
+    
+    .schedule-time {
+        font-size: 0.65rem;
+        padding: 0.5rem 0.25rem;
+    }
+    
+    .schedule-day-header {
+        font-size: 0.75rem;
+        padding: 0.5rem 0.25rem;
+    }
+    
+    .schedule-cell {
+        min-height: 50px;
+    }
+    
+    .schedule-group-name {
+        font-size: 0.65rem;
+    }
+}
