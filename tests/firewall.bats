@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 ################################################################################
-# firewall.bats - Tests para lib/firewall.sh
+# firewall.bats - Tests for lib/firewall.sh
 ################################################################################
 
 load 'test_helper'
@@ -43,37 +43,37 @@ teardown() {
     fi
 }
 
-# ============== Tests de validate_ip ==============
+# ============== validate_ip tests ==============
 
-@test "validate_ip acepta IP válida" {
+@test "validate_ip accepts valid IP" {
     run validate_ip "192.168.1.1"
     [ "$status" -eq 0 ]
 }
 
-@test "validate_ip acepta DNS de Google" {
+@test "validate_ip accepts Google DNS" {
     run validate_ip "8.8.8.8"
     [ "$status" -eq 0 ]
 }
 
-@test "validate_ip rechaza IP inválida" {
+@test "validate_ip rejects invalid IP" {
     run validate_ip "256.1.1.1"
     # Note: regex alone doesn't validate octet ranges, but format is correct
     [ "$status" -eq 0 ]  # Regex passes, deeper validation needed
 }
 
-@test "validate_ip rechaza texto" {
+@test "validate_ip rejects text" {
     run validate_ip "not-an-ip"
     [ "$status" -eq 1 ]
 }
 
-@test "validate_ip rechaza cadena vacía" {
+@test "validate_ip rejects empty string" {
     run validate_ip ""
     [ "$status" -eq 1 ]
 }
 
 # ============== Tests de check_firewall_status ==============
 
-@test "check_firewall_status detecta firewall inactivo" {
+@test "check_firewall_status detects inactive firewall" {
     # Mock iptables to return no DROP rules
     iptables() {
         echo "Chain OUTPUT (policy ACCEPT)"
@@ -88,7 +88,7 @@ teardown() {
     [ "$output" = "inactive" ]
 }
 
-@test "check_firewall_status detecta firewall activo" {
+@test "check_firewall_status detects active firewall" {
     # Mock iptables to return DROP rules for port 53
     iptables() {
         cat << 'EOF'
@@ -109,7 +109,7 @@ EOF
 
 # ============== Tests de flush_dns_cache ==============
 
-@test "flush_dns_cache ejecuta sin errores cuando dnsmasq está activo" {
+@test "flush_dns_cache runs without errors when dnsmasq is active" {
     # Mock systemctl
     systemctl() {
         if [ "$1" = "is-active" ] && [ "$2" = "--quiet" ] && [ "$3" = "dnsmasq" ]; then
@@ -132,7 +132,7 @@ EOF
     [[ "$output" == *"Caché DNS limpiado"* ]]
 }
 
-@test "flush_dns_cache no hace nada cuando dnsmasq está inactivo" {
+@test "flush_dns_cache does nothing when dnsmasq is inactive" {
     # Mock systemctl to say dnsmasq is not active
     systemctl() {
         return 1
@@ -149,7 +149,7 @@ EOF
 
 # ============== Tests de save_firewall_rules ==============
 
-@test "save_firewall_rules crea archivo de reglas" {
+@test "save_firewall_rules creates rules file" {
     local rules_dir="$TEST_TMP_DIR/iptables"
     mkdir -p "$rules_dir"
     
@@ -174,7 +174,7 @@ EOF
 
 # ============== Tests de flush_connections ==============
 
-@test "flush_connections funciona con conntrack disponible" {
+@test "flush_connections works with conntrack available" {
     # Mock conntrack
     conntrack() {
         return 0
@@ -196,7 +196,7 @@ EOF
     [ "$status" -eq 0 ]
 }
 
-@test "flush_connections advierte cuando conntrack no está disponible" {
+@test "flush_connections warns when conntrack is not available" {
     # Mock command to say conntrack doesn't exist
     command() {
         if [ "$2" = "conntrack" ]; then

@@ -14,6 +14,7 @@
     "test:frontend": "bash -c 'timeout 5 node --test ../spa/tests/frontend.test.js || true'",
     "test:all": "bash -c 'fuser -k 3000/tcp 3001/tcp 3002/tcp 2>/dev/null || true; node tests/run-all.js'",
     "test:coverage": "c8 --check-coverage --lines 70 --branches 60 --functions 70 node --test tests/api.test.js tests/auth.test.js",
+    "test:load": "k6 run tests/load/load-test.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },

@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 ################################################################################
-# common.bats - Tests para lib/common.sh
+# common.bats - Tests for lib/common.sh
 ################################################################################
 
 load 'test_helper'
@@ -26,19 +26,19 @@ teardown() {
     fi
 }
 
-# ============== Tests de parseo de whitelist ==============
+# ============== Whitelist parsing tests ==============
 
-@test "parse_whitelist extrae dominios de sección WHITELIST" {
+@test "parse_whitelist extracts domains from WHITELIST section" {
     local wl_file=$(create_test_whitelist)
     
-    # Simular parse (la función real puede variar)
+    # Simulate parse (the actual function may vary)
     local domains=$(grep -A 100 "## WHITELIST" "$wl_file" | grep -B 100 "## BLOCKED" | grep -v "^#" | grep -v "^$" | head -n -1)
     
     [[ "$domains" == *"google.com"* ]]
     [[ "$domains" == *"github.com"* ]]
 }
 
-@test "parse_whitelist extrae subdominios bloqueados" {
+@test "parse_whitelist extracts blocked subdomains" {
     local wl_file=$(create_test_whitelist)
     
     local blocked=$(sed -n '/## BLOCKED-SUBDOMAINS/,/## BLOCKED-PATHS/p' "$wl_file" | grep -v "^#" | grep -v "^$")
@@ -46,7 +46,7 @@ teardown() {
     [[ "$blocked" == *"ads.google.com"* ]]
 }
 
-@test "detecta whitelist desactivada" {
+@test "detects disabled whitelist" {
     local wl_file=$(create_disabled_whitelist)
     
     if head -1 "$wl_file" | grep -qi "DESACTIVADO"; then
@@ -58,7 +58,7 @@ teardown() {
     [ "$is_disabled" = true ]
 }
 
-@test "whitelist normal no está desactivada" {
+@test "normal whitelist is not disabled" {
     local wl_file=$(create_test_whitelist)
     
     if head -1 "$wl_file" | grep -qi "DESACTIVADO"; then
@@ -70,9 +70,9 @@ teardown() {
     [ "$is_disabled" = false ]
 }
 
-# ============== Tests de logging ==============
+# ============== Logging tests ==============
 
-@test "log escribe al archivo de log" {
+@test "log writes to log file" {
     export LOG_FILE="$TEST_TMP_DIR/test.log"
     
     # Mock de log function si existe, o crear una básica
@@ -86,9 +86,9 @@ teardown() {
     grep -q "Test message" "$LOG_FILE"
 }
 
-# ============== Tests de validación ==============
+# ============== Validation tests ==============
 
-@test "dominio válido pasa validación" {
+@test "valid domain passes validation" {
     local domain="google.com"
     
     # Validación básica de dominio
@@ -101,7 +101,7 @@ teardown() {
     [ "$valid" = true ]
 }
 
-@test "dominio inválido falla validación" {
+@test "invalid domain fails validation" {
     local domain="invalid domain with spaces"
     
     if [[ "$domain" =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$ ]]; then
@@ -115,7 +115,7 @@ teardown() {
 
 # ============== Tests de parse_whitelist_sections ==============
 
-@test "parse_whitelist_sections llena arrays correctamente" {
+@test "parse_whitelist_sections fills arrays correctly" {
     local wl_file=$(create_test_whitelist)
     
     source "$PROJECT_DIR/linux/lib/common.sh"
@@ -130,7 +130,7 @@ teardown() {
     [[ " ${WHITELIST_DOMAINS[*]} " == *" github.com "* ]]
 }
 
-@test "parse_whitelist_sections extrae subdominios bloqueados" {
+@test "parse_whitelist_sections extracts blocked subdomains" {
     local wl_file=$(create_test_whitelist)
     
     source "$PROJECT_DIR/linux/lib/common.sh"
@@ -142,7 +142,7 @@ teardown() {
     [[ " ${BLOCKED_SUBDOMAINS[*]} " == *" ads.google.com "* ]]
 }
 
-@test "parse_whitelist_sections extrae paths bloqueados" {
+@test "parse_whitelist_sections extracts blocked paths" {
     local wl_file=$(create_test_whitelist)
     
     source "$PROJECT_DIR/linux/lib/common.sh"
@@ -154,7 +154,7 @@ teardown() {
     [[ " ${BLOCKED_PATHS[*]} " == *" example.org/ads "* ]]
 }
 
-@test "parse_whitelist_sections maneja archivo inexistente" {
+@test "parse_whitelist_sections handles nonexistent file" {
     source "$PROJECT_DIR/linux/lib/common.sh"
     
     run parse_whitelist_sections "/nonexistent/file.txt"
@@ -193,7 +193,7 @@ teardown() {
 
 # ============== Tests de init_directories ==============
 
-@test "init_directories crea CONFIG_DIR" {
+@test "init_directories creates CONFIG_DIR" {
     source "$PROJECT_DIR/linux/lib/common.sh"
     # Override paths after sourcing - use actual variables the function uses
     ETC_CONFIG_DIR="$TEST_TMP_DIR/etc_config"
@@ -206,7 +206,7 @@ teardown() {
     [ -d "$ETC_CONFIG_DIR" ]
 }
 
-@test "init_directories crea directorio de log" {
+@test "init_directories creates log directory" {
     source "$PROJECT_DIR/linux/lib/common.sh"
     # Override paths after sourcing - use actual variables the function uses
     ETC_CONFIG_DIR="$TEST_TMP_DIR/etc_config2"

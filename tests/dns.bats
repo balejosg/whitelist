@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 ################################################################################
-# dns.bats - Tests para lib/dns.sh
+# dns.bats - Tests for lib/dns.sh
 ################################################################################
 
 load 'test_helper'
@@ -23,15 +23,15 @@ teardown() {
     fi
 }
 
-# ============== Tests de generación de configuración ==============
+# ============== Configuration generation tests ==============
 
-@test "genera configuración dnsmasq con dominios whitelisteados" {
+@test "generates dnsmasq config with whitelisted domains" {
     local config_file="$TEST_TMP_DIR/dnsmasq.conf"
     local dns_server="8.8.8.8"
     local domains="google.com
 github.com"
     
-    # Simular generación de config
+    # Simulate config generation
     {
         echo "# Generated config"
         echo "address=/#/"
@@ -46,7 +46,7 @@ github.com"
     grep -q "server=/github.com/8.8.8.8" "$config_file"
 }
 
-@test "address=/#/ aparece ANTES de server= directives" {
+@test "address=/#/ appears BEFORE server= directives" {
     local config_file="$TEST_TMP_DIR/dnsmasq.conf"
     
     {
@@ -54,20 +54,20 @@ github.com"
         echo "server=/google.com/8.8.8.8"
     } > "$config_file"
     
-    # Verificar orden: address debe estar antes de server
+    # Verify order: address must be before server
     local address_line=$(grep -n "address=/#/" "$config_file" | cut -d: -f1)
     local server_line=$(grep -n "server=/google.com" "$config_file" | cut -d: -f1)
     
     [ "$address_line" -lt "$server_line" ]
 }
 
-# ============== Tests de detección de DNS ==============
+# ============== DNS detection tests ==============
 
-@test "detect_primary_dns retorna IP válida o fallback" {
-    # Mock para cuando no hay DNS detectado
+@test "detect_primary_dns returns valid IP or fallback" {
+    # Mock for when no DNS is detected
     local dns="8.8.8.8"  # Fallback
     
-    # Validar que es una IP
+    # Validate that it's an IP
     if [[ "$dns" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
         local valid=true
     else
@@ -77,9 +77,9 @@ github.com"
     [ "$valid" = true ]
 }
 
-# ============== Tests de configuración resolv.conf ==============
+# ============== resolv.conf configuration tests ==============
 
-@test "resolv.conf apunta a localhost" {
+@test "resolv.conf points to localhost" {
     local resolv_file="$TEST_TMP_DIR/resolv.conf"
     
     echo "nameserver 127.0.0.1" > "$resolv_file"
@@ -89,7 +89,7 @@ github.com"
 
 # ============== Tests de generate_dnsmasq_config ==============
 
-@test "generate_dnsmasq_config crea archivo de configuración" {
+@test "generate_dnsmasq_config creates configuration file" {
     export DNSMASQ_CONF="$TEST_TMP_DIR/dnsmasq.d/url-whitelist.conf"
     export PRIMARY_DNS="8.8.8.8"
     export VERSION="3.5"
@@ -111,7 +111,7 @@ github.com"
     [ -f "$DNSMASQ_CONF" ]
 }
 
-@test "generate_dnsmasq_config incluye address=/#/ primero" {
+@test "generate_dnsmasq_config includes address=/#/ first" {
     export DNSMASQ_CONF="$TEST_TMP_DIR/dnsmasq.d/url-whitelist.conf"
     export PRIMARY_DNS="8.8.8.8"
     export VERSION="3.5"
@@ -131,7 +131,7 @@ github.com"
     grep -q "address=/#/" "$DNSMASQ_CONF"
 }
 
-@test "generate_dnsmasq_config incluye dominios del whitelist" {
+@test "generate_dnsmasq_config includes domains from whitelist" {
     export DNSMASQ_CONF="$TEST_TMP_DIR/dnsmasq.d/url-whitelist.conf"
     export PRIMARY_DNS="8.8.8.8"
     export VERSION="3.5"
@@ -152,7 +152,7 @@ github.com"
     grep -q "server=/test.com/8.8.8.8" "$DNSMASQ_CONF"
 }
 
-@test "generate_dnsmasq_config incluye subdominios bloqueados" {
+@test "generate_dnsmasq_config includes blocked subdomains" {
     export DNSMASQ_CONF="$TEST_TMP_DIR/dnsmasq.d/url-whitelist.conf"
     export PRIMARY_DNS="8.8.8.8"
     export VERSION="3.5"
@@ -174,7 +174,7 @@ github.com"
 
 # ============== Tests de validate_dnsmasq_config ==============
 
-@test "validate_dnsmasq_config detecta config válida" {
+@test "validate_dnsmasq_config detects valid config" {
     # Mock dnsmasq
     dnsmasq() {
         echo "dnsmasq: syntax check OK."
@@ -191,7 +191,7 @@ github.com"
     [ "$status" -eq 0 ]
 }
 
-@test "validate_dnsmasq_config detecta config inválida" {
+@test "validate_dnsmasq_config detects invalid config" {
     # Mock dnsmasq with error
     dnsmasq() {
         echo "dnsmasq: syntax error at line 5"
@@ -210,7 +210,7 @@ github.com"
 
 # ============== Tests de verify_dns ==============
 
-@test "verify_dns retorna éxito con DNS funcional" {
+@test "verify_dns returns success with functional DNS" {
     # Mock dig
     dig() {
         echo "142.250.185.206"
@@ -231,7 +231,7 @@ github.com"
     [ "$status" -eq 0 ]
 }
 
-@test "verify_dns retorna error con DNS fallando" {
+@test "verify_dns returns error with failing DNS" {
     # Mock dig to fail
     dig() {
         return 1

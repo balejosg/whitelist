@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 ################################################################################
-# services.bats - Tests para lib/services.sh
+# services.bats - Tests for lib/services.sh
 ################################################################################
 
 load 'test_helper'
@@ -39,7 +39,7 @@ teardown() {
 
 # ============== Tests de create_whitelist_service ==============
 
-@test "create_whitelist_service genera unit file" {
+@test "create_whitelist_service generates unit file" {
     # Temporarily redirect to test location
     local service_file="$TEST_TMP_DIR/systemd/system/openpath-dnsmasq.service"
     
@@ -69,7 +69,7 @@ EOF
     [ -f "$service_file" ]
 }
 
-@test "create_whitelist_service incluye secciones requeridas" {
+@test "create_whitelist_service includes required sections" {
     local service_file="$TEST_TMP_DIR/systemd/system/openpath-dnsmasq.service"
     
     create_whitelist_service() {
@@ -95,7 +95,7 @@ EOF
 
 # ============== Tests de create_whitelist_timer ==============
 
-@test "create_whitelist_timer genera timer file" {
+@test "create_whitelist_timer generates timer file" {
     local timer_file="$TEST_TMP_DIR/systemd/system/openpath-dnsmasq.timer"
     
     create_whitelist_timer() {
@@ -119,7 +119,7 @@ EOF
     [ -f "$timer_file" ]
 }
 
-@test "create_whitelist_timer configura intervalo de 5 minutos" {
+@test "create_whitelist_timer configures 5 minute interval" {
     local timer_file="$TEST_TMP_DIR/systemd/system/openpath-dnsmasq.timer"
     
     create_whitelist_timer() {
@@ -136,7 +136,7 @@ EOF
 
 # ============== Tests de create_watchdog_service ==============
 
-@test "create_watchdog_service genera unit file" {
+@test "create_watchdog_service generates unit file" {
     local service_file="$TEST_TMP_DIR/systemd/system/dnsmasq-watchdog.service"
     
     create_watchdog_service() {
@@ -160,7 +160,7 @@ EOF
 
 # ============== Tests de create_logrotate_config ==============
 
-@test "create_logrotate_config genera archivo de configuración" {
+@test "create_logrotate_config generates configuration file" {
     local logrotate_file="$TEST_TMP_DIR/logrotate.d/openpath"
     
     create_logrotate_config() {
@@ -184,7 +184,7 @@ EOF
     [ -f "$logrotate_file" ]
 }
 
-@test "create_logrotate_config incluye compresión" {
+@test "create_logrotate_config includes compression" {
     local logrotate_file="$TEST_TMP_DIR/logrotate.d/openpath"
     
     create_logrotate_config() {
@@ -201,7 +201,7 @@ EOF
     grep -q "compress" "$logrotate_file"
 }
 
-@test "create_logrotate_config configura rotación diaria" {
+@test "create_logrotate_config configures daily rotation" {
     local logrotate_file="$TEST_TMP_DIR/logrotate.d/openpath"
     
     create_logrotate_config() {
@@ -221,7 +221,7 @@ EOF
 
 # ============== Tests de create_tmpfiles_config ==============
 
-@test "create_tmpfiles_config genera configuración" {
+@test "create_tmpfiles_config generates configuration" {
     local tmpfiles_file="$TEST_TMP_DIR/tmpfiles.d/openpath.conf"
     
     create_tmpfiles_config() {
@@ -235,7 +235,7 @@ EOF
     [ -f "$tmpfiles_file" ]
 }
 
-@test "create_tmpfiles_config crea directorio /run/dnsmasq" {
+@test "create_tmpfiles_config creates /run/dnsmasq directory" {
     local tmpfiles_file="$TEST_TMP_DIR/tmpfiles.d/openpath.conf"
     
     create_tmpfiles_config() {
@@ -251,7 +251,7 @@ EOF
 
 # ============== Tests de enable_services / disable_services ==============
 
-@test "enable_services ejecuta sin errores" {
+@test "enable_services runs without errors" {
     source "$PROJECT_DIR/linux/lib/services.sh"
     
     run enable_services
@@ -259,7 +259,7 @@ EOF
     [[ "$output" == *"habilitados"* ]]
 }
 
-@test "disable_services ejecuta sin errores" {
+@test "disable_services runs without errors" {
     source "$PROJECT_DIR/linux/lib/services.sh"
     
     run disable_services
