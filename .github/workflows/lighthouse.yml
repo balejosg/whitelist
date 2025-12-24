@@ -1,0 +1,60 @@
+name: Lighthouse CI
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'spa/**'
+      - '.github/workflows/lighthouse.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'spa/**'
+  workflow_dispatch:
+
+jobs:
+  lighthouse:
+    name: Lighthouse Performance Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        working-directory: api
+        run: npm ci || npm install
+      
+      - name: Start API server
+        working-directory: api
+        run: |
+          npm start &
+          sleep 5
+        env:
+          NODE_ENV: test
+          ADMIN_TOKEN: lighthouse-test-token
+          JWT_SECRET: lighthouse-test-secret
+      
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          configPath: './spa/lighthouserc.js'
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+      
+      - name: Format Lighthouse Score
+        if: always()
+        run: |
+          echo "## 🔦 Lighthouse Performance Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Score |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Performance | See artifacts |" >> $GITHUB_STEP_SUMMARY
+          echo "| Accessibility | See artifacts |" >> $GITHUB_STEP_SUMMARY
+          echo "| Best Practices | See artifacts |" >> $GITHUB_STEP_SUMMARY
+          echo "| SEO | See artifacts |" >> $GITHUB_STEP_SUMMARY

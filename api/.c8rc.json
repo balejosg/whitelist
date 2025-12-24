@@ -1,0 +1,24 @@
+{
+    "all": true,
+    "include": [
+        "lib/**/*.js",
+        "routes/**/*.js",
+        "server.js"
+    ],
+    "exclude": [
+        "tests/**",
+        "node_modules/**",
+        "coverage/**"
+    ],
+    "reporter": [
+        "text",
+        "lcov",
+        "html"
+    ],
+    "report-dir": "coverage",
+    "check-coverage": true,
+    "lines": 70,
+    "branches": 60,
+    "functions": 70,
+    "statements": 70
+}

@@ -134,13 +134,22 @@ jobs:
       - name: Run linting
         run: npm run lint
       
-      - name: Run tests
-        run: npm test
+      - name: Run tests with coverage
+        run: npm run test:coverage
         env:
           NODE_ENV: test
           ADMIN_TOKEN: test-admin-token-for-ci
           SHARED_SECRET: test-shared-secret-for-ci
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: api/coverage/lcov.info
+          flags: api
+          name: api-coverage
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   # ============================================
   # Job 5: Build Docker Image

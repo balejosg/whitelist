@@ -17,13 +17,13 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ################################################################################
-# services.sh - Funciones de gestión de servicios systemd
-# Parte del sistema dnsmasq URL Whitelist v3.5
+# services.sh - Systemd service management functions
+# Part of the OpenPath DNS system v3.5
 ################################################################################
 
-# Crear todos los servicios systemd
+# Create all systemd services
 create_systemd_services() {
-    log "Creando servicios systemd..."
+    log "Creating systemd services..."
     
     create_whitelist_service
     create_whitelist_timer
@@ -35,10 +35,10 @@ create_systemd_services() {
     
     systemctl daemon-reload
     
-    log "✓ Servicios systemd creados"
+    log "✓ Systemd services created"
 }
 
-# Servicio de actualización de whitelist
+# Whitelist update service
 create_whitelist_service() {
     cat > /etc/systemd/system/openpath-dnsmasq.service << 'EOF'
 [Unit]
@@ -59,7 +59,7 @@ WantedBy=multi-user.target
 EOF
 }
 
-# Timer para actualización periódica
+# Timer for periodic updates
 create_whitelist_timer() {
     cat > /etc/systemd/system/openpath-dnsmasq.timer << 'EOF'
 [Unit]
@@ -77,7 +77,7 @@ WantedBy=timers.target
 EOF
 }
 
-# Servicio watchdog
+# Watchdog service
 create_watchdog_service() {
     cat > /etc/systemd/system/dnsmasq-watchdog.service << 'EOF'
 [Unit]
@@ -97,7 +97,7 @@ WantedBy=multi-user.target
 EOF
 }
 
-# Timer watchdog
+# Watchdog timer
 create_watchdog_timer() {
     cat > /etc/systemd/system/dnsmasq-watchdog.timer << 'EOF'
 [Unit]
@@ -115,7 +115,7 @@ WantedBy=timers.target
 EOF
 }
 
-# Servicio detector de portal cautivo
+# Captive portal detector service
 create_captive_portal_service() {
     cat > /etc/systemd/system/captive-portal-detector.service << 'EOF'
 [Unit]
@@ -136,7 +136,7 @@ WantedBy=multi-user.target
 EOF
 }
 
-# Override de dnsmasq para inicializar DNS upstream
+# Override for dnsmasq to initialize upstream DNS
 create_dnsmasq_override() {
     mkdir -p /etc/systemd/system/dnsmasq.service.d
     cat > /etc/systemd/system/dnsmasq.service.d/whitelist-override.conf << 'EOF'
@@ -145,9 +145,9 @@ ExecStartPre=/usr/local/bin/dnsmasq-init-resolv.sh
 EOF
 }
 
-# Habilitar y arrancar servicios
+# Enable and start services
 enable_services() {
-    log "Habilitando servicios..."
+    log "Enabling services..."
     
     systemctl enable dnsmasq
     systemctl enable openpath-dnsmasq.timer
@@ -158,12 +158,12 @@ enable_services() {
     systemctl start dnsmasq-watchdog.timer
     systemctl start captive-portal-detector.service
     
-    log "✓ Servicios habilitados y arrancados"
+    log "✓ Services enabled and started"
 }
 
-# Deshabilitar servicios
+# Disable services
 disable_services() {
-    log "Deshabilitando servicios..."
+    log "Disabling services..."
     
     systemctl stop dnsmasq-whitelist.timer 2>/dev/null || true
     systemctl stop dnsmasq-watchdog.timer 2>/dev/null || true
@@ -174,12 +174,12 @@ disable_services() {
     systemctl disable dnsmasq-watchdog.timer 2>/dev/null || true
     systemctl disable captive-portal-detector.service 2>/dev/null || true
     
-    log "✓ Servicios deshabilitados"
+    log "✓ Services disabled"
 }
 
-# Eliminar servicios
+# Remove services
 remove_services() {
-    log "Eliminando servicios..."
+    log "Removing services..."
     
     disable_services
     
@@ -192,10 +192,10 @@ remove_services() {
     
     systemctl daemon-reload
     
-    log "✓ Servicios eliminados"
+    log "✓ Services removed"
 }
 
-# Configurar logrotate
+# Configure logrotate
 create_logrotate_config() {
     cat > /etc/logrotate.d/openpath-dnsmasq << 'EOF'
 /var/log/openpath.log
@@ -213,7 +213,7 @@ create_logrotate_config() {
 EOF
 }
 
-# Configurar tmpfiles (para crear directorio en /run)
+# Configure tmpfiles (to create directory in /run)
 create_tmpfiles_config() {
     cat > /etc/tmpfiles.d/openpath-dnsmasq.conf << 'EOF'
 d /run/dnsmasq 0755 root root -

@@ -17,14 +17,14 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ################################################################################
-# common.sh - Variables y funciones comunes
-# Parte del sistema dnsmasq URL Whitelist v3.5
+# common.sh - Common variables and functions
+# Part of the OpenPath DNS system v3.5
 ################################################################################
 
-# Versión del sistema
+# System version
 VERSION="3.5"
 
-# Directorios y archivos
+# Directories and files
 INSTALL_DIR="/usr/local/lib/openpath"
 SCRIPTS_DIR="/usr/local/bin"
 
@@ -51,25 +51,25 @@ WHITELIST_FILE="$VAR_STATE_DIR/whitelist.txt"
 # Legacy compatibility (for migration)
 CONFIG_DIR="$VAR_STATE_DIR"
 
-# Políticas de navegadores
+# Browser policies
 FIREFOX_POLICIES="/etc/firefox/policies/policies.json"
 CHROMIUM_POLICIES_BASE="/etc/chromium/policies/managed"
 
-# URL por defecto
+# Default URL
 DEFAULT_WHITELIST_URL="https://raw.githubusercontent.com/LasEncinasIT/Whitelist-por-aula/refs/heads/main/Informatica%203.txt"
 
-# Variables globales (se inicializan en runtime)
+# Global variables (initialized at runtime)
 PRIMARY_DNS=""
 GATEWAY_IP=""
 DNS_CHANGED=false
 
-# Arrays para parsing de whitelist
+# Arrays for whitelist parsing
 WHITELIST_DOMAINS=()
 BLOCKED_SUBDOMAINS=()
 BLOCKED_PATHS=()
 
-# Función de logging con niveles
-# Uso: log "mensaje" o log_info/log_warn/log_error/log_debug "mensaje"
+# Logging function with levels
+# Usage: log "message" or log_info/log_warn/log_error/log_debug "message"
 log() {
     local level="${2:-INFO}"
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$level] $1" | tee -a "$LOG_FILE"
@@ -88,11 +88,11 @@ log_error() {
 }
 
 log_debug() {
-    # Solo si DEBUG está habilitado
+    # Only if DEBUG is enabled
     [ "${DEBUG:-0}" = "1" ] && log "$1" "DEBUG"
 }
 
-# Crear directorios necesarios
+# Create necessary directories
 init_directories() {
     mkdir -p "$ETC_CONFIG_DIR"
     mkdir -p "$VAR_STATE_DIR"
@@ -100,11 +100,11 @@ init_directories() {
     mkdir -p "$INSTALL_DIR/lib"
 }
 
-# Detectar DNS primario dinámicamente
+# Detect primary DNS dynamically
 detect_primary_dns() {
     local dns=""
     
-    # 1. Intentar leer DNS guardado
+    # 1. Try to read saved DNS
     if [ -f "$ORIGINAL_DNS_FILE" ]; then
         local saved_dns=$(cat "$ORIGINAL_DNS_FILE" | head -1)
         if [ -n "$saved_dns" ] && timeout 5 dig @$saved_dns google.com +short >/dev/null 2>&1; then
@@ -133,18 +133,18 @@ detect_primary_dns() {
         fi
     fi
     
-    # 4. Gateway como DNS
+    # 4. Gateway as DNS
     local gw=$(ip route | grep default | awk '{print $3}' | head -1)
     if [ -n "$gw" ] && timeout 5 dig @$gw google.com +short >/dev/null 2>&1; then
         echo "$gw"
         return 0
     fi
     
-    # 5. Fallback a Google DNS
+    # 5. Fallback to Google DNS
     echo "8.8.8.8"
 }
 
-# Validar dirección IP
+# Validate IP address
 validate_ip() {
     local ip="$1"
     if [[ "$ip" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
@@ -154,7 +154,7 @@ validate_ip() {
     fi
 }
 
-# Verificar conectividad a internet
+# Check internet connectivity
 check_internet() {
     if timeout 10 curl -s http://detectportal.firefox.com/success.txt 2>/dev/null | grep -q "success"; then
         return 0
@@ -165,7 +165,7 @@ check_internet() {
     return 1
 }
 
-# Parsear secciones del archivo whitelist
+# Parse whitelist file sections
 parse_whitelist_sections() {
     local file="$1"
     
@@ -174,14 +174,14 @@ parse_whitelist_sections() {
     BLOCKED_PATHS=()
     
     if [ ! -f "$file" ]; then
-        log "Archivo whitelist no encontrado: $file"
+        log "Whitelist file not found: $file"
         return 1
     fi
     
     local section=""
     
     while IFS= read -r line || [ -n "$line" ]; do
-        # Detectar secciones
+        # Detect sections
         if [[ "$line" == "## WHITELIST" ]]; then
             section="whitelist"
             continue
@@ -193,11 +193,11 @@ parse_whitelist_sections() {
             continue
         fi
         
-        # Ignorar comentarios y líneas vacías
+        # Ignore comments and empty lines
         [[ "$line" =~ ^#.*$ ]] && continue
         [[ -z "$line" ]] && continue
         
-        # Asumir whitelist si no hay sección
+        # Assume whitelist if no section
         [ -z "$section" ] && section="whitelist"
         
         case "$section" in
@@ -213,18 +213,18 @@ parse_whitelist_sections() {
         esac
     done < "$file"
     
-    log "Parseado: ${#WHITELIST_DOMAINS[@]} dominios, ${#BLOCKED_SUBDOMAINS[@]} subdominios bloqueados, ${#BLOCKED_PATHS[@]} paths bloqueados"
+    log "Parsed: ${#WHITELIST_DOMAINS[@]} domains, ${#BLOCKED_SUBDOMAINS[@]} blocked subdomains, ${#BLOCKED_PATHS[@]} blocked paths"
 }
 
-# Verificar si el script se ejecuta como root
+# Check if script is running as root
 check_root() {
     if [ "$EUID" -ne 0 ]; then
-        echo "ERROR: Este script debe ejecutarse como root"
+        echo "ERROR: This script must be run as root"
         exit 1
     fi
 }
 
-# Cargar todas las librerías
+# Load all libraries
 load_libraries() {
     local lib_dir="${1:-$INSTALL_DIR/lib}"
     

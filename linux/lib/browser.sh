@@ -17,29 +17,29 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ################################################################################
-# browser.sh - Funciones de gestión de políticas de navegadores
-# Parte del sistema OpenPath DNS v3.5
+# browser.sh - Browser policy management functions
+# Part of the OpenPath DNS system v3.5
 ################################################################################
 
-# Calcular hash de las políticas actuales
+# Calculate hash of current policies
 get_policies_hash() {
     local hash=""
     if [ -f "$FIREFOX_POLICIES" ]; then
         hash="${hash}$(md5sum "$FIREFOX_POLICIES" 2>/dev/null | cut -d' ' -f1)"
     fi
-    # Añadir hash de blocked_paths para detectar cambios en WebsiteFilter
+    # Add hash of blocked_paths to detect WebsiteFilter changes
     hash="${hash}$(echo "${BLOCKED_PATHS[*]}" | md5sum | cut -d' ' -f1)"
     echo "$hash"
 }
 
-# Generar políticas de Firefox
+# Generate Firefox policies
 generate_firefox_policies() {
-    log "Generando políticas de Firefox..."
+    log "Generating Firefox policies..."
     
     local policies_file="$FIREFOX_POLICIES"
     mkdir -p "$(dirname "$policies_file")"
     
-    # Usar Python para hacer merge (preserva SearchEngines)
+    # Use Python for merge (preserves SearchEngines)
     python3 << PYEOF
 import json
 import os
@@ -70,7 +70,7 @@ def normalize_path(path):
     else:
         return f"*://{clean}"
 
-# Leer políticas existentes o crear nuevas
+# Read existing policies or create new
 if os.path.exists(policies_file):
     try:
         with open(policies_file, 'r') as f:
@@ -93,12 +93,12 @@ with open(policies_file, 'w') as f:
 print(f"Firefox: {len(normalized_paths)} paths bloqueados")
 PYEOF
     
-    log "✓ Políticas de Firefox generadas"
+    log "✓ Firefox policies generated"
 }
 
-# Generar políticas de Chromium/Chrome
+# Generate Chromium/Chrome policies
 generate_chromium_policies() {
-    log "Generando políticas de Chromium..."
+    log "Generating Chromium policies..."
     
     local dirs=(
         "$CHROMIUM_POLICIES_BASE"
@@ -110,7 +110,7 @@ generate_chromium_policies() {
         mkdir -p "$dir"
         
         if [ ${#BLOCKED_PATHS[@]} -gt 0 ]; then
-            # Generar JSON con URLBlocklist
+            # Generate JSON with URLBlocklist
             python3 << PYEOF
 import json
 
@@ -139,16 +139,16 @@ PYEOF
         fi
     done
     
-    log "✓ Políticas de Chromium generadas"
+    log "✓ Chromium policies generated"
 }
 
-# Aplicar políticas de motores de búsqueda (eliminar Google)
+# Apply search engine policies (remove Google)
 apply_search_engine_policies() {
-    log "Aplicando políticas de motores de búsqueda..."
+    log "Applying search engine policies..."
     
     local policies_file="$FIREFOX_POLICIES"
     
-    # CRÍTICO: Crear directorio si no existe
+    # CRITICAL: Create directory if it doesn't exist
     mkdir -p "$(dirname "$policies_file")"
     
     python3 << 'PYEOF'
@@ -157,10 +157,10 @@ import os
 
 policies_file = os.environ.get('FIREFOX_POLICIES', '/etc/firefox/policies/policies.json')
 
-# Crear directorio si no existe
+# Create directory if it doesn't exist
 os.makedirs(os.path.dirname(policies_file), exist_ok=True)
 
-# Leer o crear políticas
+# Read or create policies
 if os.path.exists(policies_file):
     try:
         with open(policies_file, 'r') as f:
@@ -173,7 +173,7 @@ else:
 if "policies" not in policies:
     policies["policies"] = {}
 
-# Añadir SearchEngines
+# Add SearchEngines
 policies["policies"]["SearchEngines"] = {
     "Remove": ["Google", "Bing"],
     "Default": "DuckDuckGo",
@@ -198,7 +198,7 @@ policies["policies"]["SearchEngines"] = {
     ]
 }
 
-# Añadir bloqueos de búsqueda de Google a WebsiteFilter
+# Add Google search blocks to WebsiteFilter
 if "WebsiteFilter" not in policies["policies"]:
     policies["policies"]["WebsiteFilter"] = {"Block": []}
 
@@ -219,17 +219,17 @@ with open(policies_file, 'w') as f:
 print("SearchEngines y bloqueos de Google aplicados")
 PYEOF
     
-    log "✓ Motores de búsqueda configurados"
+    log "✓ Search engines configured"
 }
 
-# Limpiar políticas de navegadores
+# Clean up browser policies
 cleanup_browser_policies() {
-    log "Limpiando políticas de navegadores..."
+    log "Cleaning up browser policies..."
     
-    # Firefox - Limpiar policies.json
+    # Firefox - Clean policies.json
     if [ -f "$FIREFOX_POLICIES" ]; then
         echo '{"policies": {}}' > "$FIREFOX_POLICIES"
-        log "✓ Políticas de Firefox limpiadas"
+        log "✓ Firefox policies cleaned"
     fi
     
     # Chromium/Chrome
@@ -245,17 +245,17 @@ cleanup_browser_policies() {
         rm -f "$dir/search-engines.json" 2>/dev/null || true
     done
     
-    log "✓ Políticas de navegadores limpiadas"
+    log "✓ Browser policies cleaned"
 }
 
-# Cerrar navegadores para aplicar políticas
+# Close browsers to apply policies
 force_browser_close() {
-    log "Cerrando navegadores..."
+    log "Closing browsers..."
     
     local closed=0
     
-    # Método 1: pkill por nombre de proceso (funciona para nativos y Snap)
-    # -f busca en toda la línea de comando
+    # Method 1: pkill by process name (works for native and Snap)
+    # -f searches the entire command line
     for pattern in "firefox" "chromium" "chrome"; do
         if pgrep -f "$pattern" >/dev/null 2>&1; then
             log "Detectado proceso: $pattern - enviando SIGTERM..."
@@ -264,23 +264,23 @@ force_browser_close() {
         fi
     done
     
-    # Esperar a que cierren gracefully
+    # Wait for graceful shutdown
     if [ $closed -gt 0 ]; then
-        log "Esperando cierre de $closed navegador(es)..."
+        log "Waiting for $closed browser(s) to close..."
         sleep 3
         
-        # SIGKILL para los que no respondieron
+        # SIGKILL for those that didn't respond
         for pattern in "firefox" "chromium" "chrome"; do
             if pgrep -f "$pattern" >/dev/null 2>&1; then
-                log "Forzando cierre de: $pattern"
+                log "Forcing close: $pattern"
                 pkill -9 -f "$pattern" 2>/dev/null || true
             fi
         done
         
         sleep 1
-        log "✓ Navegadores cerrados"
+        log "✓ Browsers closed"
     else
-        log "No se detectaron navegadores abiertos"
+        log "No open browsers detected"
     fi
 }
 # ============================================================================
@@ -293,7 +293,7 @@ install_firefox_esr() {
     
     # Check if Snap Firefox is installed
     if snap list firefox &>/dev/null 2>&1; then
-        log "⚠ Firefox Snap detectado - removiendo..."
+        log "⚠ Firefox Snap detected - removing..."
         
         # Close any running Firefox first
         pkill -9 -f firefox 2>/dev/null || true
@@ -302,22 +302,22 @@ install_firefox_esr() {
         # Remove Snap Firefox
         snap remove --purge firefox 2>/dev/null || snap remove firefox 2>/dev/null || true
         
-        log "✓ Firefox Snap removido"
+        log "✓ Firefox Snap removed"
     fi
     
     # Check if Firefox ESR is already installed via APT
     if dpkg -l firefox-esr &>/dev/null 2>&1; then
-        log "✓ Firefox ESR ya instalado"
+        log "✓ Firefox ESR already installed"
         return 0
     fi
     
     # Check if regular Firefox (non-snap) is installed
     if dpkg -l firefox &>/dev/null 2>&1 && ! snap list firefox &>/dev/null 2>&1; then
-        log "✓ Firefox (APT) ya instalado"
+        log "✓ Firefox (APT) already installed"
         return 0
     fi
     
-    log "Instalando Firefox ESR..."
+    log "Installing Firefox ESR..."
     
     # Add Mozilla team PPA for Ubuntu (provides firefox-esr)
     if command -v add-apt-repository &>/dev/null; then
@@ -341,10 +341,10 @@ EOF
     # Try firefox-esr first (Debian), then firefox (Ubuntu with PPA)
     if apt-cache show firefox-esr &>/dev/null 2>&1; then
         DEBIAN_FRONTEND=noninteractive apt-get install -y firefox-esr
-        log "✓ Firefox ESR instalado"
+        log "✓ Firefox ESR installed"
     else
         DEBIAN_FRONTEND=noninteractive apt-get install -y firefox
-        log "✓ Firefox instalado desde PPA"
+        log "✓ Firefox installed from PPA"
     fi
 }
 
@@ -379,11 +379,11 @@ generate_firefox_autoconfig() {
     local firefox_dir=$(detect_firefox_dir)
     
     if [ -z "$firefox_dir" ]; then
-        log "⚠ Firefox no detectado, saltando autoconfig"
+        log "⚠ Firefox not detected, skipping autoconfig"
         return 1
     fi
     
-    log "Generando autoconfig en $firefox_dir..."
+    log "Generating autoconfig in $firefox_dir..."
     
     # Create autoconfig.js in defaults/pref
     mkdir -p "$firefox_dir/defaults/pref"
@@ -403,7 +403,7 @@ lockPref("extensions.langpacks.signatures.required", false);
 lockPref("extensions.blocklist.enabled", false);
 EOF
     
-    log "✓ Firefox autoconfig generado"
+    log "✓ Firefox autoconfig generated"
     return 0
 }
 
@@ -419,11 +419,11 @@ install_firefox_extension() {
     local ext_dir="/usr/share/mozilla/extensions/$firefox_app_id"
     
     if [ ! -d "$ext_source" ]; then
-        log "⚠ Directorio de extensión no encontrado: $ext_source"
+        log "⚠ Extension directory not found: $ext_source"
         return 1
     fi
     
-    log "Instalando extensión Firefox..."
+    log "Installing Firefox extension..."
     
     # First, generate autoconfig to disable signature requirements
     generate_firefox_autoconfig
@@ -441,12 +441,12 @@ install_firefox_extension() {
     # Set permissions
     chmod -R 755 "$ext_dir/$ext_id"
     
-    log "✓ Extensión copiada a $ext_dir/$ext_id"
+    log "✓ Extension copied to $ext_dir/$ext_id"
     
     # Update policies.json to force-install the extension
     add_extension_to_policies "$ext_id" "$ext_dir/$ext_id"
     
-    log "✓ Extensión Firefox instalada"
+    log "✓ Firefox extension installed"
     return 0
 }
 
@@ -512,7 +512,7 @@ with open(policies_file, 'w') as f:
 print(f"Extensión {ext_id} añadida a políticas")
 PYEOF
     
-    log "✓ Extensión añadida a policies.json"
+    log "✓ Extension added to policies.json"
 }
 
 # Install native messaging host for the extension
@@ -522,11 +522,11 @@ install_native_host() {
     local native_script_dir="/usr/local/lib/openpath"
     
     if [ ! -d "$native_source" ]; then
-        log "⚠ Directorio native host no encontrado: $native_source"
+        log "⚠ Native host directory not found: $native_source"
         return 1
     fi
     
-    log "Instalando native messaging host..."
+    log "Installing native messaging host..."
     
     # Create directories
     mkdir -p "$native_manifest_dir"
@@ -547,7 +547,7 @@ install_native_host() {
 }
 EOF
     
-    log "✓ Native messaging host instalado"
+    log "✓ Native messaging host installed"
     return 0
 }
 
@@ -557,7 +557,7 @@ remove_firefox_extension() {
     local firefox_app_id="{ec8030f7-c20a-464f-9b0e-13a3a9e97384}"
     local ext_dir="/usr/share/mozilla/extensions/$firefox_app_id/$ext_id"
     
-    log "Removiendo extensión Firefox..."
+    log "Removing Firefox extension..."
     
     # Remove extension directory
     rm -rf "$ext_dir" 2>/dev/null || true
@@ -606,5 +606,5 @@ PYEOF
         rm -f "$firefox_dir/mozilla.cfg" 2>/dev/null || true
     fi
     
-    log "✓ Extensión Firefox removida"
+    log "✓ Firefox extension removed"
 }

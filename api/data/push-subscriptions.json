@@ -1,0 +1,54 @@
+{
+  "subscriptions": [
+    {
+      "id": "push_7c8a4ecd",
+      "userId": "user_d2acddcc",
+      "groupIds": [
+        "ciencias-3eso",
+        "fisica-4eso"
+      ],
+      "subscription": {
+        "endpoint": "https://fcm.googleapis.com/fcm/send/teacher-endpoint",
+        "keys": {
+          "p256dh": "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM",
+          "auth": "tBHItfGKZpJRN_CYzfPWpQ"
+        }
+      },
+      "userAgent": "node",
+      "createdAt": "2025-12-23T16:12:27.537Z"
+    },
+    {
+      "id": "push_3afa321d",
+      "userId": "user_974784a8",
+      "groupIds": [
+        "matematicas-4eso",
+        "historia-2eso"
+      ],
+      "subscription": {
+        "endpoint": "https://fcm.googleapis.com/fcm/send/teacher2-endpoint",
+        "keys": {
+          "p256dh": "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM",
+          "auth": "tBHItfGKZpJRN_CYzfPWpQ"
+        }
+      },
+      "userAgent": "node",
+      "createdAt": "2025-12-23T16:12:28.191Z"
+    },
+    {
+      "id": "push_a62be542",
+      "userId": "legacy_admin",
+      "groupIds": [
+        "*"
+      ],
+      "subscription": {
+        "endpoint": "https://fcm.googleapis.com/fcm/send/resubscribe-test",
+        "keys": {
+          "p256dh": "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM",
+          "auth": "tBHItfGKZpJRN_CYzfPWpQ"
+        }
+      },
+      "userAgent": "node",
+      "createdAt": "2025-12-23T16:12:28.199Z"
+    }
+  ]
+}
