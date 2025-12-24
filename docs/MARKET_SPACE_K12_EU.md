@@ -101,7 +101,7 @@ Run 8–12 structured interviews:
 - # bypass incidents reported per week
 - Teacher satisfaction / NPS-style question after 2 weeks
 
-### Pricing/procurement probe
+## Pricing/Procurement Probe
 Test two procurement-ready offers:
 - Self-hosted + paid support
 - EU-managed service
