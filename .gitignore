@@ -30,7 +30,4 @@ usb-package/
 build/
 
 # Strategic/internal documents
-docs/MARKET_ANALYSIS.md
-docs/MVP_EXAM_CENTERS.md
-docs/MVP_K12.md
-docs/tres_amigos/
+docs/
