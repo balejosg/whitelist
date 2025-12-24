@@ -20,10 +20,10 @@ export function relativeTime(dateString) {
     const diffHour = Math.floor(diffMin / 60);
     const diffDay = Math.floor(diffHour / 24);
 
-    if (diffSec < 60) return 'ahora';
-    if (diffMin < 60) return `hace ${diffMin} min`;
-    if (diffHour < 24) return `hace ${diffHour}h`;
-    if (diffDay < 7) return `hace ${diffDay} días`;
+    if (diffSec < 60) return 'just now';
+    if (diffMin < 60) return `${diffMin} min ago`;
+    if (diffHour < 24) return `${diffHour}h ago`;
+    if (diffDay < 7) return `${diffDay} days ago`;
     return date.toLocaleDateString();
 }
 

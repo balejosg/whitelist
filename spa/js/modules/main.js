@@ -23,7 +23,7 @@ document.getElementById('email-login-form')?.addEventListener('submit', async (e
 
     errorEl.textContent = '';
     btn.disabled = true;
-    btn.textContent = 'Autenticando...';
+    btn.textContent = 'Authenticating...';
 
     try {
         await Auth.login(email, password);
@@ -32,7 +32,7 @@ document.getElementById('email-login-form')?.addEventListener('submit', async (e
         errorEl.textContent = 'Error: ' + err.message;
     } finally {
         btn.disabled = false;
-        btn.textContent = 'Acceder al Panel';
+        btn.textContent = 'Access Dashboard';
     }
 });
 
@@ -44,7 +44,7 @@ document.getElementById('github-login-btn')?.addEventListener('click', () => {
 // Notifications button
 document.getElementById('notifications-btn')?.addEventListener('click', async () => {
     if (!PushManager.isSupported()) {
-        showToast('Tu navegador no soporta notificaciones push', 'error');
+        showToast('Your browser does not support push notifications', 'error');
         return;
     }
 
@@ -56,10 +56,10 @@ document.getElementById('notifications-btn')?.addEventListener('click', async ()
 
         if (subscription) {
             // Already subscribed, offer to unsubscribe
-            if (confirm('¿Desactivar notificaciones push?')) {
+            if (confirm('Disable push notifications?')) {
                 await PushManager.unsubscribe();
                 icon.textContent = '🔕';
-                showToast('Notificaciones desactivadas');
+                showToast('Notifications disabled');
             }
         } else {
             // Not subscribed, subscribe
@@ -67,15 +67,15 @@ document.getElementById('notifications-btn')?.addEventListener('click', async ()
             icon.textContent = '⏳';
             await PushManager.subscribe();
             icon.textContent = '🔔';
-            showToast('¡Notificaciones activadas! Recibirás alertas cuando un alumno solicite acceso.');
+            showToast('Notifications enabled! You will receive alerts when a student requests access.');
         }
     } catch (err) {
         console.error('Push notification error:', err);
         icon.textContent = '🔕';
         if (err.message.includes('denied')) {
-            showToast('Permiso de notificaciones denegado. Habilítalo en la configuración del navegador.', 'error');
+            showToast('Notification permission denied. Enable it in browser settings.', 'error');
         } else {
-            showToast('Error configurando notificaciones: ' + err.message, 'error');
+            showToast('Error setting up notifications: ' + err.message, 'error');
         }
     } finally {
         btn.disabled = false;
@@ -84,7 +84,7 @@ document.getElementById('notifications-btn')?.addEventListener('click', async ()
 
 // Logout
 document.getElementById('logout-btn')?.addEventListener('click', () => {
-    if (confirm('¿Cerrar sesión?')) {
+    if (confirm('Log out?')) {
         OAuth.logout();
         Auth.logout();
         showScreen('login-screen');
@@ -120,7 +120,7 @@ document.getElementById('repo-config-form')?.addEventListener('submit', async (e
         loadDashboard();
     } catch (err) {
         if (err.message.includes('Not Found')) {
-            errorEl.textContent = `Directorio "${gruposDir}" no encontrado en ${owner}/${repo}`;
+            errorEl.textContent = `Directory "${gruposDir}" not found in ${owner}/${repo}`;
         } else {
             errorEl.textContent = err.message;
         }
@@ -155,7 +155,7 @@ document.getElementById('back-btn')?.addEventListener('click', () => {
 document.getElementById('save-config-btn')?.addEventListener('click', async () => {
     if (!state.canEdit) return;
     state.currentGroupData.enabled = document.getElementById('group-enabled').value === '1';
-    await saveCurrentGroup('Actualizar estado del grupo');
+    await saveCurrentGroup('Update group status');
 });
 
 // Delete group
@@ -167,7 +167,7 @@ document.getElementById('delete-group-btn')?.addEventListener('click', () => {
 document.getElementById('copy-url-btn')?.addEventListener('click', () => {
     const url = document.getElementById('export-url').textContent;
     navigator.clipboard.writeText(url);
-    showToast('URL copiada al portapapeles');
+    showToast('URL copied to clipboard');
 });
 
 // Add Rule Modal Trigger - Handled by modules/groups.js logic but button listener here
@@ -184,7 +184,7 @@ document.getElementById('add-rule-form')?.addEventListener('submit', async (e) =
     const value = document.getElementById('new-rule-value').value.toLowerCase().trim();
 
     if (!value) {
-        showToast('Valor requerido', 'error');
+        showToast('Value required', 'error');
         return;
     }
 
@@ -193,12 +193,12 @@ document.getElementById('add-rule-form')?.addEventListener('submit', async (e) =
             : 'whitelist';
 
     if (state.currentGroupData[typeKey].includes(value)) {
-        showToast('La regla ya existe', 'error');
+        showToast('Rule already exists', 'error');
         return;
     }
 
     state.currentGroupData[typeKey].push(value);
-    await saveCurrentGroup(`Añadir ${value} a ${state.currentGroup}`);
+    await saveCurrentGroup(`Add ${value} to ${state.currentGroup}`);
 
     closeModal('modal-add-rule');
     document.getElementById('add-rule-form').reset();
@@ -219,7 +219,7 @@ document.getElementById('bulk-add-form')?.addEventListener('submit', async (e) =
     const values = text.split('\n').map(v => v.toLowerCase().trim()).filter(v => v);
 
     if (values.length === 0) {
-        showToast('No hay valores para añadir', 'error');
+        showToast('No values to add', 'error');
         return;
     }
 
@@ -236,12 +236,12 @@ document.getElementById('bulk-add-form')?.addEventListener('submit', async (e) =
     }
 
     if (added > 0) {
-        await saveCurrentGroup(`Añadir ${added} reglas a ${state.currentGroup}`);
+        await saveCurrentGroup(`Add ${added} rules to ${state.currentGroup}`);
     }
 
     closeModal('modal-bulk-add');
     document.getElementById('bulk-add-form').reset();
-    showToast(`${added} reglas añadidas`);
+    showToast(`${added} rules added`);
 });
 
 // New Group Form -> Handled in main or groups? 
@@ -254,7 +254,7 @@ document.getElementById('new-group-form')?.addEventListener('submit', async (e) 
     const name = document.getElementById('new-group-name').value.toLowerCase().replace(/[^a-z0-9-_]/g, '-');
 
     if (!name) {
-        showToast('Nombre requerido', 'error');
+        showToast('Name required', 'error');
         return;
     }
 
@@ -271,10 +271,10 @@ document.getElementById('new-group-form')?.addEventListener('submit', async (e) 
     const content = WhitelistParser.serialize(initialData);
 
     try {
-        await state.github.updateFile(path, content, `Crear grupo ${name}`);
+        await state.github.updateFile(path, content, `Create group ${name}`);
         closeModal('modal-new-group');
         document.getElementById('new-group-form').reset();
-        showToast('Grupo creado');
+        showToast('Group created');
         loadDashboard();
     } catch (err) {
         showToast(err.message, 'error');

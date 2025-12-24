@@ -23,7 +23,7 @@ function showToast(message, type = 'success') {
     setTimeout(() => toast.remove(), 3000);
 }
 
-// Relative time formatter ("hace 5 min", "hace 2 horas")
+// Relative time formatter ("5 min ago", "2 hours ago")
 function relativeTime(dateString) {
     const date = new Date(dateString);
     const now = new Date();
@@ -33,10 +33,10 @@ function relativeTime(dateString) {
     const diffHour = Math.floor(diffMin / 60);
     const diffDay = Math.floor(diffHour / 24);
 
-    if (diffSec < 60) return 'ahora';
-    if (diffMin < 60) return `hace ${diffMin} min`;
-    if (diffHour < 24) return `hace ${diffHour}h`;
-    if (diffDay < 7) return `hace ${diffDay} días`;
+    if (diffSec < 60) return 'just now';
+    if (diffMin < 60) return `${diffMin} min ago`;
+    if (diffHour < 24) return `${diffHour}h ago`;
+    if (diffDay < 7) return `${diffDay} days ago`;
     return date.toLocaleDateString();
 }
 
@@ -53,7 +53,7 @@ async function init() {
     if (callbackResult?.error) {
         showScreen('login-screen');
         document.getElementById('login-error').textContent =
-            'Error de autenticación: ' + callbackResult.error;
+            'Authentication error: ' + callbackResult.error;
         return;
     }
 
@@ -183,7 +183,7 @@ function updateEditUI() {
         const badge = document.createElement('span');
         badge.id = 'readonly-badge';
         badge.className = 'user-badge';
-        badge.textContent = '👁️ Solo lectura';
+        badge.textContent = '👁️ Read-only';
         badge.style.background = 'rgba(234, 179, 8, 0.2)';
         badge.style.color = '#eab308';
         header.insertBefore(badge, header.firstChild);
@@ -209,7 +209,7 @@ document.getElementById('email-login-form').addEventListener('submit', async (e)
 
     errorEl.textContent = '';
     btn.disabled = true;
-    btn.textContent = 'Autenticando...';
+    btn.textContent = 'Authenticating...';
 
     try {
         await Auth.login(email, password);
@@ -218,7 +218,7 @@ document.getElementById('email-login-form').addEventListener('submit', async (e)
         errorEl.textContent = 'Error: ' + err.message;
     } finally {
         btn.disabled = false;
-        btn.textContent = 'Acceder al Panel';
+        btn.textContent = 'Access Dashboard';
     }
 });
 
@@ -230,7 +230,7 @@ document.getElementById('github-login-btn').addEventListener('click', () => {
 // Notifications button
 document.getElementById('notifications-btn').addEventListener('click', async () => {
     if (!PushManager.isSupported()) {
-        showToast('Tu navegador no soporta notificaciones push', 'error');
+        showToast('Your browser does not support push notifications', 'error');
         return;
     }
 
@@ -242,10 +242,10 @@ document.getElementById('notifications-btn').addEventListener('click', async () 
 
         if (subscription) {
             // Already subscribed, offer to unsubscribe
-            if (confirm('¿Desactivar notificaciones push?')) {
+            if (confirm('Disable push notifications?')) {
                 await PushManager.unsubscribe();
                 icon.textContent = '🔕';
-                showToast('Notificaciones desactivadas');
+                showToast('Notifications disabled');
             }
         } else {
             // Not subscribed, subscribe
@@ -253,15 +253,15 @@ document.getElementById('notifications-btn').addEventListener('click', async () 
             icon.textContent = '⏳';
             await PushManager.subscribe();
             icon.textContent = '🔔';
-            showToast('¡Notificaciones activadas! Recibirás alertas cuando un alumno solicite acceso.');
+            showToast('Notifications enabled! You will receive alerts when a student requests access.');
         }
     } catch (err) {
         console.error('Push notification error:', err);
         icon.textContent = '🔕';
         if (err.message.includes('denied')) {
-            showToast('Permiso de notificaciones denegado. Habilítalo en la configuración del navegador.', 'error');
+            showToast('Notification permission denied. Enable it in browser settings.', 'error');
         } else {
-            showToast('Error configurando notificaciones: ' + err.message, 'error');
+            showToast('Error setting up notifications: ' + err.message, 'error');
         }
     } finally {
         btn.disabled = false;
@@ -270,7 +270,7 @@ document.getElementById('notifications-btn').addEventListener('click', async () 
 
 // Logout
 document.getElementById('logout-btn').addEventListener('click', () => {
-    if (confirm('¿Cerrar sesión?')) {
+    if (confirm('Log out?')) {
         OAuth.logout();
         Auth.logout();
         showScreen('login-screen');
@@ -366,7 +366,7 @@ async function loadDashboard() {
         await initRequestsSection();
     } catch (err) {
         console.error('Dashboard error:', err);
-        showToast('Error cargando datos: ' + err.message, 'error');
+        showToast('Error loading data: ' + err.message, 'error');
     }
 }
 
@@ -385,8 +385,8 @@ function renderGroupsList() {
     if (visibleGroups.length === 0) {
         list.innerHTML = `
             <div class="empty-state">
-                <p>${isTeacher ? 'No tienes grupos asignados' : 'No hay grupos configurados'}</p>
-                ${canEdit ? '<button class="btn btn-primary" onclick="openNewGroupModal()">Crear primer grupo</button>' : ''}
+                <p>${isTeacher ? 'No groups assigned to you' : 'No groups configured'}</p>
+                ${canEdit ? '<button class="btn btn-primary" onclick="openNewGroupModal()">Create first group</button>' : ''}
             </div>
         `;
         return;
@@ -437,7 +437,7 @@ async function openGroup(name) {
 
         showScreen('editor-screen');
     } catch (err) {
-        showToast('Error abriendo grupo: ' + err.message, 'error');
+        showToast('Error opening group: ' + err.message, 'error');
     }
 }
 
@@ -456,7 +456,7 @@ function renderRules() {
     if (displayed.length === 0) {
         list.innerHTML = `
             <div class="empty-state">
-                <p>${search ? 'No hay resultados' : 'No hay reglas en esta sección'}</p>
+                <p>${search ? 'No results' : 'No rules in this section'}</p>
             </div>
         `;
         return;
@@ -499,25 +499,25 @@ document.getElementById('back-btn').addEventListener('click', () => {
 document.getElementById('save-config-btn').addEventListener('click', async () => {
     if (!canEdit) return;
     currentGroupData.enabled = document.getElementById('group-enabled').value === '1';
-    await saveCurrentGroup('Actualizar estado del grupo');
+    await saveCurrentGroup('Update group status');
 });
 
 // Delete group
 document.getElementById('delete-group-btn').addEventListener('click', async () => {
     if (!canEdit) return;
-    if (!confirm('¿Eliminar este grupo y todas sus reglas?')) return;
+    if (!confirm('Delete this group and all its rules?')) return;
 
     const config = Config.get();
     const gruposDir = config.gruposDir || 'grupos';
     const path = `${gruposDir}/${currentGroup}.txt`;
 
     try {
-        await github.deleteFile(path, `Eliminar grupo ${currentGroup}`, currentGroupSha);
-        showToast('Grupo eliminado');
+        await github.deleteFile(path, `Delete group ${currentGroup}`, currentGroupSha);
+        showToast('Group deleted');
         showScreen('dashboard-screen');
         loadDashboard();
     } catch (err) {
-        showToast('Error eliminando grupo: ' + err.message, 'error');
+        showToast('Error deleting group: ' + err.message, 'error');
     }
 });
 
@@ -525,7 +525,7 @@ document.getElementById('delete-group-btn').addEventListener('click', async () =
 document.getElementById('copy-url-btn').addEventListener('click', () => {
     const url = document.getElementById('export-url').textContent;
     navigator.clipboard.writeText(url);
-    showToast('URL copiada al portapapeles');
+    showToast('URL copied to clipboard');
 });
 
 // Delete rule
@@ -538,7 +538,7 @@ async function deleteRule(value, event) {
             : 'whitelist';
 
     currentGroupData[typeKey] = currentGroupData[typeKey].filter(r => r !== value);
-    await saveCurrentGroup(`Eliminar ${value} de ${currentGroup}`);
+    await saveCurrentGroup(`Remove ${value} from ${currentGroup}`);
 }
 
 async function saveCurrentGroup(message) {
@@ -550,11 +550,11 @@ async function saveCurrentGroup(message) {
     try {
         const result = await github.updateFile(path, content, message, currentGroupSha);
         currentGroupSha = result.content.sha;
-        showToast('Cambios guardados');
+        showToast('Changes saved');
         renderRules();
         updateRuleCounts();
     } catch (err) {
-        showToast('Error guardando: ' + err.message, 'error');
+        showToast('Error saving: ' + err.message, 'error');
     }
 }
 
@@ -598,7 +598,7 @@ document.getElementById('new-group-form').addEventListener('submit', async (e) =
     const name = document.getElementById('new-group-name').value.toLowerCase().replace(/[^a-z0-9-_]/g, '-');
 
     if (!name) {
-        showToast('Nombre requerido', 'error');
+        showToast('Name required', 'error');
         return;
     }
 
@@ -615,10 +615,10 @@ document.getElementById('new-group-form').addEventListener('submit', async (e) =
     const content = WhitelistParser.serialize(initialData);
 
     try {
-        await github.updateFile(path, content, `Crear grupo ${name}`);
+        await github.updateFile(path, content, `Create group ${name}`);
         closeModal('modal-new-group');
         document.getElementById('new-group-form').reset();
-        showToast('Grupo creado');
+        showToast('Group created');
         loadDashboard();
     } catch (err) {
         showToast(err.message, 'error');
@@ -638,7 +638,7 @@ document.getElementById('add-rule-form').addEventListener('submit', async (e) =>
     const value = document.getElementById('new-rule-value').value.toLowerCase().trim();
 
     if (!value) {
-        showToast('Valor requerido', 'error');
+        showToast('Value required', 'error');
         return;
     }
 
@@ -647,12 +647,12 @@ document.getElementById('add-rule-form').addEventListener('submit', async (e) =>
             : 'whitelist';
 
     if (currentGroupData[typeKey].includes(value)) {
-        showToast('La regla ya existe', 'error');
+        showToast('Rule already exists', 'error');
         return;
     }
 
     currentGroupData[typeKey].push(value);
-    await saveCurrentGroup(`Añadir ${value} a ${currentGroup}`);
+    await saveCurrentGroup(`Add ${value} to ${currentGroup}`);
 
     closeModal('modal-add-rule');
     document.getElementById('add-rule-form').reset();
@@ -672,7 +672,7 @@ document.getElementById('bulk-add-form').addEventListener('submit', async (e) =>
     const values = text.split('\n').map(v => v.toLowerCase().trim()).filter(v => v);
 
     if (values.length === 0) {
-        showToast('No hay valores para añadir', 'error');
+        showToast('No values to add', 'error');
         return;
     }
 
@@ -689,12 +689,12 @@ document.getElementById('bulk-add-form').addEventListener('submit', async (e) =>
     }
 
     if (added > 0) {
-        await saveCurrentGroup(`Añadir ${added} reglas a ${currentGroup}`);
+        await saveCurrentGroup(`Add ${added} rules to ${currentGroup}`);
     }
 
     closeModal('modal-bulk-add');
     document.getElementById('bulk-add-form').reset();
-    showToast(`${added} reglas añadidas`);
+    showToast(`${added} rules added`);
 });
 
 // ============== Requests API ==============
@@ -726,7 +726,7 @@ async function checkRequestsServerStatus() {
 
     if (!RequestsAPI.isConfigured()) {
         dotEl.className = 'status-dot offline';
-        textEl.textContent = 'No configurado';
+        textEl.textContent = 'Not configured';
         return false;
     }
 
@@ -735,11 +735,11 @@ async function checkRequestsServerStatus() {
 
         if (isOnline) {
             dotEl.className = 'status-dot online';
-            textEl.textContent = 'Conectado';
+            textEl.textContent = 'Connected';
             return true;
         } else {
             dotEl.className = 'status-dot offline';
-            textEl.textContent = 'Sin conexión';
+            textEl.textContent = 'Disconnected';
             return false;
         }
     } catch {
@@ -755,7 +755,7 @@ async function loadPendingRequests() {
     const statEl = document.getElementById('stat-pending-requests');
 
     if (!RequestsAPI.isConfigured() && !Auth.isAuthenticated()) {
-        listEl.innerHTML = '<p class="empty-message">Configura la URL del servidor o inicia sesión para ver solicitudes</p>';
+        listEl.innerHTML = '<p class="empty-message">Configure the server URL or log in to see requests</p>';
         statEl.textContent = '—';
         return;
     }
@@ -776,7 +776,7 @@ async function loadPendingRequests() {
         }
 
         if (requests.length === 0) {
-            listEl.innerHTML = '<p class="empty-message success">No hay solicitudes pendientes</p>';
+            listEl.innerHTML = '<p class="empty-message success">No pending requests</p>';
             return;
         }
 
@@ -798,9 +798,9 @@ async function loadPendingRequests() {
                         <span class="request-domain">${escapeHtml(req.domain)}</span>
                         <span class="request-time">${relativeTime(req.created_at)}</span>
                         <span class="request-meta">
-                            ${escapeHtml(req.reason || 'Sin motivo')}
+                            ${escapeHtml(req.reason || 'No reason')}
                         </span>
-                        <span class="request-group">Grupo: <strong>${escapeHtml(req.group_id || 'default')}</strong></span>
+                        <span class="request-group">Group: <strong>${escapeHtml(req.group_id || 'default')}</strong></span>
                     </div>
                     <div class="request-actions">
                         ${canApprove ? `
@@ -816,7 +816,7 @@ async function loadPendingRequests() {
                             <button class="btn btn-danger btn-sm reject-request-btn" 
                                     data-id="${req.id}" title="Rechazar">✗</button>
                         ` : `
-                            <span class="status-badge pending">Esperando profesor</span>
+                            <span class="status-badge pending">Waiting for teacher</span>
                         `}
                     </div>
                 </div>
@@ -841,7 +841,7 @@ async function loadPendingRequests() {
             btn.addEventListener('click', async (e) => {
                 const btnClicked = e.currentTarget;
                 const id = btnClicked.dataset.id;
-                const reason = prompt('Motivo del rechazo (opcional):');
+                const reason = prompt('Reason for rejection (optional):');
 
                 btnClicked.disabled = true;
                 await rejectRequest(id, reason);
@@ -860,7 +860,7 @@ async function approveRequest(requestId, groupId) {
         const response = await RequestsAPI.approveRequest(requestId, groupId);
 
         if (response.success) {
-            showToast(`✅ Dominio ${response.domain} añadido a ${groupId}`);
+            showToast(`✅ Domain ${response.domain} added to ${groupId}`);
             await loadPendingRequests();
             // Refresh groups to show new domain
             await loadDashboard();
@@ -887,13 +887,13 @@ function showBlockedDomainAlert(domain, matchedRule, hint) {
     const modal = document.getElementById('modal-blocked-domain');
     if (!modal) {
         // Fallback to toast if modal doesn't exist
-        showToast(`🚫 Este dominio está bloqueado por el administrador: ${matchedRule}`, 'error');
+        showToast(`🚫 This domain is blocked by the administrator: ${matchedRule}`, 'error');
         return;
     }
 
-    document.getElementById('blocked-domain-name').textContent = domain || 'desconocido';
-    document.getElementById('blocked-domain-rule').textContent = matchedRule || 'regla no especificada';
-    document.getElementById('blocked-domain-hint').textContent = hint || 'Contacta al administrador para más información';
+    document.getElementById('blocked-domain-name').textContent = domain || 'unknown';
+    document.getElementById('blocked-domain-rule').textContent = matchedRule || 'unspecified rule';
+    document.getElementById('blocked-domain-hint').textContent = hint || 'Contact the administrator for more information';
 
     openModal('modal-blocked-domain');
 }
@@ -904,7 +904,7 @@ async function rejectRequest(requestId, reason) {
         const response = await RequestsAPI.rejectRequest(requestId, reason);
 
         if (response.success) {
-            showToast('Solicitud rechazada');
+            showToast('Request rejected');
             await loadPendingRequests();
         } else {
             showToast(`❌ Error: ${response.error}`, 'error');
@@ -927,10 +927,10 @@ document.getElementById('save-requests-config-btn').addEventListener('click', as
     const isOnline = await checkRequestsServerStatus();
 
     if (isOnline) {
-        showToast('✅ Configuración guardada');
+        showToast('✅ Configuration saved');
         await loadPendingRequests();
     } else {
-        showToast('⚠️ Configuración guardada, pero el servidor no responde', 'warning');
+        showToast('⚠️ Configuration saved, but server is not responding', 'warning');
     }
 });
 
@@ -956,28 +956,28 @@ async function loadUsers() {
         const users = await UsersAPI.listUsers();
 
         if (users.length === 0) {
-            listEl.innerHTML = '<p class="empty-message">No hay otros usuarios registrados</p>';
+            listEl.innerHTML = '<p class="empty-message">No other users registered</p>';
             return;
         }
 
         listEl.innerHTML = users.map(user => `
             <div class="user-card">
                 <div class="user-info">
-                    <h3>${escapeHtml(user.name || 'Sin nombre')} <span class="status-badge ${user.isActive ? 'active' : 'inactive'}">${user.isActive ? 'Activo' : 'Inactivo'}</span></h3>
+                    <h3>${escapeHtml(user.name || 'No name')} <span class="status-badge ${user.isActive ? 'active' : 'inactive'}">${user.isActive ? 'Active' : 'Inactive'}</span></h3>
                     <p>${escapeHtml(user.email)}</p>
                     <div class="user-roles" id="roles-${user.id}">
                         <!-- Roles filled by sub-request or if included in user object -->
                         ${(user.roles || []).map(r => `
                             <span class="role-badge ${r.role}">
-                                ${r.role === 'admin' ? '👑 Admin' : r.role === 'teacher' ? '👨‍🏫 Profesor' : '👤 Estudiante'}
+                                ${r.role === 'admin' ? '👑 Admin' : r.role === 'teacher' ? '👨‍🏫 Teacher' : '👤 Student'}
                                 ${r.groupIds?.length > 0 ? `<span class="group-count">${r.groupIds.length}</span>` : ''}
                             </span>
                         `).join('')}
                     </div>
                 </div>
                 <div class="user-actions">
-                    <button class="btn btn-secondary btn-sm" onclick="openAssignRoleModal('${user.id}', '${escapeHtml(user.email)}')">Gestionar Roles</button>
-                    <button class="btn btn-ghost btn-icon" onclick="deleteUser('${user.id}')" title="Eliminar usuario">🗑️</button>
+                    <button class="btn btn-secondary btn-sm" onclick="openAssignRoleModal('${user.id}', '${escapeHtml(user.email)}')">Manage Roles</button>
+                    <button class="btn btn-ghost btn-icon" onclick="deleteUser('${user.id}')" title="Delete user">🗑️</button>
                 </div>
             </div>
         `).join('');
@@ -1007,10 +1007,10 @@ window.openAssignRoleModal = async function (userId, email) {
 };
 
 window.deleteUser = async function (userId) {
-    if (!confirm('¿Seguro que quieres eliminar este usuario?')) return;
+    if (!confirm('Are you sure you want to delete this user?')) return;
     try {
         await UsersAPI.deleteUser(userId);
-        showToast('Usuario eliminado');
+        showToast('User deleted');
         loadUsers();
     } catch (e) {
         showToast('Error: ' + e.message, 'error');
@@ -1031,7 +1031,7 @@ document.getElementById('new-user-form').addEventListener('submit', async (e) =>
             await UsersAPI.assignRole(result.id, role);
         }
         closeModal('modal-new-user');
-        showToast('Usuario creado correctamente');
+        showToast('User created successfully');
         loadUsers();
     } catch (e) {
         showToast('Error: ' + e.message, 'error');
@@ -1049,7 +1049,7 @@ document.getElementById('assign-role-form').addEventListener('submit', async (e)
     try {
         await UsersAPI.assignRole(userId, role, groupIds);
         closeModal('modal-assign-role');
-        showToast('Rol asignado correctamente');
+        showToast('Role assigned successfully');
         loadUsers();
     } catch (e) {
         showToast('Error: ' + e.message, 'error');
@@ -1086,8 +1086,8 @@ function renderClassroomsList() {
     if (allClassrooms.length === 0) {
         listEl.innerHTML = `
             <div class="empty-state">
-                <p>No hay aulas configuradas</p>
-                <button class="btn btn-primary" onclick="openModal('modal-new-classroom')">Crear primera aula</button>
+                <p>No classrooms configured</p>
+                <button class="btn btn-primary" onclick="openModal('modal-new-classroom')">Create first classroom</button>
             </div>
         `;
         return;
@@ -1118,7 +1118,7 @@ function renderClassroomsList() {
 window.changeClassroomGroup = async function (classroomId, groupId) {
     try {
         await ClassroomsAPI.setActiveGroup(classroomId, groupId || null);
-        showToast(groupId ? `Grupo activo: ${groupId}` : 'Usando grupo por defecto');
+        showToast(groupId ? `Active group: ${groupId}` : 'Using default group');
     } catch (error) {
         showToast('Error: ' + error.message, 'error');
         loadClassrooms(); // Reload to reset select
@@ -1126,10 +1126,10 @@ window.changeClassroomGroup = async function (classroomId, groupId) {
 };
 
 window.deleteClassroom = async function (classroomId) {
-    if (!confirm('¿Eliminar este aula y desvincular todas sus máquinas?')) return;
+    if (!confirm('Delete this classroom and unlink all its machines?')) return;
     try {
         await ClassroomsAPI.deleteClassroom(classroomId);
-        showToast('Aula eliminada');
+        showToast('Classroom deleted');
         loadClassrooms();
     } catch (error) {
         showToast('Error: ' + error.message, 'error');
@@ -1159,7 +1159,7 @@ document.getElementById('new-classroom-form')?.addEventListener('submit', async 
         });
         closeModal('modal-new-classroom');
         document.getElementById('new-classroom-form').reset();
-        showToast('Aula creada');
+        showToast('Classroom created');
         loadClassrooms();
     } catch (error) {
         showToast('Error: ' + error.message, 'error');
