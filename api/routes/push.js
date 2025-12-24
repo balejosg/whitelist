@@ -33,7 +33,7 @@ const auth = require('../lib/auth');
 /**
  * Middleware: Authenticate user (copy from requests.js pattern)
  */
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -45,8 +45,8 @@ function requireAuth(req, res, next) {
 
     const token = authHeader.slice(7);
 
-    // Try JWT
-    const decoded = auth.verifyAccessToken(token);
+    // Try JWT (async for Redis blacklist support)
+    const decoded = await auth.verifyAccessToken(token);
     if (decoded) {
         req.user = decoded;
         return next();

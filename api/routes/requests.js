@@ -95,7 +95,7 @@ const auth = require('../lib/auth');
  * Middleware: Authenticate user (supports both legacy ADMIN_TOKEN and JWT)
  * Sets req.user with decoded token info
  */
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
     const authHeader = req.headers.authorization;
 
     // Check for auth header first (returns 401)
@@ -108,8 +108,8 @@ function requireAuth(req, res, next) {
 
     const token = authHeader.slice(7);
 
-    // Try JWT first
-    const decoded = auth.verifyAccessToken(token);
+    // Try JWT first (async for Redis blacklist support)
+    const decoded = await auth.verifyAccessToken(token);
     if (decoded) {
         req.user = decoded;
         return next();

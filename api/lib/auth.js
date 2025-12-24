@@ -23,14 +23,15 @@
 
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const { getTokenStore } = require('./token-store');
 
 // Configuration with defaults
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
-// Token blacklist (in-memory for MVP, should be Redis in production)
-const tokenBlacklist = new Set();
+// Token store (supports both memory and Redis backends)
+const tokenStore = getTokenStore();
 
 // Warn if using default secret
 if (!process.env.JWT_SECRET) {
@@ -104,12 +105,13 @@ function generateTokens(user, roles = []) {
 /**
  * Verify and decode a JWT token
  * @param {string} token - JWT token to verify
- * @returns {Object|null} Decoded token payload or null if invalid
+ * @returns {Promise<Object|null>} Decoded token payload or null if invalid
  */
-function verifyToken(token) {
+async function verifyToken(token) {
     try {
-        // Check blacklist
-        if (tokenBlacklist.has(token)) {
+        // Check blacklist (async for Redis support)
+        const isBlacklisted = await tokenStore.has(token);
+        if (isBlacklisted) {
             return null;
         }
 
@@ -131,10 +133,10 @@ function verifyToken(token) {
 /**
  * Verify access token
  * @param {string} token - Access token
- * @returns {Object|null} Decoded payload or null
+ * @returns {Promise<Object|null>} Decoded payload or null
  */
-function verifyAccessToken(token) {
-    const decoded = verifyToken(token);
+async function verifyAccessToken(token) {
+    const decoded = await verifyToken(token);
     if (decoded && decoded.type === 'access') {
         return decoded;
     }
@@ -144,10 +146,10 @@ function verifyAccessToken(token) {
 /**
  * Verify refresh token
  * @param {string} token - Refresh token
- * @returns {Object|null} Decoded payload or null
+ * @returns {Promise<Object|null>} Decoded payload or null
  */
-function verifyRefreshToken(token) {
-    const decoded = verifyToken(token);
+async function verifyRefreshToken(token) {
+    const decoded = await verifyToken(token);
     if (decoded && decoded.type === 'refresh') {
         return decoded;
     }
@@ -161,36 +163,29 @@ function verifyRefreshToken(token) {
 /**
  * Blacklist a token (logout)
  * @param {string} token - Token to blacklist
+ * @returns {Promise<boolean>}
  */
-function blacklistToken(token) {
-    tokenBlacklist.add(token);
-
-    // Clean up expired tokens periodically
-    setTimeout(() => cleanupBlacklist(), 60000);
+async function blacklistToken(token) {
+    await tokenStore.add(token);
+    return true;
 }
 
 /**
  * Remove expired tokens from blacklist
+ * Note: Redis handles this automatically via TTL
+ * @returns {Promise<void>}
  */
-function cleanupBlacklist() {
-    for (const token of tokenBlacklist) {
-        try {
-            jwt.verify(token, JWT_SECRET, { ignoreExpiration: false });
-        } catch (error) {
-            if (error.name === 'TokenExpiredError') {
-                tokenBlacklist.delete(token);
-            }
-        }
-    }
+async function cleanupBlacklist() {
+    await tokenStore.cleanup(JWT_SECRET);
 }
 
 /**
  * Check if token is blacklisted
  * @param {string} token 
- * @returns {boolean}
+ * @returns {Promise<boolean>}
  */
-function isBlacklisted(token) {
-    return tokenBlacklist.has(token);
+async function isBlacklisted(token) {
+    return tokenStore.has(token);
 }
 
 // =============================================================================

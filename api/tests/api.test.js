@@ -33,8 +33,14 @@ let server;
 
 describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
   before(async () => {
-    // Clear module cache to avoid issues with port conflicts
-    delete require.cache[require.resolve('../server.js')];
+    // Clear module cache to avoid issues with port conflicts and singletons
+    try {
+      delete require.cache[require.resolve('../server.js')];
+      delete require.cache[require.resolve('../lib/auth.js')];
+      delete require.cache[require.resolve('../lib/token-store.js')];
+    } catch (e) {
+      // Ignore if modules not loaded yet
+    }
 
     // Start server for testing
     const { app } = require('../server.js');
@@ -49,6 +55,14 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
   });
 
   after(async () => {
+    // Stop token store cleanup interval
+    try {
+      const { resetTokenStore } = require('../lib/token-store');
+      resetTokenStore();
+    } catch (e) {
+      console.error('Error resetting token store:', e);
+    }
+
     // Properly close the server
     if (server) {
       // Close all active connections first

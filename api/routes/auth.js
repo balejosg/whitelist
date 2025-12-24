@@ -241,8 +241,8 @@ router.post('/refresh', async (req, res) => {
     }
 
     try {
-        // Verify refresh token
-        const decoded = auth.verifyRefreshToken(refreshToken);
+        // Verify refresh token (async for Redis blacklist support)
+        const decoded = await auth.verifyRefreshToken(refreshToken);
 
         if (!decoded) {
             return res.status(401).json({
@@ -269,8 +269,8 @@ router.post('/refresh', async (req, res) => {
         // Generate new tokens
         const tokens = auth.generateTokens(user, roles);
 
-        // Blacklist old refresh token
-        auth.blacklistToken(refreshToken);
+        // Blacklist old refresh token (async operation)
+        await auth.blacklistToken(refreshToken);
 
         res.json({
             success: true,
@@ -291,19 +291,19 @@ router.post('/refresh', async (req, res) => {
  * POST /api/auth/logout
  * Invalidate current tokens
  */
-router.post('/logout', (req, res) => {
+router.post('/logout', async (req, res) => {
     const authHeader = req.headers.authorization;
     const { refreshToken } = req.body;
 
-    // Blacklist access token if provided
+    // Blacklist access token if provided (async operation)
     if (authHeader && authHeader.startsWith('Bearer ')) {
         const accessToken = authHeader.slice(7);
-        auth.blacklistToken(accessToken);
+        await auth.blacklistToken(accessToken);
     }
 
     // Blacklist refresh token if provided
     if (refreshToken) {
-        auth.blacklistToken(refreshToken);
+        await auth.blacklistToken(refreshToken);
     }
 
     res.json({
@@ -316,7 +316,7 @@ router.post('/logout', (req, res) => {
  * GET /api/auth/me
  * Get current user info from token
  */
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -328,7 +328,7 @@ router.get('/me', (req, res) => {
     }
 
     const token = authHeader.slice(7);
-    const decoded = auth.verifyAccessToken(token);
+    const decoded = await auth.verifyAccessToken(token);
 
     if (!decoded) {
         return res.status(401).json({

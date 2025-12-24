@@ -60,6 +60,23 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+// Global rate limiter - protection against DDoS and abuse
+// Individual routes may have stricter limits
+const rateLimit = require('express-rate-limit');
+const globalLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: process.env.RATE_LIMIT_MAX || 200, // 200 requests per minute per IP
+    message: {
+        success: false,
+        error: 'Too many requests from this IP, please try again later',
+        code: 'GLOBAL_RATE_LIMITED'
+    },
+    standardHeaders: true, // Return rate limit info in headers
+    legacyHeaders: false,
+    skip: (req) => req.path === '/health' // Don't rate limit health checks
+});
+app.use(globalLimiter);
+
 // JSON body parser
 app.use(express.json({ limit: '10kb' }));
 
@@ -218,6 +235,9 @@ app.use('/api/push', pushRouter);
 
 // Classroom management
 app.use('/api/classrooms', classroomsRouter);
+
+// Serve SPA static files
+app.use(express.static(path.join(__dirname, '../spa')));
 
 // =============================================================================
 // Error Handling
