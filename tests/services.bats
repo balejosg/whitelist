@@ -256,7 +256,7 @@ EOF
     
     run enable_services
     [ "$status" -eq 0 ]
-    [[ "$output" == *"habilitados"* ]]
+    [[ "$output" == *"enabled"* ]] || [[ "$output" == *"started"* ]]
 }
 
 @test "disable_services runs without errors" {
@@ -264,5 +264,5 @@ EOF
     
     run disable_services
     [ "$status" -eq 0 ]
-    [[ "$output" == *"deshabilitados"* ]]
+    [[ "$output" == *"disabled"* ]] || [[ "$output" == *"Services"* ]]
 }

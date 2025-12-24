@@ -129,7 +129,7 @@ EOF
     
     run flush_dns_cache
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Caché DNS limpiado"* ]]
+    [[ "$output" == *"DNS cache flushed"* ]]
 }
 
 @test "flush_dns_cache does nothing when dnsmasq is inactive" {
@@ -144,7 +144,7 @@ EOF
     run flush_dns_cache
     [ "$status" -eq 0 ]
     # Should not contain the success message
-    [[ "$output" != *"Caché DNS limpiado"* ]]
+    [[ "$output" != *"DNS cache flushed"* ]]
 }
 
 # ============== Tests de save_firewall_rules ==============
@@ -210,5 +210,5 @@ EOF
     
     run flush_connections
     [ "$status" -eq 0 ]
-    [[ "$output" == *"conntrack no disponible"* ]]
+    [[ "$output" == *"conntrack not available"* ]]
 }
