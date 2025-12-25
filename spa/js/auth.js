@@ -164,7 +164,7 @@ const Auth = {
     },
 
     /**
-     * Alias for getTeacherGroups (used in app.js for clarity)
+     * Alias for getTeacherGroups (for clarity)
      * @returns {Array<string>}
      */
     getAssignedGroups() {

@@ -244,9 +244,7 @@ document.getElementById('bulk-add-form')?.addEventListener('submit', async (e) =
     showToast(`${added} rules added`);
 });
 
-// New Group Form -> Handled in main or groups? 
-// app.js handled it. It depends on 'openNewGroupModal' logic.
-// The form submit listener:
+// New Group Form
 document.getElementById('new-group-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!state.canEdit) return;

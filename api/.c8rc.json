@@ -11,7 +11,8 @@
         "coverage/**",
         "lib/swagger.js",
         "lib/error-tracking.js",
-        "lib/errors.js"
+        "lib/errors.js",
+        "lib/logger.js"
     ],
     "reporter": [
         "text",
@@ -20,8 +21,14 @@
     ],
     "report-dir": "coverage",
     "check-coverage": true,
-    "lines": 45,
-    "branches": 15,
-    "functions": 20,
-    "statements": 45
+    "lines": 50,
+    "branches": 25,
+    "functions": 30,
+    "statements": 50,
+    "watermarks": {
+        "lines": [50, 80],
+        "branches": [25, 70],
+        "functions": [30, 80],
+        "statements": [50, 80]
+    }
 }

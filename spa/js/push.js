@@ -207,5 +207,5 @@ const PushManager = {
     }
 };
 
-// Export for use in app.js
+// Export for use in modules/
 window.PushManager = PushManager;
