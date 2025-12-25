@@ -87,17 +87,8 @@ get_whitelist_url() {
 
 WHITELIST_URL=$(get_whitelist_url)
 
-# Verificar si hay portal cautivo (sin autenticar)
-check_captive_portal() {
-    # Intentar conectar al detector de Firefox
-    local response=$(timeout 5 curl -s -L "http://detectportal.firefox.com/success.txt" 2>/dev/null | tr -d '\n\r')
-    
-    if [ "$response" = "success" ]; then
-        return 1  # NO hay portal cautivo (autenticado)
-    else
-        return 0  # HAY portal cautivo (no autenticado)
-    fi
-}
+# NOTE: check_captive_portal() is now defined in common.sh
+# to avoid code duplication with captive-portal-detector.sh
 
 # Descargar whitelist
 download_whitelist() {

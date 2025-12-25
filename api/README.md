@@ -62,14 +62,31 @@ curl http://localhost:3000/api/requests \
   -H "Authorization: Bearer your-admin-token"
 ```
 
+## API Documentation (Swagger UI)
+
+Interactive API documentation is available at `/api-docs` when the server is running:
+
+```
+http://localhost:3000/api-docs
+```
+
+Features:
+- Browse all endpoints with descriptions
+- Try API calls directly from the browser
+- View request/response schemas
+- Download OpenAPI spec at `/api-docs.json`
+
 ## API Endpoints
 
 ### Public Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/health` | Health check |
-| GET | `/api` | API documentation |
+| GET | `/health` | Health check (liveness probe) |
+| GET | `/health/ready` | Readiness probe |
+| GET | `/api` | API endpoint listing |
+| GET | `/api-docs` | Swagger UI documentation |
+| GET | `/api-docs.json` | OpenAPI 3.0 spec (JSON) |
 | POST | `/api/requests` | Submit domain request |
 | GET | `/api/requests/status/:id` | Check request status |
 
@@ -226,10 +243,36 @@ api/
 
 ## Security Notes
 
-1. **ADMIN_TOKEN**: Generate a secure token: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
-2. **GITHUB_TOKEN**: Create at https://github.com/settings/tokens with `repo` scope
-3. **CORS**: In production, set `CORS_ORIGINS` to your specific domains
-4. **HTTPS**: Always use HTTPS in production (see Phase 3)
+### Token Generation
+
+1. **ADMIN_TOKEN**: Generate a secure token:
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   ```
+
+2. **JWT_SECRET** (required in production):
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+   ```
+
+3. **GITHUB_TOKEN**: Create at https://github.com/settings/tokens with `repo` scope
+
+### Security Features
+
+- **Helmet.js**: Security headers (CSP, X-Frame-Options, HSTS, etc.)
+- **Rate Limiting**: Protection against brute force and DDoS
+- **CORS**: Restricted to specific origins in production (set `CORS_ORIGINS`)
+- **JWT Authentication**: Access + refresh tokens with blacklist support
+- **Input Validation**: Joi schemas for all endpoints
+- **Structured Logging**: Winston with request tracking
+
+### Production Checklist
+
+- [ ] Set `NODE_ENV=production`
+- [ ] Set `JWT_SECRET` (server will fail to start without it)
+- [ ] Set `CORS_ORIGINS` to your specific domains
+- [ ] Use HTTPS (Caddy, nginx, or Cloudflare Tunnel)
+- [ ] Set up log rotation for `logs/` directory
 
 ## Continuous Deployment
 

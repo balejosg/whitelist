@@ -168,6 +168,38 @@ check_internet() {
     return 1
 }
 
+# =============================================================================
+# Captive Portal Detection (shared by update and detector scripts)
+# =============================================================================
+
+# URL and expected response for captive portal detection
+CAPTIVE_PORTAL_CHECK_URL="http://detectportal.firefox.com/success.txt"
+CAPTIVE_PORTAL_EXPECTED="success"
+
+# Check if there's a captive portal (not authenticated)
+# Returns 0 if captive portal detected (needs auth)
+# Returns 1 if no captive portal (authenticated/normal)
+check_captive_portal() {
+    local response
+    response=$(timeout 5 curl -s -L "$CAPTIVE_PORTAL_CHECK_URL" 2>/dev/null | tr -d '\n\r')
+
+    if [ "$response" = "$CAPTIVE_PORTAL_EXPECTED" ]; then
+        return 1  # NO captive portal (authenticated)
+    else
+        return 0  # Captive portal detected (needs auth)
+    fi
+}
+
+# Check if authenticated (inverse of check_captive_portal for readability)
+# Returns 0 if authenticated
+# Returns 1 if captive portal detected
+is_network_authenticated() {
+    local response
+    response=$(timeout 5 curl -s -L "$CAPTIVE_PORTAL_CHECK_URL" 2>/dev/null | tr -d '\n\r')
+
+    [ "$response" = "$CAPTIVE_PORTAL_EXPECTED" ]
+}
+
 # Parse whitelist file sections
 parse_whitelist_sections() {
     local file="$1"

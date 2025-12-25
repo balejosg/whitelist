@@ -32,10 +32,14 @@
 
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const path = require('path');
 
 // Load environment variables from .env file
 require('dotenv').config();
+
+// Structured logging with Winston
+const logger = require('./lib/logger');
 
 const requestsRouter = require('./routes/requests');
 const healthReportsRouter = require('./routes/health-reports');
@@ -63,7 +67,29 @@ const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 
 // =============================================================================
-// Middleware
+// Security Middleware
+// =============================================================================
+
+// Helmet - Security headers (OWASP recommended)
+// Adds: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection,
+//       Strict-Transport-Security, Content-Security-Policy, etc.
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            scriptSrc: ["'self'"],
+            imgSrc: ["'self'", "data:", "https:"],
+            connectSrc: ["'self'", "https://api.github.com"]
+        }
+    },
+    crossOriginEmbedderPolicy: false, // Allow embedding for Swagger UI
+    crossOriginResourcePolicy: { policy: "cross-origin" } // Allow cross-origin for API
+}));
+
+// =============================================================================
+// CORS Configuration
 // =============================================================================
 
 // CORS configuration - SECURITY: Default to restrictive origins in production
@@ -110,12 +136,8 @@ app.use(express.json({ limit: '10kb' }));
 // Request ID middleware (adds X-Request-ID header)
 app.use(requestIdMiddleware);
 
-// Request logging with request ID
-app.use((req, res, next) => {
-    const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] [${req.id}] ${req.method} ${req.path}`);
-    next();
-});
+// Request logging with Winston (structured logging)
+app.use(logger.requestMiddleware);
 
 // =============================================================================
 // Routes
@@ -259,22 +281,34 @@ app.use(errorTrackingMiddleware);
 let server;
 if (require.main === module) {
     server = app.listen(PORT, HOST, () => {
+        logger.info('Server started', {
+            host: HOST,
+            port: PORT,
+            env: process.env.NODE_ENV || 'development',
+            endpoints: {
+                health: '/health',
+                api: '/api',
+                docs: '/api-docs'
+            }
+        });
+
+        // Log startup banner
         console.log('');
         console.log('╔═══════════════════════════════════════════════════════╗');
-        console.log('║       🛡️  AulaFocus Request API Server                ║');
+        console.log('║       🛡️  OpenPath Request API Server                 ║');
         console.log('╠═══════════════════════════════════════════════════════╣');
         console.log(`║  Running on: http://${HOST}:${PORT}                      ║`);
         console.log('║  Health:     /health                                  ║');
-        console.log('║  API Docs:   /api                                     ║');
+        console.log('║  API Docs:   /api-docs                                ║');
         console.log('╚═══════════════════════════════════════════════════════╝');
         console.log('');
 
         // Check configuration
         if (!process.env.ADMIN_TOKEN) {
-            console.warn('⚠️  WARNING: ADMIN_TOKEN not set. Admin endpoints will fail.');
+            logger.warn('ADMIN_TOKEN not set - admin endpoints will fail');
         }
         if (!process.env.GITHUB_TOKEN) {
-            console.warn('⚠️  WARNING: GITHUB_TOKEN not set. Approval will fail to push to GitHub.');
+            logger.warn('GITHUB_TOKEN not set - approval will fail to push to GitHub');
         }
     });
 }

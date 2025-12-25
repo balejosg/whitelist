@@ -34,20 +34,10 @@ LOCK_FILE="/var/run/openpath-update.lock"
 
 # Configuración
 CHECK_INTERVAL=30
-CHECK_URL="http://detectportal.firefox.com/success.txt"
-EXPECTED_RESPONSE="success"
 CAPTIVE_PORTAL_DETECTED=false
 
-# Verificar autenticación
-check_authentication() {
-    local response=$(timeout 5 curl -s -L "$CHECK_URL" 2>/dev/null | tr -d '\n\r')
-    
-    if [ "$response" = "$EXPECTED_RESPONSE" ]; then
-        return 0  # Autenticado
-    else
-        return 1  # Portal cautivo detectado
-    fi
-}
+# NOTE: is_network_authenticated() and check_captive_portal() are now
+# defined in common.sh to avoid code duplication with openpath-update.sh
 
 # Modificar firewall con lock
 modify_firewall_locked() {
@@ -70,9 +60,9 @@ modify_firewall_locked() {
 # Bucle principal
 main() {
     log "[CAPTIVE] Iniciando detector de portal cautivo"
-    
+
     while true; do
-        if check_authentication; then
+        if is_network_authenticated; then
             if [ "$CAPTIVE_PORTAL_DETECTED" = true ]; then
                 log "[CAPTIVE] Autenticación completada - reactivando firewall"
                 modify_firewall_locked "activate"
@@ -85,7 +75,7 @@ main() {
                 CAPTIVE_PORTAL_DETECTED=true
             fi
         fi
-        
+
         sleep $CHECK_INTERVAL
     done
 }
