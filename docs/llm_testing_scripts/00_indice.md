@@ -9,31 +9,64 @@ Estos guiones están diseñados para que un **LLM con capacidad de control de na
 
 ---
 
+## URLs de Producción
+
+OpenPath está desplegado y listo para usar. **No necesitas instalar servidores**.
+
+| Componente | URL | Descripción |
+|------------|-----|-------------|
+| **SPA (Dashboard)** | `https://balejosg.github.io/openpath` | Interfaz web para Admin/Profesor |
+| **API** | `https://openpath.duckdns.org` | Servidor de API (ya desplegado) |
+| **Whitelist** | `https://raw.githubusercontent.com/balejosg/openpath/main/whitelist.txt` | Archivo de whitelist |
+
+> [!IMPORTANT]
+> **La única instalación necesaria** es el agente OpenPath en los **PCs de los estudiantes** (Linux).
+> El SPA y la API ya están desplegados y funcionando en la nube.
+
+---
+
 ## Prerrequisitos del Entorno
 
-Antes de ejecutar cualquier guión:
+Para ejecutar las pruebas necesitas:
 
-1. **Servidor API** corriendo en `http://localhost:3000`
-2. **SPA** accesible en `http://localhost:8080`
-3. **Agente Linux** instalado en al menos 1 máquina de prueba
-4. **Firefox con extensión OpenPath** instalada
-5. **Datos de prueba** inicializados (o base de datos limpia)
+1. ✅ **Navegador web** (Chrome o Firefox) para acceder al SPA
+2. ✅ **Conexión a internet** para acceder a las URLs de producción
+3. ✅ **1 PC con Linux (Ubuntu 22.04/24.04)** donde instalar el agente OpenPath
+4. ✅ **Firefox con extensión OpenPath** en el PC del estudiante
 
-### Variables del Entorno de Prueba
+### Credenciales de Prueba
+
+Crea usuarios con estos datos (o usa existentes si ya hay):
 
 ```
-URL_SPA=http://localhost:8080
-URL_API=http://localhost:3000
+# Admin TIC
+ADMIN_EMAIL=maria@tucentro.edu
+ADMIN_PASS=<crear contraseña segura>
 
-# Credenciales de prueba
-ADMIN_EMAIL=maria@centro.edu
-ADMIN_PASS=TestPass123!
+# Profesor
+TEACHER_EMAIL=pedro@tucentro.edu
+TEACHER_PASS=<crear contraseña segura>
 
-TEACHER_EMAIL=pedro@centro.edu
-TEACHER_PASS=TestPass123!
+# Estudiante
+STUDENT_EMAIL=alumna@tucentro.edu
+STUDENT_PASS=<crear contraseña segura>
+```
 
-STUDENT_EMAIL=alumna@centro.edu
-STUDENT_PASS=TestPass123!
+### Instalación del Agente (Solo en PC Estudiante)
+
+En el PC del estudiante (Ubuntu), ejecutar:
+
+```bash
+# Opción 1: Instalación rápida via APT
+curl -fsSL https://balejosg.github.io/openpath/apt/apt-setup.sh | sudo bash
+sudo apt install openpath-dnsmasq
+
+# Opción 2: Instalación manual con aula
+git clone https://github.com/balejosg/openpath.git
+cd openpath/linux
+sudo ./install.sh --classroom "informatica-1" \
+  --api-url "https://openpath.duckdns.org" \
+  --whitelist-url "https://raw.githubusercontent.com/balejosg/openpath/main/whitelist.txt"
 ```
 
 ---

@@ -16,9 +16,10 @@ Probarás la aplicación desde la perspectiva de un profesor que usa principalme
 - Usabilidad en móvil (botones grandes, pocos clics)
 - Claridad de la información mostrada
 
-**URL de la aplicación**: `http://localhost:8080`
+**URL de la aplicación**: `https://balejosg.github.io/openpath`
 
----
+> [!NOTE]
+> **No necesitas instalar ningún servidor**. Solo necesitas un navegador (o móvil) para estas pruebas.
 
 ## Prerequisitos
 

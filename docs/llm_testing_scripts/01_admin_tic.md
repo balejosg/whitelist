@@ -16,7 +16,15 @@ Usarás el navegador para interactuar con la aplicación. Para cada test:
 3. Toma capturas de pantalla de evidencia
 4. Reporta cualquier problema encontrado
 
-**URL de la aplicación**: `http://localhost:8080` (o la URL de producción)
+**URL de la aplicación**: `https://balejosg.github.io/openpath`
+
+---
+
+## Prerequisitos
+
+> [!NOTE]
+> **No necesitas instalar ningún servidor**. El SPA y la API ya están desplegados en la nube.
+> Solo necesitas un navegador para estas pruebas.
 
 ---
 
