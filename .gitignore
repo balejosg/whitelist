@@ -29,5 +29,7 @@ Thumbs.db
 usb-package/
 build/
 
-# Strategic/internal documents
-docs/
+# Strategic/internal documents (keep llm_testing_scripts public)
+docs/tres_amigos/
+docs/MARKET_*.md
+docs/MVP_*.md
