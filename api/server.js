@@ -66,12 +66,25 @@ const HOST = process.env.HOST || '0.0.0.0';
 // Middleware
 // =============================================================================
 
-// CORS configuration
-const corsOrigins = process.env.CORS_ORIGINS || '*';
+// CORS configuration - SECURITY: Default to restrictive origins in production
+// Set CORS_ORIGINS env var to comma-separated list of allowed origins
+// Example: CORS_ORIGINS=https://myapp.com,https://admin.myapp.com
+const DEFAULT_CORS_ORIGINS = process.env.NODE_ENV === 'production'
+    ? 'https://balejosg.github.io'  // Default to GitHub Pages in production
+    : 'http://localhost:3000,http://localhost:5500,http://127.0.0.1:3000';
+
+const corsOrigins = process.env.CORS_ORIGINS || DEFAULT_CORS_ORIGINS;
+
+// Warn if using wildcard CORS in production
+if (corsOrigins === '*' && process.env.NODE_ENV === 'production') {
+    console.warn('⚠️  SECURITY WARNING: CORS_ORIGINS is set to "*" in production. This allows requests from any origin.');
+}
+
 app.use(cors({
     origin: corsOrigins === '*' ? '*' : corsOrigins.split(',').map(o => o.trim()),
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true  // Allow cookies for authenticated requests
 }));
 
 // Global rate limiter - protection against DDoS and abuse

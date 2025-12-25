@@ -106,36 +106,39 @@ detect_primary_dns() {
     
     # 1. Try to read saved DNS
     if [ -f "$ORIGINAL_DNS_FILE" ]; then
-        local saved_dns=$(cat "$ORIGINAL_DNS_FILE" | head -1)
-        if [ -n "$saved_dns" ] && timeout 5 dig @$saved_dns google.com +short >/dev/null 2>&1; then
+        local saved_dns
+        saved_dns=$(cat "$ORIGINAL_DNS_FILE" | head -1)
+        # Validate IP format before using
+        if [ -n "$saved_dns" ] && validate_ip "$saved_dns" && timeout 5 dig @"$saved_dns" google.com +short >/dev/null 2>&1; then
             echo "$saved_dns"
             return 0
         fi
     fi
-    
+
     # 2. NetworkManager
     if command -v nmcli >/dev/null 2>&1; then
         dns=$(nmcli dev show 2>/dev/null | grep -i "IP4.DNS\[1\]" | awk '{print $2}' | head -1)
-        if [ -n "$dns" ] && timeout 5 dig @$dns google.com +short >/dev/null 2>&1; then
+        if [ -n "$dns" ] && validate_ip "$dns" && timeout 5 dig @"$dns" google.com +short >/dev/null 2>&1; then
             echo "$dns"
             return 0
         fi
     fi
-    
+
     # 3. systemd-resolved
     if [ -f /run/systemd/resolve/resolv.conf ]; then
         dns=$(grep "^nameserver" /run/systemd/resolve/resolv.conf | head -1 | awk '{print $2}')
-        if [ -n "$dns" ] && [ "$dns" != "127.0.0.53" ]; then
-            if timeout 5 dig @$dns google.com +short >/dev/null 2>&1; then
+        if [ -n "$dns" ] && [ "$dns" != "127.0.0.53" ] && validate_ip "$dns"; then
+            if timeout 5 dig @"$dns" google.com +short >/dev/null 2>&1; then
                 echo "$dns"
                 return 0
             fi
         fi
     fi
-    
+
     # 4. Gateway as DNS
-    local gw=$(ip route | grep default | awk '{print $3}' | head -1)
-    if [ -n "$gw" ] && timeout 5 dig @$gw google.com +short >/dev/null 2>&1; then
+    local gw
+    gw=$(ip route | grep default | awk '{print $3}' | head -1)
+    if [ -n "$gw" ] && validate_ip "$gw" && timeout 5 dig @"$gw" google.com +short >/dev/null 2>&1; then
         echo "$gw"
         return 0
     fi

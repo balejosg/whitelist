@@ -21,6 +21,39 @@
 # Part of the OpenPath DNS system v3.5
 ################################################################################
 
+# =============================================================================
+# Security: Domain Validation
+# =============================================================================
+
+# Validate domain name format to prevent injection attacks
+# Only allows: alphanumeric, dots, hyphens (standard DNS characters)
+# Returns 0 if valid, 1 if invalid
+validate_domain() {
+    local domain="$1"
+    # Empty domain is invalid
+    [ -z "$domain" ] && return 1
+    # Max length 253 characters (DNS limit)
+    [ ${#domain} -gt 253 ] && return 1
+    # Must match DNS naming rules: alphanumeric, dots, hyphens
+    # Cannot start or end with hyphen or dot
+    # Cannot have consecutive dots
+    if [[ "$domain" =~ ^[a-zA-Z0-9]([a-zA-Z0-9\.\-]*[a-zA-Z0-9])?$ ]] && \
+       [[ ! "$domain" =~ \.\. ]]; then
+        return 0
+    fi
+    return 1
+}
+
+# Sanitize domain - remove any potentially dangerous characters
+# This is a defense-in-depth measure
+sanitize_domain() {
+    local domain="$1"
+    # Remove any character that isn't alphanumeric, dot, or hyphen
+    echo "$domain" | tr -cd 'a-zA-Z0-9.-'
+}
+
+# =============================================================================
+
 # Free port 53 (stop systemd-resolved)
 free_port_53() {
     log "Freeing port 53..."
@@ -194,18 +227,41 @@ EOF
     echo "# =============================================" >> "$temp_conf"
     echo "# WHITELIST DOMAINS (${#WHITELIST_DOMAINS[@]} domains)" >> "$temp_conf"
     echo "# =============================================" >> "$temp_conf"
-    
+
+    local valid_count=0
+    local invalid_count=0
     for domain in "${WHITELIST_DOMAINS[@]}"; do
-        echo "server=/${domain}/${PRIMARY_DNS}" >> "$temp_conf"
+        # SECURITY: Validate domain before adding to config
+        if validate_domain "$domain"; then
+            # Sanitize as defense-in-depth
+            local safe_domain
+            safe_domain=$(sanitize_domain "$domain")
+            echo "server=/${safe_domain}/${PRIMARY_DNS}" >> "$temp_conf"
+            valid_count=$((valid_count + 1))
+        else
+            log_warn "Skipping invalid domain: $domain"
+            invalid_count=$((invalid_count + 1))
+        fi
     done
-    
+
+    if [ "$invalid_count" -gt 0 ]; then
+        log_warn "Skipped $invalid_count invalid domains"
+    fi
+
     echo "" >> "$temp_conf"
-    
+
     # Add blocked subdomains (explicitly, just in case)
     if [ ${#BLOCKED_SUBDOMAINS[@]} -gt 0 ]; then
         echo "# Blocked subdomains (NXDOMAIN)" >> "$temp_conf"
         for blocked in "${BLOCKED_SUBDOMAINS[@]}"; do
-            echo "address=/${blocked}/" >> "$temp_conf"
+            # SECURITY: Validate blocked subdomain too
+            if validate_domain "$blocked"; then
+                local safe_blocked
+                safe_blocked=$(sanitize_domain "$blocked")
+                echo "address=/${safe_blocked}/" >> "$temp_conf"
+            else
+                log_warn "Skipping invalid blocked subdomain: $blocked"
+            fi
         done
         echo "" >> "$temp_conf"
     fi

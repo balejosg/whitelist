@@ -25,18 +25,46 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { getTokenStore } = require('./token-store');
 
-// Configuration with defaults
-const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+// =============================================================================
+// SECURITY: JWT Secret Configuration
+// =============================================================================
+
+// In production, JWT_SECRET MUST be set - fail fast if not configured
+const isProduction = process.env.NODE_ENV === 'production';
+
+if (isProduction && !process.env.JWT_SECRET) {
+    console.error('');
+    console.error('╔═══════════════════════════════════════════════════════════════╗');
+    console.error('║  FATAL SECURITY ERROR: JWT_SECRET not set in production!      ║');
+    console.error('║                                                               ║');
+    console.error('║  Generate a secure secret:                                    ║');
+    console.error('║  node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"');
+    console.error('║                                                               ║');
+    console.error('║  Then set it in your environment:                             ║');
+    console.error('║  export JWT_SECRET="your-generated-secret"                    ║');
+    console.error('╚═══════════════════════════════════════════════════════════════╝');
+    console.error('');
+    process.exit(1);
+}
+
+// In development, generate a random secret but warn about token invalidation
+let JWT_SECRET;
+if (process.env.JWT_SECRET) {
+    JWT_SECRET = process.env.JWT_SECRET;
+} else {
+    JWT_SECRET = crypto.randomBytes(32).toString('hex');
+    console.warn('');
+    console.warn('⚠️  WARNING: JWT_SECRET not set. Using random secret.');
+    console.warn('⚠️  All tokens will be invalidated on server restart.');
+    console.warn('⚠️  Set JWT_SECRET environment variable for persistent tokens.');
+    console.warn('');
+}
+
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
 // Token store (supports both memory and Redis backends)
 const tokenStore = getTokenStore();
-
-// Warn if using default secret
-if (!process.env.JWT_SECRET) {
-    console.warn('⚠️  WARNING: JWT_SECRET not set. Using random secret (tokens will invalidate on restart).');
-}
 
 // =============================================================================
 // Token Generation

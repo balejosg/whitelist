@@ -23,11 +23,37 @@
 
 const express = require('express');
 const rateLimit = require('express-rate-limit');
+const crypto = require('crypto');
 const router = express.Router();
 
 const userStorage = require('../lib/user-storage');
 const roleStorage = require('../lib/role-storage');
 const auth = require('../lib/auth');
+
+// =============================================================================
+// Security Utilities
+// =============================================================================
+
+/**
+ * Timing-safe string comparison to prevent timing attacks
+ * @param {string} a - First string
+ * @param {string} b - Second string
+ * @returns {boolean} True if strings are equal
+ */
+function timingSafeEqual(a, b) {
+    if (typeof a !== 'string' || typeof b !== 'string') {
+        return false;
+    }
+    // Ensure both strings have the same length to prevent length-based timing attacks
+    const bufA = Buffer.from(a, 'utf8');
+    const bufB = Buffer.from(b, 'utf8');
+    if (bufA.length !== bufB.length) {
+        // Still perform comparison to maintain constant time
+        crypto.timingSafeEqual(bufA, bufA);
+        return false;
+    }
+    return crypto.timingSafeEqual(bufA, bufB);
+}
 
 // =============================================================================
 // Rate Limiting
@@ -72,9 +98,9 @@ async function requireAuth(req, res, next) {
         return next();
     }
 
-    // Fall back to legacy ADMIN_TOKEN
+    // Fall back to legacy ADMIN_TOKEN (using timing-safe comparison)
     const adminToken = process.env.ADMIN_TOKEN;
-    if (adminToken && token === adminToken) {
+    if (adminToken && timingSafeEqual(token, adminToken)) {
         req.user = auth.createLegacyAdminPayload();
         return next();
     }

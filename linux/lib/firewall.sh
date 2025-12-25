@@ -54,14 +54,14 @@ activate_firewall() {
     iptables -A OUTPUT -p tcp -d 127.0.0.1 --dport 53 -j ACCEPT || true
     
     # 6. Allow DNS to upstream server (for dnsmasq)
-    iptables -A OUTPUT -p udp -d $PRIMARY_DNS --dport 53 -j ACCEPT || true
-    iptables -A OUTPUT -p tcp -d $PRIMARY_DNS --dport 53 -j ACCEPT || true
-    
+    iptables -A OUTPUT -p udp -d "$PRIMARY_DNS" --dport 53 -j ACCEPT || true
+    iptables -A OUTPUT -p tcp -d "$PRIMARY_DNS" --dport 53 -j ACCEPT || true
+
     # 7. If gateway is different from DNS, allow DNS to gateway too
     #    (some routers act as DNS)
     if [ -n "$GATEWAY" ] && [ "$GATEWAY" != "$PRIMARY_DNS" ]; then
-        iptables -A OUTPUT -p udp -d $GATEWAY --dport 53 -j ACCEPT || true
-        iptables -A OUTPUT -p tcp -d $GATEWAY --dport 53 -j ACCEPT || true
+        iptables -A OUTPUT -p udp -d "$GATEWAY" --dport 53 -j ACCEPT || true
+        iptables -A OUTPUT -p tcp -d "$GATEWAY" --dport 53 -j ACCEPT || true
     fi
     
     # 8. Block DNS to any other server
