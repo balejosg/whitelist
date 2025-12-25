@@ -5,52 +5,83 @@
  * Tests for Schedule Storage and API
  */
 
-const { describe, it, before, after, beforeEach } = require('node:test');
-const assert = require('node:assert');
-const fs = require('fs');
-const path = require('path');
+import { describe, it, before, after, beforeEach } from 'node:test';
+import assert from 'node:assert';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Set test data directory
 process.env.DATA_DIR = path.join(__dirname, '../data-test');
 process.env.JWT_SECRET = 'test-secret-key-for-testing-only';
 process.env.ADMIN_TOKEN = 'test-admin-token';
 
-// Use dynamic import pattern for fresh module state
-let scheduleStorage;
-let app;
-
 // Test data
 const testClassroomId = 'test-classroom-1';
 const testTeacherId = 'teacher-1';
 const testGroupId = 'group-math-3eso';
 
+interface Schedule {
+    id: string;
+    classroom_id: string;
+    teacher_id: string;
+    group_id: string;
+    day_of_week: number;
+    start_time: string;
+    end_time: string;
+    recurrence: string;
+}
+
+interface ScheduleStorage {
+    timeToMinutes: (time: string) => number;
+    timesOverlap: (start1: string, end1: string, start2: string, end2: string) => boolean;
+    createSchedule: (data: Partial<Schedule>) => Schedule;
+    updateSchedule: (id: string, data: Partial<Schedule>) => Schedule;
+    deleteSchedule: (id: string) => boolean;
+    getScheduleById: (id: string) => Schedule | null;
+    getSchedulesByClassroom: (classroomId: string) => Schedule[];
+    getSchedulesByTeacher: (teacherId: string) => Schedule[];
+    getCurrentSchedule: (classroomId: string, date?: Date) => Schedule | null;
+}
+
+interface Classroom {
+    id: string;
+    name: string;
+}
+
+interface ClassroomStorage {
+    createClassroom: (data: { name: string; displayName: string; defaultGroupId: string }) => Classroom;
+    registerMachine: (data: { hostname: string; classroomId: string }) => void;
+    setActiveGroup: (classroomId: string, groupId: string) => void;
+    getWhitelistUrlForMachine: (hostname: string) => { group_id: string; source: string } | null;
+}
+
+let scheduleStorage: ScheduleStorage;
+
 describe('Schedule Storage', () => {
-    before(() => {
-        // Clean test data directory
-        const testDataDir = process.env.DATA_DIR;
+    before(async () => {
+        const testDataDir = process.env.DATA_DIR!;
         if (fs.existsSync(testDataDir)) {
             fs.rmSync(testDataDir, { recursive: true });
         }
         fs.mkdirSync(testDataDir, { recursive: true });
 
-        // Initialize empty files
         fs.writeFileSync(path.join(testDataDir, 'schedules.json'), JSON.stringify({ schedules: [] }));
         fs.writeFileSync(path.join(testDataDir, 'classrooms.json'), JSON.stringify({ classrooms: [] }));
         fs.writeFileSync(path.join(testDataDir, 'machines.json'), JSON.stringify({ machines: [] }));
 
-        // Load modules after setting env
-        scheduleStorage = require('../lib/schedule-storage');
+        scheduleStorage = await import('../src/lib/schedule-storage.js') as unknown as ScheduleStorage;
     });
 
     beforeEach(() => {
-        // Reset schedules before each test
-        const schedulesFile = path.join(process.env.DATA_DIR, 'schedules.json');
+        const schedulesFile = path.join(process.env.DATA_DIR!, 'schedules.json');
         fs.writeFileSync(schedulesFile, JSON.stringify({ schedules: [] }));
     });
 
     after(() => {
-        // Cleanup
-        const testDataDir = process.env.DATA_DIR;
+        const testDataDir = process.env.DATA_DIR!;
         if (fs.existsSync(testDataDir)) {
             fs.rmSync(testDataDir, { recursive: true });
         }
@@ -65,15 +96,10 @@ describe('Schedule Storage', () => {
         });
 
         it('should detect overlapping time ranges', () => {
-            // Clear overlap
             assert.strictEqual(scheduleStorage.timesOverlap('08:00', '09:00', '09:00', '10:00'), false);
             assert.strictEqual(scheduleStorage.timesOverlap('08:00', '09:00', '10:00', '11:00'), false);
-
-            // Overlapping
             assert.strictEqual(scheduleStorage.timesOverlap('08:00', '09:00', '08:30', '09:30'), true);
             assert.strictEqual(scheduleStorage.timesOverlap('08:00', '10:00', '09:00', '09:30'), true);
-
-            // Same time
             assert.strictEqual(scheduleStorage.timesOverlap('08:00', '09:00', '08:00', '09:00'), true);
         });
     });
@@ -101,7 +127,7 @@ describe('Schedule Storage', () => {
                     classroom_id: testClassroomId,
                     teacher_id: testTeacherId,
                     group_id: testGroupId,
-                    day_of_week: 6, // Saturday - not allowed
+                    day_of_week: 6,
                     start_time: '08:00',
                     end_time: '09:00'
                 });
@@ -115,7 +141,7 @@ describe('Schedule Storage', () => {
                     teacher_id: testTeacherId,
                     group_id: testGroupId,
                     day_of_week: 1,
-                    start_time: '8:00', // Missing leading zero
+                    start_time: '8:00',
                     end_time: '09:00'
                 });
             }, /Invalid time format/);
@@ -135,7 +161,6 @@ describe('Schedule Storage', () => {
         });
 
         it('should detect conflicts', () => {
-            // Create first schedule
             scheduleStorage.createSchedule({
                 classroom_id: testClassroomId,
                 teacher_id: testTeacherId,
@@ -145,7 +170,6 @@ describe('Schedule Storage', () => {
                 end_time: '09:00'
             });
 
-            // Try to create overlapping schedule
             assert.throws(() => {
                 scheduleStorage.createSchedule({
                     classroom_id: testClassroomId,
@@ -159,7 +183,6 @@ describe('Schedule Storage', () => {
         });
 
         it('should allow non-overlapping schedules', () => {
-            // Create first schedule
             scheduleStorage.createSchedule({
                 classroom_id: testClassroomId,
                 teacher_id: testTeacherId,
@@ -169,7 +192,6 @@ describe('Schedule Storage', () => {
                 end_time: '09:00'
             });
 
-            // Create adjacent schedule (should work)
             const schedule2 = scheduleStorage.createSchedule({
                 classroom_id: testClassroomId,
                 teacher_id: 'teacher-2',
@@ -221,7 +243,6 @@ describe('Schedule Storage', () => {
 
     describe('Query Operations', () => {
         beforeEach(() => {
-            // Create test schedules
             scheduleStorage.createSchedule({
                 classroom_id: testClassroomId,
                 teacher_id: testTeacherId,
@@ -254,13 +275,11 @@ describe('Schedule Storage', () => {
 
     describe('getCurrentSchedule', () => {
         beforeEach(() => {
-            // Reset schedules
-            const schedulesFile = path.join(process.env.DATA_DIR, 'schedules.json');
+            const schedulesFile = path.join(process.env.DATA_DIR!, 'schedules.json');
             fs.writeFileSync(schedulesFile, JSON.stringify({ schedules: [] }));
         });
 
         it('should return null on weekends', () => {
-            // Create a schedule for Monday
             scheduleStorage.createSchedule({
                 classroom_id: testClassroomId,
                 teacher_id: testTeacherId,
@@ -270,29 +289,26 @@ describe('Schedule Storage', () => {
                 end_time: '09:00'
             });
 
-            // Test with a Sunday
-            const sunday = new Date('2025-01-05T09:00:00'); // Sunday
+            const sunday = new Date('2025-01-05T09:00:00');
             const result = scheduleStorage.getCurrentSchedule(testClassroomId, sunday);
             assert.strictEqual(result, null);
         });
 
         it('should return correct schedule for current time', () => {
-            // Create schedule for Wednesday 08:00-09:00
             scheduleStorage.createSchedule({
                 classroom_id: testClassroomId,
                 teacher_id: testTeacherId,
                 group_id: testGroupId,
-                day_of_week: 3, // Wednesday
+                day_of_week: 3,
                 start_time: '08:00',
                 end_time: '09:00'
             });
 
-            // Test at 08:30 on Wednesday
-            const wednesday = new Date('2025-01-08T08:30:00'); // Wednesday
+            const wednesday = new Date('2025-01-08T08:30:00');
             const result = scheduleStorage.getCurrentSchedule(testClassroomId, wednesday);
 
             assert.ok(result);
-            assert.strictEqual(result.group_id, testGroupId);
+            assert.strictEqual(result?.group_id, testGroupId);
         });
 
         it('should return null outside scheduled times', () => {
@@ -305,7 +321,6 @@ describe('Schedule Storage', () => {
                 end_time: '09:00'
             });
 
-            // Test at 10:00 (outside 08:00-09:00)
             const wednesday = new Date('2025-01-08T10:00:00');
             const result = scheduleStorage.getCurrentSchedule(testClassroomId, wednesday);
             assert.strictEqual(result, null);
@@ -313,41 +328,36 @@ describe('Schedule Storage', () => {
     });
 
     describe('Whitelist Integration', () => {
-        let classroomStorage;
+        let classroomStorage: ClassroomStorage;
 
-        before(() => {
-            classroomStorage = require('../lib/classroom-storage');
+        before(async () => {
+            classroomStorage = await import('../src/lib/classroom-storage.js') as unknown as ClassroomStorage;
         });
 
         beforeEach(() => {
-            // Reset all data
-            const testDataDir = process.env.DATA_DIR;
+            const testDataDir = process.env.DATA_DIR!;
             fs.writeFileSync(path.join(testDataDir, 'schedules.json'), JSON.stringify({ schedules: [] }));
             fs.writeFileSync(path.join(testDataDir, 'classrooms.json'), JSON.stringify({ classrooms: [] }));
             fs.writeFileSync(path.join(testDataDir, 'machines.json'), JSON.stringify({ machines: [] }));
         });
 
         it('should use schedule group when no manual override', () => {
-            // Create classroom with default group
             const classroom = classroomStorage.createClassroom({
                 name: 'aula-test',
                 displayName: 'Aula Test',
                 defaultGroupId: 'default-group'
             });
 
-            // Register a machine
             classroomStorage.registerMachine({
                 hostname: 'pc-test-01',
                 classroomId: classroom.id
             });
 
-            // Create schedule for current time (simulate)
             const now = new Date();
             const dayOfWeek = now.getDay();
 
-            // Skip test on weekends
             if (dayOfWeek === 0 || dayOfWeek === 6) {
-                return; // Skip - can't test schedule on weekend
+                return;
             }
 
             const currentHour = now.getHours();
@@ -363,59 +373,51 @@ describe('Schedule Storage', () => {
                 end_time: endTime
             });
 
-            // Get whitelist URL
             const result = classroomStorage.getWhitelistUrlForMachine('pc-test-01');
 
             assert.ok(result);
-            assert.strictEqual(result.group_id, 'scheduled-group');
-            assert.strictEqual(result.source, 'schedule');
+            assert.strictEqual(result?.group_id, 'scheduled-group');
+            assert.strictEqual(result?.source, 'schedule');
         });
 
         it('should prefer manual override over schedule', () => {
-            // Create classroom with active group override
             const classroom = classroomStorage.createClassroom({
                 name: 'aula-override',
                 displayName: 'Aula Override',
                 defaultGroupId: 'default-group'
             });
 
-            // Set manual override
             classroomStorage.setActiveGroup(classroom.id, 'manual-group');
 
-            // Register a machine
             classroomStorage.registerMachine({
                 hostname: 'pc-override-01',
                 classroomId: classroom.id
             });
 
-            // Get whitelist URL
             const result = classroomStorage.getWhitelistUrlForMachine('pc-override-01');
 
             assert.ok(result);
-            assert.strictEqual(result.group_id, 'manual-group');
-            assert.strictEqual(result.source, 'manual');
+            assert.strictEqual(result?.group_id, 'manual-group');
+            assert.strictEqual(result?.source, 'manual');
         });
 
         it('should fall back to default group when no schedule', () => {
-            // Create classroom
             const classroom = classroomStorage.createClassroom({
                 name: 'aula-default',
                 displayName: 'Aula Default',
                 defaultGroupId: 'fallback-group'
             });
 
-            // Register machine
             classroomStorage.registerMachine({
                 hostname: 'pc-default-01',
                 classroomId: classroom.id
             });
 
-            // Get whitelist URL (no schedule, no override)
             const result = classroomStorage.getWhitelistUrlForMachine('pc-default-01');
 
             assert.ok(result);
-            assert.strictEqual(result.group_id, 'fallback-group');
-            assert.strictEqual(result.source, 'default');
+            assert.strictEqual(result?.group_id, 'fallback-group');
+            assert.strictEqual(result?.source, 'default');
         });
     });
 });

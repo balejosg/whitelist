@@ -2,82 +2,75 @@
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
-/**
  * Blocked Domains Tests - US3: Aprobación Delegada
- * 
- * Tests for the blocked domain validation feature:
- * - isDomainBlocked() function validates against blocked-subdomains.txt
- * - Teachers cannot approve blocked domains (403 DOMAIN_BLOCKED)
- * - Admins can override and approve blocked domains
- * - API endpoints for checking and listing blocked domains
- * 
- * Run with: npm run test:blocked-domains (or node --test tests/blocked-domains.test.js)
  */
 
-const { test, describe, before, after, mock } = require('node:test');
-const assert = require('node:assert');
+import { test, describe, before, after } from 'node:test';
+import assert from 'node:assert';
+import type { Server } from 'node:http';
 
 const PORT = 3002;
 const API_URL = `http://localhost:${PORT}`;
 
-// Global timeout - force exit if tests hang
 const GLOBAL_TIMEOUT = setTimeout(() => {
     console.error('\n❌ Blocked domains tests timed out! Forcing exit...');
     process.exit(1);
 }, 30000);
 GLOBAL_TIMEOUT.unref();
 
-let server;
-let adminToken = null;
-let teacherToken = null;
-let teacherUserId = null;
-let pendingRequestId = null;
+let server: Server | undefined;
+let adminToken: string | null = null;
+let teacherToken: string | null = null;
+let teacherUserId: string | null = null;
+let pendingRequestId: string | null = null;
 
 const TEACHER_EMAIL = `blocked-test-teacher-${Date.now()}@school.edu`;
 const TEACHER_PASSWORD = 'TeacherPassword123!';
 const TEACHER_GROUP = 'ciencias-3eso';
 
+interface UserResponse {
+    success: boolean;
+    user?: { id: string };
+    token?: string;
+}
+
+interface DomainCheckResponse {
+    success: boolean;
+    blocked?: boolean;
+    domains?: string[];
+    code?: string;
+    domain?: string;
+    hint?: string;
+}
+
+interface RequestResponse {
+    success: boolean;
+    request?: { id: string };
+    id?: string;
+}
+
 describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
     before(async () => {
-        // Clear module cache to avoid port conflicts
-        delete require.cache[require.resolve('../server.js')];
-
-        process.env.PORT = PORT;
+        process.env.PORT = String(PORT);
         process.env.ADMIN_TOKEN = 'test-admin-token';
 
-        const { app } = require('../server.js');
+        const { app } = await import('../server.js');
 
         server = app.listen(PORT, () => {
             console.log(`Blocked domains test server started on port ${PORT}`);
         });
 
         await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Use legacy admin token for setup
         adminToken = 'test-admin-token';
     });
 
     after(async () => {
         if (server) {
-            if (server.closeAllConnections) {
+            if ('closeAllConnections' in server && typeof server.closeAllConnections === 'function') {
                 server.closeAllConnections();
             }
-            await new Promise((resolve) => {
-                server.close(() => {
+            await new Promise<void>((resolve) => {
+                server?.close(() => {
                     console.log('Blocked domains test server closed');
                     resolve();
                 });
@@ -85,9 +78,6 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
         }
     });
 
-    // ============================================
-    // Setup: Create teacher user with role
-    // ============================================
     describe('Setup: Create Teacher with Role', () => {
         test('should create teacher user', async () => {
             const response = await fetch(`${API_URL}/api/users`, {
@@ -104,8 +94,8 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
             });
 
             assert.strictEqual(response.status, 201);
-            const data = await response.json();
-            teacherUserId = data.user.id;
+            const data = await response.json() as UserResponse;
+            teacherUserId = data.user?.id ?? null;
         });
 
         test('should assign teacher role with groups', async () => {
@@ -135,15 +125,12 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
             });
 
             assert.strictEqual(response.status, 200);
-            const data = await response.json();
+            const data = await response.json() as UserResponse;
             assert.ok(data.token);
-            teacherToken = data.token;
+            teacherToken = data.token ?? null;
         });
     });
 
-    // ============================================
-    // API: Check Domain Blocked Endpoint
-    // ============================================
     describe('POST /api/requests/domains/check - Check if domain is blocked', () => {
         test('should return blocked:true for known blocked domain', async () => {
             const response = await fetch(`${API_URL}/api/requests/domains/check`, {
@@ -156,9 +143,8 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
             });
 
             assert.strictEqual(response.status, 200);
-            const data = await response.json();
+            const data = await response.json() as DomainCheckResponse;
             assert.ok(data.success);
-            // Result depends on blocked-subdomains.txt content
             assert.ok(typeof data.blocked === 'boolean');
         });
 
@@ -173,9 +159,8 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
             });
 
             assert.strictEqual(response.status, 200);
-            const data = await response.json();
+            const data = await response.json() as DomainCheckResponse;
             assert.ok(data.success);
-            // wikipedia.org should typically not be blocked
         });
 
         test('should reject check without authentication', async () => {
@@ -202,9 +187,6 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
         });
     });
 
-    // ============================================
-    // API: List Blocked Domains (Admin only)
-    // ============================================
     describe('GET /api/requests/domains/blocked - List blocked domains', () => {
         test('should return list of blocked domains for admin', async () => {
             const response = await fetch(`${API_URL}/api/requests/domains/blocked`, {
@@ -212,7 +194,7 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
             });
 
             assert.strictEqual(response.status, 200);
-            const data = await response.json();
+            const data = await response.json() as DomainCheckResponse;
             assert.ok(data.success);
             assert.ok(Array.isArray(data.domains));
         });
@@ -232,21 +214,15 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
         });
     });
 
-    // ============================================
-    // Teacher Approval: Blocked Domain Handling
-    // ============================================
     describe('Teacher Approval of Blocked Domains', () => {
         test('setup: create a pending request for blocked domain', async () => {
-            // First, check which domains are blocked
             const blockedRes = await fetch(`${API_URL}/api/requests/domains/blocked`, {
                 headers: { 'Authorization': `Bearer ${adminToken}` }
             });
-            const blockedData = await blockedRes.json();
+            const blockedData = await blockedRes.json() as DomainCheckResponse;
 
-            // Use first blocked domain if available, otherwise use a common one
             const blockedDomain = blockedData.domains?.[0] || 'facebook.com';
 
-            // Create a pending request for this domain
             const response = await fetch(`${API_URL}/api/requests`, {
                 method: 'POST',
                 headers: {
@@ -261,12 +237,10 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
                 })
             });
 
-            // Store request ID for approval test if successful
             if (response.status === 201) {
-                const data = await response.json();
-                pendingRequestId = data.request?.id || data.id;
+                const data = await response.json() as RequestResponse;
+                pendingRequestId = data.request?.id || data.id || null;
             }
-            // Request creation might fail if domain already exists - that's ok
         });
 
         test('teacher should get DOMAIN_BLOCKED error when approving blocked domain', async () => {
@@ -284,9 +258,8 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
                 body: JSON.stringify({})
             });
 
-            // Should get 403 with DOMAIN_BLOCKED code
             assert.strictEqual(response.status, 403);
-            const data = await response.json();
+            const data = await response.json() as DomainCheckResponse;
             assert.strictEqual(data.code, 'DOMAIN_BLOCKED');
             assert.ok(data.domain);
             assert.ok(data.hint);
@@ -307,7 +280,6 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
                 body: JSON.stringify({})
             });
 
-            // Admin should succeed or get already approved
             assert.ok(
                 response.status === 200 || response.status === 400,
                 `Expected 200 or 400, got ${response.status}`
@@ -315,11 +287,8 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
         });
     });
 
-    // ============================================
-    // Non-blocked domain approval (teacher success)
-    // ============================================
     describe('Teacher Approval of Non-blocked Domains', () => {
-        let nonBlockedRequestId = null;
+        let nonBlockedRequestId: string | null = null;
 
         test('setup: create request for non-blocked domain', async () => {
             const safeDomain = `safe-test-${Date.now()}.example.org`;
@@ -339,8 +308,8 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
             });
 
             if (response.status === 201) {
-                const data = await response.json();
-                nonBlockedRequestId = data.request?.id || data.id;
+                const data = await response.json() as RequestResponse;
+                nonBlockedRequestId = data.request?.id || data.id || null;
             }
         });
 
@@ -359,7 +328,6 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
                 body: JSON.stringify({})
             });
 
-            // Should succeed (200) or be already approved (400)
             assert.ok(
                 response.status === 200 || response.status === 400,
                 `Expected success or already processed, got ${response.status}`

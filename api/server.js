@@ -30,35 +30,43 @@
  *   GET  /health               - Health check
  */
 
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const path = require('path');
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import rateLimit from 'express-rate-limit';
+import dotenv from 'dotenv';
 
 // Load environment variables from .env file
-require('dotenv').config();
+dotenv.config();
+
+// ESM __dirname equivalent
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Structured logging with Winston
-const logger = require('./lib/logger');
+import logger from './dist/lib/logger.js';
 
-const requestsRouter = require('./routes/requests');
-const healthReportsRouter = require('./routes/health-reports');
-const authRouter = require('./routes/auth');
-const usersRouter = require('./routes/users');
-const pushRouter = require('./routes/push');
-const classroomsRouter = require('./routes/classrooms');
-const schedulesRouter = require('./routes/schedules');
-const healthcheckRouter = require('./routes/healthcheck');
+import requestsRouter from './dist/routes/requests.js';
+import healthReportsRouter from './dist/routes/health-reports.js';
+import authRouter from './dist/routes/auth.js';
+import usersRouter from './dist/routes/users.js';
+import pushRouter from './dist/routes/push.js';
+import classroomsRouter from './dist/routes/classrooms.js';
+import schedulesRouter from './dist/routes/schedules.js';
+import healthcheckRouter from './dist/routes/healthcheck.js';
 
 // Error tracking and request ID middleware
-const { requestIdMiddleware, errorTrackingMiddleware } = require('./lib/error-tracking');
+import { requestIdMiddleware, errorTrackingMiddleware } from './dist/lib/error-tracking.js';
 
 // Swagger/OpenAPI (optional - only load if dependencies installed)
-let swaggerUi, getSwaggerSpec;
+let swaggerUi;
+let getSwaggerSpec;
 try {
-    swaggerUi = require('swagger-ui-express');
-    getSwaggerSpec = require('./lib/swagger').getSwaggerSpec;
-} catch (e) {
+    swaggerUi = (await import('swagger-ui-express')).default;
+    getSwaggerSpec = (await import('./dist/lib/swagger.js')).getSwaggerSpec;
+} catch {
     // Swagger dependencies not installed - skip
 }
 
@@ -115,7 +123,6 @@ app.use(cors({
 
 // Global rate limiter - protection against DDoS and abuse
 // Individual routes may have stricter limits
-const rateLimit = require('express-rate-limit');
 const globalLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
     max: process.env.RATE_LIMIT_MAX || 200, // 200 requests per minute per IP
@@ -277,7 +284,7 @@ app.use(errorTrackingMiddleware);
 // Start Server
 // =============================================================================
 
-// Only start server if this file is run directly (not required)
+// Only start server if this file is run directly (not imported)
 let server;
 
 // =============================================================================
@@ -325,7 +332,10 @@ const gracefulShutdown = (signal) => {
     process.exit(0);
 };
 
-if (require.main === module) {
+// Check if this is the main module (ESM equivalent of require.main === module)
+const isMainModule = import.meta.url === `file://${process.argv[1]}`;
+
+if (isMainModule) {
     server = app.listen(PORT, HOST, () => {
         logger.info('Server started', {
             host: HOST,
@@ -381,6 +391,5 @@ if (require.main === module) {
     });
 }
 
-// Export both app and server for testing
-module.exports = { app, server };
-
+// Export both app and server for testing (ESM exports)
+export { app, server };

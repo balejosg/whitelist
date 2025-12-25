@@ -2,39 +2,28 @@
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
-/**
  * Test Runner for running all test suites sequentially
  * 
  * This script runs each test file in a separate child process to avoid
  * module cache conflicts when multiple test files need to start servers.
  */
 
-const { spawn } = require('child_process');
-const path = require('path');
+import { spawn } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const testFiles = [
-    'tests/api.test.js',
-    'tests/auth.test.js',
-    'tests/roles.test.js',
-    'tests/blocked-domains.test.js',
-    'tests/classrooms.test.js',
-    'tests/push.test.js',
-    'tests/integration.test.js',
-    'tests/e2e.test.js'
+    'tests/api.test.ts',
+    'tests/auth.test.ts',
+    'tests/roles.test.ts',
+    'tests/blocked-domains.test.ts',
+    'tests/classrooms.test.ts',
+    'tests/push.test.ts',
+    'tests/integration.test.ts',
+    'tests/e2e.test.ts'
 ];
 
 let currentIndex = 0;
@@ -59,7 +48,7 @@ function runNextTest() {
     console.log('='.repeat(60) + '\n');
 
     const child = spawn('node', ['--test', '--test-force-exit', testFile], {
-        cwd: path.join(__dirname),
+        cwd: path.join(__dirname, '..'),
         stdio: 'inherit',
         env: { ...process.env }
     });

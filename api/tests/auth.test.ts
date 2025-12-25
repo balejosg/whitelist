@@ -24,8 +24,9 @@
  * These tests run on a separate port (3001) to avoid conflicts with the main tests.
  */
 
-const { test, describe, before, after } = require('node:test');
-const assert = require('node:assert');
+import { test, describe, before, after } from 'node:test';
+import assert from 'node:assert';
+import type { Server } from 'node:http';
 
 const PORT = 3001;
 const API_URL = `http://localhost:${PORT}`;
@@ -37,18 +38,21 @@ const GLOBAL_TIMEOUT = setTimeout(() => {
 }, 15000);
 GLOBAL_TIMEOUT.unref();
 
-let server;
-let testUserToken = null;
+let server: Server | undefined;
+let testUserToken: string | null = null;
 
-
+interface AuthResponse {
+    success: boolean;
+    user?: { id: string; email: string; name: string };
+    accessToken?: string;
+    refreshToken?: string;
+    error?: string;
+}
 
 describe('Authentication & User Management API Tests', { timeout: 30000 }, () => {
     before(async () => {
-        // Clear module cache to avoid port conflicts
-        delete require.cache[require.resolve('../server.js')];
-
-        process.env.PORT = PORT;
-        const { app } = require('../server.js');
+        process.env.PORT = String(PORT);
+        const { app } = await import('../server.js');
 
         server = app.listen(PORT, () => {
             console.log(`Auth test server started on port ${PORT}`);
@@ -59,11 +63,11 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
 
     after(async () => {
         if (server) {
-            if (server.closeAllConnections) {
+            if ('closeAllConnections' in server && typeof server.closeAllConnections === 'function') {
                 server.closeAllConnections();
             }
-            await new Promise((resolve) => {
-                server.close(() => {
+            await new Promise<void>((resolve) => {
+                server?.close(() => {
                     console.log('Auth test server closed');
                     resolve();
                 });
@@ -90,10 +94,10 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
 
             assert.strictEqual(response.status, 201);
 
-            const data = await response.json();
+            const data = await response.json() as AuthResponse;
             assert.ok(data.success);
             assert.ok(data.user);
-            assert.ok(data.user.id);
+            assert.ok(data.user?.id);
         });
 
         test('should reject registration without email', async () => {
@@ -146,7 +150,6 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
                 })
             });
 
-            // Expect 409 (duplicate) or 429 (rate limited) - both are valid rejections
             assert.ok([409, 429].includes(response.status), `Expected 409 or 429, got ${response.status}`);
         });
     });
@@ -155,8 +158,8 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
     // Login Tests
     // ============================================
     describe('POST /api/auth/login - User Login', () => {
-        let testEmail;
-        let testPassword = 'SecurePassword123!';
+        let testEmail: string;
+        const testPassword = 'SecurePassword123!';
 
         before(async () => {
             testEmail = `login-test-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
@@ -169,7 +172,6 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
                     name: 'Login Test User'
                 })
             });
-            // Log if registration failed to help debugging
             if (regResponse.status !== 201) {
                 console.log(`Note: Registration returned ${regResponse.status}`);
             }
@@ -185,17 +187,16 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
                 })
             });
 
-            // May return 401 if registration failed (e.g., duplicate)
             assert.ok([200, 401].includes(response.status), `Expected 200 or 401, got ${response.status}`);
 
             if (response.status === 200) {
-                const data = await response.json();
+                const data = await response.json() as AuthResponse;
                 assert.ok(data.success);
                 assert.ok(data.accessToken);
                 assert.ok(data.refreshToken);
                 assert.ok(data.user);
 
-                testUserToken = data.accessToken;
+                testUserToken = data.accessToken ?? null;
             }
         });
 
@@ -230,7 +231,7 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
     // Token Refresh Tests
     // ============================================
     describe('POST /api/auth/refresh - Token Refresh', () => {
-        let refreshToken = null;
+        let refreshToken: string | null = null;
 
         before(async () => {
             const email = `refresh-test-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
@@ -255,13 +256,12 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
             });
 
             if (loginResponse.status === 200) {
-                const data = await loginResponse.json();
-                refreshToken = data.refreshToken;
+                const data = await loginResponse.json() as AuthResponse;
+                refreshToken = data.refreshToken ?? null;
             }
         });
 
         test('should refresh tokens with valid refresh token', async () => {
-            // Skip if no refresh token (login failed in before hook)
             if (!refreshToken) {
                 console.log('Skipping: refreshToken not available');
                 return;
@@ -275,12 +275,11 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
 
             assert.strictEqual(response.status, 200);
 
-            const data = await response.json();
+            const data = await response.json() as AuthResponse;
             assert.ok(data.success);
             assert.ok(data.accessToken);
             assert.ok(data.refreshToken);
         });
-
 
         test('should reject invalid refresh token', async () => {
             const response = await fetch(`${API_URL}/api/auth/refresh`, {

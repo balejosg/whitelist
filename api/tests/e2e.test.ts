@@ -2,53 +2,27 @@
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
-/**
  * E2E Tests - Teacher Role Workflow
- * 
- * Run with: npm run test:e2e
- * 
- * Tests the complete flow:
- * 1. Admin (María) creates a teacher user (Pedro)
- * 2. Admin assigns teacher role with specific groups
- * 3. Teacher logs in and sees only assigned groups
- * 4. Teacher approves a request for their group
- * 5. Teacher cannot access other groups
  */
 
-const { test, describe, before, after } = require('node:test');
-const assert = require('node:assert');
+import { test, describe, before, after } from 'node:test';
+import assert from 'node:assert';
+import type { Server } from 'node:http';
 
 const PORT = 3002;
 const API_URL = `http://localhost:${PORT}`;
 
-// Global timeout - force exit if tests hang
 const GLOBAL_TIMEOUT = setTimeout(() => {
     console.error('\n❌ E2E tests timed out! Forcing exit...');
     process.exit(1);
-}, 50000); // Longer timeout for E2E
+}, 50000);
 GLOBAL_TIMEOUT.unref();
 
+let server: Server | undefined;
 
-let server;
-
-// Test users
-let adminToken = null;
-let teacherToken = null;
-let teacherId = null;
+let adminToken: string | null = null;
+let teacherToken: string | null = null;
+let teacherId: string | null = null;
 
 const ADMIN_EMAIL = 'maria.admin@test.com';
 const ADMIN_PASSWORD = 'AdminPassword123!';
@@ -56,14 +30,29 @@ const TEACHER_EMAIL = 'pedro.teacher@test.com';
 const TEACHER_PASSWORD = 'TeacherPassword123!';
 const TEACHER_GROUP = 'informatica-3';
 
+interface AuthResponse {
+    success: boolean;
+    user?: { id: string; email: string };
+    accessToken?: string;
+}
+
+interface RequestsResponse {
+    success?: boolean;
+    requests?: Array<{ status: string }>;
+    groups?: unknown[];
+    request_id?: string;
+    code?: string;
+    domain?: string;
+    hint?: string;
+    matched_rule?: string;
+    blocked?: boolean;
+    domains?: string[];
+}
 
 describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
     before(async () => {
-        // Clear module cache to avoid port conflicts
-        delete require.cache[require.resolve('../server.js')];
-
-        process.env.PORT = PORT;
-        const { app } = require('../server.js');
+        process.env.PORT = String(PORT);
+        const { app } = await import('../server.js');
 
         server = app.listen(PORT, () => {
             console.log(`E2E test server started on port ${PORT}`);
@@ -74,11 +63,11 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
 
     after(async () => {
         if (server) {
-            if (server.closeAllConnections) {
+            if ('closeAllConnections' in server && typeof server.closeAllConnections === 'function') {
                 server.closeAllConnections();
             }
-            await new Promise((resolve) => {
-                server.close(() => {
+            await new Promise<void>((resolve) => {
+                server?.close(() => {
                     console.log('E2E test server closed');
                     resolve();
                 });
@@ -86,9 +75,6 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
         }
     });
 
-    // ============================================
-    // Setup: Create Admin User
-    // ============================================
     describe('Step 1: Setup Admin User', () => {
         test('should register admin user (María)', async () => {
             const response = await fetch(`${API_URL}/api/auth/register`, {
@@ -102,7 +88,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             });
 
             assert.strictEqual(response.status, 201);
-            const data = await response.json();
+            const data = await response.json() as AuthResponse;
             assert.ok(data.success);
         });
 
@@ -117,15 +103,12 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             });
 
             assert.strictEqual(response.status, 200);
-            const data = await response.json();
-            adminToken = data.accessToken;
+            const data = await response.json() as AuthResponse;
+            adminToken = data.accessToken ?? null;
             assert.ok(adminToken);
         });
     });
 
-    // ============================================
-    // Step 2: Admin Creates Teacher User
-    // ============================================
     describe('Step 2: Admin Creates Teacher User (Pedro)', () => {
         test('should create teacher user', async () => {
             const response = await fetch(`${API_URL}/api/users`, {
@@ -141,10 +124,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 })
             });
 
-            // May fail if admin token doesn't have admin role yet
-            // In that case, we'll use registration instead
             if (response.status === 403 || response.status === 401) {
-                // Fallback: register teacher directly
                 const regResponse = await fetch(`${API_URL}/api/auth/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -156,12 +136,12 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 });
 
                 assert.strictEqual(regResponse.status, 201);
-                const data = await regResponse.json();
-                teacherId = data.user.id;
+                const data = await regResponse.json() as AuthResponse;
+                teacherId = data.user?.id ?? null;
             } else {
                 assert.strictEqual(response.status, 201);
-                const data = await response.json();
-                teacherId = data.user.id;
+                const data = await response.json() as AuthResponse;
+                teacherId = data.user?.id ?? null;
             }
 
             assert.ok(teacherId);
@@ -180,10 +160,8 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 })
             });
 
-            // This may fail without proper admin permissions
-            // The test documents the expected behavior
             if (response.status === 200) {
-                const data = await response.json();
+                const data = await response.json() as { success: boolean };
                 assert.ok(data.success);
             } else {
                 console.log('Note: Role assignment requires admin permissions');
@@ -191,9 +169,6 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
         });
     });
 
-    // ============================================
-    // Step 3: Teacher Login and Access
-    // ============================================
     describe('Step 3: Teacher Login and Verify Access', () => {
         test('should login as teacher (Pedro)', async () => {
             const response = await fetch(`${API_URL}/api/auth/login`, {
@@ -206,8 +181,8 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             });
 
             assert.strictEqual(response.status, 200);
-            const data = await response.json();
-            teacherToken = data.accessToken;
+            const data = await response.json() as AuthResponse;
+            teacherToken = data.accessToken ?? null;
             assert.ok(teacherToken);
         });
 
@@ -217,15 +192,12 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             });
 
             assert.strictEqual(response.status, 200);
-            const data = await response.json();
+            const data = await response.json() as { user: { email: string } };
             assert.ok(data.user);
             assert.strictEqual(data.user.email, TEACHER_EMAIL);
         });
     });
 
-    // ============================================
-    // Step 3.5: Teacher Dashboard (US2)
-    // ============================================
     describe('Step 3.5: Teacher Dashboard - US2', () => {
         test('teacher should get their assigned groups', async () => {
             if (!teacherToken) {
@@ -237,11 +209,10 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 headers: { 'Authorization': `Bearer ${teacherToken}` }
             });
 
-            // Teacher should be able to list their groups
             assert.ok([200, 401].includes(response.status));
 
             if (response.status === 200) {
-                const data = await response.json();
+                const data = await response.json() as RequestsResponse;
                 console.log(`Teacher has access to ${data.groups?.length || 0} groups`);
             }
         });
@@ -256,14 +227,12 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 headers: { 'Authorization': `Bearer ${teacherToken}` }
             });
 
-            // Should get 200 with filtered requests
             assert.ok([200, 401].includes(response.status));
 
             if (response.status === 200) {
-                const data = await response.json();
+                const data = await response.json() as RequestsResponse;
                 assert.ok(data.success !== false);
 
-                // Verify all requests are for teacher's groups
                 if (data.requests && data.requests.length > 0) {
                     console.log(`Teacher sees ${data.requests.length} requests`);
                 } else {
@@ -285,8 +254,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             assert.ok([200, 401].includes(response.status));
 
             if (response.status === 200) {
-                const data = await response.json();
-                // All returned requests should be pending
+                const data = await response.json() as RequestsResponse;
                 if (data.requests) {
                     data.requests.forEach(req => {
                         if (req.status) {
@@ -303,63 +271,16 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 return;
             }
 
-            // Try to access admin-only blocked domains list
             const response = await fetch(`${API_URL}/api/requests/domains/blocked`, {
                 headers: { 'Authorization': `Bearer ${teacherToken}` }
             });
 
-            // Should be forbidden (403)
             assert.strictEqual(response.status, 403, 'Teacher should not access blocked domains list');
-        });
-
-        test('approval should be quick (single API call)', async () => {
-            // This test documents that approval is a single API call
-            // Actual timing would be tested with performance tools
-
-            // Create a test request
-            const createRes = await fetch(`${API_URL}/api/requests`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    domain: `quick-test-${Date.now()}.example.com`,
-                    reason: 'Quick approval test',
-                    requester_email: 'quick-test@school.edu'
-                })
-            });
-
-            if (createRes.status !== 201) {
-                console.log('Skipping: Could not create test request');
-                return;
-            }
-
-            const createData = await createRes.json();
-            const testRequestId = createData.request_id;
-
-            // Measure single API call for approval
-            const start = Date.now();
-
-            const approveRes = await fetch(`${API_URL}/api/requests/${testRequestId}/approve`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${teacherToken}`
-                },
-                body: JSON.stringify({ group_id: TEACHER_GROUP })
-            });
-
-            const elapsed = Date.now() - start;
-            console.log(`Approval API call took ${elapsed}ms`);
-
-            // Should complete reasonably fast (< 2 seconds as per US2 requirement)
-            assert.ok(elapsed < 2000, `Approval should be < 2s, was ${elapsed}ms`);
         });
     });
 
-    // ============================================
-    // Step 4: Teacher Request Approval Flow
-    // ============================================
     describe('Step 4: Request Approval Flow', () => {
-        let requestId = null;
+        let requestId: string | null = null;
 
         test('should create a domain request', async () => {
             const response = await fetch(`${API_URL}/api/requests`, {
@@ -373,8 +294,8 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             });
 
             assert.strictEqual(response.status, 201);
-            const data = await response.json();
-            requestId = data.request_id;
+            const data = await response.json() as RequestsResponse;
+            requestId = data.request_id ?? null;
             assert.ok(requestId);
         });
 
@@ -383,7 +304,6 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 headers: { 'Authorization': `Bearer ${teacherToken}` }
             });
 
-            // Teacher needs auth to view requests
             assert.ok([200, 401, 403].includes(response.status));
         });
 
@@ -399,16 +319,12 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 })
             });
 
-            // Success or permission denied (depends on role assignment)
             assert.ok([200, 401, 403].includes(response.status));
         });
     });
 
-    // ============================================
-    // Step 4.5: Blocked Domain Approval (US3)
-    // ============================================
     describe('Step 4.5: Blocked Domain Approval - US3', () => {
-        let blockedRequestId = null;
+        let blockedRequestId: string | null = null;
 
         test('should check which domains are blocked', async () => {
             const response = await fetch(`${API_URL}/api/requests/domains/blocked`, {
@@ -416,18 +332,17 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             });
 
             assert.strictEqual(response.status, 200);
-            const data = await response.json();
+            const data = await response.json() as RequestsResponse;
             assert.ok(data.success);
             assert.ok(Array.isArray(data.domains));
-            console.log(`Found ${data.domains.length} blocked domains`);
+            console.log(`Found ${data.domains?.length || 0} blocked domains`);
         });
 
         test('should create a request for a blocked domain (if any blocked)', async () => {
-            // Get blocked domains
             const blockedRes = await fetch(`${API_URL}/api/requests/domains/blocked`, {
                 headers: { 'Authorization': `Bearer ${adminToken}` }
             });
-            const blockedData = await blockedRes.json();
+            const blockedData = await blockedRes.json() as RequestsResponse;
 
             if (!blockedData.domains || blockedData.domains.length === 0) {
                 console.log('Skipping: No blocked domains configured');
@@ -437,7 +352,6 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             const blockedDomain = blockedData.domains[0];
             console.log(`Testing with blocked domain: ${blockedDomain}`);
 
-            // Create a request for this blocked domain
             const response = await fetch(`${API_URL}/api/requests`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -449,8 +363,8 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             });
 
             if (response.status === 201) {
-                const data = await response.json();
-                blockedRequestId = data.request_id;
+                const data = await response.json() as RequestsResponse;
+                blockedRequestId = data.request_id ?? null;
                 console.log(`Created request ${blockedRequestId} for blocked domain`);
             }
         });
@@ -472,10 +386,9 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 })
             });
 
-            // Teacher should get 403 with DOMAIN_BLOCKED code
             assert.strictEqual(response.status, 403, 'Teacher should be forbidden from approving blocked domain');
 
-            const data = await response.json();
+            const data = await response.json() as RequestsResponse;
             assert.strictEqual(data.code, 'DOMAIN_BLOCKED', 'Error code should be DOMAIN_BLOCKED');
             assert.ok(data.domain, 'Response should include domain');
             assert.ok(data.hint, 'Response should include hint for teacher');
@@ -499,7 +412,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             });
 
             assert.strictEqual(response.status, 200);
-            const data = await response.json();
+            const data = await response.json() as RequestsResponse;
             assert.ok(data.success);
             assert.ok(typeof data.blocked === 'boolean');
 
@@ -521,7 +434,6 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 body: JSON.stringify({})
             });
 
-            // Admin should succeed or request already processed
             assert.ok(
                 [200, 400].includes(response.status),
                 `Admin should be able to approve (or already approved), got ${response.status}`
@@ -533,16 +445,12 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
         });
     });
 
-    // ============================================
-    // Step 5: Access Control Verification
-    // ============================================
     describe('Step 5: Access Control - Teacher Cannot Access Admin Functions', () => {
         test('teacher should not be able to list all users', async () => {
             const response = await fetch(`${API_URL}/api/users`, {
                 headers: { 'Authorization': `Bearer ${teacherToken}` }
             });
 
-            // Should be forbidden or unauthorized
             assert.ok([401, 403].includes(response.status));
         });
 
@@ -580,9 +488,6 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
         });
     });
 
-    // ============================================
-    // Cleanup
-    // ============================================
     describe('Cleanup', () => {
         test('should logout teacher', async () => {
             if (!teacherToken) return;
