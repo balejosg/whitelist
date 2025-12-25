@@ -102,10 +102,78 @@ function createError(message, statusCode = 500, code = null) {
     return error;
 }
 
+/**
+ * Async handler wrapper - catches async errors and passes to error middleware
+ * Usage: router.get('/path', asyncHandler(async (req, res) => { ... }))
+ */
+function asyncHandler(fn) {
+    return (req, res, next) => {
+        Promise.resolve(fn(req, res, next)).catch(next);
+    };
+}
+
+/**
+ * Standardized API response helpers
+ */
+const apiResponse = {
+    success: (res, data, statusCode = 200) => {
+        res.status(statusCode).json({
+            success: true,
+            ...data
+        });
+    },
+
+    error: (res, message, code, statusCode = 400, details = null) => {
+        const response = {
+            success: false,
+            error: message,
+            code: code
+        };
+        if (details) response.details = details;
+        res.status(statusCode).json(response);
+    },
+
+    notFound: (res, message = 'Resource not found') => {
+        res.status(404).json({
+            success: false,
+            error: message,
+            code: 'NOT_FOUND'
+        });
+    },
+
+    unauthorized: (res, message = 'Authentication required') => {
+        res.status(401).json({
+            success: false,
+            error: message,
+            code: 'UNAUTHORIZED'
+        });
+    },
+
+    forbidden: (res, message = 'Access denied') => {
+        res.status(403).json({
+            success: false,
+            error: message,
+            code: 'FORBIDDEN'
+        });
+    },
+
+    validationError: (res, message = 'Validation failed', details = null) => {
+        const response = {
+            success: false,
+            error: message,
+            code: 'VALIDATION_ERROR'
+        };
+        if (details) response.details = details;
+        res.status(400).json(response);
+    }
+};
+
 module.exports = {
     ErrorCategory,
     requestIdMiddleware,
     errorTrackingMiddleware,
     logError,
-    createError
+    createError,
+    asyncHandler,
+    apiResponse
 };

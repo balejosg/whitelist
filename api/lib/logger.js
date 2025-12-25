@@ -66,23 +66,42 @@ logger.child = (meta) => {
     };
 };
 
-// Express middleware for request logging
+// Slow request threshold (configurable via env, default 1000ms)
+const SLOW_REQUEST_THRESHOLD_MS = parseInt(process.env.SLOW_REQUEST_THRESHOLD_MS || '1000', 10);
+
+// Express middleware for request logging with slow request detection
 logger.requestMiddleware = (req, res, next) => {
     const start = Date.now();
 
     res.on('finish', () => {
         const duration = Date.now() - start;
-        const level = res.statusCode >= 400 ? 'warn' : 'info';
+        const isSlow = duration > SLOW_REQUEST_THRESHOLD_MS;
 
-        logger[level](`${req.method} ${req.path}`, {
+        // Determine log level: error for 5xx, warn for 4xx or slow, info for success
+        let level = 'info';
+        if (res.statusCode >= 500) {
+            level = 'error';
+        } else if (res.statusCode >= 400 || isSlow) {
+            level = 'warn';
+        }
+
+        const logData = {
             requestId: req.id,
             method: req.method,
             path: req.path,
             statusCode: res.statusCode,
-            duration: `${duration}ms`,
+            durationMs: duration,
             userAgent: req.get('user-agent'),
             ip: req.ip
-        });
+        };
+
+        // Add slow request flag for alerting
+        if (isSlow) {
+            logData.slow = true;
+            logData.threshold = SLOW_REQUEST_THRESHOLD_MS;
+        }
+
+        logger[level](`${req.method} ${req.path} ${res.statusCode} ${duration}ms${isSlow ? ' [SLOW]' : ''}`, logData);
     });
 
     next();

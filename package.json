@@ -1,0 +1,43 @@
+{
+  "name": "openpath",
+  "version": "3.5.0",
+  "description": "DNS-based URL whitelist enforcement system for educational environments",
+  "private": true,
+  "scripts": {
+    "prepare": "husky || true",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint:shell": "shellcheck linux/lib/*.sh linux/scripts/**/*.sh || true",
+    "test": "npm run test:shell && npm run test:api",
+    "test:shell": "cd tests && bats *.bats",
+    "test:api": "cd api && npm test"
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.10"
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix"
+    ],
+    "*.sh": [
+      "shellcheck"
+    ]
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brunomcr/openpath.git"
+  },
+  "keywords": [
+    "dns",
+    "whitelist",
+    "dnsmasq",
+    "education",
+    "content-filter"
+  ],
+  "license": "MIT"
+}
