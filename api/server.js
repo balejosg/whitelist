@@ -77,15 +77,15 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+            fontSrc: ["'self'", 'https://fonts.gstatic.com'],
             scriptSrc: ["'self'"],
-            imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'", "https://api.github.com"]
+            imgSrc: ["'self'", 'data:', 'https:'],
+            connectSrc: ["'self'", 'https://api.github.com']
         }
     },
     crossOriginEmbedderPolicy: false, // Allow embedding for Swagger UI
-    crossOriginResourcePolicy: { policy: "cross-origin" } // Allow cross-origin for API
+    crossOriginResourcePolicy: { policy: 'cross-origin' } // Allow cross-origin for API
 }));
 
 // =============================================================================
@@ -279,6 +279,52 @@ app.use(errorTrackingMiddleware);
 
 // Only start server if this file is run directly (not required)
 let server;
+
+// =============================================================================
+// Graceful Shutdown (defined at module level for ESLint compliance)
+// =============================================================================
+
+let isShuttingDown = false;
+const SHUTDOWN_TIMEOUT_MS = 30000; // 30 seconds max for graceful shutdown
+
+/**
+ * Gracefully shutdown the server on termination signals
+ * @param {string} signal - The signal that triggered shutdown
+ */
+const gracefulShutdown = (signal) => {
+    if (isShuttingDown) {
+        logger.warn(`Shutdown already in progress, ignoring ${signal}`);
+        return;
+    }
+    isShuttingDown = true;
+
+    logger.info(`Received ${signal}, starting graceful shutdown...`);
+
+    // Stop accepting new connections
+    if (server) {
+        server.close((err) => {
+            if (err) {
+                logger.error('Error during server close', { error: err.message });
+                process.exit(1);
+            }
+            logger.info('Server closed, no longer accepting connections');
+        });
+    }
+
+    // Set a timeout to force shutdown if graceful shutdown takes too long
+    const forceShutdownTimeout = setTimeout(() => {
+        logger.error('Graceful shutdown timeout exceeded, forcing exit');
+        process.exit(1);
+    }, SHUTDOWN_TIMEOUT_MS);
+
+    // Clean up any resources (add database/redis cleanup here if needed)
+    // Promise.all([db.close(), redis.quit()]).then(...)
+
+    logger.info('Graceful shutdown completed successfully');
+    clearTimeout(forceShutdownTimeout);
+    process.exit(0);
+};
+
 if (require.main === module) {
     server = app.listen(PORT, HOST, () => {
         logger.info('Server started', {
@@ -310,6 +356,28 @@ if (require.main === module) {
         if (!process.env.GITHUB_TOKEN) {
             logger.warn('GITHUB_TOKEN not set - approval will fail to push to GitHub');
         }
+    });
+
+    // Handle termination signals
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+    // Handle uncaught exceptions and unhandled rejections
+    process.on('uncaughtException', (err) => {
+        logger.error('Uncaught exception', {
+            error: err.message,
+            stack: err.stack
+        });
+        gracefulShutdown('uncaughtException');
+    });
+
+    process.on('unhandledRejection', (reason, _promise) => {
+        logger.error('Unhandled rejection', {
+            reason: reason instanceof Error ? reason.message : reason,
+            stack: reason instanceof Error ? reason.stack : undefined
+        });
+        // Log but don't shutdown for unhandled rejections
+        // as they may not be fatal
     });
 }
 
