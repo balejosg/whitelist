@@ -25,9 +25,8 @@
 
 const DEFAULT_CONFIG = {
     // Home server URL for domain requests API
-    // Change this to your DuckDNS domain when deployed
-    // Example: 'https://openpath-requests.duckdns.org'
-    REQUEST_API_URL: 'http://localhost:3000',
+    // Production API endpoint
+    REQUEST_API_URL: 'https://openpath-api.duckdns.org',
 
     // Fallback API URLs (tried in order if primary fails)
     FALLBACK_API_URLS: [],

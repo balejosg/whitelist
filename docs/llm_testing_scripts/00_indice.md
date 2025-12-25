@@ -16,7 +16,7 @@ OpenPath está desplegado y listo para usar. **No necesitas instalar servidores*
 | Componente | URL | Descripción |
 |------------|-----|-------------|
 | **SPA (Dashboard)** | `https://balejosg.github.io/openpath` | Interfaz web para Admin/Profesor |
-| **API** | `https://openpath.duckdns.org` | Servidor de API (ya desplegado) |
+| **API** | `https://openpath-api.duckdns.org` | Servidor de API (ya desplegado) |
 | **Whitelist** | `https://raw.githubusercontent.com/balejosg/openpath/main/whitelist.txt` | Archivo de whitelist |
 
 > [!IMPORTANT]
@@ -65,7 +65,7 @@ sudo apt install openpath-dnsmasq
 git clone https://github.com/balejosg/openpath.git
 cd openpath/linux
 sudo ./install.sh --classroom "informatica-1" \
-  --api-url "https://openpath.duckdns.org" \
+  --api-url "https://openpath-api.duckdns.org" \
   --whitelist-url "https://raw.githubusercontent.com/balejosg/openpath/main/whitelist.txt"
 ```
 

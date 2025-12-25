@@ -2,14 +2,20 @@
     "name": "openpath-spa",
     "version": "1.0.0",
     "description": "OpenPath SPA Dashboard",
+    "type": "module",
     "scripts": {
+        "build": "tsc",
+        "typecheck": "tsc --noEmit",
+        "dev": "tsc --watch",
         "test": "node --test tests/",
         "test:e2e": "npx playwright test",
         "test:e2e:headed": "npx playwright test --headed",
         "test:e2e:ui": "npx playwright test --ui"
     },
     "devDependencies": {
-        "@playwright/test": "^1.40.0"
+        "@playwright/test": "^1.40.0",
+        "@types/node": "^22.10.2",
+        "typescript": "^5.7.2"
     },
     "engines": {
         "node": ">=18.0.0"
