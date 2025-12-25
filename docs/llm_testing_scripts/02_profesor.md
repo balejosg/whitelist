@@ -706,7 +706,7 @@ Probarás la aplicación desde la perspectiva de un profesor que usa principalme
 | 9.1 | Flujo YouTube | Escenario real | ⬜ |
 | 9.2 | Preparar clase | Pre-aprobación | ⬜ |
 
-**Total: 39 tests de UI**
+### Total: 39 tests de UI**
 
 ---
 

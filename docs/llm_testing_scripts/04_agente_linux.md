@@ -698,4 +698,4 @@ openpath status
 | 12.3 | URL inválida | Manejo errores | ⬜ |
 | 12.4 | Emergency | Desactivación remota | ⬜ |
 
-**Total: 41 tests de sistema**
+### Total: 41 tests de sistema**

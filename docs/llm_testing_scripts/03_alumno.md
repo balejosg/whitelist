@@ -474,7 +474,7 @@ La experiencia debe ser simple y sin fricciones.
 | 8.1 | Wikipedia | Escenario real | ⬜ |
 | 8.2 | Instagram | Rechazo | ⬜ |
 
-**Total: 28 tests de UI**
+### Total: 28 tests de UI**
 
 ---
 

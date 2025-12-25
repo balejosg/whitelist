@@ -43,6 +43,25 @@
         "@typescript-eslint/no-explicit-any": "error",
         "@typescript-eslint/strict-boolean-expressions": "warn"
     },
+    "overrides": [
+        {
+            "files": [
+                "tests/**/*.ts"
+            ],
+            "parserOptions": {
+                "project": "./tsconfig.tests.json"
+            },
+            "rules": {
+                "@typescript-eslint/no-explicit-any": "off",
+                "@typescript-eslint/explicit-function-return-type": "off",
+                "@typescript-eslint/no-unsafe-assignment": "off",
+                "@typescript-eslint/no-unsafe-member-access": "off",
+                "@typescript-eslint/no-unsafe-call": "off",
+                "@typescript-eslint/no-unsafe-argument": "off",
+                "@typescript-eslint/no-floating-promises": "off"
+            }
+        }
+    ],
     "ignorePatterns": [
         "node_modules/",
         "coverage/",

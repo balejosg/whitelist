@@ -803,7 +803,7 @@ Usarás el navegador para interactuar con la aplicación. Para cada test:
 | 10.1 | Vista tablet | Responsive | ⬜ |
 | 10.2 | Accesibilidad | Teclado | ⬜ |
 
-**Total: 44 tests de UI**
+### Total: 44 tests de UI**
 
 ---
 
