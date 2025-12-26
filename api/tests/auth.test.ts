@@ -150,7 +150,7 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
                 })
             });
 
-            assert.ok([409, 429].includes(response.status), `Expected 409 or 429, got ${response.status}`);
+            assert.ok([409, 429].includes(response.status) === true, `Expected 409 or 429, got ${response.status}`);
         });
     });
 
@@ -187,7 +187,7 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
                 })
             });
 
-            assert.ok([200, 401].includes(response.status), `Expected 200 or 401, got ${response.status}`);
+            assert.ok([200, 401].includes(response.status) === true, `Expected 200 or 401, got ${response.status}`);
 
             if (response.status === 200) {
                 const data = await response.json() as AuthResponse;

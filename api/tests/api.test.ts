@@ -74,7 +74,7 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 200);
 
             const data = await response.json() as { status: string; timestamp: string };
-            assert.ok(['ok', 'degraded'].includes(data.status), `Expected ok or degraded, got ${data.status}`);
+            assert.ok(['ok', 'degraded'].includes(data.status) === true, `Expected ok or degraded, got ${data.status}`);
             assert.ok(data.timestamp !== undefined && data.timestamp !== '');
         });
     });
@@ -246,8 +246,8 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
 
             const data = await response.json() as { success: boolean; code: string };
             assert.strictEqual(data.success, false);
-            assert.ok([401, 500].includes(response.status), `Expected 401 or 500, got ${response.status}`);
-            assert.ok(['INVALID_TOKEN', 'SERVER_ERROR'].includes(data.code), `Expected INVALID_TOKEN or SERVER_ERROR, got ${data.code}`);
+            assert.ok([401, 500].includes(response.status) === true, `Expected 401 or 500, got ${response.status}`);
+            assert.ok(['INVALID_TOKEN', 'SERVER_ERROR'].includes(data.code) === true, `Expected INVALID_TOKEN or SERVER_ERROR, got ${data.code}`);
         });
 
         test('should reject invalid domain format in auto-inclusion', async () => {

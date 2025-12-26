@@ -213,7 +213,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
 
             if (response.status === 200) {
                 const data = await response.json() as RequestsResponse;
-                console.log(`Teacher has access to ${data.groups?.length || 0} groups`);
+                console.log(`Teacher has access to ${data.groups?.length ?? 0} groups`);
             }
         });
 
@@ -233,7 +233,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 const data = await response.json() as RequestsResponse;
                 assert.ok(data.success !== false);
 
-                if (data.requests && data.requests.length > 0) {
+                if (data.requests !== undefined && data.requests.length > 0) {
                     console.log(`Teacher sees ${data.requests.length} requests`);
                 } else {
                     console.log('No pending requests for teacher groups');
@@ -255,7 +255,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
 
             if (response.status === 200) {
                 const data = await response.json() as RequestsResponse;
-                if (data.requests) {
+                if (data.requests !== undefined) {
                     data.requests.forEach(req => {
                         if (req.status) {
                             assert.strictEqual(req.status, 'pending');
@@ -335,7 +335,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             const data = await response.json() as RequestsResponse;
             assert.ok(data.success === true);
             assert.ok(Array.isArray(data.domains) === true);
-            console.log(`Found ${data.domains?.length || 0} blocked domains`);
+            console.log(`Found ${data.domains?.length ?? 0} blocked domains`);
         });
 
         test('should create a request for a blocked domain (if any blocked)', async () => {

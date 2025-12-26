@@ -206,7 +206,7 @@ describe('Security Tests', async () => {
                     domain: 'exаmple.com' // Uses Cyrillic 'а' instead of Latin 'a'
                 })
             });
-            assert.ok([400, 201].includes(status));
+            assert.ok([400, 201].includes(status) === true);
         });
 
         it('should handle missing required fields', async () => {
@@ -257,7 +257,7 @@ describe('Security Tests', async () => {
             });
 
             // Check for standard rate limit headers
-            const remaining = headers.get('ratelimit-remaining') ||
+            const _remaining = headers.get('ratelimit-remaining') ??
                 headers.get('x-ratelimit-remaining');
             assert.ok(true); // Just checking no errors
         });
@@ -276,7 +276,7 @@ describe('Security Tests', async () => {
                     'Access-Control-Request-Method': 'POST'
                 }
             });
-            assert.ok([200, 204].includes(response.status));
+            assert.ok([200, 204].includes(response.status) === true);
         });
     });
 
@@ -312,17 +312,17 @@ describe('Security Tests', async () => {
             const { data } = await request('/api/nonexistent');
 
             const responseStr = JSON.stringify(data);
-            assert.ok(!responseStr.includes('at '), 'Should not include stack traces');
-            assert.ok(!responseStr.includes('.js:'), 'Should not include file references');
+            assert.ok(responseStr.includes('at ') === false, 'Should not include stack traces');
+            assert.ok(responseStr.includes('.js:') === false, 'Should not include file references');
         });
 
         it('should not leak internal paths', async () => {
             const { data } = await request('/api/requests/invalid-id');
 
             const responseStr = JSON.stringify(data);
-            assert.ok(!responseStr.includes('/home/'), 'Should not leak home paths');
-            assert.ok(!responseStr.includes('/usr/'), 'Should not leak system paths');
-            assert.ok(!responseStr.includes('node_modules'), 'Should not leak node_modules');
+            assert.ok(responseStr.includes('/home/') === false, 'Should not leak home paths');
+            assert.ok(responseStr.includes('/usr/') === false, 'Should not leak system paths');
+            assert.ok(responseStr.includes('node_modules') === false, 'Should not leak node_modules');
         });
     });
 });
