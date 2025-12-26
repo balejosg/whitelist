@@ -98,8 +98,8 @@ describe('Security Tests', async () => {
         it('should include Content-Security-Policy header', async () => {
             const { headers } = await request('/health');
             const csp = headers.get('content-security-policy');
-            assert.ok(csp, 'CSP header should be present');
-            assert.ok(csp?.includes("default-src"), 'CSP should include default-src');
+            assert.ok(csp !== null && csp !== '', 'CSP header should be present');
+            assert.ok(csp !== null && csp.includes("default-src") === true, 'CSP should include default-src');
         });
     });
 
@@ -112,7 +112,7 @@ describe('Security Tests', async () => {
             const { status, data } = await request('/api/requests');
             assert.strictEqual(status, 401);
             const d = data as { error?: string; message?: string; success?: boolean };
-            assert.ok(d.error || d.message || !d.success, 'Should return error response');
+            assert.ok(d.error !== undefined || d.message !== undefined || d.success === false, 'Should return error response');
         });
 
         it('should reject requests with empty Bearer token', async () => {
@@ -135,7 +135,7 @@ describe('Security Tests', async () => {
             });
             assert.strictEqual(status, 401);
             const d = data as { error?: string; message?: string; success?: boolean };
-            assert.ok(d.error || d.message || !d.success, 'Should return error response');
+            assert.ok(d.error !== undefined || d.message !== undefined || d.success === false, 'Should return error response');
         });
 
         it('should reject requests with expired-like token', async () => {
@@ -288,8 +288,8 @@ describe('Security Tests', async () => {
         it('should include X-Request-ID header in response', async () => {
             const { headers } = await request('/health');
             const requestId = headers.get('x-request-id');
-            assert.ok(requestId, 'X-Request-ID header should be present');
-            assert.ok(requestId && requestId.length > 0, 'Request ID should not be empty');
+            assert.ok(requestId !== null && requestId !== '', 'X-Request-ID header should be present');
+            assert.ok(requestId !== null && requestId.length > 0, 'Request ID should not be empty');
         });
 
         it('should generate unique request IDs', async () => {

@@ -57,7 +57,7 @@ function makeRequest(method: string, path: string, body: unknown = null, headers
 
         req.on('error', reject);
 
-        if (body) {
+        if (body !== null && body !== undefined) {
             req.write(JSON.stringify(body));
         }
         req.end();
@@ -108,8 +108,8 @@ describe('Integration: Complete User Workflow', () => {
         }) as { status: number; body: UserWorkflowResponse };
 
         assert.strictEqual(registerRes.status, 201, 'Registration should succeed');
-        assert.ok(registerRes.body.success, 'Registration response should indicate success');
-        assert.ok(registerRes.body.user, 'Response should contain user data');
+        assert.ok(registerRes.body.success === true, 'Registration response should indicate success');
+        assert.ok(registerRes.body.user !== undefined, 'Response should contain user data');
 
         // Step 2: Login with credentials
         const loginRes = await makeRequest('POST', '/api/auth/login', {
@@ -118,7 +118,7 @@ describe('Integration: Complete User Workflow', () => {
         }) as { status: number; body: UserWorkflowResponse };
 
         assert.strictEqual(loginRes.status, 200, 'Login should succeed');
-        assert.ok(loginRes.body.accessToken, 'Login should return access token');
+        assert.ok(loginRes.body.accessToken !== undefined && loginRes.body.accessToken !== '', 'Login should return access token');
         accessToken = loginRes.body.accessToken;
 
         // Step 3: Access profile with token
@@ -133,7 +133,7 @@ describe('Integration: Complete User Workflow', () => {
 
 describe('Integration: Health Report Flow', () => {
     before(async () => {
-        if (!server) {
+        if (server === undefined) {
             const { app } = await import('../src/server.js');
             server = app.listen(PORT);
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -161,7 +161,7 @@ describe('Integration: Health Report Flow', () => {
             'X-Shared-Secret': process.env.SHARED_SECRET!
         });
 
-        assert.ok([200, 201].includes(reportRes.status), 'Health report submission should succeed');
+        assert.ok([200, 201].includes(reportRes.status) === true, 'Health report submission should succeed');
 
         // Step 2: Retrieve reports as admin
         const listRes = await makeRequest('GET', '/api/health-reports', null, {
@@ -169,7 +169,7 @@ describe('Integration: Health Report Flow', () => {
         }) as { status: number; body: HealthReportResponse };
 
         assert.strictEqual(listRes.status, 200, 'Should retrieve health reports');
-        assert.ok(Array.isArray(listRes.body.hosts) || listRes.body.success, 'Response should contain hosts data');
+        assert.ok(Array.isArray(listRes.body.hosts) === true || listRes.body.success === true, 'Response should contain hosts data');
     });
 });
 
@@ -177,7 +177,7 @@ describe('Integration: Classroom Management Flow', () => {
     let classroomId: string | undefined;
 
     before(async () => {
-        if (!server) {
+        if (server === undefined) {
             const { app } = await import('../src/server.js');
             server = app.listen(PORT);
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -200,7 +200,7 @@ describe('Integration: Classroom Management Flow', () => {
         }) as { status: number; body: ClassroomResponse };
 
         assert.strictEqual(createRes.status, 201, 'Classroom creation should succeed');
-        assert.ok(createRes.body.classroom, 'Response should contain classroom');
+        assert.ok(createRes.body.classroom !== undefined, 'Response should contain classroom');
         classroomId = createRes.body.classroom?.id;
 
         // Step 2: Update classroom
@@ -235,7 +235,7 @@ describe('Integration: Domain Request Workflow', () => {
     let requestId: string | undefined;
 
     before(async () => {
-        if (!server) {
+        if (server === undefined) {
             const { app } = await import('../src/server.js');
             server = app.listen(PORT);
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -255,7 +255,7 @@ describe('Integration: Domain Request Workflow', () => {
         }) as { status: number; body: RequestsResponse };
 
         assert.strictEqual(submitRes.status, 201, 'Request submission should succeed');
-        assert.ok(submitRes.body.request, 'Response should contain request');
+        assert.ok(submitRes.body.request !== undefined, 'Response should contain request');
         requestId = submitRes.body.request?.id;
 
         // Step 2: List requests as admin
@@ -264,7 +264,7 @@ describe('Integration: Domain Request Workflow', () => {
         }) as { status: number; body: RequestsResponse };
 
         assert.strictEqual(listRes.status, 200, 'Request listing should succeed');
-        assert.ok(Array.isArray(listRes.body.requests), 'Response should contain requests array');
+        assert.ok(Array.isArray(listRes.body.requests) === true, 'Response should contain requests array');
 
         // Step 3: Get request details
         const getRes = await makeRequest('GET', `/api/requests/${requestId}`, null, {
