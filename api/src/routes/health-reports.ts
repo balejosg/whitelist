@@ -189,7 +189,7 @@ router.post('/', requireSharedSecret, (req: Request<object, unknown, SubmitRepor
 
     saveReports(data);
 
-    console.log(`[HEALTH] ${hostname}: ${status}${actions ? ` (actions: ${actions})` : ''}`);
+    console.log(`[HEALTH] ${hostname}: ${status}${actions !== undefined && actions !== '' ? ` (actions: ${actions})` : ''}`);
 
     return res.json({
         success: true,
@@ -276,7 +276,7 @@ router.get('/alerts/active', requireAdmin, (req: Request, res: Response) => {
         const lastSeen = new Date(host.lastSeen ?? 0);
         const minutesSinceLastSeen = (now.getTime() - lastSeen.getTime()) / 1000 / 60;
 
-        if (host.currentStatus && problemStatuses.includes(host.currentStatus)) {
+        if (host.currentStatus !== null && problemStatuses.includes(host.currentStatus)) {
             alerts.push({
                 hostname,
                 type: 'status',

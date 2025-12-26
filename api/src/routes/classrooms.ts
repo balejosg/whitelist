@@ -248,7 +248,7 @@ router.put('/:id/active-group', requireAuth, requireAdmin, (req: Request<{ id: s
 
     return res.json({
         success: true,
-        message: groupId ? `Active group set to ${groupId}` : 'Reset to default group',
+        message: groupId !== null ? `Active group set to ${groupId}` : 'Reset to default group',
         classroom: updated,
         current_group_id: currentGroupId
     });
