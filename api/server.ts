@@ -40,7 +40,7 @@ import rateLimit from 'express-rate-limit';
 import 'dotenv/config';
 
 // Structured logging with Winston
-import * as logger from './src/lib/logger.js';
+import logger from './src/lib/logger.js';
 
 // Route handlers
 import requestsRouter from './src/routes/requests.js';
