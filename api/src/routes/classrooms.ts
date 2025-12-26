@@ -92,7 +92,7 @@ function requireAdmin(req: RequestWithUser, res: Response, next: NextFunction): 
 
 function requireSharedSecret(req: Request, res: Response, next: NextFunction): void {
     const secret = process.env.SHARED_SECRET;
-    if (!secret) {
+    if (secret === undefined || secret === '') {
         next();
         return;
     }
@@ -140,7 +140,7 @@ router.get('/', requireAuth, requireAdmin, (_req: Request, res: Response) => {
 router.post('/', requireAuth, requireAdmin, (req: Request<object, unknown, CreateClassroomBody>, res: Response) => {
     const { name, display_name, default_group_id } = req.body;
 
-    if (!name) {
+    if (name === undefined || name === '') {
         return res.status(400).json({
             success: false,
             error: 'Name is required'
@@ -213,7 +213,7 @@ router.put('/:id', requireAuth, requireAdmin, (req: Request<{ id: string }, unkn
         defaultGroupId: default_group_id
     }) as Parameters<typeof classroomStorage.updateClassroom>[1]);
 
-    if (!updated) {
+    if (updated === null) {
         return res.status(404).json({
             success: false,
             error: 'Classroom not found'
@@ -237,7 +237,7 @@ router.put('/:id/active-group', requireAuth, requireAdmin, (req: Request<{ id: s
 
     const updated = classroomStorage.setActiveGroup(req.params.id, groupId);
 
-    if (!updated) {
+    if (updated === null) {
         return res.status(404).json({
             success: false,
             error: 'Classroom not found'
@@ -279,7 +279,7 @@ router.delete('/:id', requireAuth, requireAdmin, (req: Request, res: Response) =
 router.post('/machines/register', requireSharedSecret, (req: Request<object, unknown, RegisterMachineBody>, res: Response) => {
     const { hostname, classroom_id, classroom_name, version } = req.body;
 
-    if (!hostname) {
+    if (hostname === undefined || hostname === '') {
         return res.status(400).json({
             success: false,
             error: 'Hostname is required'
@@ -287,14 +287,14 @@ router.post('/machines/register', requireSharedSecret, (req: Request<object, unk
     }
 
     let classroomId = classroom_id;
-    if (!classroomId && classroom_name) {
+    if ((classroomId === undefined || classroomId === '') && (classroom_name !== undefined && classroom_name !== '')) {
         const classroom = classroomStorage.getClassroomByName(classroom_name);
         if (classroom !== null) {
             classroomId = classroom.id;
         }
     }
 
-    if (!classroomId) {
+    if (classroomId === undefined || classroomId === '') {
         return res.status(400).json({
             success: false,
             error: 'Valid classroom_id or classroom_name is required'

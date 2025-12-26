@@ -218,7 +218,7 @@ router.post('/login', loginLimiter, async (req: Request<object, unknown, LoginBo
 router.post('/refresh', async (req: Request<object, unknown, RefreshBody>, res: Response) => {
     const { refreshToken } = req.body;
 
-    if (!refreshToken) {
+    if (refreshToken === undefined || refreshToken === '') {
         return res.status(400).json({
             success: false,
             error: 'Refresh token is required',

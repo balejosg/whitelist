@@ -90,7 +90,7 @@ const router = Router();
 router.get('/vapid-key', (_req: Request, res: Response) => {
     const publicKey = push.getVapidPublicKey();
 
-    if (!publicKey) {
+    if (publicKey === null) {
         return res.status(503).json({
             success: false,
             error: 'Push notifications not configured',
@@ -201,7 +201,7 @@ router.post('/subscribe', requireAuth, (req: RequestWithUser, res: Response) => 
 router.delete('/subscribe', requireAuth, (req: Request<object, unknown, UnsubscribeBody>, res: Response) => {
     const { endpoint, subscriptionId } = req.body;
 
-    if (!endpoint && !subscriptionId) {
+    if ((endpoint === undefined || endpoint === '') && (subscriptionId === undefined || subscriptionId === '')) {
         return res.status(400).json({
             success: false,
             error: 'Either endpoint or subscriptionId required'

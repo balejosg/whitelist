@@ -92,7 +92,7 @@ function saveReports(data: ReportsData): void {
 
 function requireSharedSecret(req: Request, res: Response, next: NextFunction): void {
     const secret = process.env.SHARED_SECRET;
-    if (!secret) {
+    if (secret === undefined || secret === '') {
         next();
         return;
     }
@@ -110,7 +110,7 @@ function requireSharedSecret(req: Request, res: Response, next: NextFunction): v
 
 function requireAdmin(req: Request, res: Response, next: NextFunction): void {
     const adminToken = process.env.ADMIN_TOKEN;
-    if (!adminToken) {
+    if (adminToken === undefined || adminToken === '') {
         res.status(500).json({
             success: false,
             error: 'Admin token not configured'
@@ -309,7 +309,7 @@ router.get('/alerts/active', requireAdmin, (req: Request, res: Response) => {
  */
 router.get('/:hostname', requireAdmin, (req: Request, res: Response) => {
     const hostname = req.params.hostname;
-    if (!hostname) {
+    if (hostname === undefined || hostname === '') {
         return res.status(400).json({
             success: false,
             error: 'Hostname is required'
