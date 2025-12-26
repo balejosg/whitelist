@@ -181,7 +181,7 @@ router.post('/', requireAuth, requireAdmin, (req: Request<object, unknown, Creat
 router.get('/:id', requireAuth, requireAdmin, (req: Request, res: Response) => {
     const classroom = classroomStorage.getClassroomById(req.params.id!);
 
-    if (!classroom) {
+    if (classroom === null) {
         return res.status(404).json({
             success: false,
             error: 'Classroom not found'
@@ -302,7 +302,7 @@ router.post('/machines/register', requireSharedSecret, (req: Request<object, unk
     }
 
     const classroom = classroomStorage.getClassroomById(classroomId);
-    if (!classroom) {
+    if (classroom === null) {
         return res.status(404).json({
             success: false,
             error: 'Classroom not found'

@@ -207,7 +207,7 @@ export function updateSchedule(id: string, updates: UpdateScheduleInput): Stored
 
     if (index === -1) return null;
     const schedule = data.schedules[index];
-    if (!schedule) return null;
+    if (schedule === undefined) return null;
 
     const newDayOfWeek = updates.day_of_week ?? schedule.day_of_week;
     const newStartTime = updates.start_time ?? schedule.start_time;

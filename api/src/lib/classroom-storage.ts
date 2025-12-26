@@ -190,7 +190,7 @@ export function updateClassroom(id: string, updates: UpdateClassroomData & { def
 
     if (index === -1) return null;
     const classroom = data.classrooms[index];
-    if (!classroom) return null;
+    if (classroom === undefined) return null;
 
     if (updates.displayName !== undefined) {
         classroom.display_name = updates.displayName;
@@ -211,7 +211,7 @@ export function setActiveGroup(id: string, groupId: string | null): StoredClassr
 
     if (index === -1) return null;
     const classroom = data.classrooms[index];
-    if (!classroom) return null;
+    if (classroom === undefined) return null;
 
     classroom.active_group_id = groupId;
     classroom.updated_at = new Date().toISOString();
@@ -222,7 +222,7 @@ export function setActiveGroup(id: string, groupId: string | null): StoredClassr
 
 export function getCurrentGroupId(id: string): string | null {
     const classroom = getClassroomById(id);
-    if (!classroom) return null;
+    if (classroom === undefined) return null;
     return classroom.active_group_id ?? classroom.default_group_id;
 }
 
@@ -303,7 +303,7 @@ export function updateMachineLastSeen(hostname: string): StoredMachine | null {
 
     if (index === -1) return null;
     const machine = data.machines[index];
-    if (!machine) return null;
+    if (machine === undefined) return null;
 
     machine.last_seen = new Date().toISOString();
     saveMachines(data);
@@ -338,15 +338,15 @@ export function removeMachinesByClassroom(classroomId: string): number {
 
 export function getWhitelistUrlForMachine(hostname: string): WhitelistUrlResult | null {
     const machine = getMachineByHostname(hostname);
-    if (!machine) return null;
+    if (machine === null) return null;
 
     const classroom = getClassroomById(machine.classroom_id);
-    if (!classroom) return null;
+    if (classroom === null) return null;
 
     let groupId = classroom.active_group_id;
     let source: 'manual' | 'schedule' | 'default' = 'manual';
 
-    if (!groupId) {
+    if (groupId === null || groupId === undefined) {
         try {
             // Dynamic import would be better but keeping consistent with original
             // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -361,12 +361,12 @@ export function getWhitelistUrlForMachine(hostname: string): WhitelistUrlResult 
         }
     }
 
-    if (!groupId) {
+    if (groupId === null || groupId === undefined) {
         groupId = classroom.default_group_id;
         source = 'default';
     }
 
-    if (!groupId) return null;
+    if (groupId === null || groupId === undefined) return null;
 
     const owner = process.env.GITHUB_OWNER ?? 'LasEncinasIT';
     const repo = process.env.GITHUB_REPO ?? 'Whitelist-por-aula';
@@ -442,9 +442,9 @@ export const classroomStorage: IClassroomStorage = {
     },
     getMachineByHostname: (hostname: string) => {
         const machine = getMachineByHostname(hostname);
-        if (!machine) return null;
+        if (machine === null) return null;
         const classroom = getClassroomById(machine.classroom_id);
-        if (!classroom) return null;
+        if (classroom === null) return null;
         return {
             classroom: toClassroomType(classroom),
             machine: {

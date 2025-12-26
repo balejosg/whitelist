@@ -87,7 +87,7 @@ function requireAuth(req: RequestWithUser, res: Response, next: NextFunction): v
 function canManageSchedule(req: RequestWithUser, res: Response, next: NextFunction): void {
     const schedule = scheduleStorage.getScheduleById(req.params.id!);
 
-    if (!schedule) {
+    if (schedule === null) {
         res.status(404).json({
             success: false,
             error: 'Schedule not found'
@@ -123,7 +123,7 @@ router.get('/classroom/:classroomId', requireAuth, (req: RequestWithUser, res: R
     const classroomId = req.params.classroomId!;
 
     const classroom = classroomStorage.getClassroomById(classroomId);
-    if (!classroom) {
+    if (classroom === null) {
         return res.status(404).json({
             success: false,
             error: 'Classroom not found'
@@ -178,7 +178,7 @@ router.post('/', requireAuth, (req: RequestWithUser, res: Response) => {
     const { classroom_id, group_id, day_of_week, start_time, end_time } = req.body as CreateScheduleBody;
 
     const classroom = classroomStorage.getClassroomById(classroom_id);
-    if (!classroom) {
+    if (classroom === null) {
         return res.status(404).json({
             success: false,
             error: 'Classroom not found'
@@ -290,7 +290,7 @@ router.get('/classroom/:classroomId/current', requireAuth, (req: Request, res: R
     const classroomId = req.params.classroomId!;
 
     const classroom = classroomStorage.getClassroomById(classroomId);
-    if (!classroom) {
+    if (classroom === null) {
         return res.status(404).json({
             success: false,
             error: 'Classroom not found'
