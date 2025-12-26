@@ -196,7 +196,7 @@ function requireAdmin(req: RequestWithUser, res: Response, next: NextFunction): 
 function canApproveRequest(req: RequestWithUser, res: Response, next: NextFunction): void {
     const request = storage.getRequestById(req.params.id!);
 
-    if (!request) {
+    if (request === null) {
         res.status(404).json({
             success: false,
             error: 'Request not found'
@@ -385,7 +385,7 @@ router.post('/', publicLimiter, (req: Request<object, unknown, CreateRequestBody
 router.get('/status/:id', (req: Request, res: Response) => {
     const request = storage.getRequestById(req.params.id!);
 
-    if (!request) {
+    if (request === null) {
         return res.status(404).json({
             success: false,
             error: 'Request not found',
@@ -557,7 +557,7 @@ router.post('/:id/approve', adminLimiter, requireAuth, canApproveRequest, async 
 
     if (auth.isAdminToken(req.user) === false) {
         const blockCheck = await github.isDomainBlocked(request.domain);
-        if (blockCheck.blocked) {
+        if (blockCheck.blocked === true) {
             return res.status(403).json({
                 success: false,
                 error: 'Este dominio está bloqueado por el administrador',

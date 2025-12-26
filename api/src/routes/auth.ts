@@ -160,7 +160,7 @@ router.post('/login', loginLimiter, async (req: Request<object, unknown, LoginBo
     try {
         const user = await userStorage.verifyPasswordByEmail(email, password);
 
-        if (!user) {
+        if (user === null) {
             return res.status(401).json({
                 success: false,
                 error: 'Invalid email or password',
@@ -315,7 +315,7 @@ router.get('/me', async (req: Request, res: Response) => {
 
     const user = userStorage.getUserById(decoded.sub);
 
-    if (!user) {
+    if (user === null) {
         return res.status(404).json({
             success: false,
             error: 'User not found',

@@ -199,7 +199,7 @@ export async function addDomainToWhitelist(
             if (line.trim() === '## WHITELIST') {
                 inWhitelistSection = true;
             } else if (line.startsWith('## ') && inWhitelistSection) {
-                if (!addedDomain) {
+                if (addedDomain === false) {
                     const lastNewline = newContent.lastIndexOf('\n');
                     const beforeLastNewline = newContent.lastIndexOf('\n', lastNewline - 1);
                     newContent = newContent.slice(0, beforeLastNewline + 1) +
@@ -211,7 +211,7 @@ export async function addDomainToWhitelist(
             }
         }
 
-        if (!addedDomain) {
+        if (addedDomain === false) {
             if (currentContent.includes('## WHITELIST') === false) {
                 newContent = '## WHITELIST\n' + domainLower + '\n\n' + currentContent;
             } else {

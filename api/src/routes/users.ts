@@ -214,7 +214,7 @@ router.get('/roles/teachers', adminLimiter, requireAuth, requireAdmin, (_req: Re
 router.get('/:id', adminLimiter, requireAuth, requireAdmin, (req: Request, res: Response) => {
     const user = userStorage.getUserById(req.params.id!);
 
-    if (!user) {
+    if (user === null) {
         return res.status(404).json({
             success: false,
             error: 'User not found',
@@ -302,7 +302,7 @@ router.patch('/:id', adminLimiter, requireAuth, requireAdmin, async (req: Reques
     const { name, email, isActive, emailVerified, password } = req.body as UpdateUserBody;
 
     const user = userStorage.getUserById(req.params.id!);
-    if (!user) {
+    if (user === null) {
         return res.status(404).json({
             success: false,
             error: 'User not found',
@@ -365,7 +365,7 @@ router.patch('/:id', adminLimiter, requireAuth, requireAdmin, async (req: Reques
 router.delete('/:id', adminLimiter, requireAuth, requireAdmin, (req: RequestWithUser, res: Response) => {
     const user = userStorage.getUserById(req.params.id!);
 
-    if (!user) {
+    if (user === null) {
         return res.status(404).json({
             success: false,
             error: 'User not found',
@@ -405,7 +405,7 @@ router.delete('/:id', adminLimiter, requireAuth, requireAdmin, (req: RequestWith
 router.get('/:id/roles', adminLimiter, requireAuth, requireAdmin, (req: Request, res: Response) => {
     const user = userStorage.getUserById(req.params.id!);
 
-    if (!user) {
+    if (user === null) {
         return res.status(404).json({
             success: false,
             error: 'User not found',
@@ -429,7 +429,7 @@ router.post('/:id/roles', adminLimiter, requireAuth, requireAdmin, (req: Request
     const { role, groupIds } = req.body as AssignRoleBody;
 
     const user = userStorage.getUserById(req.params.id!);
-    if (!user) {
+    if (user === null) {
         return res.status(404).json({
             success: false,
             error: 'User not found',

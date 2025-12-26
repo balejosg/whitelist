@@ -161,7 +161,7 @@ export function updateRequestStatus(
     }
 
     const request = data.requests[index];
-    if (!request) {
+    if (request === undefined) {
         return null;
     }
 
