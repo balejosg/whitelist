@@ -6,13 +6,14 @@
  */
 import { Router } from 'express';
 import * as classroomStorage from '../lib/classroom-storage.js';
+import { stripUndefined } from '../lib/utils.js';
 import * as auth from '../lib/auth.js';
 // =============================================================================
 // Middleware
 // =============================================================================
 async function requireAuth(req, res, next) {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (authHeader === undefined || !authHeader.startsWith('Bearer ')) {
         res.status(401).json({
             success: false,
             error: 'Authorization header required'
@@ -21,13 +22,13 @@ async function requireAuth(req, res, next) {
     }
     const token = authHeader.slice(7);
     const decoded = await auth.verifyAccessToken(token);
-    if (decoded) {
+    if (decoded !== null) {
         req.user = decoded;
         next();
         return;
     }
     const adminToken = process.env.ADMIN_TOKEN;
-    if (adminToken && token === adminToken) {
+    if (adminToken !== undefined && adminToken !== '' && token === adminToken) {
         req.user = auth.createLegacyAdminPayload();
         next();
         return;
@@ -38,7 +39,7 @@ async function requireAuth(req, res, next) {
     });
 }
 function requireAdmin(req, res, next) {
-    if (!req.user || !auth.isAdminToken(req.user)) {
+    if (req.user === undefined || !auth.isAdminToken(req.user)) {
         res.status(403).json({
             success: false,
             error: 'Admin access required'
@@ -49,12 +50,12 @@ function requireAdmin(req, res, next) {
 }
 function requireSharedSecret(req, res, next) {
     const secret = process.env.SHARED_SECRET;
-    if (!secret) {
+    if (secret === undefined || secret === '') {
         next();
         return;
     }
     const authHeader = req.headers.authorization;
-    if (!authHeader || authHeader !== `Bearer ${secret}`) {
+    if (authHeader === undefined || authHeader !== `Bearer ${secret}`) {
         res.status(401).json({
             success: false,
             error: 'Invalid or missing shared secret'
@@ -73,7 +74,7 @@ const router = Router();
 router.get('/', requireAuth, requireAdmin, (_req, res) => {
     try {
         const classrooms = classroomStorage.getAllClassrooms();
-        res.json({
+        return res.json({
             success: true,
             classrooms,
             count: classrooms.length
@@ -81,7 +82,7 @@ router.get('/', requireAuth, requireAdmin, (_req, res) => {
     }
     catch (error) {
         console.error('Error listing classrooms:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to list classrooms'
         });
@@ -92,19 +93,19 @@ router.get('/', requireAuth, requireAdmin, (_req, res) => {
  */
 router.post('/', requireAuth, requireAdmin, (req, res) => {
     const { name, display_name, default_group_id } = req.body;
-    if (!name) {
+    if (name === undefined || name === '') {
         return res.status(400).json({
             success: false,
             error: 'Name is required'
         });
     }
     try {
-        const classroom = classroomStorage.createClassroom({
+        const classroom = classroomStorage.createClassroom(stripUndefined({
             name,
             displayName: display_name,
             defaultGroupId: default_group_id
-        });
-        res.status(201).json({
+        }));
+        return res.status(201).json({
             success: true,
             message: 'Classroom created',
             classroom
@@ -119,7 +120,7 @@ router.post('/', requireAuth, requireAdmin, (req, res) => {
             });
         }
         console.error('Error creating classroom:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to create classroom'
         });
@@ -130,7 +131,7 @@ router.post('/', requireAuth, requireAdmin, (req, res) => {
  */
 router.get('/:id', requireAuth, requireAdmin, (req, res) => {
     const classroom = classroomStorage.getClassroomById(req.params.id);
-    if (!classroom) {
+    if (classroom === null) {
         return res.status(404).json({
             success: false,
             error: 'Classroom not found'
@@ -138,7 +139,7 @@ router.get('/:id', requireAuth, requireAdmin, (req, res) => {
     }
     const machines = classroomStorage.getMachinesByClassroom(req.params.id);
     const currentGroupId = classroomStorage.getCurrentGroupId(req.params.id);
-    res.json({
+    return res.json({
         success: true,
         classroom: {
             ...classroom,
@@ -153,17 +154,17 @@ router.get('/:id', requireAuth, requireAdmin, (req, res) => {
  */
 router.put('/:id', requireAuth, requireAdmin, (req, res) => {
     const { display_name, default_group_id } = req.body;
-    const updated = classroomStorage.updateClassroom(req.params.id, {
+    const updated = classroomStorage.updateClassroom(req.params.id, stripUndefined({
         displayName: display_name,
         defaultGroupId: default_group_id
-    });
-    if (!updated) {
+    }));
+    if (updated === null) {
         return res.status(404).json({
             success: false,
             error: 'Classroom not found'
         });
     }
-    res.json({
+    return res.json({
         success: true,
         message: 'Classroom updated',
         classroom: updated
@@ -176,16 +177,16 @@ router.put('/:id/active-group', requireAuth, requireAdmin, (req, res) => {
     const { group_id } = req.body;
     const groupId = group_id === null || group_id === '' ? null : group_id;
     const updated = classroomStorage.setActiveGroup(req.params.id, groupId);
-    if (!updated) {
+    if (updated === null) {
         return res.status(404).json({
             success: false,
             error: 'Classroom not found'
         });
     }
     const currentGroupId = classroomStorage.getCurrentGroupId(req.params.id);
-    res.json({
+    return res.json({
         success: true,
-        message: groupId ? `Active group set to ${groupId}` : 'Reset to default group',
+        message: groupId !== null ? `Active group set to ${groupId}` : 'Reset to default group',
         classroom: updated,
         current_group_id: currentGroupId
     });
@@ -201,7 +202,7 @@ router.delete('/:id', requireAuth, requireAdmin, (req, res) => {
             error: 'Classroom not found'
         });
     }
-    res.json({
+    return res.json({
         success: true,
         message: 'Classroom deleted'
     });
@@ -211,39 +212,39 @@ router.delete('/:id', requireAuth, requireAdmin, (req, res) => {
  */
 router.post('/machines/register', requireSharedSecret, (req, res) => {
     const { hostname, classroom_id, classroom_name, version } = req.body;
-    if (!hostname) {
+    if (hostname === undefined || hostname === '') {
         return res.status(400).json({
             success: false,
             error: 'Hostname is required'
         });
     }
     let classroomId = classroom_id;
-    if (!classroomId && classroom_name) {
+    if ((classroomId === undefined || classroomId === '') && (classroom_name !== undefined && classroom_name !== '')) {
         const classroom = classroomStorage.getClassroomByName(classroom_name);
-        if (classroom) {
+        if (classroom !== null) {
             classroomId = classroom.id;
         }
     }
-    if (!classroomId) {
+    if (classroomId === undefined || classroomId === '') {
         return res.status(400).json({
             success: false,
             error: 'Valid classroom_id or classroom_name is required'
         });
     }
     const classroom = classroomStorage.getClassroomById(classroomId);
-    if (!classroom) {
+    if (classroom === null) {
         return res.status(404).json({
             success: false,
             error: 'Classroom not found'
         });
     }
     try {
-        const machine = classroomStorage.registerMachine({
+        const machine = classroomStorage.registerMachine(stripUndefined({
             hostname,
             classroomId,
             version
-        });
-        res.status(201).json({
+        }));
+        return res.status(201).json({
             success: true,
             message: 'Machine registered',
             machine,
@@ -256,7 +257,7 @@ router.post('/machines/register', requireSharedSecret, (req, res) => {
     }
     catch (error) {
         console.error('Error registering machine:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to register machine'
         });
@@ -276,7 +277,7 @@ router.get('/machines/:hostname/whitelist-url', requireSharedSecret, (req, res) 
             code: 'NO_WHITELIST'
         });
     }
-    res.json({
+    return res.json({
         success: true,
         ...result
     });
@@ -292,7 +293,7 @@ router.delete('/machines/:hostname', requireAuth, requireAdmin, (req, res) => {
             error: 'Machine not found'
         });
     }
-    res.json({
+    return res.json({
         success: true,
         message: 'Machine removed'
     });
@@ -302,7 +303,7 @@ router.delete('/machines/:hostname', requireAuth, requireAdmin, (req, res) => {
  */
 router.get('/stats', requireAuth, requireAdmin, (_req, res) => {
     const stats = classroomStorage.getStats();
-    res.json({
+    return res.json({
         success: true,
         stats
     });

@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "bash -c 'fuser -k 3000/tcp 2>/dev/null || true; timeout 15 node --import tsx --test --test-force-exit tests/api.test.ts || true'",
     "test:auth": "bash -c 'fuser -k 3001/tcp 2>/dev/null || true; timeout 15 node --import tsx --test --test-force-exit tests/auth.test.ts || true'",
+    "test:setup": "bash -c 'fuser -k 3005/tcp 2>/dev/null || true; timeout 15 node --import tsx --test --test-force-exit tests/setup.test.ts || true'",
     "test:e2e": "bash -c 'fuser -k 3002/tcp 2>/dev/null || true; timeout 50 node --import tsx --test --test-force-exit tests/e2e.test.ts || true'",
     "test:roles": "bash -c 'fuser -k 3002/tcp 2>/dev/null || true; timeout 15 node --import tsx --test --test-force-exit tests/roles.test.ts || true'",
     "test:push": "bash -c 'fuser -k 3003/tcp 2>/dev/null || true; timeout 20 node --import tsx --test --test-force-exit tests/push.test.ts || true'",

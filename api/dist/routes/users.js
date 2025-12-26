@@ -15,7 +15,7 @@ import * as auth from '../lib/auth.js';
 // Security Utilities
 // =============================================================================
 function timingSafeEqual(a, b) {
-    if (typeof a !== 'string' || typeof b !== 'string') {
+    if (typeof a !== 'string' || a === '' || typeof b !== 'string' || b === '') {
         return false;
     }
     const bufA = Buffer.from(a, 'utf8');
@@ -45,7 +45,7 @@ const adminLimiter = rateLimit({
 // =============================================================================
 async function requireAuth(req, res, next) {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (authHeader === undefined || !authHeader.startsWith('Bearer ')) {
         res.status(401).json({
             success: false,
             error: 'Authorization header required',
@@ -55,13 +55,13 @@ async function requireAuth(req, res, next) {
     }
     const token = authHeader.slice(7);
     const decoded = await auth.verifyAccessToken(token);
-    if (decoded) {
+    if (decoded !== null) {
         req.user = decoded;
         next();
         return;
     }
     const adminToken = process.env.ADMIN_TOKEN;
-    if (adminToken && timingSafeEqual(token, adminToken)) {
+    if (adminToken !== undefined && adminToken !== '' && timingSafeEqual(token, adminToken)) {
         req.user = auth.createLegacyAdminPayload();
         next();
         return;
@@ -73,7 +73,7 @@ async function requireAuth(req, res, next) {
     });
 }
 function requireAdmin(req, res, next) {
-    if (!req.user || !auth.isAdminToken(req.user)) {
+    if (req.user === undefined || !auth.isAdminToken(req.user)) {
         res.status(403).json({
             success: false,
             error: 'Admin access required',
@@ -105,7 +105,7 @@ router.get('/', adminLimiter, requireAuth, requireAdmin, (_req, res) => {
                 }))
             };
         });
-        res.json({
+        return res.json({
             success: true,
             stats,
             users: enrichedUsers
@@ -113,7 +113,7 @@ router.get('/', adminLimiter, requireAuth, requireAdmin, (_req, res) => {
     }
     catch (error) {
         console.error('Error listing users:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to list users',
             code: 'SERVER_ERROR'
@@ -137,14 +137,14 @@ router.get('/roles/teachers', adminLimiter, requireAuth, requireAdmin, (_req, re
                 } : null
             };
         });
-        res.json({
+        return res.json({
             success: true,
             teachers: enriched
         });
     }
     catch (error) {
         console.error('Error listing teachers:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to list teachers',
             code: 'SERVER_ERROR'
@@ -156,7 +156,7 @@ router.get('/roles/teachers', adminLimiter, requireAuth, requireAdmin, (_req, re
  */
 router.get('/:id', adminLimiter, requireAuth, requireAdmin, (req, res) => {
     const user = userStorage.getUserById(req.params.id);
-    if (!user) {
+    if (user === null) {
         return res.status(404).json({
             success: false,
             error: 'User not found',
@@ -164,7 +164,7 @@ router.get('/:id', adminLimiter, requireAuth, requireAdmin, (req, res) => {
         });
     }
     const roles = roleStorage.getUserRoles(user.id);
-    res.json({
+    return res.json({
         success: true,
         user: {
             ...user,
@@ -182,7 +182,7 @@ router.get('/:id', adminLimiter, requireAuth, requireAdmin, (req, res) => {
  */
 router.post('/', adminLimiter, requireAuth, requireAdmin, async (req, res) => {
     const { email, name, password, role, groupIds } = req.body;
-    if (!email || !name || !password) {
+    if (email === undefined || email === '' || name === undefined || name === '' || password === undefined || password === '') {
         return res.status(400).json({
             success: false,
             error: 'Email, name, and password are required',
@@ -198,7 +198,7 @@ router.post('/', adminLimiter, requireAuth, requireAdmin, async (req, res) => {
     }
     try {
         const user = await userStorage.createUser({ email, name, password });
-        if (role && req.user) {
+        if (role !== undefined && req.user !== undefined) {
             roleStorage.assignRole({
                 userId: user.id,
                 role: role,
@@ -207,7 +207,7 @@ router.post('/', adminLimiter, requireAuth, requireAdmin, async (req, res) => {
             });
         }
         const roles = roleStorage.getUserRoles(user.id);
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             user: {
                 ...user,
@@ -221,7 +221,7 @@ router.post('/', adminLimiter, requireAuth, requireAdmin, async (req, res) => {
     }
     catch (error) {
         console.error('Error creating user:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to create user',
             code: 'SERVER_ERROR'
@@ -234,14 +234,14 @@ router.post('/', adminLimiter, requireAuth, requireAdmin, async (req, res) => {
 router.patch('/:id', adminLimiter, requireAuth, requireAdmin, async (req, res) => {
     const { name, email, isActive, emailVerified, password } = req.body;
     const user = userStorage.getUserById(req.params.id);
-    if (!user) {
+    if (user === null) {
         return res.status(404).json({
             success: false,
             error: 'User not found',
             code: 'NOT_FOUND'
         });
     }
-    if (email && email !== user.email && userStorage.emailExists(email)) {
+    if (email !== undefined && email !== user.email && userStorage.emailExists(email)) {
         return res.status(409).json({
             success: false,
             error: 'Email already exists',
@@ -269,7 +269,7 @@ router.patch('/:id', adminLimiter, requireAuth, requireAdmin, async (req, res) =
             });
         }
         const roles = roleStorage.getUserRoles(updated.id);
-        res.json({
+        return res.json({
             success: true,
             user: {
                 ...updated,
@@ -283,7 +283,7 @@ router.patch('/:id', adminLimiter, requireAuth, requireAdmin, async (req, res) =
     }
     catch (error) {
         console.error('Error updating user:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to update user',
             code: 'SERVER_ERROR'
@@ -295,7 +295,7 @@ router.patch('/:id', adminLimiter, requireAuth, requireAdmin, async (req, res) =
  */
 router.delete('/:id', adminLimiter, requireAuth, requireAdmin, (req, res) => {
     const user = userStorage.getUserById(req.params.id);
-    if (!user) {
+    if (user === null) {
         return res.status(404).json({
             success: false,
             error: 'User not found',
@@ -312,14 +312,14 @@ router.delete('/:id', adminLimiter, requireAuth, requireAdmin, (req, res) => {
     try {
         roleStorage.revokeAllUserRoles(req.params.id, req.user?.sub);
         userStorage.deleteUser(req.params.id);
-        res.json({
+        return res.json({
             success: true,
             message: 'User deleted'
         });
     }
     catch (error) {
         console.error('Error deleting user:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to delete user',
             code: 'SERVER_ERROR'
@@ -331,7 +331,7 @@ router.delete('/:id', adminLimiter, requireAuth, requireAdmin, (req, res) => {
  */
 router.get('/:id/roles', adminLimiter, requireAuth, requireAdmin, (req, res) => {
     const user = userStorage.getUserById(req.params.id);
-    if (!user) {
+    if (user === null) {
         return res.status(404).json({
             success: false,
             error: 'User not found',
@@ -339,7 +339,7 @@ router.get('/:id/roles', adminLimiter, requireAuth, requireAdmin, (req, res) => 
         });
     }
     const roles = roleStorage.getUserRoles(req.params.id);
-    res.json({
+    return res.json({
         success: true,
         userId: req.params.id,
         roles
@@ -351,7 +351,7 @@ router.get('/:id/roles', adminLimiter, requireAuth, requireAdmin, (req, res) => 
 router.post('/:id/roles', adminLimiter, requireAuth, requireAdmin, (req, res) => {
     const { role, groupIds } = req.body;
     const user = userStorage.getUserById(req.params.id);
-    if (!user) {
+    if (user === null) {
         return res.status(404).json({
             success: false,
             error: 'User not found',
@@ -365,14 +365,14 @@ router.post('/:id/roles', adminLimiter, requireAuth, requireAdmin, (req, res) =>
             code: 'MISSING_ROLE'
         });
     }
-    if (!roleStorage.VALID_ROLES.includes(role)) {
+    if (roleStorage.VALID_ROLES.includes(role) === false) {
         return res.status(400).json({
             success: false,
             error: `Invalid role. Must be one of: ${roleStorage.VALID_ROLES.join(', ')}`,
             code: 'INVALID_ROLE'
         });
     }
-    if (role === 'teacher' && (!groupIds || groupIds.length === 0)) {
+    if (role === 'teacher' && (groupIds === undefined || groupIds === null || groupIds.length === 0)) {
         return res.status(400).json({
             success: false,
             error: 'Teachers must be assigned to at least one group',
@@ -386,10 +386,10 @@ router.post('/:id/roles', adminLimiter, requireAuth, requireAdmin, (req, res) =>
             groups: groupIds ?? [],
             createdBy: req.user?.sub ?? 'unknown'
         });
-        if (!user.isActive) {
+        if (user.isActive === false) {
             userStorage.updateUser(req.params.id, { active: true });
         }
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: `Role '${role}' assigned to user`,
             role: newRole
@@ -398,7 +398,7 @@ router.post('/:id/roles', adminLimiter, requireAuth, requireAdmin, (req, res) =>
     catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to assign role';
         console.error('Error assigning role:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: message,
             code: 'SERVER_ERROR'
@@ -411,7 +411,7 @@ router.post('/:id/roles', adminLimiter, requireAuth, requireAdmin, (req, res) =>
 router.patch('/:id/roles/:roleId', adminLimiter, requireAuth, requireAdmin, (req, res) => {
     const { groupIds, addGroups, removeGroups } = req.body;
     const role = roleStorage.getRoleById(req.params.roleId);
-    if (!role || role.userId !== req.params.id) {
+    if (role === null || role === undefined || role.userId !== req.params.id) {
         return res.status(404).json({
             success: false,
             error: 'Role not found',
@@ -423,10 +423,10 @@ router.patch('/:id/roles/:roleId', adminLimiter, requireAuth, requireAdmin, (req
         if (groupIds !== undefined) {
             updated = roleStorage.updateRoleGroups(req.params.roleId, groupIds);
         }
-        else if (addGroups) {
+        else if (addGroups !== undefined && addGroups.length > 0) {
             updated = roleStorage.addGroupsToRole(req.params.roleId, addGroups);
         }
-        else if (removeGroups) {
+        else if (removeGroups !== undefined && removeGroups.length > 0) {
             updated = roleStorage.removeGroupsFromRole(req.params.roleId, removeGroups);
         }
         else {
@@ -436,14 +436,14 @@ router.patch('/:id/roles/:roleId', adminLimiter, requireAuth, requireAdmin, (req
                 code: 'MISSING_FIELDS'
             });
         }
-        res.json({
+        return res.json({
             success: true,
             role: updated
         });
     }
     catch (error) {
         console.error('Error updating role:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to update role',
             code: 'SERVER_ERROR'
@@ -455,14 +455,14 @@ router.patch('/:id/roles/:roleId', adminLimiter, requireAuth, requireAdmin, (req
  */
 router.delete('/:id/roles/:roleId', adminLimiter, requireAuth, requireAdmin, (req, res) => {
     const role = roleStorage.getRoleById(req.params.roleId);
-    if (!role || role.userId !== req.params.id) {
+    if (role === null || role === undefined || role.userId !== req.params.id) {
         return res.status(404).json({
             success: false,
             error: 'Role not found',
             code: 'NOT_FOUND'
         });
     }
-    if (role.revokedAt) {
+    if (role.revokedAt !== undefined) {
         return res.status(400).json({
             success: false,
             error: 'Role already revoked',
@@ -471,14 +471,14 @@ router.delete('/:id/roles/:roleId', adminLimiter, requireAuth, requireAdmin, (re
     }
     try {
         roleStorage.revokeRole(req.params.roleId, req.user?.sub);
-        res.json({
+        return res.json({
             success: true,
             message: 'Role revoked'
         });
     }
     catch (error) {
         console.error('Error revoking role:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to revoke role',
             code: 'SERVER_ERROR'

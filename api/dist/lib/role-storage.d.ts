@@ -49,6 +49,10 @@ export declare function getAllTeachers(): TeacherInfo[];
  */
 export declare function getAllAdmins(): StoredRole[];
 /**
+ * Check if any admin exists in the system
+ */
+export declare function hasAnyAdmins(): boolean;
+/**
  * Check if user has a specific role
  */
 export declare function hasRole(userId: string, role: UserRole): boolean;

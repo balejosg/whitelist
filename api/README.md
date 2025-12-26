@@ -78,6 +78,16 @@ Features:
 
 ## API Endpoints
 
+### Setup Endpoints (First-time Configuration)
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/setup/status` | None | Check if initial setup is needed |
+| POST | `/api/setup/first-admin` | None | Create first admin user (one-time) |
+| POST | `/api/setup/validate-token` | None | Validate registration token |
+| GET | `/api/setup/registration-token` | Admin | Get current registration token |
+| POST | `/api/setup/regenerate-token` | Admin | Generate new registration token |
+
 ### Public Endpoints
 
 | Method | Endpoint | Description |
@@ -100,6 +110,52 @@ Features:
 | POST | `/api/requests/:id/reject` | Reject request |
 | DELETE | `/api/requests/:id` | Delete request |
 | GET | `/api/requests/groups/list` | List whitelist groups |
+
+## Initial Setup Flow
+
+### 1. Deploy the Server
+
+```bash
+cd api
+npm install
+npm run build
+npm start
+```
+
+### 2. Create First Admin
+
+Navigate to `http://your-server:3000/setup.html` and:
+1. Enter admin email, name, and password (min 8 characters)
+2. Click "Create Administrator"
+3. **Save the Registration Token** - you'll need it to register client PCs
+
+### 3. Verify Setup
+
+```bash
+# Check setup status
+curl http://localhost:3000/api/setup/status
+# Should return: {"needsSetup": false, "hasAdmin": true}
+```
+
+### 4. Get Registration Token (Admin)
+
+```bash
+# Login first
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@school.edu", "password": "your-password"}'
+
+# Use the returned JWT token to get registration token
+curl http://localhost:3000/api/setup/registration-token \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### 5. Regenerate Token (if compromised)
+
+```bash
+curl -X POST http://localhost:3000/api/setup/regenerate-token \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
 
 ## Request/Response Examples
 

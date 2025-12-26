@@ -21,11 +21,11 @@ const BCRYPT_ROUNDS = 12;
 // Initialization
 // =============================================================================
 // Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
+if (fs.existsSync(DATA_DIR) === false) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 // Initialize empty users file if not exists
-if (!fs.existsSync(USERS_FILE)) {
+if (fs.existsSync(USERS_FILE) === false) {
     fs.writeFileSync(USERS_FILE, JSON.stringify({ users: [] }, null, 2));
 }
 // =============================================================================
@@ -175,7 +175,7 @@ export function updateLastLogin(id) {
     const index = data.users.findIndex((u) => u.id === id);
     if (index !== -1) {
         const user = data.users[index];
-        if (user) {
+        if (user !== undefined) {
             user.lastLoginAt = new Date().toISOString();
             saveData(data);
         }
@@ -204,7 +204,7 @@ export function verifyEmail(id) {
         return false;
     }
     const user = data.users[index];
-    if (user) {
+    if (user !== undefined) {
         user.emailVerified = true;
         user.updatedAt = new Date().toISOString();
         saveData(data);
@@ -252,8 +252,8 @@ export function getStats() {
     const data = loadData();
     return {
         total: data.users.length,
-        active: data.users.filter((u) => u.isActive).length,
-        verified: data.users.filter((u) => u.emailVerified).length
+        active: data.users.filter((u) => u.isActive === true).length,
+        verified: data.users.filter((u) => u.emailVerified === true).length
     };
 }
 // =============================================================================

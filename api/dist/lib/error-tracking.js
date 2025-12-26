@@ -69,7 +69,7 @@ export function errorTrackingMiddleware(err, req, res, _next) {
     const statusCode = err.statusCode ?? err.status ?? 500;
     const category = categorizeError(err, statusCode);
     logError(err, req, category);
-    if (!res.headersSent) {
+    if (res.headersSent === false) {
         res.status(statusCode).json({
             success: false,
             error: statusCode === 500 ? 'Internal server error' : err.message,
@@ -110,7 +110,7 @@ export const apiResponse = {
             error: message,
             code: code
         };
-        if (details)
+        if (details !== null)
             response.details = details;
         res.status(statusCode).json(response);
     },
@@ -141,7 +141,7 @@ export const apiResponse = {
             error: message,
             code: 'VALIDATION_ERROR'
         };
-        if (details)
+        if (details !== null)
             response.details = details;
         res.status(400).json(response);
     }

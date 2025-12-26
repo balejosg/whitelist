@@ -17,7 +17,7 @@ export declare const schemas: {
     readonly name: Joi.StringSchema<string>;
     readonly reason: Joi.StringSchema<string>;
     readonly role: Joi.StringSchema<string>;
-    readonly groupIds: Joi.ArraySchema<any[]>;
+    readonly groupIds: Joi.ArraySchema<string[]>;
 };
 export declare const requestSchemas: {
     readonly submitRequest: Joi.ObjectSchema<any>;

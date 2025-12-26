@@ -43,6 +43,7 @@ import 'dotenv/config';
 import logger from './lib/logger.js';
 
 // Route handlers
+import setupRouter from './routes/setup.js';
 import requestsRouter from './routes/requests.js';
 import healthReportsRouter from './routes/health-reports.js';
 import authRouter from './routes/auth.js';
@@ -165,6 +166,11 @@ app.get('/api', (_req: Request, res: Response) => {
         name: 'AulaFocus Request API',
         version: '2.0.0',
         endpoints: {
+            'GET /api/setup/status': 'Check if initial setup is needed (public)',
+            'POST /api/setup/first-admin': 'Create first admin user (public)',
+            'GET /api/setup/registration-token': 'Get registration token (admin)',
+            'POST /api/setup/regenerate-token': 'Regenerate registration token (admin)',
+            'POST /api/setup/validate-token': 'Validate registration token (public)',
             'POST /api/auth/register': 'Register new user',
             'POST /api/auth/login': 'Login with email/password',
             'POST /api/auth/refresh': 'Refresh access token',
@@ -190,6 +196,9 @@ app.get('/api', (_req: Request, res: Response) => {
         }
     });
 });
+
+// Setup routes (before auth - must be accessible without authentication)
+app.use('/api/setup', setupRouter);
 
 // Authentication routes
 app.use('/api/auth', authRouter);

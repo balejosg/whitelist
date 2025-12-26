@@ -19,11 +19,11 @@ const REQUESTS_FILE = path.join(DATA_DIR, 'requests.json');
 // Initialization
 // =============================================================================
 // Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
+if (fs.existsSync(DATA_DIR) === false) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 // Initialize empty requests file if not exists
-if (!fs.existsSync(REQUESTS_FILE)) {
+if (fs.existsSync(REQUESTS_FILE) === false) {
     fs.writeFileSync(REQUESTS_FILE, JSON.stringify({ requests: [] }, null, 2));
 }
 // =============================================================================
@@ -115,7 +115,7 @@ export function updateRequestStatus(id, status, resolvedBy = 'admin', note = nul
         return null;
     }
     const request = data.requests[index];
-    if (!request) {
+    if (request === undefined) {
         return null;
     }
     request.status = status;

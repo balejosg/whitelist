@@ -15,7 +15,7 @@ const GITHUB_API = 'api.github.com';
 function githubRequest(method, endpoint, body = null) {
     return new Promise((resolve, reject) => {
         const token = process.env.GITHUB_TOKEN;
-        if (!token) {
+        if (token === undefined || token === '') {
             reject(new Error('GITHUB_TOKEN not configured'));
             return;
         }
@@ -36,7 +36,7 @@ function githubRequest(method, endpoint, body = null) {
             res.on('end', () => {
                 try {
                     const json = data ? JSON.parse(data) : {};
-                    if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+                    if (res.statusCode !== undefined && res.statusCode >= 200 && res.statusCode < 300) {
                         resolve(json);
                     }
                     else {
@@ -50,7 +50,7 @@ function githubRequest(method, endpoint, body = null) {
             });
         });
         req.on('error', reject);
-        if (body) {
+        if (body !== undefined) {
             req.write(JSON.stringify(body));
         }
         req.end();
@@ -81,7 +81,7 @@ export async function updateFile(filePath, content, message, sha = null) {
         content: Buffer.from(content, 'utf-8').toString('base64'),
         branch
     };
-    if (sha) {
+    if (sha !== null && sha !== '') {
         body.sha = sha;
     }
     return githubRequest('PUT', endpoint, body);
@@ -105,7 +105,7 @@ export async function addDomainToWhitelist(domain, groupId) {
             const trimmed = line.trim().toLowerCase();
             return trimmed === domainLower || trimmed === `*.${domainLower}`;
         });
-        if (exists) {
+        if (exists === true) {
             return {
                 success: false,
                 message: `Domain ${domain} already exists in ${groupId}`
@@ -120,7 +120,7 @@ export async function addDomainToWhitelist(domain, groupId) {
                 inWhitelistSection = true;
             }
             else if (line.startsWith('## ') && inWhitelistSection) {
-                if (!addedDomain) {
+                if (addedDomain === false) {
                     const lastNewline = newContent.lastIndexOf('\n');
                     const beforeLastNewline = newContent.lastIndexOf('\n', lastNewline - 1);
                     newContent = newContent.slice(0, beforeLastNewline + 1) +
@@ -131,8 +131,8 @@ export async function addDomainToWhitelist(domain, groupId) {
                 inWhitelistSection = false;
             }
         }
-        if (!addedDomain) {
-            if (!currentContent.includes('## WHITELIST')) {
+        if (addedDomain === false) {
+            if (currentContent.includes('## WHITELIST') === false) {
                 newContent = '## WHITELIST\n' + domainLower + '\n\n' + currentContent;
             }
             else {
@@ -200,7 +200,7 @@ export async function isDomainBlocked(domain) {
         const domainLower = domain.toLowerCase().trim();
         for (const line of lines) {
             const trimmed = line.trim().toLowerCase();
-            if (!trimmed || trimmed.startsWith('#'))
+            if (trimmed === '' || trimmed.startsWith('#'))
                 continue;
             if (trimmed === domainLower) {
                 return { blocked: true, matchedRule: trimmed };

@@ -235,8 +235,7 @@ export function validate(
         }
 
         // Replace with validated/sanitized values
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (req as any)[property] = value;
+        (req as unknown as Record<string, unknown>)[property] = value;
         next();
     };
 }
