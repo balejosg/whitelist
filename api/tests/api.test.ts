@@ -155,9 +155,11 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
 
     describe('CORS Headers', () => {
         test('should include CORS headers', async () => {
-            const response = await fetch(`${API_URL}/health`);
+            const response = await fetch(`${API_URL}/health`, {
+                headers: { 'Origin': 'http://localhost:3000' }
+            });
             const corsHeader = response.headers.get('access-control-allow-origin');
-            assert.ok(corsHeader);
+            assert.ok(corsHeader, 'Expected access-control-allow-origin header to be set');
         });
     });
 
