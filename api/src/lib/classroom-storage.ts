@@ -222,7 +222,7 @@ export function setActiveGroup(id: string, groupId: string | null): StoredClassr
 
 export function getCurrentGroupId(id: string): string | null {
     const classroom = getClassroomById(id);
-    if (classroom === undefined) return null;
+    if (classroom === null) return null;
     return classroom.active_group_id ?? classroom.default_group_id;
 }
 

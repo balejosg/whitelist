@@ -231,7 +231,7 @@ router.post('/', requireAuth, (req: RequestWithUser, res: Response) => {
 router.put('/:id', requireAuth, canManageSchedule, (req: RequestWithUser, res: Response) => {
     const { day_of_week, start_time, end_time, group_id } = req.body as UpdateScheduleBody;
 
-    if (group_id !== undefined && group_id !== '' && req.schedule !== undefined && group_id !== req.schedule.group_id) {
+    if (group_id !== undefined && group_id !== '' && req.schedule !== undefined && req.schedule !== null && group_id !== req.schedule.group_id) {
         const isAdmin = req.user !== undefined ? auth.isAdminToken(req.user) : false;
         if (isAdmin === false && auth.canApproveGroup(req.user, group_id) === false) {
             return res.status(403).json({

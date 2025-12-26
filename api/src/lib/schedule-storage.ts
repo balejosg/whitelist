@@ -174,7 +174,7 @@ export function createSchedule(scheduleData: CreateScheduleInput): StoredSchedul
     }
 
     const conflict = findConflict(classroom_id, day_of_week, start_time, end_time);
-    if (conflict !== undefined) {
+    if (conflict !== null) {
         const error: ScheduleConflictError = new Error('Schedule conflict');
         error.conflict = conflict;
         throw error;
@@ -214,7 +214,7 @@ export function updateSchedule(id: string, updates: UpdateScheduleInput): Stored
     const newEndTime = updates.end_time ?? schedule.end_time;
 
     const conflict = findConflict(schedule.classroom_id, newDayOfWeek, newStartTime, newEndTime, id);
-    if (conflict !== undefined) {
+    if (conflict !== null) {
         const error: ScheduleConflictError = new Error('Schedule conflict');
         error.conflict = conflict;
         throw error;
