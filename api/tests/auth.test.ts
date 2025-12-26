@@ -262,7 +262,7 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
         });
 
         test('should refresh tokens with valid refresh token', async () => {
-            if (!refreshToken) {
+            if (refreshToken === null) {
                 console.log('Skipping: refreshToken not available');
                 return;
             }

@@ -244,7 +244,7 @@ router.post('/auto', autoInclusionLimiter, async (req: Request<object, unknown, 
     }
 
     const sharedSecret = process.env.SHARED_SECRET;
-    if (!sharedSecret) {
+    if (sharedSecret === undefined || sharedSecret === '') {
         console.error('SHARED_SECRET not configured');
         return res.status(500).json({
             success: false,
@@ -438,7 +438,7 @@ router.get('/domains/blocked', adminLimiter, requireAuth, requireAdmin, async (_
 
         const blockedDomains = lines
             .map(line => line.trim())
-            .filter(line => line && !line.startsWith('#'));
+            .filter(line => line !== '' && !line.startsWith('#'));
 
         return res.json({
             success: true,

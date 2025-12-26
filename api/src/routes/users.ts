@@ -263,7 +263,7 @@ router.post('/', adminLimiter, requireAuth, requireAdmin, async (req: RequestWit
     try {
         const user = await userStorage.createUser({ email, name, password });
 
-        if (role && req.user) {
+        if (role !== undefined && req.user !== undefined) {
             roleStorage.assignRole({
                 userId: user.id,
                 role: role as import('../types/index.js').UserRole,
@@ -310,7 +310,7 @@ router.patch('/:id', adminLimiter, requireAuth, requireAdmin, async (req: Reques
         });
     }
 
-    if (email && email !== user.email && userStorage.emailExists(email)) {
+    if (email !== undefined && email !== user.email && userStorage.emailExists(email)) {
         return res.status(409).json({
             success: false,
             error: 'Email already exists',
@@ -549,7 +549,7 @@ router.delete('/:id/roles/:roleId', adminLimiter, requireAuth, requireAdmin, (re
         });
     }
 
-    if (role.revokedAt) {
+    if (role.revokedAt !== undefined) {
         return res.status(400).json({
             success: false,
             error: 'Role already revoked',
