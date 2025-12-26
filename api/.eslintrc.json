@@ -60,6 +60,8 @@
         "dist/",
         "**/tests/load/",
         "*.js",
-        "server.ts"
+        "server.ts",
+        "src/lib/swagger.ts",
+        "src/lib/validation.ts"
     ]
 }
