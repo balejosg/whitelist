@@ -137,9 +137,9 @@ describe('Push Notifications API Tests', { timeout: 30000 }, () => {
 
             assert.strictEqual(response.status, 201);
             const data = await response.json() as PushResponse;
-            assert.ok(data.success);
-            assert.ok(data.subscriptionId);
-            assert.ok(data.groupIds?.includes('*'));
+            assert.ok(data.success === true);
+            assert.ok(data.subscriptionId !== undefined && data.subscriptionId !== '');
+            assert.ok(data.groupIds?.includes('*') === true);
         });
     });
 
@@ -156,9 +156,9 @@ describe('Push Notifications API Tests', { timeout: 30000 }, () => {
 
             assert.strictEqual(response.status, 200);
             const data = await response.json() as PushResponse;
-            assert.ok(data.success);
+            assert.ok(data.success === true);
             assert.strictEqual(typeof data.pushEnabled, 'boolean');
-            assert.ok(Array.isArray(data.subscriptions));
+            assert.ok(Array.isArray(data.subscriptions) === true);
         });
     });
 
@@ -185,7 +185,7 @@ describe('Push Notifications API Tests', { timeout: 30000 }, () => {
 
             assert.strictEqual(response.status, 200);
             const data = await response.json() as PushResponse;
-            assert.ok(data.success);
+            assert.ok(data.success === true);
         });
     });
 
@@ -251,9 +251,9 @@ describe('Push Notifications API Tests', { timeout: 30000 }, () => {
 
             assert.strictEqual(response.status, 201);
             const data = await response.json() as PushResponse;
-            assert.ok(data.success);
-            assert.ok(data.groupIds?.includes('ciencias-3eso'));
-            assert.ok(data.groupIds?.includes('fisica-4eso'));
+            assert.ok(data.success === true);
+            assert.ok(data.groupIds?.includes('ciencias-3eso') === true);
+            assert.ok(data.groupIds?.includes('fisica-4eso') === true);
         });
     });
 
@@ -271,8 +271,8 @@ describe('Push Notifications API Tests', { timeout: 30000 }, () => {
 
             assert.strictEqual(response.status, 201);
             const data = await response.json() as PushResponse;
-            assert.ok(data.success);
-            assert.ok(data.request_id);
+            assert.ok(data.success === true);
+            assert.ok(data.request_id !== undefined && data.request_id !== '');
         });
     });
 });

@@ -89,9 +89,9 @@ describe('Role Management E2E Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 201);
 
             const data = await response.json() as UserResponse;
-            assert.ok(data.success);
-            assert.ok(data.user);
-            assert.ok(data.user?.id);
+            assert.ok(data.success === true);
+            assert.ok(data.user !== undefined);
+            assert.ok(data.user?.id !== undefined && data.user?.id !== '');
 
             teacherUserId = data.user?.id ?? null;
         });
@@ -114,8 +114,8 @@ describe('Role Management E2E Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 201);
 
             const data = await response.json() as RoleResponse;
-            assert.ok(data.success);
-            assert.ok(data.role);
+            assert.ok(data.success === true);
+            assert.ok(data.role !== undefined);
             assert.strictEqual(data.role?.role, 'teacher');
             assert.deepStrictEqual(data.role?.groupIds, ['ciencias-3eso', 'matematicas-4eso']);
         });
@@ -180,13 +180,13 @@ describe('Role Management E2E Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 200);
 
             const data = await response.json() as RoleResponse;
-            assert.ok(data.success);
-            assert.ok(Array.isArray(data.roles));
-            assert.ok(data.roles && data.roles.length > 0);
+            assert.ok(data.success === true);
+            assert.ok(Array.isArray(data.roles) === true);
+            assert.ok(data.roles !== undefined && data.roles.length > 0);
 
             const teacherRole = data.roles?.find(r => r.role === 'teacher');
-            assert.ok(teacherRole);
-            assert.ok(teacherRole?.groupIds.includes('ciencias-3eso'));
+            assert.ok(teacherRole !== undefined);
+            assert.ok(teacherRole?.groupIds.includes('ciencias-3eso') === true);
         });
     });
 
@@ -216,8 +216,8 @@ describe('Role Management E2E Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 200);
 
             const data = await response.json() as RoleResponse;
-            assert.ok(data.success);
-            assert.ok(data.role?.groupIds.includes('historia-2eso'));
+            assert.ok(data.success === true);
+            assert.ok(data.role?.groupIds.includes('historia-2eso') === true);
         });
 
         test('should remove groups from teacher role', async () => {
@@ -235,8 +235,8 @@ describe('Role Management E2E Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 200);
 
             const data = await response.json() as RoleResponse;
-            assert.ok(data.success);
-            assert.ok(!data.role?.groupIds.includes('historia-2eso'));
+            assert.ok(data.success === true);
+            assert.ok(data.role?.groupIds.includes('historia-2eso') === false);
         });
     });
 
@@ -284,7 +284,7 @@ describe('Role Management E2E Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 200);
 
             const data = await response.json() as RoleResponse;
-            assert.ok(data.success);
+            assert.ok(data.success === true);
             assert.strictEqual(data.message, 'Role revoked');
         });
 
@@ -330,12 +330,12 @@ describe('Role Management E2E Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 200);
 
             const data = await response.json() as TeachersResponse;
-            assert.ok(data.success);
-            assert.ok(Array.isArray(data.teachers));
+            assert.ok(data.success === true);
+            assert.ok(Array.isArray(data.teachers) === true);
 
             const ourTeacher = data.teachers.find(t => t.userId === teacherUserId);
-            assert.ok(ourTeacher, 'Our test teacher should be in the list');
-            assert.ok(ourTeacher?.groupIds.includes('ciencias-3eso'));
+            assert.ok(ourTeacher !== undefined, 'Our test teacher should be in the list');
+            assert.ok(ourTeacher?.groupIds.includes('ciencias-3eso') === true);
         });
     });
 });

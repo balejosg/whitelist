@@ -75,7 +75,7 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
 
             const data = await response.json() as { status: string; timestamp: string };
             assert.ok(['ok', 'degraded'].includes(data.status), `Expected ok or degraded, got ${data.status}`);
-            assert.ok(data.timestamp);
+            assert.ok(data.timestamp !== undefined && data.timestamp !== '');
         });
     });
 
@@ -96,7 +96,7 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 201);
 
             const data = await response.json() as { request_id: string; status: string };
-            assert.ok(data.request_id);
+            assert.ok(data.request_id !== undefined && data.request_id !== '');
             assert.strictEqual(data.status, 'pending');
         });
 
@@ -324,9 +324,9 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 200);
 
             const data = await response.json() as { name: string; version: string; endpoints: object };
-            assert.ok(data.name);
-            assert.ok(data.version);
-            assert.ok(data.endpoints);
+            assert.ok(data.name !== undefined && data.name !== '');
+            assert.ok(data.version !== undefined && data.version !== '');
+            assert.ok(data.endpoints !== undefined);
         });
     });
 

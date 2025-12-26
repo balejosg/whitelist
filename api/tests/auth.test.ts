@@ -95,9 +95,9 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
             assert.strictEqual(response.status, 201);
 
             const data = await response.json() as AuthResponse;
-            assert.ok(data.success);
-            assert.ok(data.user);
-            assert.ok(data.user?.id);
+            assert.ok(data.success === true);
+            assert.ok(data.user !== undefined);
+            assert.ok(data.user?.id !== undefined && data.user?.id !== '');
         });
 
         test('should reject registration without email', async () => {
@@ -191,10 +191,10 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
 
             if (response.status === 200) {
                 const data = await response.json() as AuthResponse;
-                assert.ok(data.success);
-                assert.ok(data.accessToken);
-                assert.ok(data.refreshToken);
-                assert.ok(data.user);
+                assert.ok(data.success === true);
+                assert.ok(data.accessToken !== undefined && data.accessToken !== '');
+                assert.ok(data.refreshToken !== undefined && data.refreshToken !== '');
+                assert.ok(data.user !== undefined);
 
                 testUserToken = data.accessToken ?? null;
             }
@@ -276,9 +276,9 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
             assert.strictEqual(response.status, 200);
 
             const data = await response.json() as AuthResponse;
-            assert.ok(data.success);
-            assert.ok(data.accessToken);
-            assert.ok(data.refreshToken);
+            assert.ok(data.success === true);
+            assert.ok(data.accessToken !== undefined && data.accessToken !== '');
+            assert.ok(data.refreshToken !== undefined && data.refreshToken !== '');
         });
 
         test('should reject invalid refresh token', async () => {

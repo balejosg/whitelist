@@ -115,7 +115,7 @@ describe('Classroom API Tests', { timeout: 25000 }, () => {
 
             const data = await response.json() as ClassroomResponse;
             assert.strictEqual(data.success, true);
-            assert.ok(Array.isArray(data.classrooms));
+            assert.ok(Array.isArray(data.classrooms) === true);
         });
 
         test('POST /api/classrooms - creates classroom', async () => {
@@ -136,7 +136,7 @@ describe('Classroom API Tests', { timeout: 25000 }, () => {
 
             const data = await response.json() as ClassroomResponse;
             assert.strictEqual(data.success, true);
-            assert.ok(data.classroom?.id);
+            assert.ok(data.classroom?.id !== undefined && data.classroom?.id !== '');
             assert.strictEqual(data.classroom?.name, 'informatica-3');
             assert.strictEqual(data.classroom?.display_name, 'Aula Informática 3');
             assert.strictEqual(data.classroom?.default_group_id, 'base-centro');
@@ -172,8 +172,8 @@ describe('Classroom API Tests', { timeout: 25000 }, () => {
 
             const data = await response.json() as ClassroomResponse;
             assert.strictEqual(data.success, true);
-            assert.ok(data.classroom);
-            assert.ok(Array.isArray(data.classroom?.machines));
+            assert.ok(data.classroom !== undefined);
+            assert.ok(Array.isArray(data.classroom?.machines) === true);
         });
 
         test('PUT /api/classrooms/:id/active-group - sets active group', async () => {
@@ -225,7 +225,7 @@ describe('Classroom API Tests', { timeout: 25000 }, () => {
 
             const data = await response.json() as MachineResponse;
             assert.strictEqual(data.success, true);
-            assert.ok(data.machine);
+            assert.ok(data.machine !== undefined);
             assert.strictEqual(data.machine?.hostname, 'pc-01');
         });
 
@@ -238,7 +238,7 @@ describe('Classroom API Tests', { timeout: 25000 }, () => {
 
             const data = await response.json() as MachineResponse;
             assert.strictEqual(data.success, true);
-            assert.ok(data.url);
+            assert.ok(data.url !== undefined && data.url !== '');
             assert.strictEqual(data.group_id, 'lengua-2eso');
         });
 

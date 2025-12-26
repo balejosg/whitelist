@@ -126,7 +126,7 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
 
             assert.strictEqual(response.status, 200);
             const data = await response.json() as UserResponse;
-            assert.ok(data.token);
+            assert.ok(data.token !== undefined && data.token !== '');
             teacherToken = data.token ?? null;
         });
     });
@@ -144,8 +144,8 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
 
             assert.strictEqual(response.status, 200);
             const data = await response.json() as DomainCheckResponse;
-            assert.ok(data.success);
-            assert.ok(typeof data.blocked === 'boolean');
+            assert.ok(data.success === true);
+            assert.strictEqual(typeof data.blocked, 'boolean');
         });
 
         test('should return blocked:false for non-blocked domain', async () => {
@@ -160,7 +160,7 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
 
             assert.strictEqual(response.status, 200);
             const data = await response.json() as DomainCheckResponse;
-            assert.ok(data.success);
+            assert.ok(data.success === true);
         });
 
         test('should reject check without authentication', async () => {
@@ -195,8 +195,8 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
 
             assert.strictEqual(response.status, 200);
             const data = await response.json() as DomainCheckResponse;
-            assert.ok(data.success);
-            assert.ok(Array.isArray(data.domains));
+            assert.ok(data.success === true);
+            assert.ok(Array.isArray(data.domains) === true);
         });
 
         test('should reject for non-admin (teacher)', async () => {
@@ -261,8 +261,8 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
             assert.strictEqual(response.status, 403);
             const data = await response.json() as DomainCheckResponse;
             assert.strictEqual(data.code, 'DOMAIN_BLOCKED');
-            assert.ok(data.domain);
-            assert.ok(data.hint);
+            assert.ok(data.domain !== undefined && data.domain !== '');
+            assert.ok(data.hint !== undefined && data.hint !== '');
         });
 
         test('admin should be able to approve blocked domain (override)', async () => {

@@ -89,7 +89,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
 
             assert.strictEqual(response.status, 201);
             const data = await response.json() as AuthResponse;
-            assert.ok(data.success);
+            assert.ok(data.success === true);
         });
 
         test('should login as admin', async () => {
@@ -162,7 +162,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
 
             if (response.status === 200) {
                 const data = await response.json() as { success: boolean };
-                assert.ok(data.success);
+                assert.ok(data.success === true);
             } else {
                 console.log('Note: Role assignment requires admin permissions');
             }
@@ -193,7 +193,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
 
             assert.strictEqual(response.status, 200);
             const data = await response.json() as { user: { email: string } };
-            assert.ok(data.user);
+            assert.ok(data.user !== undefined);
             assert.strictEqual(data.user.email, TEACHER_EMAIL);
         });
     });
@@ -333,8 +333,8 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
 
             assert.strictEqual(response.status, 200);
             const data = await response.json() as RequestsResponse;
-            assert.ok(data.success);
-            assert.ok(Array.isArray(data.domains));
+            assert.ok(data.success === true);
+            assert.ok(Array.isArray(data.domains) === true);
             console.log(`Found ${data.domains?.length || 0} blocked domains`);
         });
 
@@ -413,8 +413,8 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
 
             assert.strictEqual(response.status, 200);
             const data = await response.json() as RequestsResponse;
-            assert.ok(data.success);
-            assert.ok(typeof data.blocked === 'boolean');
+            assert.ok(data.success === true);
+            assert.strictEqual(typeof data.blocked, 'boolean');
 
             console.log(`facebook.com blocked: ${data.blocked}`);
         });
