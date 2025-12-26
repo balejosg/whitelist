@@ -5,7 +5,7 @@
 Estos guiones están diseñados para que un **LLM con capacidad de control de navegador** pruebe exhaustivamente la aplicación OpenPath desde la perspectiva de usuarios reales. Cada guión cubre un rol específico y verifica toda la funcionalidad correspondiente.
 
 > [!IMPORTANT]
-> Los tests se realizan a través de **interfaces web** (SPA, extensión Firefox) como lo haría un usuario real  , nunca llamadas directas a API.
+> Los tests se realizan a través de **interfaces web** (SPA, extensión Firefox) como lo haría un usuario real, nunca llamadas directas a API.
 
 > [!NOTE]
 > **Excepciones permitidas:**

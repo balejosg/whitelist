@@ -179,7 +179,9 @@ router.post('/', requireSharedSecret, (req: Request<object, unknown, SubmitRepor
     host.reports.push(report);
     host.lastSeen = now;
     host.currentStatus = status;
-    if (version !== undefined) { \n        host.version = version; \n }
+    if (version !== undefined) {
+        host.version = version;
+    }
 
     if (host.reports.length > MAX_REPORTS_PER_HOST) {
         host.reports = host.reports.slice(-MAX_REPORTS_PER_HOST);
