@@ -36,7 +36,11 @@ jobs:
       - name: Lint Markdown files
         uses: DavidAnson/markdownlint-cli2-action@v16
         with:
-          globs: '**/*.md'
+          globs: |
+            **/*.md
+            !**/node_modules/**
+            !**/dist/**
+            !**/coverage/**
           config: '.markdownlint.json'
 
   # ============================================
