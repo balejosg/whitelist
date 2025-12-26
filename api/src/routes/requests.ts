@@ -163,7 +163,7 @@ async function requireAuth(req: RequestWithUser, res: Response, next: NextFuncti
     const token = authHeader.slice(7);
 
     const decoded = await auth.verifyAccessToken(token);
-    if (decoded) {
+    if (decoded !== null) {
         req.user = decoded;
         next();
         return;

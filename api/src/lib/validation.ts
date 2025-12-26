@@ -219,7 +219,7 @@ export function validate(
             stripUnknown: true
         });
 
-        if (error) {
+        if (error !== undefined) {
             const details: ValidationDetail[] = error.details.map((d) => ({
                 field: d.path.join('.'),
                 message: d.message

@@ -159,7 +159,7 @@ router.post('/', requireSharedSecret, (req: Request<object, unknown, SubmitRepor
                 new Date(a[1].lastSeen ?? 0).getTime() - new Date(b[1].lastSeen ?? 0).getTime()
             );
             const oldest = sorted[0];
-            if (oldest) delete data.hosts[oldest[0]];
+            if (oldest !== undefined) delete data.hosts[oldest[0]];
         }
         data.hosts[hostname] = { reports: [], lastSeen: null, currentStatus: null };
     }

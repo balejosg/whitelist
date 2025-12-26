@@ -269,7 +269,7 @@ export function registerMachine(machineData: { hostname: string; classroomId: st
 
     if (existingIndex !== -1) {
         const existing = data.machines[existingIndex];
-        if (existing) {
+        if (existing !== undefined) {
             existing.classroom_id = classroomId;
             existing.version = version ?? existing.version;
             existing.last_seen = new Date().toISOString();
@@ -352,7 +352,7 @@ export function getWhitelistUrlForMachine(hostname: string): WhitelistUrlResult 
             // eslint-disable-next-line @typescript-eslint/no-require-imports
             const scheduleStorage = require('./schedule-storage.js');
             const currentSchedule = scheduleStorage.getCurrentSchedule(classroom.id);
-            if (currentSchedule) {
+            if (currentSchedule !== null && currentSchedule !== undefined) {
                 groupId = currentSchedule.group_id;
                 source = 'schedule';
             }

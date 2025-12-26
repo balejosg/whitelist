@@ -102,7 +102,7 @@ async function requireAuth(req: RequestWithUser, res: Response, next: NextFuncti
     const token = authHeader.slice(7);
 
     const decoded = await auth.verifyAccessToken(token);
-    if (decoded) {
+    if (decoded !== null) {
         req.user = decoded;
         next();
         return;
@@ -509,9 +509,9 @@ router.patch('/:id/roles/:roleId', adminLimiter, requireAuth, requireAdmin, (req
 
         if (groupIds !== undefined) {
             updated = roleStorage.updateRoleGroups(req.params.roleId!, groupIds);
-        } else if (addGroups) {
+        } else if (addGroups !== undefined && addGroups.length > 0) {
             updated = roleStorage.addGroupsToRole(req.params.roleId!, addGroups);
-        } else if (removeGroups) {
+        } else if (removeGroups !== undefined && removeGroups.length > 0) {
             updated = roleStorage.removeGroupsFromRole(req.params.roleId!, removeGroups);
         } else {
             return res.status(400).json({

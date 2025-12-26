@@ -78,7 +78,7 @@ const VAPID_CONFIGURED = !!(
     process.env.VAPID_SUBJECT
 );
 
-if (VAPID_CONFIGURED) {
+if (VAPID_CONFIGURED === true) {
     webPush.setVapidDetails(
         process.env.VAPID_SUBJECT!,
         process.env.VAPID_PUBLIC_KEY!,
@@ -223,7 +223,7 @@ export async function notifyTeachersOfNewRequest(
             const reason = result.reason as { statusCode?: number; message?: string } | undefined;
             if (reason?.statusCode === 410) {
                 const sub = subscriptions[i];
-                if (sub) {
+                if (sub !== undefined) {
                     deleteSubscriptionByEndpoint(sub.subscription.endpoint);
                     console.log(`Removed expired push subscription: ${sub.id}`);
                 }

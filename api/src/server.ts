@@ -259,7 +259,7 @@ let isShuttingDown = false;
 const SHUTDOWN_TIMEOUT_MS = 30000;
 
 const gracefulShutdown = (signal: string): void => {
-    if (isShuttingDown) {
+    if (isShuttingDown === true) {
         logger.warn(`Shutdown already in progress, ignoring ${signal}`);
         return;
     }
@@ -267,9 +267,9 @@ const gracefulShutdown = (signal: string): void => {
 
     logger.info(`Received ${signal}, starting graceful shutdown...`);
 
-    if (server) {
+    if (server !== undefined) {
         server.close((err) => {
-            if (err) {
+            if (err !== null && err !== undefined) {
                 logger.error('Error during server close', { error: err.message });
                 process.exit(1);
             }
@@ -290,7 +290,7 @@ const gracefulShutdown = (signal: string): void => {
 // Start server when run directly
 const isMainModule = import.meta.url === `file://${process.argv[1]}`;
 
-if (isMainModule) {
+if (isMainModule === true) {
     server = app.listen(PORT, HOST, () => {
         logger.info('Server started', {
             host: HOST,

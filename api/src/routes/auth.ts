@@ -278,7 +278,7 @@ router.post('/logout', async (req: Request<object, unknown, LogoutBody>, res: Re
         await auth.blacklistToken(accessToken);
     }
 
-    if (refreshToken) {
+    if (refreshToken !== undefined && refreshToken !== '') {
         await auth.blacklistToken(refreshToken);
     }
 

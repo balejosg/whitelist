@@ -149,7 +149,7 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
     try {
         // Check blacklist (async for Redis support)
         const isBlacklistedToken = await tokenStore.has(token);
-        if (isBlacklistedToken) {
+        if (isBlacklistedToken === true) {
             return null;
         }
 

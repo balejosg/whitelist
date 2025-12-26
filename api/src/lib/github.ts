@@ -102,7 +102,7 @@ function githubRequest<T>(
 
         req.on('error', reject);
 
-        if (body) {
+        if (body !== undefined) {
             req.write(JSON.stringify(body));
         }
 
@@ -149,7 +149,7 @@ export async function updateFile(
         branch
     };
 
-    if (sha) {
+    if (sha !== null && sha !== '') {
         body.sha = sha;
     }
 
@@ -182,7 +182,7 @@ export async function addDomainToWhitelist(
             return trimmed === domainLower || trimmed === `*.${domainLower}`;
         });
 
-        if (exists) {
+        if (exists === true) {
             return {
                 success: false,
                 message: `Domain ${domain} already exists in ${groupId}`

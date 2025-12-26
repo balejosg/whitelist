@@ -38,7 +38,7 @@
         ],
         "@typescript-eslint/explicit-function-return-type": "warn",
         "@typescript-eslint/no-explicit-any": "warn",
-        "@typescript-eslint/strict-boolean-expressions": "warn"
+        "@typescript-eslint/strict-boolean-expressions": "error"
     },
     "overrides": [
         {

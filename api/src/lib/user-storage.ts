@@ -240,7 +240,7 @@ export function updateLastLogin(id: string): void {
 
     if (index !== -1) {
         const user = data.users[index];
-        if (user) {
+        if (user !== undefined) {
             user.lastLoginAt = new Date().toISOString();
             saveData(data);
         }
@@ -274,7 +274,7 @@ export function verifyEmail(id: string): boolean {
     }
 
     const user = data.users[index];
-    if (user) {
+    if (user !== undefined) {
         user.emailVerified = true;
         user.updatedAt = new Date().toISOString();
         saveData(data);

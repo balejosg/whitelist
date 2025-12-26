@@ -205,7 +205,7 @@ export function assignRole(roleData: AssignRoleData & { createdBy?: string }): S
         (r) => r.userId === userId && r.role === role && !r.revokedAt
     );
 
-    if (existingRole) {
+    if (existingRole !== undefined) {
         const uniqueGroups = [...new Set([...existingRole.groupIds, ...groups])];
         existingRole.groupIds = uniqueGroups;
         existingRole.updatedAt = new Date().toISOString();

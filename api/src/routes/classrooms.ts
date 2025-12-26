@@ -60,7 +60,7 @@ async function requireAuth(req: RequestWithUser, res: Response, next: NextFuncti
     const token = authHeader.slice(7);
 
     const decoded = await auth.verifyAccessToken(token);
-    if (decoded) {
+    if (decoded !== null) {
         req.user = decoded;
         next();
         return;
@@ -289,7 +289,7 @@ router.post('/machines/register', requireSharedSecret, (req: Request<object, unk
     let classroomId = classroom_id;
     if (!classroomId && classroom_name) {
         const classroom = classroomStorage.getClassroomByName(classroom_name);
-        if (classroom) {
+        if (classroom !== null) {
             classroomId = classroom.id;
         }
     }

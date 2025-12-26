@@ -197,7 +197,7 @@ export const apiResponse = {
             error: message,
             code: code
         };
-        if (details) response.details = details;
+        if (details !== null) response.details = details;
         res.status(statusCode).json(response);
     },
 
@@ -231,7 +231,7 @@ export const apiResponse = {
             error: message,
             code: 'VALIDATION_ERROR'
         };
-        if (details) response.details = details;
+        if (details !== null) response.details = details;
         res.status(400).json(response);
     }
 };

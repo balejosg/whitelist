@@ -218,13 +218,13 @@ export class RedisTokenStore implements TokenStore {
 let _instance: TokenStore | null = null;
 
 export function getTokenStore(): TokenStore {
-    if (_instance) {
+    if (_instance !== null) {
         return _instance;
     }
 
     const redisUrl = process.env.REDIS_URL;
 
-    if (redisUrl) {
+    if (redisUrl !== undefined && redisUrl !== '') {
         console.log('🔴 Using Redis for token blacklist storage');
         _instance = new RedisTokenStore(redisUrl);
     } else {
@@ -236,7 +236,7 @@ export function getTokenStore(): TokenStore {
 }
 
 export function resetTokenStore(): void {
-    if (_instance) {
+    if (_instance !== null) {
         void _instance.destroy();
         _instance = null;
     }

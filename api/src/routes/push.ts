@@ -59,7 +59,7 @@ async function requireAuth(req: RequestWithUser, res: Response, next: NextFuncti
     const token = authHeader.slice(7);
 
     const decoded = await auth.verifyAccessToken(token);
-    if (decoded) {
+    if (decoded !== null) {
         req.user = decoded;
         next();
         return;
@@ -210,13 +210,13 @@ router.delete('/subscribe', requireAuth, (req: Request<object, unknown, Unsubscr
 
     let deleted = false;
 
-    if (endpoint) {
+    if (endpoint !== undefined && endpoint !== '') {
         deleted = push.deleteSubscriptionByEndpoint(endpoint);
-    } else if (subscriptionId) {
+    } else if (subscriptionId !== undefined && subscriptionId !== '') {
         deleted = push.deleteSubscriptionById(subscriptionId);
     }
 
-    if (deleted) {
+    if (deleted === true) {
         return res.json({
             success: true,
             message: 'Subscription removed'

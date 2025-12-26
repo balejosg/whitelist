@@ -92,7 +92,7 @@ const baseLogger = winston.createLogger({
 });
 
 // Add file transport in production
-if (isProduction) {
+if (isProduction === true) {
     baseLogger.add(
         new winston.transports.File({
             filename: 'logs/error.log',
@@ -167,7 +167,7 @@ function requestMiddleware(
         };
 
         // Add slow request flag for alerting
-        if (isSlow) {
+        if (isSlow === true) {
             logData.slow = true;
             logData.threshold = SLOW_REQUEST_THRESHOLD_MS;
         }
