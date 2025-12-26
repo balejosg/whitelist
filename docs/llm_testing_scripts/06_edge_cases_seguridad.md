@@ -139,12 +139,18 @@ Este guión cubre casos límite, escenarios de error, y pruebas de seguridad. Es
 ### Test 2.4: CSRF en acciones críticas
 
 **Acciones**:
-1. Desde otra página, intentar hacer POST a `/api/requests/:id/approve`
-2. Verificar protección CSRF
+1. Abre DevTools (F12) > Console
+2. Intenta ejecutar:
+   ```javascript
+   fetch('/api/requests/1/approve', {method: 'POST'})
+   ```
+3. Verifica que requiera autenticación válida
+4. Opcionalmente, crea un archivo HTML local con un formulario que apunte a la API
 
 **Verificaciones**:
 - [ ] Requiere autenticación válida
 - [ ] No se puede aprobar desde sitio externo
+- [ ] Las cookies HttpOnly protegen el token
 
 ---
 
@@ -442,8 +448,16 @@ Este guión cubre casos límite, escenarios de error, y pruebas de seguridad. Es
 
 ### Test 6.3: Rate limiting de API
 
+> [!NOTE]
+> Esta prueba se realiza como **setup técnico previo** al UAT, no durante la prueba de usuario.
+
 **Acciones**:
-1. Hacer 200+ requests en 1 minuto
+1. Usar herramienta de carga (k6, artillery) o script de setup
+2. O desde DevTools > Console:
+   ```javascript
+   for(let i=0; i<200; i++) fetch('/api/health')
+   ```
+3. Observar comportamiento
 
 **Verificaciones**:
 - [ ] Rate limiting activo
