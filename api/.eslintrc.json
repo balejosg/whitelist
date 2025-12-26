@@ -59,6 +59,7 @@
         "build/",
         "dist/",
         "**/tests/load/",
-        "*.js"
+        "*.js",
+        "server.ts"
     ]
 }
