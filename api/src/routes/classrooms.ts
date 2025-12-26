@@ -8,6 +8,7 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import * as classroomStorage from '../lib/classroom-storage.js';
+import { stripUndefined } from '../lib/utils.js';
 import * as auth from '../lib/auth.js';
 import type { DecodedWithRoles } from '../lib/auth.js';
 
@@ -147,11 +148,11 @@ router.post('/', requireAuth, requireAdmin, (req: Request<object, unknown, Creat
     }
 
     try {
-        const classroom = classroomStorage.createClassroom({
+        const classroom = classroomStorage.createClassroom(stripUndefined({
             name,
             displayName: display_name,
             defaultGroupId: default_group_id
-        });
+        }));
 
         return res.status(201).json({
             success: true,
@@ -207,10 +208,10 @@ router.get('/:id', requireAuth, requireAdmin, (req: Request, res: Response) => {
 router.put('/:id', requireAuth, requireAdmin, (req: Request<{ id: string }, unknown, UpdateClassroomBody>, res: Response) => {
     const { display_name, default_group_id } = req.body;
 
-    const updated = classroomStorage.updateClassroom(req.params.id, {
+    const updated = classroomStorage.updateClassroom(req.params.id, stripUndefined({
         displayName: display_name,
         defaultGroupId: default_group_id
-    });
+    }));
 
     if (!updated) {
         return res.status(404).json({
@@ -309,11 +310,11 @@ router.post('/machines/register', requireSharedSecret, (req: Request<object, unk
     }
 
     try {
-        const machine = classroomStorage.registerMachine({
+        const machine = classroomStorage.registerMachine(stripUndefined({
             hostname,
             classroomId,
             version
-        });
+        }));
 
         return res.status(201).json({
             success: true,

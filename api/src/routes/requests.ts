@@ -12,6 +12,7 @@ import rateLimit from 'express-rate-limit';
 import * as storage from '../lib/storage.js';
 import * as github from '../lib/github.js';
 import * as push from '../lib/push.js';
+import { stripUndefined } from '../lib/utils.js';
 import * as auth from '../lib/auth.js';
 import type { DecodedWithRoles } from '../lib/auth.js';
 import type { DomainRequest } from '../types/index.js';
@@ -348,13 +349,13 @@ router.post('/', publicLimiter, (req: Request<object, unknown, CreateRequestBody
     }
 
     try {
-        const request = storage.createRequest({
+        const request = storage.createRequest(stripUndefined({
             domain: domain.trim().toLowerCase(),
             reason: sanitize(reason) || 'No reason provided',
             requesterEmail: sanitize(requester_email, 100),
             groupId: group_id,
             priority: priority as 'low' | 'normal' | 'high' | 'urgent' | undefined
-        });
+        }));
 
         push.notifyTeachersOfNewRequest(request).catch(err => {
             console.error('Push notification failed:', err.message);

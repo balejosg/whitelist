@@ -10,6 +10,7 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import * as scheduleStorage from '../lib/schedule-storage.js';
 import * as classroomStorage from '../lib/classroom-storage.js';
+import { stripUndefined } from '../lib/utils.js';
 import * as auth from '../lib/auth.js';
 import type { DecodedWithRoles } from '../lib/auth.js';
 
@@ -241,12 +242,12 @@ router.put('/:id', requireAuth, canManageSchedule, (req: RequestWithUser, res: R
     }
 
     try {
-        const updated = scheduleStorage.updateSchedule(req.params.id!, {
+        const updated = scheduleStorage.updateSchedule(req.params.id!, stripUndefined({
             day_of_week,
             start_time,
             end_time,
             group_id
-        });
+        }));
 
         return res.json({
             success: true,

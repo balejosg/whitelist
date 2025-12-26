@@ -179,7 +179,7 @@ router.post('/', requireSharedSecret, (req: Request<object, unknown, SubmitRepor
     host.reports.push(report);
     host.lastSeen = now;
     host.currentStatus = status;
-    host.version = version ?? host.version;
+    if (version !== undefined) { \n        host.version = version; \n }
 
     if (host.reports.length > MAX_REPORTS_PER_HOST) {
         host.reports = host.reports.slice(-MAX_REPORTS_PER_HOST);
@@ -231,7 +231,7 @@ router.get('/', requireAdmin, (_req: Request, res: Response) => {
             hostname,
             status: host.currentStatus,
             lastSeen: host.lastSeen,
-            version: host.version,
+            ...(host.version !== undefined && { version: host.version }),
             recentFailCount: lastReport?.fail_count ?? 0
         });
     }

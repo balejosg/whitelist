@@ -29,7 +29,7 @@
         "noImplicitReturns": true,
         "noFallthroughCasesInSwitch": true,
         "noUncheckedIndexedAccess": true,
-        "exactOptionalPropertyTypes": false
+        "exactOptionalPropertyTypes": true
     },
     "include": [
         "src/**/*"
