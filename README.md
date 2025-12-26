@@ -30,7 +30,7 @@ Unlike traditional firewalls that require manual rule updates and complex VPNs, 
 
 For classroom or multi-PC deployments, you need a central server to manage users, schedules, and PC registration.
 
-**1. Deploy the API Server**
+#### 1. Deploy the API Server
 
 ```bash
 # Clone the repository
@@ -51,7 +51,7 @@ npm start
 
 The server will start on port 3000 by default.
 
-**2. Create the First Admin**
+#### 2. Create the First Admin
 
 Navigate to `http://your-server-ip:3000/setup.html` in your browser:
 

@@ -140,7 +140,7 @@ interface ValidateTokenRequest {
 router.get('/status', setupLimiter, (_req: Request, res: Response) => {
     try {
         const hasAdmin = roleStorage.hasAnyAdmins();
-        
+
         res.json({
             needsSetup: !hasAdmin,
             hasAdmin: hasAdmin
@@ -228,14 +228,14 @@ router.post('/first-admin', firstAdminLimiter, async (req: Request, res: Respons
         // Log the event
         logger.info('First admin created', { userId: user.id, email: user.email });
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             registrationToken,
             redirectTo: '/login'
         });
     } catch (error) {
         logger.error('Error creating first admin', { error });
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to create admin user'
         });
@@ -250,7 +250,7 @@ router.post('/first-admin', firstAdminLimiter, async (req: Request, res: Respons
 router.get('/registration-token', requireAuth, requireAdmin, (_req: RequestWithUser, res: Response) => {
     try {
         const token = setupStorage.getRegistrationToken();
-        
+
         if (token === null) {
             return res.status(404).json({
                 success: false,
@@ -258,12 +258,12 @@ router.get('/registration-token', requireAuth, requireAdmin, (_req: RequestWithU
             });
         }
 
-        res.json({
+        return res.json({
             registrationToken: token
         });
     } catch (error) {
         logger.error('Error getting registration token', { error });
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to get registration token'
         });
@@ -278,17 +278,17 @@ router.get('/registration-token', requireAuth, requireAdmin, (_req: RequestWithU
 router.post('/regenerate-token', requireAuth, requireAdmin, (req: RequestWithUser, res: Response) => {
     try {
         const newToken = setupStorage.regenerateRegistrationToken();
-        
+
         // Log the regeneration event
         const userId = req.user?.sub ?? 'unknown';
         logger.info('Registration token regenerated', { userId });
 
-        res.json({
+        return res.json({
             registrationToken: newToken
         });
     } catch (error) {
         logger.error('Error regenerating registration token', { error });
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to regenerate token'
         });
@@ -313,7 +313,7 @@ router.post('/validate-token', setupLimiter, (req: Request, res: Response) => {
         }
 
         const validToken = setupStorage.getRegistrationToken();
-        
+
         if (validToken === null) {
             return res.status(404).json({
                 success: false,
@@ -335,12 +335,12 @@ router.post('/validate-token', setupLimiter, (req: Request, res: Response) => {
 
         const isValid = crypto.timingSafeEqual(tokenBuffer, validTokenBuffer);
 
-        res.json({
+        return res.json({
             valid: isValid
         });
     } catch (error) {
         logger.error('Error validating token', { error });
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to validate token',
             valid: false
