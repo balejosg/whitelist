@@ -80,7 +80,7 @@ interface LoginResponse {
 function cleanupData(): void {
     const dataDir = path.join(__dirname, '..', 'data');
     const filesToClean = ['users.json', 'user_roles.json', 'setup.json'];
-    
+
     for (const file of filesToClean) {
         const filePath = path.join(dataDir, file);
         if (fs.existsSync(filePath)) {
@@ -93,7 +93,7 @@ describe('Setup Flow API Tests', { timeout: 30000 }, () => {
     before(async () => {
         // Clean up any existing test data
         cleanupData();
-        
+
         process.env.PORT = String(PORT);
         const { app } = await import('../src/server.js');
 
@@ -199,7 +199,7 @@ describe('Setup Flow API Tests', { timeout: 30000 }, () => {
         test('should reject setup with invalid email', async () => {
             // Wait to avoid rate limiting (3 req/hour = 1200s window, but fast test)
             await new Promise(resolve => setTimeout(resolve, 1500));
-            
+
             const response = await fetch(`${API_URL}/api/setup/first-admin`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -212,17 +212,17 @@ describe('Setup Flow API Tests', { timeout: 30000 }, () => {
 
             // Accept either validation error (400) or rate limit (429)
             assert.ok(response.status === 400 || response.status === 429);
-            
+
             if (response.status === 400) {
                 const data = await response.json() as FirstAdminResponse;
-                assert.ok(data.error?.includes('email'));
+                assert.ok(data.error !== undefined && data.error.includes('email'));
             }
         });
 
         test('should reject setup with short password', async () => {
             // Wait to avoid rate limiting
             await new Promise(resolve => setTimeout(resolve, 1500));
-            
+
             const response = await fetch(`${API_URL}/api/setup/first-admin`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -235,10 +235,10 @@ describe('Setup Flow API Tests', { timeout: 30000 }, () => {
 
             // Accept either validation error (400) or rate limit (429)
             assert.ok(response.status === 400 || response.status === 429);
-            
+
             if (response.status === 400) {
                 const data = await response.json() as FirstAdminResponse;
-                assert.ok(data.error?.includes('8 characters'));
+                assert.ok(data.error !== undefined && data.error.includes('8 characters'));
             }
         });
     });
@@ -379,24 +379,24 @@ describe('Setup Flow API Tests', { timeout: 30000 }, () => {
             const data = await response.json() as TokenResponse;
             assert.ok(data.registrationToken !== undefined);
             assert.notStrictEqual(data.registrationToken, registrationToken);
-            
+
             // Old token should now be invalid
             const oldTokenResponse = await fetch(`${API_URL}/api/setup/validate-token`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token: registrationToken })
             });
-            
+
             const oldTokenData = await oldTokenResponse.json() as ValidateTokenResponse;
             assert.strictEqual(oldTokenData.valid, false);
-            
+
             // New token should be valid
             const newTokenResponse = await fetch(`${API_URL}/api/setup/validate-token`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token: data.registrationToken })
             });
-            
+
             const newTokenData = await newTokenResponse.json() as ValidateTokenResponse;
             assert.strictEqual(newTokenData.valid, true);
         });
