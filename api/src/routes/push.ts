@@ -48,7 +48,7 @@ interface UnsubscribeBody {
 async function requireAuth(req: RequestWithUser, res: Response, next: NextFunction): Promise<void> {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (authHeader === undefined || !authHeader.startsWith('Bearer ')) {
         res.status(401).json({
             success: false,
             error: 'Authorization header required'
@@ -109,7 +109,7 @@ router.get('/vapid-key', (_req: Request, res: Response) => {
  * GET /api/push/status
  */
 router.get('/status', requireAuth, (req: RequestWithUser, res: Response) => {
-    if (!req.user) {
+    if (req.user === undefined) {
         return res.status(401).json({
             success: false,
             error: 'Authentication required'
@@ -138,7 +138,7 @@ router.get('/status', requireAuth, (req: RequestWithUser, res: Response) => {
 router.post('/subscribe', requireAuth, (req: RequestWithUser, res: Response) => {
     const { subscription, groupIds } = req.body as SubscribeBody;
 
-    if (!subscription || !subscription.endpoint || !subscription.keys) {
+    if (subscription === undefined || subscription === null || subscription.endpoint === undefined || subscription.keys === undefined) {
         return res.status(400).json({
             success: false,
             error: 'Invalid subscription object',
@@ -146,7 +146,7 @@ router.post('/subscribe', requireAuth, (req: RequestWithUser, res: Response) => 
         });
     }
 
-    if (!subscription.keys.p256dh || !subscription.keys.auth) {
+    if (subscription.keys.p256dh === undefined || subscription.keys.p256dh === '' || subscription.keys.auth === undefined || subscription.keys.auth === '') {
         return res.status(400).json({
             success: false,
             error: 'Subscription missing required keys',

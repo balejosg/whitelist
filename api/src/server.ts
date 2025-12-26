@@ -313,10 +313,10 @@ if (isMainModule === true) {
         console.log('╚═══════════════════════════════════════════════════════╝');
         console.log('');
 
-        if (!process.env.ADMIN_TOKEN) {
+        if (process.env.ADMIN_TOKEN === undefined || process.env.ADMIN_TOKEN === '') {
             logger.warn('ADMIN_TOKEN not set - admin endpoints will fail');
         }
-        if (!process.env.GITHUB_TOKEN) {
+        if (process.env.GITHUB_TOKEN === undefined || process.env.GITHUB_TOKEN === '') {
             logger.warn('GITHUB_TOKEN not set - approval will fail to push to GitHub');
         }
     });

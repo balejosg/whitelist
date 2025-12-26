@@ -100,7 +100,7 @@ const autoInclusionLimiter = rateLimit({
 // =============================================================================
 
 function secureCompare(a: string, b: string): boolean {
-    if (!a || !b) return false;
+    if (a === undefined || a === null || b === undefined || b === null) return false;
     const buf1 = Buffer.from(String(a));
     const buf2 = Buffer.from(String(b));
     if (buf1.length !== buf2.length) {
@@ -152,7 +152,7 @@ function generateToken(hostname: string, secret: string): string {
 async function requireAuth(req: RequestWithUser, res: Response, next: NextFunction): Promise<void> {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (authHeader === undefined || !authHeader.startsWith('Bearer ')) {
         res.status(401).json({
             success: false,
             error: 'Authorization header required'
@@ -183,7 +183,7 @@ async function requireAuth(req: RequestWithUser, res: Response, next: NextFuncti
 }
 
 function requireAdmin(req: RequestWithUser, res: Response, next: NextFunction): void {
-    if (!req.user || !auth.isAdminToken(req.user)) {
+    if (req.user === undefined || !auth.isAdminToken(req.user)) {
         res.status(403).json({
             success: false,
             error: 'Admin access required'
@@ -206,7 +206,7 @@ function canApproveRequest(req: RequestWithUser, res: Response, next: NextFuncti
 
     req.request = request;
 
-    if (!req.user || !auth.canApproveGroup(req.user, request.group_id)) {
+    if (req.user === undefined || !auth.canApproveGroup(req.user, request.group_id)) {
         res.status(403).json({
             success: false,
             error: 'No permission to approve requests for this group',
@@ -235,7 +235,7 @@ const router = Router();
 router.post('/auto', autoInclusionLimiter, async (req: Request<object, unknown, AutoRequestBody>, res: Response) => {
     const { domain, origin_page, group_id, token, hostname } = req.body;
 
-    if (!domain || !origin_page || !group_id || !token || !hostname) {
+    if (domain === undefined || domain === '' || origin_page === undefined || origin_page === '' || group_id === undefined || group_id === '' || token === undefined || token === '' || hostname === undefined || hostname === '') {
         return res.status(400).json({
             success: false,
             error: 'Missing required fields: domain, origin_page, group_id, token, hostname',
@@ -284,7 +284,7 @@ router.post('/auto', autoInclusionLimiter, async (req: Request<object, unknown, 
     try {
         const result = await github.addDomainToWhitelist(domain, group_id);
 
-        if (!result.success) {
+        if (result.success === false) {
             return res.status(400).json({
                 success: false,
                 error: result.message,
@@ -546,7 +546,7 @@ router.post('/:id/approve', adminLimiter, requireAuth, canApproveRequest, async 
 
     const targetGroup = group_id ?? request.group_id;
     if (group_id && group_id !== request.group_id) {
-        if (!auth.canApproveGroup(req.user, group_id)) {
+        if (auth.canApproveGroup(req.user, group_id) === false) {
             return res.status(403).json({
                 success: false,
                 error: 'No permission to approve for this group',
@@ -555,7 +555,7 @@ router.post('/:id/approve', adminLimiter, requireAuth, canApproveRequest, async 
         }
     }
 
-    if (!auth.isAdminToken(req.user)) {
+    if (auth.isAdminToken(req.user) === false) {
         const blockCheck = await github.isDomainBlocked(request.domain);
         if (blockCheck.blocked) {
             return res.status(403).json({
@@ -572,7 +572,7 @@ router.post('/:id/approve', adminLimiter, requireAuth, canApproveRequest, async 
     try {
         const githubResult = await github.addDomainToWhitelist(request.domain, targetGroup);
 
-        if (!githubResult.success) {
+        if (githubResult.success === false) {
             return res.status(400).json({
                 success: false,
                 error: githubResult.message

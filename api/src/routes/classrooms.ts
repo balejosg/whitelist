@@ -49,7 +49,7 @@ interface RegisterMachineBody {
 async function requireAuth(req: RequestWithUser, res: Response, next: NextFunction): Promise<void> {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (authHeader === undefined || !authHeader.startsWith('Bearer ')) {
         res.status(401).json({
             success: false,
             error: 'Authorization header required'
@@ -80,7 +80,7 @@ async function requireAuth(req: RequestWithUser, res: Response, next: NextFuncti
 }
 
 function requireAdmin(req: RequestWithUser, res: Response, next: NextFunction): void {
-    if (!req.user || !auth.isAdminToken(req.user)) {
+    if (req.user === undefined || !auth.isAdminToken(req.user)) {
         res.status(403).json({
             success: false,
             error: 'Admin access required'

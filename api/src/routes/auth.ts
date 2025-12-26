@@ -89,7 +89,7 @@ const router = Router();
 router.post('/register', registerLimiter, async (req: Request<object, unknown, RegisterBody>, res: Response) => {
     const { email, name, password } = req.body;
 
-    if (!email || !name || !password) {
+    if (email === undefined || email === '' || name === undefined || name === '' || password === undefined || password === '') {
         return res.status(400).json({
             success: false,
             error: 'Email, name, and password are required',
@@ -149,7 +149,7 @@ router.post('/register', registerLimiter, async (req: Request<object, unknown, R
 router.post('/login', loginLimiter, async (req: Request<object, unknown, LoginBody>, res: Response) => {
     const { email, password } = req.body;
 
-    if (!email || !password) {
+    if (email === undefined || email === '' || password === undefined || password === '') {
         return res.status(400).json({
             success: false,
             error: 'Email and password are required',
@@ -168,7 +168,7 @@ router.post('/login', loginLimiter, async (req: Request<object, unknown, LoginBo
             });
         }
 
-        if (!user.isActive) {
+        if (user.isActive === false) {
             return res.status(403).json({
                 success: false,
                 error: 'Account is not active. Please contact an administrator.',
@@ -239,7 +239,7 @@ router.post('/refresh', async (req: Request<object, unknown, RefreshBody>, res: 
 
         const user = userStorage.getUserById(decoded.sub);
 
-        if (!user || !user.isActive) {
+        if (user === null || user === undefined || user.isActive === false) {
             return res.status(401).json({
                 success: false,
                 error: 'User not found or inactive',
@@ -294,7 +294,7 @@ router.post('/logout', async (req: Request<object, unknown, LogoutBody>, res: Re
 router.get('/me', async (req: Request, res: Response) => {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (authHeader === undefined || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({
             success: false,
             error: 'Authorization header required',

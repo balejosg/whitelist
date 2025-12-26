@@ -212,7 +212,7 @@ export async function addDomainToWhitelist(
         }
 
         if (!addedDomain) {
-            if (!currentContent.includes('## WHITELIST')) {
+            if (currentContent.includes('## WHITELIST') === false) {
                 newContent = '## WHITELIST\n' + domainLower + '\n\n' + currentContent;
             } else {
                 newContent = currentContent.replace(

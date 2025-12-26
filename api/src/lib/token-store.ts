@@ -137,7 +137,7 @@ export class RedisTokenStore implements TokenStore {
     }
 
     async add(token: string): Promise<boolean> {
-        if (!this.connected || !this.client) {
+        if (this.connected === false || this.client === undefined || this.client === null) {
             return false;
         }
 
@@ -157,7 +157,7 @@ export class RedisTokenStore implements TokenStore {
     }
 
     async has(token: string): Promise<boolean> {
-        if (!this.connected || !this.client) {
+        if (this.connected === false || this.client === undefined || this.client === null) {
             return false;
         }
 
@@ -172,7 +172,7 @@ export class RedisTokenStore implements TokenStore {
     }
 
     async delete(token: string): Promise<boolean> {
-        if (!this.connected || !this.client) {
+        if (this.connected === false || this.client === undefined || this.client === null) {
             return false;
         }
 
@@ -187,7 +187,7 @@ export class RedisTokenStore implements TokenStore {
     }
 
     async size(): Promise<number> {
-        if (!this.connected || !this.client) {
+        if (this.connected === false || this.client === undefined || this.client === null) {
             return 0;
         }
 

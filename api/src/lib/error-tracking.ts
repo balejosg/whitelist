@@ -134,7 +134,7 @@ export function errorTrackingMiddleware(
 
     logError(err, req, category);
 
-    if (!res.headersSent) {
+    if (res.headersSent === false) {
         res.status(statusCode).json({
             success: false,
             error: statusCode === 500 ? 'Internal server error' : err.message,

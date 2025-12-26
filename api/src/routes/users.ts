@@ -55,7 +55,7 @@ interface UpdateRoleBody {
 // =============================================================================
 
 function timingSafeEqual(a: string, b: string): boolean {
-    if (typeof a !== 'string' || typeof b !== 'string') {
+    if (typeof a !== 'string' || a === '' || typeof b !== 'string' || b === '') {
         return false;
     }
     const bufA = Buffer.from(a, 'utf8');
@@ -90,7 +90,7 @@ const adminLimiter = rateLimit({
 async function requireAuth(req: RequestWithUser, res: Response, next: NextFunction): Promise<void> {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (authHeader === undefined || !authHeader.startsWith('Bearer ')) {
         res.status(401).json({
             success: false,
             error: 'Authorization header required',
@@ -123,7 +123,7 @@ async function requireAuth(req: RequestWithUser, res: Response, next: NextFuncti
 }
 
 function requireAdmin(req: RequestWithUser, res: Response, next: NextFunction): void {
-    if (!req.user || !auth.isAdminToken(req.user)) {
+    if (req.user === undefined || !auth.isAdminToken(req.user)) {
         res.status(403).json({
             success: false,
             error: 'Admin access required',
@@ -244,7 +244,7 @@ router.get('/:id', adminLimiter, requireAuth, requireAdmin, (req: Request, res: 
 router.post('/', adminLimiter, requireAuth, requireAdmin, async (req: RequestWithUser, res: Response) => {
     const { email, name, password, role, groupIds } = req.body as CreateUserBody;
 
-    if (!email || !name || !password) {
+    if (email === undefined || email === '' || name === undefined || name === '' || password === undefined || password === '') {
         return res.status(400).json({
             success: false,
             error: 'Email, name, and password are required',
@@ -445,7 +445,7 @@ router.post('/:id/roles', adminLimiter, requireAuth, requireAdmin, (req: Request
         });
     }
 
-    if (!roleStorage.VALID_ROLES.includes(role as import('../types/index.js').UserRole)) {
+    if (roleStorage.VALID_ROLES.includes(role as import('../types/index.js').UserRole) === false) {
         return res.status(400).json({
             success: false,
             error: `Invalid role. Must be one of: ${roleStorage.VALID_ROLES.join(', ')}`,
@@ -469,7 +469,7 @@ router.post('/:id/roles', adminLimiter, requireAuth, requireAdmin, (req: Request
             createdBy: req.user?.sub ?? 'unknown'
         });
 
-        if (!user.isActive) {
+        if (user.isActive === false) {
             userStorage.updateUser(req.params.id!, { active: true });
         }
 

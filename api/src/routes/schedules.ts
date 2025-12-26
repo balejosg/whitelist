@@ -54,7 +54,7 @@ interface ScheduleConflictError extends Error {
 function requireAuth(req: RequestWithUser, res: Response, next: NextFunction): void {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (authHeader === undefined || !authHeader.startsWith('Bearer ')) {
         res.status(401).json({
             success: false,
             error: 'Authentication required'
@@ -156,7 +156,7 @@ router.get('/classroom/:classroomId', requireAuth, (req: RequestWithUser, res: R
  * GET /api/schedules/my
  */
 router.get('/my', requireAuth, (req: RequestWithUser, res: Response) => {
-    if (!req.user) {
+    if (req.user === undefined) {
         return res.status(401).json({
             success: false,
             error: 'Authentication required'

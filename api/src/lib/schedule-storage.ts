@@ -156,7 +156,7 @@ export function findConflict(
 export function createSchedule(scheduleData: CreateScheduleInput): StoredSchedule {
     const { classroom_id, teacher_id, group_id, day_of_week, start_time, end_time } = scheduleData;
 
-    if (!classroom_id || !teacher_id || !group_id || !day_of_week || !start_time || !end_time) {
+    if (classroom_id === undefined || teacher_id === undefined || group_id === undefined || day_of_week === undefined || start_time === undefined || end_time === undefined) {
         throw new Error('Missing required fields');
     }
 
@@ -165,7 +165,7 @@ export function createSchedule(scheduleData: CreateScheduleInput): StoredSchedul
     }
 
     const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-    if (!timeRegex.test(start_time) || !timeRegex.test(end_time)) {
+    if (timeRegex.test(start_time) === false || timeRegex.test(end_time) === false) {
         throw new Error('Invalid time format. Use HH:MM (24h)');
     }
 

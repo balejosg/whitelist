@@ -141,7 +141,7 @@ const router = Router();
 router.post('/', requireSharedSecret, (req: Request<object, unknown, SubmitReportBody>, res: Response) => {
     const { hostname, status, dnsmasq_running, dns_resolving, fail_count, actions, version } = req.body;
 
-    if (!hostname || !status) {
+    if (hostname === undefined || hostname === '' || status === undefined || status === '') {
         return res.status(400).json({
             success: false,
             error: 'Missing required fields: hostname, status'
@@ -151,7 +151,7 @@ router.post('/', requireSharedSecret, (req: Request<object, unknown, SubmitRepor
     const data = loadReports();
     const now = new Date().toISOString();
 
-    if (!data.hosts[hostname]) {
+    if (data.hosts[hostname] === undefined) {
         const hostCount = Object.keys(data.hosts).length;
         if (hostCount >= MAX_HOSTS) {
             const entries = Object.entries(data.hosts);
@@ -317,7 +317,7 @@ router.get('/:hostname', requireAdmin, (req: Request, res: Response) => {
     }
     const data = loadReports();
 
-    if (!data.hosts[hostname]) {
+    if (data.hosts[hostname] === undefined) {
         return res.status(404).json({
             success: false,
             error: 'Host not found'
