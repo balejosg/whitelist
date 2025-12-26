@@ -62,12 +62,12 @@ interface SubmitReportBody {
 // Data Access
 // =============================================================================
 
-if (!fs.existsSync(DATA_DIR)) {
+if (fs.existsSync(DATA_DIR) === false) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
 function initReportsFile(): void {
-    if (!fs.existsSync(REPORTS_FILE)) {
+    if (fs.existsSync(REPORTS_FILE) === false) {
         fs.writeFileSync(REPORTS_FILE, JSON.stringify({ hosts: {}, lastUpdated: null }));
     }
 }

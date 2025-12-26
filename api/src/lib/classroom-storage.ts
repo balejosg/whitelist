@@ -75,15 +75,15 @@ interface ClassroomStats {
 // Initialization
 // =============================================================================
 
-if (!fs.existsSync(DATA_DIR)) {
+if (fs.existsSync(DATA_DIR) === false) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-if (!fs.existsSync(CLASSROOMS_FILE)) {
+if (fs.existsSync(CLASSROOMS_FILE) === false) {
     fs.writeFileSync(CLASSROOMS_FILE, JSON.stringify({ classrooms: [] }, null, 2));
 }
 
-if (!fs.existsSync(MACHINES_FILE)) {
+if (fs.existsSync(MACHINES_FILE) === false) {
     fs.writeFileSync(MACHINES_FILE, JSON.stringify({ machines: [] }, null, 2));
 }
 

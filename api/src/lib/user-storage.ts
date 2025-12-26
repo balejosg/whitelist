@@ -55,12 +55,12 @@ interface UserStats {
 // =============================================================================
 
 // Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
+if (fs.existsSync(DATA_DIR) === false) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
 // Initialize empty users file if not exists
-if (!fs.existsSync(USERS_FILE)) {
+if (fs.existsSync(USERS_FILE) === false) {
     fs.writeFileSync(USERS_FILE, JSON.stringify({ users: [] }, null, 2));
 }
 

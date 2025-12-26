@@ -72,10 +72,10 @@ interface NotificationResult {
 // Configuration
 // =============================================================================
 
-const VAPID_CONFIGURED = !!(
-    process.env.VAPID_PUBLIC_KEY &&
-    process.env.VAPID_PRIVATE_KEY &&
-    process.env.VAPID_SUBJECT
+const VAPID_CONFIGURED = (
+    process.env.VAPID_PUBLIC_KEY !== undefined && process.env.VAPID_PUBLIC_KEY !== '' &&
+    process.env.VAPID_PRIVATE_KEY !== undefined && process.env.VAPID_PRIVATE_KEY !== '' &&
+    process.env.VAPID_SUBJECT !== undefined && process.env.VAPID_SUBJECT !== ''
 );
 
 if (VAPID_CONFIGURED === true) {
@@ -95,7 +95,7 @@ if (VAPID_CONFIGURED === true) {
 
 function loadSubscriptions(): SubscriptionsData {
     try {
-        if (!fs.existsSync(SUBSCRIPTIONS_FILE)) {
+        if (fs.existsSync(SUBSCRIPTIONS_FILE) === false) {
             return { subscriptions: [] };
         }
         const data = fs.readFileSync(SUBSCRIPTIONS_FILE, 'utf-8');
@@ -107,7 +107,7 @@ function loadSubscriptions(): SubscriptionsData {
 }
 
 function saveSubscriptions(data: SubscriptionsData): void {
-    if (!fs.existsSync(DATA_DIR)) {
+    if (fs.existsSync(DATA_DIR) === false) {
         fs.mkdirSync(DATA_DIR, { recursive: true });
     }
     fs.writeFileSync(SUBSCRIPTIONS_FILE, JSON.stringify(data, null, 2));

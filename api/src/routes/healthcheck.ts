@@ -103,30 +103,30 @@ router.get('/ready', async (_req: Request, res: Response) => {
     }
 
     // Check 2: GitHub configuration
-    const githubConfigured = !!(
-        process.env.GITHUB_TOKEN &&
-        process.env.GITHUB_OWNER &&
-        process.env.GITHUB_REPO
+    const githubConfigured = (
+        process.env.GITHUB_TOKEN !== undefined && process.env.GITHUB_TOKEN !== '' &&
+        process.env.GITHUB_OWNER !== undefined && process.env.GITHUB_OWNER !== '' &&
+        process.env.GITHUB_REPO !== undefined && process.env.GITHUB_REPO !== ''
     );
     health.checks.github = {
         status: githubConfigured ? 'configured' : 'not_configured',
         details: {
-            token: process.env.GITHUB_TOKEN ? 'set' : 'missing',
-            owner: process.env.GITHUB_OWNER ? 'set' : 'missing',
-            repo: process.env.GITHUB_REPO ? 'set' : 'missing'
+            token: (process.env.GITHUB_TOKEN !== undefined && process.env.GITHUB_TOKEN !== '') ? 'set' : 'missing',
+            owner: (process.env.GITHUB_OWNER !== undefined && process.env.GITHUB_OWNER !== '') ? 'set' : 'missing',
+            repo: (process.env.GITHUB_REPO !== undefined && process.env.GITHUB_REPO !== '') ? 'set' : 'missing'
         }
     };
 
     // Check 3: Auth configuration
-    const authConfigured = !!(process.env.ADMIN_TOKEN || process.env.JWT_SECRET);
+    const authConfigured = ((process.env.ADMIN_TOKEN !== undefined && process.env.ADMIN_TOKEN !== '') || (process.env.JWT_SECRET !== undefined && process.env.JWT_SECRET !== ''));
     health.checks.auth = {
         status: authConfigured ? 'configured' : 'not_configured',
         details: {
-            adminToken: process.env.ADMIN_TOKEN ? 'set' : 'missing',
-            jwtSecret: process.env.JWT_SECRET ? 'set' : 'using_random'
+            adminToken: (process.env.ADMIN_TOKEN !== undefined && process.env.ADMIN_TOKEN !== '') ? 'set' : 'missing',
+            jwtSecret: (process.env.JWT_SECRET !== undefined && process.env.JWT_SECRET !== '') ? 'set' : 'using_random'
         }
     };
-    if (!authConfigured) {
+    if (authConfigured === false) {
         health.status = 'degraded';
     }
 

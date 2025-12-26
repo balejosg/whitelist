@@ -64,11 +64,11 @@ interface UpdateScheduleInput {
 // Initialization
 // =============================================================================
 
-if (!fs.existsSync(DATA_DIR)) {
+if (fs.existsSync(DATA_DIR) === false) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-if (!fs.existsSync(SCHEDULES_FILE)) {
+if (fs.existsSync(SCHEDULES_FILE) === false) {
     fs.writeFileSync(SCHEDULES_FILE, JSON.stringify({ schedules: [] }, null, 2));
 }
 

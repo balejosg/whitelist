@@ -62,11 +62,11 @@ interface TeacherInfo {
 // Initialization
 // =============================================================================
 
-if (!fs.existsSync(DATA_DIR)) {
+if (fs.existsSync(DATA_DIR) === false) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-if (!fs.existsSync(ROLES_FILE)) {
+if (fs.existsSync(ROLES_FILE) === false) {
     fs.writeFileSync(ROLES_FILE, JSON.stringify({ roles: [] }, null, 2));
 }
 
@@ -108,7 +108,7 @@ function toRoleType(stored: StoredRole): Role {
  */
 export function getUserRoles(userId: string): StoredRole[] {
     const data = loadData();
-    return data.roles.filter((r) => r.userId === userId && !r.revokedAt);
+    return data.roles.filter((r) => r.userId === userId && r.revokedAt === null);
 }
 
 /**
@@ -116,7 +116,7 @@ export function getUserRoles(userId: string): StoredRole[] {
  */
 export function getUsersByRole(role: UserRole): StoredRole[] {
     const data = loadData();
-    return data.roles.filter((r) => r.role === role && !r.revokedAt);
+    return data.roles.filter((r) => r.role === role && r.revokedAt === null);
 }
 
 /**
@@ -202,7 +202,7 @@ export function assignRole(roleData: AssignRoleData & { createdBy?: string }): S
 
     const data = loadData();
     const existingRole = data.roles.find(
-        (r) => r.userId === userId && r.role === role && !r.revokedAt
+        (r) => r.userId === userId && r.role === role && r.revokedAt === null
     );
 
     if (existingRole !== undefined) {
@@ -311,7 +311,7 @@ export function revokeAllUserRoles(userId: string, revokedBy?: string): number {
     let count = 0;
 
     data.roles.forEach((r) => {
-        if (r.userId === userId && !r.revokedAt) {
+        if (r.userId === userId && r.revokedAt === null) {
             r.revokedAt = new Date().toISOString();
             r.revokedBy = revokedBy ?? 'system';
             r.updatedAt = new Date().toISOString();
@@ -384,7 +384,7 @@ export function updateRole(roleId: string, data: Partial<Role>): Role | null {
  */
 export function getStats(): RoleStats {
     const data = loadData();
-    const active = data.roles.filter((r) => !r.revokedAt);
+    const active = data.roles.filter((r) => r.revokedAt === null);
 
     return {
         total: data.roles.length,
