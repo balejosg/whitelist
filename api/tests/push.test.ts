@@ -64,7 +64,7 @@ describe('Push Notifications API Tests', { timeout: 30000 }, () => {
             fs.unlinkSync(subscriptionsFile);
         }
 
-        const { app } = await import('../server.js');
+        const { app } = await import('../src/server.js');
 
         server = app.listen(PORT, () => {
             console.log(`Push test server started on port ${PORT}`);

@@ -40,20 +40,20 @@ import rateLimit from 'express-rate-limit';
 import 'dotenv/config';
 
 // Structured logging with Winston
-import logger from './src/lib/logger.js';
+import logger from './lib/logger.js';
 
 // Route handlers
-import requestsRouter from './src/routes/requests.js';
-import healthReportsRouter from './src/routes/health-reports.js';
-import authRouter from './src/routes/auth.js';
-import usersRouter from './src/routes/users.js';
-import pushRouter from './src/routes/push.js';
-import classroomsRouter from './src/routes/classrooms.js';
-import schedulesRouter from './src/routes/schedules.js';
-import healthcheckRouter from './src/routes/healthcheck.js';
+import requestsRouter from './routes/requests.js';
+import healthReportsRouter from './routes/health-reports.js';
+import authRouter from './routes/auth.js';
+import usersRouter from './routes/users.js';
+import pushRouter from './routes/push.js';
+import classroomsRouter from './routes/classrooms.js';
+import schedulesRouter from './routes/schedules.js';
+import healthcheckRouter from './routes/healthcheck.js';
 
 // Error tracking and request ID middleware
-import { requestIdMiddleware, errorTrackingMiddleware } from './src/lib/error-tracking.js';
+import { requestIdMiddleware, errorTrackingMiddleware } from './lib/error-tracking.js';
 
 // Swagger/OpenAPI (optional - only load if dependencies installed)
 let swaggerUi: typeof import('swagger-ui-express') | undefined;
@@ -61,7 +61,7 @@ let getSwaggerSpec: (() => object) | undefined;
 
 try {
     swaggerUi = await import('swagger-ui-express');
-    const swaggerModule = await import('./src/lib/swagger.js');
+    const swaggerModule = await import('./lib/swagger.js');
     getSwaggerSpec = swaggerModule.getSwaggerSpec;
 } catch {
     // Swagger dependencies not installed - skip
@@ -213,7 +213,7 @@ app.use('/api/classrooms', classroomsRouter);
 app.use('/api/schedules', schedulesRouter);
 
 // Serve SPA static files
-app.use(express.static(path.join(__dirname, '../spa')));
+app.use(express.static(path.join(__dirname, '../../spa')));
 
 // =============================================================================
 // Error Handling

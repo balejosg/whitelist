@@ -54,7 +54,7 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
         process.env.PORT = String(PORT);
         process.env.ADMIN_TOKEN = 'test-admin-token';
 
-        const { app } = await import('../server.js');
+        const { app } = await import('../src/server.js');
 
         server = app.listen(PORT, () => {
             console.log(`Blocked domains test server started on port ${PORT}`);

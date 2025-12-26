@@ -56,7 +56,7 @@ describe('Security Tests', async () => {
         process.env.JWT_SECRET = 'test-jwt-secret-for-security-tests';
         process.env.NODE_ENV = 'test';
 
-        const serverModule = await import('../server.js');
+        const serverModule = await import('../src/server.js');
         const app = serverModule.app;
 
         await new Promise<void>((resolve, reject) => {

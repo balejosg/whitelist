@@ -52,7 +52,7 @@ interface RequestsResponse {
 describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
     before(async () => {
         process.env.PORT = String(PORT);
-        const { app } = await import('../server.js');
+        const { app } = await import('../src/server.js');
 
         server = app.listen(PORT, () => {
             console.log(`E2E test server started on port ${PORT}`);

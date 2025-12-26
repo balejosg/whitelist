@@ -34,7 +34,7 @@ let server: Server | undefined;
 describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
     before(async () => {
         // Start server for testing - dynamic import for ESM
-        const { app } = await import('../server.js');
+        const { app } = await import('../src/server.js');
         const PORT = parseInt(process.env.PORT ?? '3000', 10);
 
         server = app.listen(PORT, () => {

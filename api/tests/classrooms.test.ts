@@ -66,7 +66,7 @@ describe('Classroom API Tests', { timeout: 25000 }, () => {
         process.env.ADMIN_TOKEN = ADMIN_TOKEN;
         process.env.SHARED_SECRET = SHARED_SECRET;
 
-        const { app } = await import('../server.js');
+        const { app } = await import('../src/server.js');
         server = app.listen(TEST_PORT, () => {
             console.log(`Classroom test server started on port ${TEST_PORT}`);
         });

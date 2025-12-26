@@ -45,7 +45,7 @@ describe('Role Management E2E Tests', { timeout: 30000 }, () => {
         process.env.PORT = String(PORT);
         process.env.ADMIN_TOKEN = 'test-admin-token';
 
-        const { app } = await import('../server.js');
+        const { app } = await import('../src/server.js');
 
         server = app.listen(PORT, () => {
             console.log(`Roles test server started on port ${PORT}`);

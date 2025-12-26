@@ -52,7 +52,7 @@ interface AuthResponse {
 describe('Authentication & User Management API Tests', { timeout: 30000 }, () => {
     before(async () => {
         process.env.PORT = String(PORT);
-        const { app } = await import('../server.js');
+        const { app } = await import('../src/server.js');
 
         server = app.listen(PORT, () => {
             console.log(`Auth test server started on port ${PORT}`);

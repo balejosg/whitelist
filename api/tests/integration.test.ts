@@ -90,7 +90,7 @@ describe('Integration: Complete User Workflow', () => {
     let accessToken: string | undefined;
 
     before(async () => {
-        const { app } = await import('../server.js');
+        const { app } = await import('../src/server.js');
         server = app.listen(PORT);
         await new Promise(resolve => setTimeout(resolve, 500));
     });
@@ -134,7 +134,7 @@ describe('Integration: Complete User Workflow', () => {
 describe('Integration: Health Report Flow', () => {
     before(async () => {
         if (!server) {
-            const { app } = await import('../server.js');
+            const { app } = await import('../src/server.js');
             server = app.listen(PORT);
             await new Promise(resolve => setTimeout(resolve, 500));
         }
@@ -178,7 +178,7 @@ describe('Integration: Classroom Management Flow', () => {
 
     before(async () => {
         if (!server) {
-            const { app } = await import('../server.js');
+            const { app } = await import('../src/server.js');
             server = app.listen(PORT);
             await new Promise(resolve => setTimeout(resolve, 500));
         }
@@ -236,7 +236,7 @@ describe('Integration: Domain Request Workflow', () => {
 
     before(async () => {
         if (!server) {
-            const { app } = await import('../server.js');
+            const { app } = await import('../src/server.js');
             server = app.listen(PORT);
             await new Promise(resolve => setTimeout(resolve, 500));
         }
