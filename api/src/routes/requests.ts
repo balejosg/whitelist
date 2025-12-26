@@ -111,7 +111,7 @@ function secureCompare(a: string, b: string): boolean {
 }
 
 function sanitize(str: string | undefined, maxLen = 500): string {
-    if (!str || typeof str !== 'string') return '';
+    if (str === null || str === undefined || typeof str !== 'string') return '';
     return str
         .slice(0, maxLen)
         .replace(/<[^>]*>/g, '')
@@ -120,7 +120,7 @@ function sanitize(str: string | undefined, maxLen = 500): string {
 }
 
 function isValidDomain(domain: string): boolean {
-    if (!domain || typeof domain !== 'string') return false;
+    if (domain === null || domain === undefined || typeof domain !== 'string') return false;
     const domainRegex = /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
     return domainRegex.test(domain.trim());
 }
@@ -170,7 +170,7 @@ async function requireAuth(req: RequestWithUser, res: Response, next: NextFuncti
     }
 
     const adminToken = process.env.ADMIN_TOKEN;
-    if (adminToken && secureCompare(token, adminToken)) {
+    if (adminToken !== undefined && adminToken !== '' && secureCompare(token, adminToken)) {
         req.user = auth.createLegacyAdminPayload();
         next();
         return;

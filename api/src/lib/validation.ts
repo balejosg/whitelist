@@ -245,7 +245,7 @@ export function validate(
  * Validate domain format (standalone function)
  */
 export function isValidDomain(domain: unknown): boolean {
-    if (!domain || typeof domain !== 'string') return false;
+    if (domain === null || domain === undefined || typeof domain !== 'string') return false;
     if (domain.length < 3 || domain.length > 253) return false;
     return domainPattern.test(domain);
 }
@@ -254,7 +254,7 @@ export function isValidDomain(domain: unknown): boolean {
  * Sanitize text input (remove dangerous characters)
  */
 export function sanitize(text: unknown, maxLength = 500): string {
-    if (!text || typeof text !== 'string') return '';
+    if (text === null || text === undefined || typeof text !== 'string') return '';
     return text
         .replace(/<[^>]*>/g, '') // Remove HTML tags
         .replace(/[<>]/g, '')    // Remove remaining angle brackets

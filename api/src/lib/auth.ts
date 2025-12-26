@@ -274,7 +274,7 @@ export function getApprovalGroups(decoded: DecodedWithRoles | null | undefined):
  * Get the highest role from decoded token
  */
 export function getHighestRole(decoded: DecodedWithRoles | null): UserRole | null {
-    if (!decoded?.roles || decoded.roles.length === 0) return null;
+    if (decoded === null || decoded === undefined || decoded.roles === undefined || decoded.roles.length === 0) return null;
 
     const roles = decoded.roles.map((r) => r.role);
 

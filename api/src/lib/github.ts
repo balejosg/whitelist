@@ -292,7 +292,7 @@ export async function isDomainBlocked(domain: string): Promise<BlockedCheckResul
         for (const line of lines) {
             const trimmed = line.trim().toLowerCase();
 
-            if (!trimmed || trimmed.startsWith('#')) continue;
+            if (trimmed === '' || trimmed.startsWith('#')) continue;
 
             if (trimmed === domainLower) {
                 return { blocked: true, matchedRule: trimmed };

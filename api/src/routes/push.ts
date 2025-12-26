@@ -66,7 +66,7 @@ async function requireAuth(req: RequestWithUser, res: Response, next: NextFuncti
     }
 
     const adminToken = process.env.ADMIN_TOKEN;
-    if (adminToken && token === adminToken) {
+    if (adminToken !== undefined && adminToken !== '' && token === adminToken) {
         req.user = auth.createLegacyAdminPayload();
         next();
         return;
@@ -156,7 +156,7 @@ router.post('/subscribe', requireAuth, (req: RequestWithUser, res: Response) => 
 
     let targetGroups = groupIds;
 
-    if (!targetGroups || targetGroups.length === 0) {
+    if (targetGroups === undefined || targetGroups === null || targetGroups.length === 0) {
         const userGroups = auth.getApprovalGroups(req.user);
         if (userGroups === 'all') {
             targetGroups = ['*'];

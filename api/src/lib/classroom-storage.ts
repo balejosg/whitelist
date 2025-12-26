@@ -437,7 +437,7 @@ export const classroomStorage: IClassroomStorage = {
     },
     removeMachine: (classroomId: string, hostname: string) => {
         const machine = getMachineByHostname(hostname);
-        if (!machine || machine.classroom_id !== classroomId) return false;
+        if (machine === null || machine === undefined || machine.classroom_id !== classroomId) return false;
         return deleteMachine(hostname);
     },
     getMachineByHostname: (hostname: string) => {

@@ -98,7 +98,7 @@ function requireSharedSecret(req: Request, res: Response, next: NextFunction): v
     }
 
     const authHeader = req.headers.authorization;
-    if (!authHeader || authHeader !== `Bearer ${secret}`) {
+    if (authHeader === undefined || authHeader !== `Bearer ${secret}`) {
         res.status(401).json({
             success: false,
             error: 'Invalid or missing shared secret'
@@ -119,7 +119,7 @@ function requireAdmin(req: Request, res: Response, next: NextFunction): void {
     }
 
     const authHeader = req.headers.authorization;
-    if (!authHeader || authHeader !== `Bearer ${adminToken}`) {
+    if (authHeader === undefined || authHeader !== `Bearer ${adminToken}`) {
         res.status(401).json({
             success: false,
             error: 'Invalid or missing admin token'

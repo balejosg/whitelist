@@ -109,7 +109,7 @@ async function requireAuth(req: RequestWithUser, res: Response, next: NextFuncti
     }
 
     const adminToken = process.env.ADMIN_TOKEN;
-    if (adminToken && timingSafeEqual(token, adminToken)) {
+    if (adminToken !== undefined && adminToken !== '' && timingSafeEqual(token, adminToken)) {
         req.user = auth.createLegacyAdminPayload();
         next();
         return;
@@ -453,7 +453,7 @@ router.post('/:id/roles', adminLimiter, requireAuth, requireAdmin, (req: Request
         });
     }
 
-    if (role === 'teacher' && (!groupIds || groupIds.length === 0)) {
+    if (role === 'teacher' && (groupIds === undefined || groupIds === null || groupIds.length === 0)) {
         return res.status(400).json({
             success: false,
             error: 'Teachers must be assigned to at least one group',
@@ -496,7 +496,7 @@ router.patch('/:id/roles/:roleId', adminLimiter, requireAuth, requireAdmin, (req
     const { groupIds, addGroups, removeGroups } = req.body as UpdateRoleBody;
 
     const role = roleStorage.getRoleById(req.params.roleId!);
-    if (!role || role.userId !== req.params.id) {
+    if (role === null || role === undefined || role.userId !== req.params.id) {
         return res.status(404).json({
             success: false,
             error: 'Role not found',
@@ -541,7 +541,7 @@ router.patch('/:id/roles/:roleId', adminLimiter, requireAuth, requireAdmin, (req
 router.delete('/:id/roles/:roleId', adminLimiter, requireAuth, requireAdmin, (req: RequestWithUser, res: Response) => {
     const role = roleStorage.getRoleById(req.params.roleId!);
 
-    if (!role || role.userId !== req.params.id) {
+    if (role === null || role === undefined || role.userId !== req.params.id) {
         return res.status(404).json({
             success: false,
             error: 'Role not found',

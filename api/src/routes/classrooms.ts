@@ -67,7 +67,7 @@ async function requireAuth(req: RequestWithUser, res: Response, next: NextFuncti
     }
 
     const adminToken = process.env.ADMIN_TOKEN;
-    if (adminToken && token === adminToken) {
+    if (adminToken !== undefined && adminToken !== '' && token === adminToken) {
         req.user = auth.createLegacyAdminPayload();
         next();
         return;
@@ -98,7 +98,7 @@ function requireSharedSecret(req: Request, res: Response, next: NextFunction): v
     }
 
     const authHeader = req.headers.authorization;
-    if (!authHeader || authHeader !== `Bearer ${secret}`) {
+    if (authHeader === undefined || authHeader !== `Bearer ${secret}`) {
         res.status(401).json({
             success: false,
             error: 'Invalid or missing shared secret'

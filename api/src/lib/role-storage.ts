@@ -239,7 +239,7 @@ export function updateRoleGroups(roleId: string, groupIds: string[]): StoredRole
 
     if (index === -1) return null;
     const role = data.roles[index];
-    if (!role || role.revokedAt) return null;
+    if (role === undefined || role.revokedAt !== null) return null;
 
     role.groupIds = groupIds;
     role.updatedAt = new Date().toISOString();
@@ -257,7 +257,7 @@ export function addGroupsToRole(roleId: string, groupIds: string[]): StoredRole 
 
     if (index === -1) return null;
     const role = data.roles[index];
-    if (!role || role.revokedAt) return null;
+    if (role === undefined || role.revokedAt !== null) return null;
 
     role.groupIds = [...new Set([...role.groupIds, ...groupIds])];
     role.updatedAt = new Date().toISOString();
@@ -275,7 +275,7 @@ export function removeGroupsFromRole(roleId: string, groupIds: string[]): Stored
 
     if (index === -1) return null;
     const role = data.roles[index];
-    if (!role || role.revokedAt) return null;
+    if (role === undefined || role.revokedAt !== null) return null;
 
     role.groupIds = role.groupIds.filter((g) => !groupIds.includes(g));
     role.updatedAt = new Date().toISOString();
@@ -293,7 +293,7 @@ export function revokeRole(roleId: string, revokedBy?: string): StoredRole | nul
 
     if (index === -1) return null;
     const role = data.roles[index];
-    if (!role || role.revokedAt) return null;
+    if (role === undefined || role.revokedAt !== null) return null;
 
     role.revokedAt = new Date().toISOString();
     role.revokedBy = revokedBy ?? 'system';
