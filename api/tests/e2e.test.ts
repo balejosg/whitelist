@@ -200,7 +200,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
 
     describe('Step 3.5: Teacher Dashboard - US2', () => {
         test('teacher should get their assigned groups', async () => {
-            if (!teacherToken) {
+            if (teacherToken === null) {
                 console.log('Skipping: No teacher token');
                 return;
             }
@@ -218,7 +218,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
         });
 
         test('teacher should only see requests for their groups', async () => {
-            if (!teacherToken) {
+            if (teacherToken === null) {
                 console.log('Skipping: No teacher token');
                 return;
             }
@@ -242,7 +242,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
         });
 
         test('teacher can filter requests by status', async () => {
-            if (!teacherToken) {
+            if (teacherToken === null) {
                 console.log('Skipping: No teacher token');
                 return;
             }
@@ -266,7 +266,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
         });
 
         test('teacher cannot access admin-only endpoints', async () => {
-            if (!teacherToken) {
+            if (teacherToken === null) {
                 console.log('Skipping: No teacher token');
                 return;
             }
@@ -370,7 +370,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
         });
 
         test('teacher should receive DOMAIN_BLOCKED error when approving blocked domain', async () => {
-            if (!blockedRequestId || !teacherToken) {
+            if (blockedRequestId === null || teacherToken === null) {
                 console.log('Skipping: No blocked request or teacher token available');
                 return;
             }
@@ -397,7 +397,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
         });
 
         test('teacher can check if a domain is blocked', async () => {
-            if (!teacherToken) {
+            if (teacherToken === null) {
                 console.log('Skipping: No teacher token available');
                 return;
             }
@@ -420,7 +420,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
         });
 
         test('admin should be able to approve blocked domain (override)', async () => {
-            if (!blockedRequestId) {
+            if (blockedRequestId === null) {
                 console.log('Skipping: No blocked request available');
                 return;
             }
@@ -490,7 +490,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
 
     describe('Cleanup', () => {
         test('should logout teacher', async () => {
-            if (!teacherToken) return;
+            if (teacherToken === null) return;
 
             const response = await fetch(`${API_URL}/api/auth/logout`, {
                 method: 'POST',

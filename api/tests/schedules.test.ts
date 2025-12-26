@@ -115,7 +115,7 @@ describe('Schedule Storage', () => {
                 end_time: '09:00'
             });
 
-            assert.ok(schedule.id);
+            assert.ok(schedule.id !== undefined && schedule.id !== '');
             assert.strictEqual(schedule.classroom_id, testClassroomId);
             assert.strictEqual(schedule.teacher_id, testTeacherId);
             assert.strictEqual(schedule.recurrence, 'weekly');
@@ -201,7 +201,7 @@ describe('Schedule Storage', () => {
                 end_time: '10:00'
             });
 
-            assert.ok(schedule2.id);
+            assert.ok(schedule2.id !== undefined && schedule2.id !== '');
         });
 
         it('should update a schedule', () => {
@@ -307,7 +307,7 @@ describe('Schedule Storage', () => {
             const wednesday = new Date('2025-01-08T08:30:00');
             const result = scheduleStorage.getCurrentSchedule(testClassroomId, wednesday);
 
-            assert.ok(result);
+            assert.ok(result !== null);
             assert.strictEqual(result?.group_id, testGroupId);
         });
 
@@ -375,7 +375,7 @@ describe('Schedule Storage', () => {
 
             const result = classroomStorage.getWhitelistUrlForMachine('pc-test-01');
 
-            assert.ok(result);
+            assert.ok(result !== null);
             assert.strictEqual(result?.group_id, 'scheduled-group');
             assert.strictEqual(result?.source, 'schedule');
         });
@@ -396,7 +396,7 @@ describe('Schedule Storage', () => {
 
             const result = classroomStorage.getWhitelistUrlForMachine('pc-override-01');
 
-            assert.ok(result);
+            assert.ok(result !== null);
             assert.strictEqual(result?.group_id, 'manual-group');
             assert.strictEqual(result?.source, 'manual');
         });
@@ -415,7 +415,7 @@ describe('Schedule Storage', () => {
 
             const result = classroomStorage.getWhitelistUrlForMachine('pc-default-01');
 
-            assert.ok(result);
+            assert.ok(result !== null);
             assert.strictEqual(result?.group_id, 'fallback-group');
             assert.strictEqual(result?.source, 'default');
         });
