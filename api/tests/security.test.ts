@@ -251,7 +251,7 @@ describe('Security Tests', async () => {
 
     describe('Rate Limiting', async () => {
         it('should include rate limit headers', async () => {
-            const { headers } = await request('/api/requests', {
+            await request('/api/requests', {
                 method: 'POST',
                 body: JSON.stringify({ domain: 'test.com' })
             });

@@ -63,7 +63,7 @@ function githubRequest<T>(
     return new Promise((resolve, reject) => {
         const token = process.env.GITHUB_TOKEN;
 
-        if (!token) {
+        if (token === undefined || token === '') {
             reject(new Error('GITHUB_TOKEN not configured'));
             return;
         }
@@ -88,7 +88,7 @@ function githubRequest<T>(
                 try {
                     const json = data ? JSON.parse(data) : {};
 
-                    if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+                    if (res.statusCode !== undefined && res.statusCode >= 200 && res.statusCode < 300) {
                         resolve(json as T);
                     } else {
                         const message = (json as { message?: string }).message ?? `HTTP ${res.statusCode}`;

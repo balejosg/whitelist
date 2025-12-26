@@ -273,7 +273,7 @@ router.post('/logout', async (req: Request<object, unknown, LogoutBody>, res: Re
     const authHeader = req.headers.authorization;
     const { refreshToken } = req.body;
 
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    if (authHeader !== undefined && authHeader.startsWith('Bearer ')) {
         const accessToken = authHeader.slice(7);
         await auth.blacklistToken(accessToken);
     }

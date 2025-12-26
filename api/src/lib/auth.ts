@@ -50,7 +50,7 @@ interface LegacyAdminPayload {
 
 const isProduction = process.env.NODE_ENV === 'production';
 
-if (isProduction && !process.env.JWT_SECRET) {
+if (isProduction && (process.env.JWT_SECRET === undefined || process.env.JWT_SECRET === '')) {
     console.error('');
     console.error('╔═══════════════════════════════════════════════════════════════╗');
     console.error('║  FATAL SECURITY ERROR: JWT_SECRET not set in production!      ║');
@@ -67,7 +67,7 @@ if (isProduction && !process.env.JWT_SECRET) {
 
 // In development, generate a random secret but warn about token invalidation
 let JWT_SECRET: string;
-if (process.env.JWT_SECRET) {
+if (process.env.JWT_SECRET !== undefined && process.env.JWT_SECRET !== '') {
     JWT_SECRET = process.env.JWT_SECRET;
 } else {
     JWT_SECRET = crypto.randomBytes(32).toString('hex');

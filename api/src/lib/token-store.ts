@@ -143,7 +143,7 @@ export class RedisTokenStore implements TokenStore {
 
         try {
             const decoded = jwt.decode(token) as DecodedTokenBase | null;
-            const ttl = decoded?.exp ? decoded.exp - Math.floor(Date.now() / 1000) : 86400;
+            const ttl = decoded?.exp !== undefined ? decoded.exp - Math.floor(Date.now() / 1000) : 86400;
 
             if (ttl > 0) {
                 await this.client.setEx(`blacklist:${token}`, ttl, '1');

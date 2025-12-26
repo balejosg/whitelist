@@ -63,7 +63,7 @@ const devFormat = winston.format.combine(
     winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
     winston.format.colorize(),
     winston.format.printf(({ timestamp, level, message, requestId, ...meta }) => {
-        const reqId = requestId ? `[${requestId as string}]` : '';
+        const reqId = requestId !== undefined && requestId !== null ? `[${requestId as string}]` : '';
         const metaStr = Object.keys(meta).length > 0 ? ` ${JSON.stringify(meta)}` : '';
         return `${timestamp as string} ${level}: ${reqId} ${message as string}${metaStr}`;
     })
