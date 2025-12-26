@@ -355,7 +355,7 @@ router.post('/', publicLimiter, (req: Request<object, unknown, CreateRequestBody
             requesterEmail: sanitize(requester_email, 100),
             groupId: group_id,
             priority: priority as 'low' | 'normal' | 'high' | 'urgent' | undefined
-        }));
+        }) as Parameters<typeof storage.createRequest>[0]);
 
         push.notifyTeachersOfNewRequest(request).catch(err => {
             console.error('Push notification failed:', err.message);

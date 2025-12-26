@@ -152,7 +152,7 @@ router.post('/', requireAuth, requireAdmin, (req: Request<object, unknown, Creat
             name,
             displayName: display_name,
             defaultGroupId: default_group_id
-        }));
+        }) as Parameters<typeof classroomStorage.createClassroom>[0]);
 
         return res.status(201).json({
             success: true,
@@ -211,7 +211,7 @@ router.put('/:id', requireAuth, requireAdmin, (req: Request<{ id: string }, unkn
     const updated = classroomStorage.updateClassroom(req.params.id, stripUndefined({
         displayName: display_name,
         defaultGroupId: default_group_id
-    }));
+    }) as Parameters<typeof classroomStorage.updateClassroom>[1]);
 
     if (!updated) {
         return res.status(404).json({
@@ -314,7 +314,7 @@ router.post('/machines/register', requireSharedSecret, (req: Request<object, unk
             hostname,
             classroomId,
             version
-        }));
+        }) as Parameters<typeof classroomStorage.registerMachine>[0]);
 
         return res.status(201).json({
             success: true,

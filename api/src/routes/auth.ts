@@ -124,7 +124,7 @@ router.post('/register', registerLimiter, async (req: Request<object, unknown, R
     try {
         const user = await userStorage.createUser({ email, name, password });
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: 'User registered. Please contact an administrator to activate your account.',
             user: {
@@ -135,7 +135,7 @@ router.post('/register', registerLimiter, async (req: Request<object, unknown, R
         });
     } catch (error) {
         console.error('Error registering user:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to register user',
             code: 'SERVER_ERROR'
@@ -188,7 +188,7 @@ router.post('/login', loginLimiter, async (req: Request<object, unknown, LoginBo
 
         const tokens = auth.generateTokens(user, roles);
 
-        res.json({
+        return res.json({
             success: true,
             ...tokens,
             user: {
@@ -204,7 +204,7 @@ router.post('/login', loginLimiter, async (req: Request<object, unknown, LoginBo
         });
     } catch (error) {
         console.error('Error during login:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Login failed',
             code: 'SERVER_ERROR'

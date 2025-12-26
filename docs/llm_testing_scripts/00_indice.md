@@ -7,6 +7,8 @@ Estos guiones están diseñados para que un **LLM con capacidad de control de na
 > [!IMPORTANT]
 > Los tests se realizan a través de **interfaces web** (SPA, extensión Firefox) como lo haría un usuario real, nunca llamadas directas a API.
 
+**Nota:** Para tests de seguridad o stress se pueden usar excepciones específicas:
+
 > [!NOTE]
 > **Excepciones permitidas:**
 > - **Tests de seguridad**: Pueden usar DevTools Console para verificar protecciones

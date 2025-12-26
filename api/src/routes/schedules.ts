@@ -247,7 +247,7 @@ router.put('/:id', requireAuth, canManageSchedule, (req: RequestWithUser, res: R
             start_time,
             end_time,
             group_id
-        }));
+        }) as Parameters<typeof scheduleStorage.updateSchedule>[1]);
 
         return res.json({
             success: true,

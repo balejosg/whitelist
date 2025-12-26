@@ -10,12 +10,11 @@
  * This is useful when working with exactOptionalPropertyTypes,
  * where you cannot pass undefined to optional properties.
  */
-export function stripUndefined<T extends object>(obj: T): { [K in keyof T as T[K] extends undefined ? never : K]: T[K] } {
-    const result = {} as { [K in keyof T as T[K] extends undefined ? never : K]: T[K] };
+export function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+    const result: Partial<T> = {};
     for (const key of Object.keys(obj) as Array<keyof T>) {
         if (obj[key] !== undefined) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (result as any)[key] = obj[key];
+            result[key] = obj[key];
         }
     }
     return result;
