@@ -32,8 +32,7 @@
         "exactOptionalPropertyTypes": false
     },
     "include": [
-        "src/**/*",
-        "server.ts"
+        "src/**/*"
     ],
     "exclude": [
         "node_modules",
