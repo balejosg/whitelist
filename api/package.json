@@ -31,6 +31,7 @@
   "license": "MIT",
   "dependencies": {
     "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.2",
     "compression": "^1.7.4",
@@ -42,6 +43,7 @@
     "joi": "^18.0.2",
     "jsonwebtoken": "^9.0.2",
     "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "uuid": "^11.0.5",
     "web-push": "^3.6.7",
     "winston": "^3.11.0"
