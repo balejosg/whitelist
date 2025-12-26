@@ -46,7 +46,7 @@
 
 ## 🟠 Bugs de Alta Prioridad (P1 - Crítico)
 
-_Ninguno encontrado aún_
+Ninguno encontrado aún.
 
 ---
 
@@ -77,7 +77,7 @@ _Ninguno encontrado aún_
 
 ## 🟢 Bugs de Baja Prioridad (P3 - Menor)
 
-_Ninguno encontrado aún_
+Ninguno encontrado aún.
 
 ---
 
@@ -163,7 +163,7 @@ _Ninguno encontrado aún_
 - [ ] Opción C: Documentar cómo crear usuarios manualmente vía API
 - [ ] Opción D: Proporcionar credenciales de demo en la documentación
 
-**Sin esto, no se puede continuar con las pruebas de UI**
+Sin esto, no se puede continuar con las pruebas de UI.
 
 ### 2. 🟡 Mejorar UX de primera vez
 - [ ] Agregar pantalla de bienvenida para nuevos usuarios
@@ -236,12 +236,12 @@ _Nota: En esta simulación no se generaron capturas reales. En un test real se a
 
 ## 📝 Notas Adicionales
 
-### Observaciones generales sobre el sistema:
+### Observaciones generales sobre el sistema
 - El SPA parece estar bien desplegado (carga rápido, URL correcta)
 - La arquitectura (SPA + API separada) es adecuada para este caso de uso
 - Falta claridad sobre el flujo de onboarding inicial
 
-### Preguntas pendientes:
+### Preguntas pendientes
 1. ¿Cómo se espera que los administradores creen su primera cuenta?
 2. ¿Existe alguna autenticación vía GitHub OAuth como menciona el CLAUDE.md?
 3. ¿Hay credenciales de demo disponibles para testing?
@@ -260,4 +260,4 @@ _Nota: En esta simulación no se generaron capturas reales. En un test real se a
 
 ---
 
-_Última actualización: 2025-12-26 - Simulación en progreso_
+Última actualización: 2025-12-26 - Simulación en progreso
