@@ -105,7 +105,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             assert.strictEqual(response.status, 200);
             const data = await response.json() as AuthResponse;
             adminToken = data.accessToken ?? null;
-            assert.ok(adminToken);
+            assert.ok(adminToken !== null && adminToken !== '');
         });
     });
 
@@ -144,7 +144,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 teacherId = data.user?.id ?? null;
             }
 
-            assert.ok(teacherId);
+            assert.ok(teacherId !== null && teacherId !== '');
         });
 
         test('should assign teacher role with group', async () => {
@@ -183,7 +183,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             assert.strictEqual(response.status, 200);
             const data = await response.json() as AuthResponse;
             teacherToken = data.accessToken ?? null;
-            assert.ok(teacherToken);
+            assert.ok(teacherToken !== null && teacherToken !== '');
         });
 
         test('should get teacher profile with role info', async () => {
@@ -209,7 +209,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 headers: { 'Authorization': `Bearer ${teacherToken}` }
             });
 
-            assert.ok([200, 401].includes(response.status));
+            assert.ok([200, 401].includes(response.status) === true);
 
             if (response.status === 200) {
                 const data = await response.json() as RequestsResponse;
@@ -227,7 +227,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 headers: { 'Authorization': `Bearer ${teacherToken}` }
             });
 
-            assert.ok([200, 401].includes(response.status));
+            assert.ok([200, 401].includes(response.status) === true);
 
             if (response.status === 200) {
                 const data = await response.json() as RequestsResponse;
@@ -251,7 +251,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 headers: { 'Authorization': `Bearer ${teacherToken}` }
             });
 
-            assert.ok([200, 401].includes(response.status));
+            assert.ok([200, 401].includes(response.status) === true);
 
             if (response.status === 200) {
                 const data = await response.json() as RequestsResponse;
@@ -296,7 +296,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             assert.strictEqual(response.status, 201);
             const data = await response.json() as RequestsResponse;
             requestId = data.request_id ?? null;
-            assert.ok(requestId);
+            assert.ok(requestId !== null && requestId !== '');
         });
 
         test('teacher should see pending requests', async () => {
@@ -304,7 +304,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 headers: { 'Authorization': `Bearer ${teacherToken}` }
             });
 
-            assert.ok([200, 401, 403].includes(response.status));
+            assert.ok([200, 401, 403].includes(response.status) === true);
         });
 
         test('teacher should be able to approve request for assigned group', async () => {
@@ -319,7 +319,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 })
             });
 
-            assert.ok([200, 401, 403].includes(response.status));
+            assert.ok([200, 401, 403].includes(response.status) === true);
         });
     });
 
@@ -390,8 +390,8 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
 
             const data = await response.json() as RequestsResponse;
             assert.strictEqual(data.code, 'DOMAIN_BLOCKED', 'Error code should be DOMAIN_BLOCKED');
-            assert.ok(data.domain, 'Response should include domain');
-            assert.ok(data.hint, 'Response should include hint for teacher');
+            assert.ok(data.domain !== undefined && data.domain !== '', 'Response should include domain');
+            assert.ok(data.hint !== undefined && data.hint !== '', 'Response should include hint for teacher');
 
             console.log(`Correctly blocked: ${data.domain} (matched: ${data.matched_rule})`);
         });
@@ -435,7 +435,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             });
 
             assert.ok(
-                [200, 400].includes(response.status),
+                [200, 400].includes(response.status) === true,
                 `Admin should be able to approve (or already approved), got ${response.status}`
             );
 
@@ -451,7 +451,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 headers: { 'Authorization': `Bearer ${teacherToken}` }
             });
 
-            assert.ok([401, 403].includes(response.status));
+            assert.ok([401, 403].includes(response.status) === true);
         });
 
         test('teacher should not be able to create users', async () => {
@@ -468,7 +468,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 })
             });
 
-            assert.ok([401, 403].includes(response.status));
+            assert.ok([401, 403].includes(response.status) === true);
         });
 
         test('teacher should not be able to assign roles', async () => {
@@ -484,7 +484,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 })
             });
 
-            assert.ok([401, 403].includes(response.status));
+            assert.ok([401, 403].includes(response.status) === true);
         });
     });
 
