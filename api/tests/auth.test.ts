@@ -39,7 +39,7 @@ const GLOBAL_TIMEOUT = setTimeout(() => {
 GLOBAL_TIMEOUT.unref();
 
 let server: Server | undefined;
-let testUserToken: string | null = null;
+// let testUserToken: string | null = null;
 
 interface AuthResponse {
     success: boolean;
@@ -196,7 +196,7 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
                 assert.ok(data.refreshToken !== undefined && data.refreshToken !== '');
                 assert.ok(data.user !== undefined);
 
-                testUserToken = data.accessToken ?? null;
+                // testUserToken = data.accessToken ?? null;
             }
         });
 

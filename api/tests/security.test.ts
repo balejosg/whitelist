@@ -90,7 +90,7 @@ describe('Security Tests', async () => {
         });
 
         it('should include X-XSS-Protection header', async () => {
-            const { headers } = await request('/health');
+            await request('/health');
             // Helmet may not set this in newer versions as browsers deprecated it
             assert.ok(true);
         });
@@ -99,7 +99,7 @@ describe('Security Tests', async () => {
             const { headers } = await request('/health');
             const csp = headers.get('content-security-policy');
             assert.ok(csp !== null && csp !== '', 'CSP header should be present');
-            assert.ok(csp !== null && csp.includes("default-src") === true, 'CSP should include default-src');
+            assert.ok(csp !== null && csp.includes('default-src') === true, 'CSP should include default-src');
         });
     });
 
@@ -257,8 +257,8 @@ describe('Security Tests', async () => {
             });
 
             // Check for standard rate limit headers
-            const _remaining = headers.get('ratelimit-remaining') ??
-                headers.get('x-ratelimit-remaining');
+            // const _remaining = headers.get('ratelimit-remaining') ??
+            //    headers.get('x-ratelimit-remaining');
             assert.ok(true); // Just checking no errors
         });
     });

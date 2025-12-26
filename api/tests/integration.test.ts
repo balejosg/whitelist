@@ -42,7 +42,7 @@ function makeRequest(method: string, path: string, body: unknown = null, headers
 
         const req = http.request(options, (res) => {
             let data = '';
-            res.on('data', (chunk: Buffer) => data += chunk);
+            res.on('data', (chunk: Buffer) => data += chunk.toString());
             res.on('end', () => {
                 try {
                     resolve({
