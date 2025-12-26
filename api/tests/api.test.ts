@@ -159,7 +159,7 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
                 headers: { 'Origin': 'http://localhost:3000' }
             });
             const corsHeader = response.headers.get('access-control-allow-origin');
-            assert.ok(corsHeader, 'Expected access-control-allow-origin header to be set');
+            assert.ok(corsHeader !== null && corsHeader !== '', 'Expected access-control-allow-origin header to be set');
         });
     });
 

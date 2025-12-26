@@ -221,7 +221,7 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
             });
             const blockedData = await blockedRes.json() as DomainCheckResponse;
 
-            const blockedDomain = blockedData.domains?.[0] || 'facebook.com';
+            const blockedDomain = blockedData.domains?.[0] ?? 'facebook.com';
 
             const response = await fetch(`${API_URL}/api/requests`, {
                 method: 'POST',
@@ -239,12 +239,12 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
 
             if (response.status === 201) {
                 const data = await response.json() as RequestResponse;
-                pendingRequestId = data.request?.id || data.id || null;
+                pendingRequestId = data.request?.id ?? data.id ?? null;
             }
         });
 
         test('teacher should get DOMAIN_BLOCKED error when approving blocked domain', async () => {
-            if (!pendingRequestId) {
+            if (pendingRequestId === null) {
                 console.log('Skipping: No pending request available for blocked domain test');
                 return;
             }
@@ -266,7 +266,7 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
         });
 
         test('admin should be able to approve blocked domain (override)', async () => {
-            if (!pendingRequestId) {
+            if (pendingRequestId === null) {
                 console.log('Skipping: No pending request available for admin override test');
                 return;
             }
@@ -309,12 +309,12 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
 
             if (response.status === 201) {
                 const data = await response.json() as RequestResponse;
-                nonBlockedRequestId = data.request?.id || data.id || null;
+                nonBlockedRequestId = data.request?.id ?? data.id ?? null;
             }
         });
 
         test('teacher should successfully approve non-blocked domain', async () => {
-            if (!nonBlockedRequestId) {
+            if (nonBlockedRequestId === null) {
                 console.log('Skipping: No pending request for non-blocked domain');
                 return;
             }
