@@ -19,10 +19,10 @@ const SUBSCRIPTIONS_FILE = path.join(DATA_DIR, 'push-subscriptions.json');
 // =============================================================================
 // Configuration
 // =============================================================================
-const VAPID_CONFIGURED = !!(process.env.VAPID_PUBLIC_KEY &&
-    process.env.VAPID_PRIVATE_KEY &&
-    process.env.VAPID_SUBJECT);
-if (VAPID_CONFIGURED) {
+const VAPID_CONFIGURED = (process.env.VAPID_PUBLIC_KEY !== undefined && process.env.VAPID_PUBLIC_KEY !== '' &&
+    process.env.VAPID_PRIVATE_KEY !== undefined && process.env.VAPID_PRIVATE_KEY !== '' &&
+    process.env.VAPID_SUBJECT !== undefined && process.env.VAPID_SUBJECT !== '');
+if (VAPID_CONFIGURED === true) {
     webPush.setVapidDetails(process.env.VAPID_SUBJECT, process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
 }
 else {
@@ -34,7 +34,7 @@ else {
 // =============================================================================
 function loadSubscriptions() {
     try {
-        if (!fs.existsSync(SUBSCRIPTIONS_FILE)) {
+        if (fs.existsSync(SUBSCRIPTIONS_FILE) === false) {
             return { subscriptions: [] };
         }
         const data = fs.readFileSync(SUBSCRIPTIONS_FILE, 'utf-8');
@@ -46,7 +46,7 @@ function loadSubscriptions() {
     }
 }
 function saveSubscriptions(data) {
-    if (!fs.existsSync(DATA_DIR)) {
+    if (fs.existsSync(DATA_DIR) === false) {
         fs.mkdirSync(DATA_DIR, { recursive: true });
     }
     fs.writeFileSync(SUBSCRIPTIONS_FILE, JSON.stringify(data, null, 2));
@@ -129,7 +129,7 @@ export async function notifyTeachersOfNewRequest(request) {
             const reason = result.reason;
             if (reason?.statusCode === 410) {
                 const sub = subscriptions[i];
-                if (sub) {
+                if (sub !== undefined) {
                     deleteSubscriptionByEndpoint(sub.subscription.endpoint);
                     console.log(`Removed expired push subscription: ${sub.id}`);
                 }

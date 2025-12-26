@@ -19,10 +19,10 @@ export const VALID_ROLES = ['admin', 'teacher', 'student'];
 // =============================================================================
 // Initialization
 // =============================================================================
-if (!fs.existsSync(DATA_DIR)) {
+if (fs.existsSync(DATA_DIR) === false) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
-if (!fs.existsSync(ROLES_FILE)) {
+if (fs.existsSync(ROLES_FILE) === false) {
     fs.writeFileSync(ROLES_FILE, JSON.stringify({ roles: [] }, null, 2));
 }
 // =============================================================================
@@ -59,14 +59,14 @@ function toRoleType(stored) {
  */
 export function getUserRoles(userId) {
     const data = loadData();
-    return data.roles.filter((r) => r.userId === userId && !r.revokedAt);
+    return data.roles.filter((r) => r.userId === userId && r.revokedAt === null);
 }
 /**
  * Get all users with a specific role
  */
 export function getUsersByRole(role) {
     const data = loadData();
-    return data.roles.filter((r) => r.role === role && !r.revokedAt);
+    return data.roles.filter((r) => r.role === role && r.revokedAt === null);
 }
 /**
  * Get all teachers with their assigned groups
@@ -84,6 +84,12 @@ export function getAllTeachers() {
  */
 export function getAllAdmins() {
     return getUsersByRole('admin');
+}
+/**
+ * Check if any admin exists in the system
+ */
+export function hasAnyAdmins() {
+    return getAllAdmins().length > 0;
 }
 /**
  * Check if user has a specific role
@@ -135,8 +141,8 @@ export function assignRole(roleData) {
         throw new Error(`Invalid role: ${role}. Must be one of: ${VALID_ROLES.join(', ')}`);
     }
     const data = loadData();
-    const existingRole = data.roles.find((r) => r.userId === userId && r.role === role && !r.revokedAt);
-    if (existingRole) {
+    const existingRole = data.roles.find((r) => r.userId === userId && r.role === role && r.revokedAt === null);
+    if (existingRole !== undefined) {
         const uniqueGroups = [...new Set([...existingRole.groupIds, ...groups])];
         existingRole.groupIds = uniqueGroups;
         existingRole.updatedAt = new Date().toISOString();
@@ -166,7 +172,7 @@ export function updateRoleGroups(roleId, groupIds) {
     if (index === -1)
         return null;
     const role = data.roles[index];
-    if (!role || role.revokedAt)
+    if (role === undefined || role.revokedAt !== null)
         return null;
     role.groupIds = groupIds;
     role.updatedAt = new Date().toISOString();
@@ -182,7 +188,7 @@ export function addGroupsToRole(roleId, groupIds) {
     if (index === -1)
         return null;
     const role = data.roles[index];
-    if (!role || role.revokedAt)
+    if (role === undefined || role.revokedAt !== null)
         return null;
     role.groupIds = [...new Set([...role.groupIds, ...groupIds])];
     role.updatedAt = new Date().toISOString();
@@ -198,9 +204,9 @@ export function removeGroupsFromRole(roleId, groupIds) {
     if (index === -1)
         return null;
     const role = data.roles[index];
-    if (!role || role.revokedAt)
+    if (role === undefined || role.revokedAt !== null)
         return null;
-    role.groupIds = role.groupIds.filter((g) => !groupIds.includes(g));
+    role.groupIds = role.groupIds.filter((g) => groupIds.includes(g) === false);
     role.updatedAt = new Date().toISOString();
     saveData(data);
     return role;
@@ -214,7 +220,7 @@ export function revokeRole(roleId, revokedBy) {
     if (index === -1)
         return null;
     const role = data.roles[index];
-    if (!role || role.revokedAt)
+    if (role === undefined || role.revokedAt !== null)
         return null;
     role.revokedAt = new Date().toISOString();
     role.revokedBy = revokedBy ?? 'system';
@@ -229,7 +235,7 @@ export function revokeAllUserRoles(userId, revokedBy) {
     const data = loadData();
     let count = 0;
     data.roles.forEach((r) => {
-        if (r.userId === userId && !r.revokedAt) {
+        if (r.userId === userId && r.revokedAt === null) {
             r.revokedAt = new Date().toISOString();
             r.revokedBy = revokedBy ?? 'system';
             r.updatedAt = new Date().toISOString();
@@ -292,7 +298,7 @@ export function updateRole(roleId, data) {
  */
 export function getStats() {
     const data = loadData();
-    const active = data.roles.filter((r) => !r.revokedAt);
+    const active = data.roles.filter((r) => r.revokedAt === null);
     return {
         total: data.roles.length,
         active: active.length,

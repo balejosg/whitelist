@@ -18,10 +18,10 @@ const SCHEDULES_FILE = path.join(DATA_DIR, 'schedules.json');
 // =============================================================================
 // Initialization
 // =============================================================================
-if (!fs.existsSync(DATA_DIR)) {
+if (fs.existsSync(DATA_DIR) === false) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
-if (!fs.existsSync(SCHEDULES_FILE)) {
+if (fs.existsSync(SCHEDULES_FILE) === false) {
     fs.writeFileSync(SCHEDULES_FILE, JSON.stringify({ schedules: [] }, null, 2));
 }
 // =============================================================================
@@ -79,21 +79,21 @@ export function findConflict(classroomId, dayOfWeek, startTime, endTime, exclude
 }
 export function createSchedule(scheduleData) {
     const { classroom_id, teacher_id, group_id, day_of_week, start_time, end_time } = scheduleData;
-    if (!classroom_id || !teacher_id || !group_id || !day_of_week || !start_time || !end_time) {
+    if (classroom_id === undefined || teacher_id === undefined || group_id === undefined || day_of_week === undefined || start_time === undefined || end_time === undefined) {
         throw new Error('Missing required fields');
     }
     if (day_of_week < 1 || day_of_week > 5) {
         throw new Error('day_of_week must be between 1 (Monday) and 5 (Friday)');
     }
     const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-    if (!timeRegex.test(start_time) || !timeRegex.test(end_time)) {
+    if (timeRegex.test(start_time) === false || timeRegex.test(end_time) === false) {
         throw new Error('Invalid time format. Use HH:MM (24h)');
     }
     if (timeToMinutes(start_time) >= timeToMinutes(end_time)) {
         throw new Error('start_time must be before end_time');
     }
     const conflict = findConflict(classroom_id, day_of_week, start_time, end_time);
-    if (conflict) {
+    if (conflict !== null) {
         const error = new Error('Schedule conflict');
         error.conflict = conflict;
         throw error;
@@ -121,13 +121,13 @@ export function updateSchedule(id, updates) {
     if (index === -1)
         return null;
     const schedule = data.schedules[index];
-    if (!schedule)
+    if (schedule === undefined)
         return null;
     const newDayOfWeek = updates.day_of_week ?? schedule.day_of_week;
     const newStartTime = updates.start_time ?? schedule.start_time;
     const newEndTime = updates.end_time ?? schedule.end_time;
     const conflict = findConflict(schedule.classroom_id, newDayOfWeek, newStartTime, newEndTime, id);
-    if (conflict) {
+    if (conflict !== null) {
         const error = new Error('Schedule conflict');
         error.conflict = conflict;
         throw error;

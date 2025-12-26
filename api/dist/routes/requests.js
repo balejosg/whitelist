@@ -10,6 +10,7 @@ import rateLimit from 'express-rate-limit';
 import * as storage from '../lib/storage.js';
 import * as github from '../lib/github.js';
 import * as push from '../lib/push.js';
+import { stripUndefined } from '../lib/utils.js';
 import * as auth from '../lib/auth.js';
 // =============================================================================
 // Rate Limiting
@@ -51,7 +52,7 @@ const autoInclusionLimiter = rateLimit({
 // Security Utilities
 // =============================================================================
 function secureCompare(a, b) {
-    if (!a || !b)
+    if (a === undefined || a === null || b === undefined || b === null)
         return false;
     const buf1 = Buffer.from(String(a));
     const buf2 = Buffer.from(String(b));
@@ -62,7 +63,7 @@ function secureCompare(a, b) {
     return crypto.timingSafeEqual(buf1, buf2);
 }
 function sanitize(str, maxLen = 500) {
-    if (!str || typeof str !== 'string')
+    if (str === null || str === undefined || typeof str !== 'string')
         return '';
     return str
         .slice(0, maxLen)
@@ -71,7 +72,7 @@ function sanitize(str, maxLen = 500) {
         .trim();
 }
 function isValidDomain(domain) {
-    if (!domain || typeof domain !== 'string')
+    if (domain === null || domain === undefined || typeof domain !== 'string')
         return false;
     const domainRegex = /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
     return domainRegex.test(domain.trim());
@@ -100,7 +101,7 @@ function generateToken(hostname, secret) {
 // =============================================================================
 async function requireAuth(req, res, next) {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (authHeader === undefined || !authHeader.startsWith('Bearer ')) {
         res.status(401).json({
             success: false,
             error: 'Authorization header required'
@@ -109,13 +110,13 @@ async function requireAuth(req, res, next) {
     }
     const token = authHeader.slice(7);
     const decoded = await auth.verifyAccessToken(token);
-    if (decoded) {
+    if (decoded !== null) {
         req.user = decoded;
         next();
         return;
     }
     const adminToken = process.env.ADMIN_TOKEN;
-    if (adminToken && secureCompare(token, adminToken)) {
+    if (adminToken !== undefined && adminToken !== '' && secureCompare(token, adminToken)) {
         req.user = auth.createLegacyAdminPayload();
         next();
         return;
@@ -126,7 +127,7 @@ async function requireAuth(req, res, next) {
     });
 }
 function requireAdmin(req, res, next) {
-    if (!req.user || !auth.isAdminToken(req.user)) {
+    if (req.user === undefined || !auth.isAdminToken(req.user)) {
         res.status(403).json({
             success: false,
             error: 'Admin access required'
@@ -137,7 +138,7 @@ function requireAdmin(req, res, next) {
 }
 function canApproveRequest(req, res, next) {
     const request = storage.getRequestById(req.params.id);
-    if (!request) {
+    if (request === null) {
         res.status(404).json({
             success: false,
             error: 'Request not found'
@@ -145,7 +146,7 @@ function canApproveRequest(req, res, next) {
         return;
     }
     req.request = request;
-    if (!req.user || !auth.canApproveGroup(req.user, request.group_id)) {
+    if (req.user === undefined || !auth.canApproveGroup(req.user, request.group_id)) {
         res.status(403).json({
             success: false,
             error: 'No permission to approve requests for this group',
@@ -168,7 +169,7 @@ const router = Router();
  */
 router.post('/auto', autoInclusionLimiter, async (req, res) => {
     const { domain, origin_page, group_id, token, hostname } = req.body;
-    if (!domain || !origin_page || !group_id || !token || !hostname) {
+    if (domain === undefined || domain === '' || origin_page === undefined || origin_page === '' || group_id === undefined || group_id === '' || token === undefined || token === '' || hostname === undefined || hostname === '') {
         return res.status(400).json({
             success: false,
             error: 'Missing required fields: domain, origin_page, group_id, token, hostname',
@@ -176,7 +177,7 @@ router.post('/auto', autoInclusionLimiter, async (req, res) => {
         });
     }
     const sharedSecret = process.env.SHARED_SECRET;
-    if (!sharedSecret) {
+    if (sharedSecret === undefined || sharedSecret === '') {
         console.error('SHARED_SECRET not configured');
         return res.status(500).json({
             success: false,
@@ -211,7 +212,7 @@ router.post('/auto', autoInclusionLimiter, async (req, res) => {
     }
     try {
         const result = await github.addDomainToWhitelist(domain, group_id);
-        if (!result.success) {
+        if (result.success === false) {
             return res.status(400).json({
                 success: false,
                 error: result.message,
@@ -227,7 +228,7 @@ router.post('/auto', autoInclusionLimiter, async (req, res) => {
             hostname,
             timestamp: new Date().toISOString()
         }));
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             domain: domain.toLowerCase(),
             group_id,
@@ -236,7 +237,7 @@ router.post('/auto', autoInclusionLimiter, async (req, res) => {
     }
     catch (error) {
         console.error('Error in auto-inclusion:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to add domain',
             code: 'SERVER_ERROR'
@@ -270,17 +271,17 @@ router.post('/', publicLimiter, (req, res) => {
         });
     }
     try {
-        const request = storage.createRequest({
+        const request = storage.createRequest(stripUndefined({
             domain: domain.trim().toLowerCase(),
-            reason: sanitize(reason) || 'No reason provided',
+            reason: sanitize(reason) !== '' ? sanitize(reason) : 'No reason provided',
             requesterEmail: sanitize(requester_email, 100),
             groupId: group_id,
             priority: priority
-        });
+        }));
         push.notifyTeachersOfNewRequest(request).catch(err => {
             console.error('Push notification failed:', err.message);
         });
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             request_id: request.id,
             status: request.status,
@@ -291,7 +292,7 @@ router.post('/', publicLimiter, (req, res) => {
     }
     catch (error) {
         console.error('Error creating request:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to create request',
             code: 'SERVER_ERROR'
@@ -303,14 +304,14 @@ router.post('/', publicLimiter, (req, res) => {
  */
 router.get('/status/:id', (req, res) => {
     const request = storage.getRequestById(req.params.id);
-    if (!request) {
+    if (request === null) {
         return res.status(404).json({
             success: false,
             error: 'Request not found',
             code: 'NOT_FOUND'
         });
     }
-    res.json({
+    return res.json({
         success: true,
         request_id: request.id,
         domain: request.domain,
@@ -329,14 +330,14 @@ router.get('/groups/list', adminLimiter, requireAuth, filterByUserGroups, async 
         if (req.approvalGroups !== 'all' && Array.isArray(req.approvalGroups)) {
             groups = allGroups.filter(g => req.approvalGroups.includes(g.name));
         }
-        res.json({
+        return res.json({
             success: true,
             groups
         });
     }
     catch (error) {
         console.error('Error listing groups:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to list groups'
         });
@@ -351,15 +352,15 @@ router.get('/domains/blocked', adminLimiter, requireAuth, requireAdmin, async (_
         const lines = file.content.split('\n');
         const blockedDomains = lines
             .map(line => line.trim())
-            .filter(line => line && !line.startsWith('#'));
-        res.json({
+            .filter(line => line !== '' && !line.startsWith('#'));
+        return res.json({
             success: true,
             blocked_domains: blockedDomains,
             count: blockedDomains.length
         });
     }
     catch {
-        res.json({
+        return res.json({
             success: true,
             blocked_domains: [],
             count: 0,
@@ -380,7 +381,7 @@ router.post('/domains/check', adminLimiter, requireAuth, async (req, res) => {
     }
     try {
         const result = await github.isDomainBlocked(domain);
-        res.json({
+        return res.json({
             success: true,
             domain,
             blocked: result.blocked,
@@ -388,7 +389,7 @@ router.post('/domains/check', adminLimiter, requireAuth, async (req, res) => {
         });
     }
     catch {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to check domain'
         });
@@ -410,7 +411,7 @@ router.get('/', adminLimiter, requireAuth, filterByUserGroups, (req, res) => {
             approved: requests.filter(r => r.status === 'approved').length,
             rejected: requests.filter(r => r.status === 'rejected').length
         };
-        res.json({
+        return res.json({
             success: true,
             stats,
             requests: requests.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -418,7 +419,7 @@ router.get('/', adminLimiter, requireAuth, filterByUserGroups, (req, res) => {
     }
     catch (error) {
         console.error('Error listing requests:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to list requests'
         });
@@ -428,7 +429,7 @@ router.get('/', adminLimiter, requireAuth, filterByUserGroups, (req, res) => {
  * GET /api/requests/:id
  */
 router.get('/:id', adminLimiter, requireAuth, canApproveRequest, (req, res) => {
-    res.json({
+    return res.json({
         success: true,
         request: req.request
     });
@@ -446,8 +447,8 @@ router.post('/:id/approve', adminLimiter, requireAuth, canApproveRequest, async 
         });
     }
     const targetGroup = group_id ?? request.group_id;
-    if (group_id && group_id !== request.group_id) {
-        if (!auth.canApproveGroup(req.user, group_id)) {
+    if (group_id !== undefined && group_id !== '' && group_id !== request.group_id) {
+        if (auth.canApproveGroup(req.user, group_id) === false) {
             return res.status(403).json({
                 success: false,
                 error: 'No permission to approve for this group',
@@ -455,9 +456,9 @@ router.post('/:id/approve', adminLimiter, requireAuth, canApproveRequest, async 
             });
         }
     }
-    if (!auth.isAdminToken(req.user)) {
+    if (auth.isAdminToken(req.user) === false) {
         const blockCheck = await github.isDomainBlocked(request.domain);
-        if (blockCheck.blocked) {
+        if (blockCheck.blocked === true) {
             return res.status(403).json({
                 success: false,
                 error: 'Este dominio está bloqueado por el administrador',
@@ -470,7 +471,7 @@ router.post('/:id/approve', adminLimiter, requireAuth, canApproveRequest, async 
     }
     try {
         const githubResult = await github.addDomainToWhitelist(request.domain, targetGroup);
-        if (!githubResult.success) {
+        if (githubResult.success === false) {
             return res.status(400).json({
                 success: false,
                 error: githubResult.message
@@ -478,7 +479,7 @@ router.post('/:id/approve', adminLimiter, requireAuth, canApproveRequest, async 
         }
         const approverName = req.user?.name ?? req.user?.email ?? req.user?.sub ?? 'unknown';
         const updated = storage.updateRequestStatus(request.id, 'approved', approverName, `Added to ${targetGroup}`);
-        res.json({
+        return res.json({
             success: true,
             message: `Domain ${request.domain} approved and added to ${targetGroup}`,
             domain: request.domain,
@@ -491,7 +492,7 @@ router.post('/:id/approve', adminLimiter, requireAuth, canApproveRequest, async 
     catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         console.error('Error approving request:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to approve request: ' + message
         });
@@ -511,8 +512,8 @@ router.post('/:id/reject', adminLimiter, requireAuth, canApproveRequest, (req, r
     }
     try {
         const rejecterName = req.user?.name ?? req.user?.email ?? req.user?.sub ?? 'unknown';
-        const updated = storage.updateRequestStatus(request.id, 'rejected', rejecterName, sanitize(reason) || 'No reason provided');
-        res.json({
+        const updated = storage.updateRequestStatus(request.id, 'rejected', rejecterName, sanitize(reason) !== '' ? sanitize(reason) : 'No reason provided');
+        return res.json({
             success: true,
             message: `Request for ${request.domain} rejected`,
             domain: request.domain,
@@ -523,7 +524,7 @@ router.post('/:id/reject', adminLimiter, requireAuth, canApproveRequest, (req, r
     }
     catch (error) {
         console.error('Error rejecting request:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to reject request'
         });
@@ -540,7 +541,7 @@ router.delete('/:id', adminLimiter, requireAuth, requireAdmin, (req, res) => {
             error: 'Request not found'
         });
     }
-    res.json({
+    return res.json({
         success: true,
         message: 'Request deleted'
     });

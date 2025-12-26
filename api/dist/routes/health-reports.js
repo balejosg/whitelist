@@ -20,11 +20,11 @@ const MAX_HOSTS = 500;
 // =============================================================================
 // Data Access
 // =============================================================================
-if (!fs.existsSync(DATA_DIR)) {
+if (fs.existsSync(DATA_DIR) === false) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 function initReportsFile() {
-    if (!fs.existsSync(REPORTS_FILE)) {
+    if (fs.existsSync(REPORTS_FILE) === false) {
         fs.writeFileSync(REPORTS_FILE, JSON.stringify({ hosts: {}, lastUpdated: null }));
     }
 }
@@ -46,12 +46,12 @@ function saveReports(data) {
 // =============================================================================
 function requireSharedSecret(req, res, next) {
     const secret = process.env.SHARED_SECRET;
-    if (!secret) {
+    if (secret === undefined || secret === '') {
         next();
         return;
     }
     const authHeader = req.headers.authorization;
-    if (!authHeader || authHeader !== `Bearer ${secret}`) {
+    if (authHeader === undefined || authHeader !== `Bearer ${secret}`) {
         res.status(401).json({
             success: false,
             error: 'Invalid or missing shared secret'
@@ -62,7 +62,7 @@ function requireSharedSecret(req, res, next) {
 }
 function requireAdmin(req, res, next) {
     const adminToken = process.env.ADMIN_TOKEN;
-    if (!adminToken) {
+    if (adminToken === undefined || adminToken === '') {
         res.status(500).json({
             success: false,
             error: 'Admin token not configured'
@@ -70,7 +70,7 @@ function requireAdmin(req, res, next) {
         return;
     }
     const authHeader = req.headers.authorization;
-    if (!authHeader || authHeader !== `Bearer ${adminToken}`) {
+    if (authHeader === undefined || authHeader !== `Bearer ${adminToken}`) {
         res.status(401).json({
             success: false,
             error: 'Invalid or missing admin token'
@@ -88,7 +88,7 @@ const router = Router();
  */
 router.post('/', requireSharedSecret, (req, res) => {
     const { hostname, status, dnsmasq_running, dns_resolving, fail_count, actions, version } = req.body;
-    if (!hostname || !status) {
+    if (hostname === undefined || hostname === '' || status === undefined || status === '') {
         return res.status(400).json({
             success: false,
             error: 'Missing required fields: hostname, status'
@@ -96,13 +96,13 @@ router.post('/', requireSharedSecret, (req, res) => {
     }
     const data = loadReports();
     const now = new Date().toISOString();
-    if (!data.hosts[hostname]) {
+    if (data.hosts[hostname] === undefined) {
         const hostCount = Object.keys(data.hosts).length;
         if (hostCount >= MAX_HOSTS) {
             const entries = Object.entries(data.hosts);
             const sorted = entries.sort((a, b) => new Date(a[1].lastSeen ?? 0).getTime() - new Date(b[1].lastSeen ?? 0).getTime());
             const oldest = sorted[0];
-            if (oldest)
+            if (oldest !== undefined)
                 delete data.hosts[oldest[0]];
         }
         data.hosts[hostname] = { reports: [], lastSeen: null, currentStatus: null };
@@ -120,13 +120,15 @@ router.post('/', requireSharedSecret, (req, res) => {
     host.reports.push(report);
     host.lastSeen = now;
     host.currentStatus = status;
-    host.version = version ?? host.version;
+    if (version !== undefined) {
+        host.version = version;
+    }
     if (host.reports.length > MAX_REPORTS_PER_HOST) {
         host.reports = host.reports.slice(-MAX_REPORTS_PER_HOST);
     }
     saveReports(data);
-    console.log(`[HEALTH] ${hostname}: ${status}${actions ? ` (actions: ${actions})` : ''}`);
-    res.json({
+    console.log(`[HEALTH] ${hostname}: ${status}${actions !== undefined && actions !== '' ? ` (actions: ${actions})` : ''}`);
+    return res.json({
         success: true,
         message: 'Health report received',
         hostname,
@@ -152,7 +154,7 @@ router.get('/', requireAdmin, (_req, res) => {
             hostname,
             status: host.currentStatus,
             lastSeen: host.lastSeen,
-            version: host.version,
+            ...(host.version !== undefined && { version: host.version }),
             recentFailCount: lastReport?.fail_count ?? 0
         });
     }
@@ -164,7 +166,7 @@ router.get('/', requireAdmin, (_req, res) => {
         'OK': 4
     };
     summary.hosts.sort((a, b) => (statusPriority[a.status ?? ''] ?? 5) - (statusPriority[b.status ?? ''] ?? 5));
-    res.json({
+    return res.json({
         success: true,
         ...summary
     });
@@ -181,7 +183,7 @@ router.get('/alerts/active', requireAdmin, (req, res) => {
     for (const [hostname, host] of Object.entries(data.hosts)) {
         const lastSeen = new Date(host.lastSeen ?? 0);
         const minutesSinceLastSeen = (now.getTime() - lastSeen.getTime()) / 1000 / 60;
-        if (host.currentStatus && problemStatuses.includes(host.currentStatus)) {
+        if (host.currentStatus !== null && problemStatuses.includes(host.currentStatus)) {
             alerts.push({
                 hostname,
                 type: 'status',
@@ -200,7 +202,7 @@ router.get('/alerts/active', requireAdmin, (req, res) => {
             });
         }
     }
-    res.json({
+    return res.json({
         success: true,
         alertCount: alerts.length,
         alerts
@@ -211,21 +213,21 @@ router.get('/alerts/active', requireAdmin, (req, res) => {
  */
 router.get('/:hostname', requireAdmin, (req, res) => {
     const hostname = req.params.hostname;
-    if (!hostname) {
+    if (hostname === undefined || hostname === '') {
         return res.status(400).json({
             success: false,
             error: 'Hostname is required'
         });
     }
     const data = loadReports();
-    if (!data.hosts[hostname]) {
+    if (data.hosts[hostname] === undefined) {
         return res.status(404).json({
             success: false,
             error: 'Host not found'
         });
     }
     const host = data.hosts[hostname];
-    res.json({
+    return res.json({
         success: true,
         hostname,
         currentStatus: host.currentStatus,

@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { v4 as uuidv4 } from 'uuid';
 // =============================================================================
 // Constants
@@ -18,13 +19,13 @@ const MACHINES_FILE = path.join(DATA_DIR, 'machines.json');
 // =============================================================================
 // Initialization
 // =============================================================================
-if (!fs.existsSync(DATA_DIR)) {
+if (fs.existsSync(DATA_DIR) === false) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
-if (!fs.existsSync(CLASSROOMS_FILE)) {
+if (fs.existsSync(CLASSROOMS_FILE) === false) {
     fs.writeFileSync(CLASSROOMS_FILE, JSON.stringify({ classrooms: [] }, null, 2));
 }
-if (!fs.existsSync(MACHINES_FILE)) {
+if (fs.existsSync(MACHINES_FILE) === false) {
     fs.writeFileSync(MACHINES_FILE, JSON.stringify({ machines: [] }, null, 2));
 }
 // =============================================================================
@@ -115,7 +116,7 @@ export function updateClassroom(id, updates) {
     if (index === -1)
         return null;
     const classroom = data.classrooms[index];
-    if (!classroom)
+    if (classroom === undefined)
         return null;
     if (updates.displayName !== undefined) {
         classroom.display_name = updates.displayName;
@@ -133,7 +134,7 @@ export function setActiveGroup(id, groupId) {
     if (index === -1)
         return null;
     const classroom = data.classrooms[index];
-    if (!classroom)
+    if (classroom === undefined)
         return null;
     classroom.active_group_id = groupId;
     classroom.updated_at = new Date().toISOString();
@@ -142,7 +143,7 @@ export function setActiveGroup(id, groupId) {
 }
 export function getCurrentGroupId(id) {
     const classroom = getClassroomById(id);
-    if (!classroom)
+    if (classroom === null)
         return null;
     return classroom.active_group_id ?? classroom.default_group_id;
 }
@@ -179,7 +180,7 @@ export function registerMachine(machineData) {
     const existingIndex = data.machines.findIndex((m) => m.hostname.toLowerCase() === normalizedHostname);
     if (existingIndex !== -1) {
         const existing = data.machines[existingIndex];
-        if (existing) {
+        if (existing !== undefined) {
             existing.classroom_id = classroomId;
             existing.version = version ?? existing.version;
             existing.last_seen = new Date().toISOString();
@@ -207,7 +208,7 @@ export function updateMachineLastSeen(hostname) {
     if (index === -1)
         return null;
     const machine = data.machines[index];
-    if (!machine)
+    if (machine === undefined)
         return null;
     machine.last_seen = new Date().toISOString();
     saveMachines(data);
@@ -234,20 +235,20 @@ export function removeMachinesByClassroom(classroomId) {
 }
 export function getWhitelistUrlForMachine(hostname) {
     const machine = getMachineByHostname(hostname);
-    if (!machine)
+    if (machine === null)
         return null;
     const classroom = getClassroomById(machine.classroom_id);
-    if (!classroom)
+    if (classroom === null)
         return null;
     let groupId = classroom.active_group_id;
     let source = 'manual';
-    if (!groupId) {
+    if (groupId === null || groupId === undefined) {
         try {
             // Dynamic import would be better but keeping consistent with original
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const require = createRequire(import.meta.url);
             const scheduleStorage = require('./schedule-storage.js');
             const currentSchedule = scheduleStorage.getCurrentSchedule(classroom.id);
-            if (currentSchedule) {
+            if (currentSchedule !== null && currentSchedule !== undefined) {
                 groupId = currentSchedule.group_id;
                 source = 'schedule';
             }
@@ -256,11 +257,11 @@ export function getWhitelistUrlForMachine(hostname) {
             // Schedule storage not available
         }
     }
-    if (!groupId) {
+    if (groupId === null || groupId === undefined) {
         groupId = classroom.default_group_id;
         source = 'default';
     }
-    if (!groupId)
+    if (groupId === null || groupId === undefined)
         return null;
     const owner = process.env.GITHUB_OWNER ?? 'LasEncinasIT';
     const repo = process.env.GITHUB_REPO ?? 'Whitelist-por-aula';
@@ -280,7 +281,7 @@ export function getStats() {
     return {
         classrooms: classrooms.classrooms.length,
         machines: machines.machines.length,
-        classroomsWithActiveGroup: classrooms.classrooms.filter((c) => c.active_group_id).length
+        classroomsWithActiveGroup: classrooms.classrooms.filter((c) => c.active_group_id !== null && c.active_group_id !== undefined).length
     };
 }
 // =============================================================================
@@ -327,16 +328,16 @@ export const classroomStorage = {
     },
     removeMachine: (classroomId, hostname) => {
         const machine = getMachineByHostname(hostname);
-        if (!machine || machine.classroom_id !== classroomId)
+        if (machine === null || machine === undefined || machine.classroom_id !== classroomId)
             return false;
         return deleteMachine(hostname);
     },
     getMachineByHostname: (hostname) => {
         const machine = getMachineByHostname(hostname);
-        if (!machine)
+        if (machine === null)
             return null;
         const classroom = getClassroomById(machine.classroom_id);
-        if (!classroom)
+        if (classroom === null)
             return null;
         return {
             classroom: toClassroomType(classroom),

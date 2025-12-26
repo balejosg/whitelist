@@ -18,7 +18,7 @@ const SLOW_REQUEST_THRESHOLD_MS = parseInt(process.env.SLOW_REQUEST_THRESHOLD_MS
 // =============================================================================
 // Custom format for development (colorized, readable)
 const devFormat = winston.format.combine(winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), winston.format.colorize(), winston.format.printf(({ timestamp, level, message, requestId, ...meta }) => {
-    const reqId = requestId ? `[${requestId}]` : '';
+    const reqId = requestId !== undefined && requestId !== null ? `[${requestId}]` : '';
     const metaStr = Object.keys(meta).length > 0 ? ` ${JSON.stringify(meta)}` : '';
     return `${timestamp} ${level}: ${reqId} ${message}${metaStr}`;
 }));
@@ -39,7 +39,7 @@ const baseLogger = winston.createLogger({
     ]
 });
 // Add file transport in production
-if (isProduction) {
+if (isProduction === true) {
     baseLogger.add(new winston.transports.File({
         filename: 'logs/error.log',
         level: 'error',
@@ -100,7 +100,7 @@ function requestMiddleware(req, res, next) {
             ip: req.ip
         };
         // Add slow request flag for alerting
-        if (isSlow) {
+        if (isSlow === true) {
             logData.slow = true;
             logData.threshold = SLOW_REQUEST_THRESHOLD_MS;
         }

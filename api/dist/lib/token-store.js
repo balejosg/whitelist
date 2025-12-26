@@ -68,7 +68,6 @@ export class RedisTokenStore {
     async _connect() {
         try {
             // Dynamic import for optional redis dependency
-            // @ts-expect-error - redis is an optional dependency
             const redis = await import('redis');
             this.client = redis.createClient({ url: this.redisUrl });
             this.client.on('error', (err) => {
@@ -89,12 +88,12 @@ export class RedisTokenStore {
         }
     }
     async add(token) {
-        if (!this.connected || !this.client) {
+        if (this.connected === false || this.client === undefined || this.client === null) {
             return false;
         }
         try {
             const decoded = jwt.decode(token);
-            const ttl = decoded?.exp ? decoded.exp - Math.floor(Date.now() / 1000) : 86400;
+            const ttl = decoded?.exp !== undefined ? decoded.exp - Math.floor(Date.now() / 1000) : 86400;
             if (ttl > 0) {
                 await this.client.setEx(`blacklist:${token}`, ttl, '1');
             }
@@ -107,7 +106,7 @@ export class RedisTokenStore {
         }
     }
     async has(token) {
-        if (!this.connected || !this.client) {
+        if (this.connected === false || this.client === undefined || this.client === null) {
             return false;
         }
         try {
@@ -121,7 +120,7 @@ export class RedisTokenStore {
         }
     }
     async delete(token) {
-        if (!this.connected || !this.client) {
+        if (this.connected === false || this.client === undefined || this.client === null) {
             return false;
         }
         try {
@@ -135,7 +134,7 @@ export class RedisTokenStore {
         }
     }
     async size() {
-        if (!this.connected || !this.client) {
+        if (this.connected === false || this.client === undefined || this.client === null) {
             return 0;
         }
         try {
@@ -161,11 +160,11 @@ export class RedisTokenStore {
 // =============================================================================
 let _instance = null;
 export function getTokenStore() {
-    if (_instance) {
+    if (_instance !== null) {
         return _instance;
     }
     const redisUrl = process.env.REDIS_URL;
-    if (redisUrl) {
+    if (redisUrl !== undefined && redisUrl !== '') {
         console.log('🔴 Using Redis for token blacklist storage');
         _instance = new RedisTokenStore(redisUrl);
     }
@@ -176,7 +175,7 @@ export function getTokenStore() {
     return _instance;
 }
 export function resetTokenStore() {
-    if (_instance) {
+    if (_instance !== null) {
         void _instance.destroy();
         _instance = null;
     }

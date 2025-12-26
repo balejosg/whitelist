@@ -8,13 +8,14 @@
 import { Router } from 'express';
 import * as scheduleStorage from '../lib/schedule-storage.js';
 import * as classroomStorage from '../lib/classroom-storage.js';
+import { stripUndefined } from '../lib/utils.js';
 import * as auth from '../lib/auth.js';
 // =============================================================================
 // Middleware
 // =============================================================================
 function requireAuth(req, res, next) {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (authHeader === undefined || !authHeader.startsWith('Bearer ')) {
         res.status(401).json({
             success: false,
             error: 'Authentication required'
@@ -43,7 +44,7 @@ function requireAuth(req, res, next) {
 }
 function canManageSchedule(req, res, next) {
     const schedule = scheduleStorage.getScheduleById(req.params.id);
-    if (!schedule) {
+    if (schedule === null) {
         res.status(404).json({
             success: false,
             error: 'Schedule not found'
@@ -51,8 +52,8 @@ function canManageSchedule(req, res, next) {
         return;
     }
     const isOwner = schedule.teacher_id === req.user?.sub;
-    const isAdmin = req.user ? auth.isAdminToken(req.user) : false;
-    if (!isOwner && !isAdmin) {
+    const isAdmin = req.user !== undefined ? auth.isAdminToken(req.user) : false;
+    if (isOwner === false && isAdmin === false) {
         res.status(403).json({
             success: false,
             error: 'You can only manage your own schedules'
@@ -72,7 +73,7 @@ const router = Router();
 router.get('/classroom/:classroomId', requireAuth, (req, res) => {
     const classroomId = req.params.classroomId;
     const classroom = classroomStorage.getClassroomById(classroomId);
-    if (!classroom) {
+    if (classroom === null) {
         return res.status(404).json({
             success: false,
             error: 'Classroom not found'
@@ -80,13 +81,13 @@ router.get('/classroom/:classroomId', requireAuth, (req, res) => {
     }
     const schedules = scheduleStorage.getSchedulesByClassroom(classroomId);
     const userId = req.user?.sub;
-    const isAdmin = req.user ? auth.isAdminToken(req.user) : false;
+    const isAdmin = req.user !== undefined ? auth.isAdminToken(req.user) : false;
     const schedulesWithOwnership = schedules.map(s => ({
         ...s,
         is_mine: s.teacher_id === userId,
         can_edit: s.teacher_id === userId || isAdmin
     }));
-    res.json({
+    return res.json({
         success: true,
         classroom: {
             id: classroom.id,
@@ -100,14 +101,14 @@ router.get('/classroom/:classroomId', requireAuth, (req, res) => {
  * GET /api/schedules/my
  */
 router.get('/my', requireAuth, (req, res) => {
-    if (!req.user) {
+    if (req.user === undefined) {
         return res.status(401).json({
             success: false,
             error: 'Authentication required'
         });
     }
     const schedules = scheduleStorage.getSchedulesByTeacher(req.user.sub);
-    res.json({
+    return res.json({
         success: true,
         schedules
     });
@@ -118,14 +119,14 @@ router.get('/my', requireAuth, (req, res) => {
 router.post('/', requireAuth, (req, res) => {
     const { classroom_id, group_id, day_of_week, start_time, end_time } = req.body;
     const classroom = classroomStorage.getClassroomById(classroom_id);
-    if (!classroom) {
+    if (classroom === null) {
         return res.status(404).json({
             success: false,
             error: 'Classroom not found'
         });
     }
-    const isAdmin = req.user ? auth.isAdminToken(req.user) : false;
-    if (!isAdmin && !auth.canApproveGroup(req.user, group_id)) {
+    const isAdmin = req.user !== undefined ? auth.isAdminToken(req.user) : false;
+    if (isAdmin === false && auth.canApproveGroup(req.user, group_id) === false) {
         return res.status(403).json({
             success: false,
             error: 'You can only create schedules for your assigned groups'
@@ -140,7 +141,7 @@ router.post('/', requireAuth, (req, res) => {
             start_time,
             end_time
         });
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: 'Schedule created',
             schedule
@@ -155,7 +156,7 @@ router.post('/', requireAuth, (req, res) => {
                 conflict: schedError.conflict
             });
         }
-        res.status(400).json({
+        return res.status(400).json({
             success: false,
             error: schedError.message
         });
@@ -166,9 +167,9 @@ router.post('/', requireAuth, (req, res) => {
  */
 router.put('/:id', requireAuth, canManageSchedule, (req, res) => {
     const { day_of_week, start_time, end_time, group_id } = req.body;
-    if (group_id && req.schedule && group_id !== req.schedule.group_id) {
-        const isAdmin = req.user ? auth.isAdminToken(req.user) : false;
-        if (!isAdmin && !auth.canApproveGroup(req.user, group_id)) {
+    if (group_id !== undefined && group_id !== '' && req.schedule !== undefined && req.schedule !== null && group_id !== req.schedule.group_id) {
+        const isAdmin = req.user !== undefined ? auth.isAdminToken(req.user) : false;
+        if (isAdmin === false && auth.canApproveGroup(req.user, group_id) === false) {
             return res.status(403).json({
                 success: false,
                 error: 'You can only use your assigned groups'
@@ -176,13 +177,13 @@ router.put('/:id', requireAuth, canManageSchedule, (req, res) => {
         }
     }
     try {
-        const updated = scheduleStorage.updateSchedule(req.params.id, {
+        const updated = scheduleStorage.updateSchedule(req.params.id, stripUndefined({
             day_of_week,
             start_time,
             end_time,
             group_id
-        });
-        res.json({
+        }));
+        return res.json({
             success: true,
             message: 'Schedule updated',
             schedule: updated
@@ -197,7 +198,7 @@ router.put('/:id', requireAuth, canManageSchedule, (req, res) => {
                 conflict: schedError.conflict
             });
         }
-        res.status(400).json({
+        return res.status(400).json({
             success: false,
             error: schedError.message
         });
@@ -208,7 +209,7 @@ router.put('/:id', requireAuth, canManageSchedule, (req, res) => {
  */
 router.delete('/:id', requireAuth, canManageSchedule, (req, res) => {
     scheduleStorage.deleteSchedule(req.params.id);
-    res.json({
+    return res.json({
         success: true,
         message: 'Schedule deleted'
     });
@@ -219,14 +220,14 @@ router.delete('/:id', requireAuth, canManageSchedule, (req, res) => {
 router.get('/classroom/:classroomId/current', requireAuth, (req, res) => {
     const classroomId = req.params.classroomId;
     const classroom = classroomStorage.getClassroomById(classroomId);
-    if (!classroom) {
+    if (classroom === null) {
         return res.status(404).json({
             success: false,
             error: 'Classroom not found'
         });
     }
     const currentSchedule = scheduleStorage.getCurrentSchedule(classroomId);
-    res.json({
+    return res.json({
         success: true,
         classroom_id: classroomId,
         current_schedule: currentSchedule,

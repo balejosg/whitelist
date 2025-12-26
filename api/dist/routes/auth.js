@@ -43,7 +43,7 @@ function isValidEmail(email) {
     return emailRegex.test(email);
 }
 function isValidPassword(password) {
-    return Boolean(password && password.length >= 8);
+    return password !== undefined && password !== '' && password.length >= 8;
 }
 // =============================================================================
 // Router
@@ -54,7 +54,7 @@ const router = Router();
  */
 router.post('/register', registerLimiter, async (req, res) => {
     const { email, name, password } = req.body;
-    if (!email || !name || !password) {
+    if (email === undefined || email === '' || name === undefined || name === '' || password === undefined || password === '') {
         return res.status(400).json({
             success: false,
             error: 'Email, name, and password are required',
@@ -84,7 +84,7 @@ router.post('/register', registerLimiter, async (req, res) => {
     }
     try {
         const user = await userStorage.createUser({ email, name, password });
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: 'User registered. Please contact an administrator to activate your account.',
             user: {
@@ -96,7 +96,7 @@ router.post('/register', registerLimiter, async (req, res) => {
     }
     catch (error) {
         console.error('Error registering user:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to register user',
             code: 'SERVER_ERROR'
@@ -108,7 +108,7 @@ router.post('/register', registerLimiter, async (req, res) => {
  */
 router.post('/login', loginLimiter, async (req, res) => {
     const { email, password } = req.body;
-    if (!email || !password) {
+    if (email === undefined || email === '' || password === undefined || password === '') {
         return res.status(400).json({
             success: false,
             error: 'Email and password are required',
@@ -117,14 +117,14 @@ router.post('/login', loginLimiter, async (req, res) => {
     }
     try {
         const user = await userStorage.verifyPasswordByEmail(email, password);
-        if (!user) {
+        if (user === null) {
             return res.status(401).json({
                 success: false,
                 error: 'Invalid email or password',
                 code: 'INVALID_CREDENTIALS'
             });
         }
-        if (!user.isActive) {
+        if (user.isActive === false) {
             return res.status(403).json({
                 success: false,
                 error: 'Account is not active. Please contact an administrator.',
@@ -140,7 +140,7 @@ router.post('/login', loginLimiter, async (req, res) => {
             });
         }
         const tokens = auth.generateTokens(user, roles);
-        res.json({
+        return res.json({
             success: true,
             ...tokens,
             user: {
@@ -157,7 +157,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     }
     catch (error) {
         console.error('Error during login:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Login failed',
             code: 'SERVER_ERROR'
@@ -169,7 +169,7 @@ router.post('/login', loginLimiter, async (req, res) => {
  */
 router.post('/refresh', async (req, res) => {
     const { refreshToken } = req.body;
-    if (!refreshToken) {
+    if (refreshToken === undefined || refreshToken === '') {
         return res.status(400).json({
             success: false,
             error: 'Refresh token is required',
@@ -186,7 +186,7 @@ router.post('/refresh', async (req, res) => {
             });
         }
         const user = userStorage.getUserById(decoded.sub);
-        if (!user || !user.isActive) {
+        if (user === null || user === undefined || user.isActive === false) {
             return res.status(401).json({
                 success: false,
                 error: 'User not found or inactive',
@@ -196,14 +196,14 @@ router.post('/refresh', async (req, res) => {
         const roles = roleStorage.getUserRoles(user.id);
         const tokens = auth.generateTokens(user, roles);
         await auth.blacklistToken(refreshToken);
-        res.json({
+        return res.json({
             success: true,
             ...tokens
         });
     }
     catch (error) {
         console.error('Error refreshing token:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Token refresh failed',
             code: 'SERVER_ERROR'
@@ -216,14 +216,14 @@ router.post('/refresh', async (req, res) => {
 router.post('/logout', async (req, res) => {
     const authHeader = req.headers.authorization;
     const { refreshToken } = req.body;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    if (authHeader !== undefined && authHeader.startsWith('Bearer ')) {
         const accessToken = authHeader.slice(7);
         await auth.blacklistToken(accessToken);
     }
-    if (refreshToken) {
+    if (refreshToken !== undefined && refreshToken !== '') {
         await auth.blacklistToken(refreshToken);
     }
-    res.json({
+    return res.json({
         success: true,
         message: 'Logged out successfully'
     });
@@ -233,7 +233,7 @@ router.post('/logout', async (req, res) => {
  */
 router.get('/me', async (req, res) => {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (authHeader === undefined || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({
             success: false,
             error: 'Authorization header required',
@@ -250,7 +250,7 @@ router.get('/me', async (req, res) => {
         });
     }
     const user = userStorage.getUserById(decoded.sub);
-    if (!user) {
+    if (user === null) {
         return res.status(404).json({
             success: false,
             error: 'User not found',
@@ -258,7 +258,7 @@ router.get('/me', async (req, res) => {
         });
     }
     const roles = roleStorage.getUserRoles(user.id);
-    res.json({
+    return res.json({
         success: true,
         user: {
             id: user.id,

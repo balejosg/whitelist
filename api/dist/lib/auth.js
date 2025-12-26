@@ -12,7 +12,7 @@ import { getTokenStore } from './token-store.js';
 // SECURITY: JWT Secret Configuration
 // =============================================================================
 const isProduction = process.env.NODE_ENV === 'production';
-if (isProduction && !process.env.JWT_SECRET) {
+if (isProduction && (process.env.JWT_SECRET === undefined || process.env.JWT_SECRET === '')) {
     console.error('');
     console.error('╔═══════════════════════════════════════════════════════════════╗');
     console.error('║  FATAL SECURITY ERROR: JWT_SECRET not set in production!      ║');
@@ -28,7 +28,7 @@ if (isProduction && !process.env.JWT_SECRET) {
 }
 // In development, generate a random secret but warn about token invalidation
 let JWT_SECRET;
-if (process.env.JWT_SECRET) {
+if (process.env.JWT_SECRET !== undefined && process.env.JWT_SECRET !== '') {
     JWT_SECRET = process.env.JWT_SECRET;
 }
 else {
@@ -100,7 +100,7 @@ export async function verifyToken(token) {
     try {
         // Check blacklist (async for Redis support)
         const isBlacklistedToken = await tokenStore.has(token);
-        if (isBlacklistedToken) {
+        if (isBlacklistedToken === true) {
             return null;
         }
         const decoded = jwt.verify(token, JWT_SECRET, {
@@ -202,7 +202,7 @@ export function getApprovalGroups(decoded) {
  * Get the highest role from decoded token
  */
 export function getHighestRole(decoded) {
-    if (!decoded?.roles || decoded.roles.length === 0)
+    if (decoded === null || decoded === undefined || decoded.roles === undefined || decoded.roles.length === 0)
         return null;
     const roles = decoded.roles.map((r) => r.role);
     if (roles.includes('admin'))

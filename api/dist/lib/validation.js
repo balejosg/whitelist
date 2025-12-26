@@ -173,7 +173,7 @@ export function validate(schema, property = 'body') {
             abortEarly: false,
             stripUnknown: true
         });
-        if (error) {
+        if (error !== undefined) {
             const details = error.details.map((d) => ({
                 field: d.path.join('.'),
                 message: d.message
@@ -187,7 +187,6 @@ export function validate(schema, property = 'body') {
             return;
         }
         // Replace with validated/sanitized values
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         req[property] = value;
         next();
     };
@@ -196,7 +195,7 @@ export function validate(schema, property = 'body') {
  * Validate domain format (standalone function)
  */
 export function isValidDomain(domain) {
-    if (!domain || typeof domain !== 'string')
+    if (domain === null || domain === undefined || typeof domain !== 'string')
         return false;
     if (domain.length < 3 || domain.length > 253)
         return false;
@@ -206,7 +205,7 @@ export function isValidDomain(domain) {
  * Sanitize text input (remove dangerous characters)
  */
 export function sanitize(text, maxLength = 500) {
-    if (!text || typeof text !== 'string')
+    if (text === null || text === undefined || typeof text !== 'string')
         return '';
     return text
         .replace(/<[^>]*>/g, '') // Remove HTML tags
