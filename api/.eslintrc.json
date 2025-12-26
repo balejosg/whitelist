@@ -25,21 +25,26 @@
             }
         ],
         "no-console": "off",
-        "semi": ["error", "always"],
-        "quotes": ["warn", "single", {"avoidEscape": true}],
+        "semi": [
+            "error",
+            "always"
+        ],
+        "quotes": [
+            "warn",
+            "single",
+            {
+                "avoidEscape": true
+            }
+        ],
         "@typescript-eslint/explicit-function-return-type": "off",
         "@typescript-eslint/no-explicit-any": "warn",
-        "@typescript-eslint/strict-boolean-expressions": "off",
-        "@typescript-eslint/require-await": "off",
-        "@typescript-eslint/no-unsafe-assignment": "off",
-        "@typescript-eslint/no-unsafe-member-access": "off",
-        "@typescript-eslint/no-unsafe-call": "off",
-        "@typescript-eslint/no-unsafe-return": "off",
-        "@typescript-eslint/no-unsafe-argument": "off"
+        "@typescript-eslint/strict-boolean-expressions": "off"
     },
     "overrides": [
         {
-            "files": ["tests/**/*.ts"],
+            "files": [
+                "tests/**/*.ts"
+            ],
             "parserOptions": {
                 "project": "./tsconfig.tests.json"
             },
@@ -59,9 +64,6 @@
         "build/",
         "dist/",
         "**/tests/load/",
-        "*.js",
-        "server.ts",
-        "src/lib/swagger.ts",
-        "src/lib/validation.ts"
+        "*.js"
     ]
 }

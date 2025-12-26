@@ -37,8 +37,6 @@
     "exclude": [
         "node_modules",
         "dist",
-        "tests",
-        "src/lib/swagger.ts",
-        "src/lib/validation.ts"
+        "tests"
     ]
 }
