@@ -194,7 +194,7 @@ router.get('/roles/teachers', adminLimiter, requireAuth, requireAdmin, (_req: Re
             };
         });
 
-        res.json({
+        return res.json({
             success: true,
             teachers: enriched
         });

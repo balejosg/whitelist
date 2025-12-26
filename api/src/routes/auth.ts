@@ -252,13 +252,13 @@ router.post('/refresh', async (req: Request<object, unknown, RefreshBody>, res: 
 
         await auth.blacklistToken(refreshToken);
 
-        res.json({
+        return res.json({
             success: true,
             ...tokens
         });
     } catch (error) {
         console.error('Error refreshing token:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Token refresh failed',
             code: 'SERVER_ERROR'
@@ -282,7 +282,7 @@ router.post('/logout', async (req: Request<object, unknown, LogoutBody>, res: Re
         await auth.blacklistToken(refreshToken);
     }
 
-    res.json({
+    return res.json({
         success: true,
         message: 'Logged out successfully'
     });
@@ -325,7 +325,7 @@ router.get('/me', async (req: Request, res: Response) => {
 
     const roles = roleStorage.getUserRoles(user.id);
 
-    res.json({
+    return res.json({
         success: true,
         user: {
             id: user.id,
