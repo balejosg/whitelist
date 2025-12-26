@@ -545,7 +545,7 @@ router.post('/:id/approve', adminLimiter, requireAuth, canApproveRequest, async 
     }
 
     const targetGroup = group_id ?? request.group_id;
-    if (group_id && group_id !== request.group_id) {
+    if (group_id !== undefined && group_id !== '' && group_id !== request.group_id) {
         if (auth.canApproveGroup(req.user, group_id) === false) {
             return res.status(403).json({
                 success: false,

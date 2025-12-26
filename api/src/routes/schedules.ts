@@ -96,9 +96,9 @@ function canManageSchedule(req: RequestWithUser, res: Response, next: NextFuncti
     }
 
     const isOwner = schedule.teacher_id === req.user?.sub;
-    const isAdmin = req.user ? auth.isAdminToken(req.user) : false;
+    const isAdmin = req.user !== undefined ? auth.isAdminToken(req.user) : false;
 
-    if (!isOwner && !isAdmin) {
+    if (isOwner === false && isAdmin === false) {
         res.status(403).json({
             success: false,
             error: 'You can only manage your own schedules'
@@ -133,7 +133,7 @@ router.get('/classroom/:classroomId', requireAuth, (req: RequestWithUser, res: R
     const schedules = scheduleStorage.getSchedulesByClassroom(classroomId);
 
     const userId = req.user?.sub;
-    const isAdmin = req.user ? auth.isAdminToken(req.user) : false;
+    const isAdmin = req.user !== undefined ? auth.isAdminToken(req.user) : false;
 
     const schedulesWithOwnership = schedules.map(s => ({
         ...s,
@@ -185,8 +185,8 @@ router.post('/', requireAuth, (req: RequestWithUser, res: Response) => {
         });
     }
 
-    const isAdmin = req.user ? auth.isAdminToken(req.user) : false;
-    if (!isAdmin && !auth.canApproveGroup(req.user, group_id)) {
+    const isAdmin = req.user !== undefined ? auth.isAdminToken(req.user) : false;
+    if (isAdmin === false && auth.canApproveGroup(req.user, group_id) === false) {
         return res.status(403).json({
             success: false,
             error: 'You can only create schedules for your assigned groups'
@@ -231,9 +231,9 @@ router.post('/', requireAuth, (req: RequestWithUser, res: Response) => {
 router.put('/:id', requireAuth, canManageSchedule, (req: RequestWithUser, res: Response) => {
     const { day_of_week, start_time, end_time, group_id } = req.body as UpdateScheduleBody;
 
-    if (group_id && req.schedule && group_id !== req.schedule.group_id) {
-        const isAdmin = req.user ? auth.isAdminToken(req.user) : false;
-        if (!isAdmin && !auth.canApproveGroup(req.user, group_id)) {
+    if (group_id !== undefined && group_id !== '' && req.schedule !== undefined && group_id !== req.schedule.group_id) {
+        const isAdmin = req.user !== undefined ? auth.isAdminToken(req.user) : false;
+        if (isAdmin === false && auth.canApproveGroup(req.user, group_id) === false) {
             return res.status(403).json({
                 success: false,
                 error: 'You can only use your assigned groups'

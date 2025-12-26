@@ -74,7 +74,7 @@ function isValidEmail(email: string): boolean {
 }
 
 function isValidPassword(password: string): boolean {
-    return Boolean(password && password.length >= 8);
+    return password !== undefined && password !== '' && password.length >= 8;
 }
 
 // =============================================================================
