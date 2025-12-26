@@ -6,11 +6,7 @@
         "declaration": false,
         "declarationMap": false,
         "sourceMap": false,
-        "noEmit": true,
-        "noUnusedLocals": false,
-        "noUnusedParameters": false,
-        "strict": false,
-        "noImplicitAny": false
+        "noEmit": true
     },
     "include": [
         "tests/**/*",

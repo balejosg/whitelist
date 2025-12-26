@@ -36,9 +36,9 @@
                 "avoidEscape": true
             }
         ],
-        "@typescript-eslint/explicit-function-return-type": "off",
+        "@typescript-eslint/explicit-function-return-type": "warn",
         "@typescript-eslint/no-explicit-any": "warn",
-        "@typescript-eslint/strict-boolean-expressions": "off"
+        "@typescript-eslint/strict-boolean-expressions": "warn"
     },
     "overrides": [
         {
@@ -49,12 +49,10 @@
                 "project": "./tsconfig.tests.json"
             },
             "rules": {
-                "@typescript-eslint/no-explicit-any": "off",
-                "@typescript-eslint/no-unused-vars": "off",
-                "@typescript-eslint/restrict-template-expressions": "off",
-                "@typescript-eslint/restrict-plus-operands": "off",
-                "semi": "off",
-                "quotes": "off"
+                "@typescript-eslint/no-explicit-any": "warn",
+                "@typescript-eslint/no-unused-vars": "warn",
+                "@typescript-eslint/restrict-template-expressions": "warn",
+                "@typescript-eslint/restrict-plus-operands": "warn"
             }
         }
     ],
