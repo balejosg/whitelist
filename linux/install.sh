@@ -53,6 +53,7 @@ HEALTH_API_URL=""
 HEALTH_API_SECRET=""
 CLASSROOM_NAME=""
 API_URL=""
+REGISTRATION_TOKEN=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -88,6 +89,10 @@ while [[ $# -gt 0 ]]; do
             API_URL="$2"
             shift 2
             ;;
+        --registration-token)
+            REGISTRATION_TOKEN="$2"
+            shift 2
+            ;;
         *)
             shift
             ;;
@@ -100,6 +105,28 @@ if [ -n "$CLASSROOM_NAME" ] && [ -n "$API_URL" ] && [ -z "$HEALTH_API_SECRET" ];
     HEALTH_API_SECRET=$(head -c 24 /dev/urandom | base64 | tr -d '/+=' | head -c 32)
     echo "🔑 API Secret generado automáticamente para modo Aula"
     echo "   Guarde este secret si necesita reinstalar: $HEALTH_API_SECRET"
+fi
+
+# Validate registration token in classroom mode
+if [ -n "$CLASSROOM_NAME" ] && [ -n "$API_URL" ]; then
+    if [ -z "$REGISTRATION_TOKEN" ]; then
+        echo "❌ Error: --registration-token es requerido en modo aula"
+        echo "   Obtenga el token de registro del administrador del servidor central"
+        exit 1
+    fi
+    
+    echo "Validando token de registro..."
+    VALIDATE_RESPONSE=$(curl -s -X POST \
+        -H "Content-Type: application/json" \
+        -d "{\"token\":\"$REGISTRATION_TOKEN\"}" \
+        "$API_URL/api/setup/validate-token" 2>/dev/null || echo "{\"valid\":false}")
+    
+    if ! echo "$VALIDATE_RESPONSE" | grep -q '"valid":true'; then
+        echo "❌ Error: Token de registro inválido"
+        echo "   Verifique el token con el administrador del servidor central"
+        exit 1
+    fi
+    echo "✓ Token de registro validado"
 fi
 
 # Auto-elevación con sudo

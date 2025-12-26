@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración Inicial - OpenPath</title>
+    <meta name="description" content="Configuración del primer administrador de OpenPath">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .setup-container {
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 40px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .setup-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .setup-header .logo {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .setup-header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .setup-header p {
+            color: #6b7280;
+            font-size: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 15px;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .form-group small {
+            display: block;
+            margin-top: 4px;
+            color: #6b7280;
+            font-size: 13px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-primary:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+
+        .error-message {
+            padding: 12px;
+            background: #fee2e2;
+            border: 1px solid #fca5a5;
+            border-radius: 6px;
+            color: #991b1b;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .success-message {
+            padding: 12px;
+            background: #d1fae5;
+            border: 1px solid #6ee7b7;
+            border-radius: 6px;
+            color: #065f46;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .token-display {
+            padding: 16px;
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+
+        .token-display label {
+            display: block;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .token-value {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .token-value input {
+            flex: 1;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            padding: 8px;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+        }
+
+        .btn-copy {
+            padding: 8px 16px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .btn-copy:hover {
+            background: #059669;
+        }
+
+        .info-box {
+            padding: 16px;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+
+        .info-box p {
+            margin: 0 0 8px 0;
+            color: #1e40af;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .info-box p:last-child {
+            margin-bottom: 0;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="setup-container">
+        <!-- Loading State -->
+        <div id="loading-state" class="loading">
+            <div class="spinner"></div>
+            <p>Verificando estado del sistema...</p>
+        </div>
+
+        <!-- Already Setup -->
+        <div id="already-setup" class="hidden">
+            <div class="setup-header">
+                <div class="logo">✅</div>
+                <h1>Sistema Configurado</h1>
+                <p>El sistema ya ha sido configurado con un administrador</p>
+            </div>
+            <a href="index.html" class="btn btn-secondary">Ir al Login</a>
+        </div>
+
+        <!-- Setup Form -->
+        <div id="setup-form" class="hidden">
+            <div class="setup-header">
+                <div class="logo">🛡️</div>
+                <h1>Configuración Inicial</h1>
+                <p>Crea la cuenta del primer administrador</p>
+            </div>
+
+            <div id="error-message" class="error-message hidden"></div>
+
+            <form id="first-admin-form">
+                <div class="form-group">
+                    <label for="admin-email">Email del Administrador</label>
+                    <input type="email" id="admin-email" required placeholder="admin@colegio.edu" autocomplete="email">
+                    <small>Usar email institucional del colegio</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="admin-name">Nombre Completo</label>
+                    <input type="text" id="admin-name" required placeholder="Juan García" autocomplete="name">
+                </div>
+
+                <div class="form-group">
+                    <label for="admin-password">Contraseña</label>
+                    <input type="password" id="admin-password" required placeholder="••••••••" autocomplete="new-password">
+                    <small>Mínimo 8 caracteres</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="admin-password-confirm">Confirmar Contraseña</label>
+                    <input type="password" id="admin-password-confirm" required placeholder="••••••••" autocomplete="new-password">
+                </div>
+
+                <button type="submit" id="submit-btn" class="btn btn-primary">
+                    Crear Administrador
+                </button>
+            </form>
+        </div>
+
+        <!-- Success State -->
+        <div id="setup-success" class="hidden">
+            <div class="setup-header">
+                <div class="logo">🎉</div>
+                <h1>¡Configuración Completa!</h1>
+                <p>Administrador creado exitosamente</p>
+            </div>
+
+            <div class="success-message">
+                ✓ Tu cuenta ha sido creada. Ahora puedes iniciar sesión.
+            </div>
+
+            <div class="token-display">
+                <label>Token de Registro para PCs Cliente</label>
+                <p style="font-size: 13px; color: #6b7280; margin-bottom: 8px;">
+                    Guarda este token - lo necesitarás para instalar OpenPath en los PCs del aula.
+                </p>
+                <div class="token-value">
+                    <input type="text" id="registration-token" readonly>
+                    <button class="btn-copy" onclick="copyToken()">Copiar</button>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <p><strong>Próximos pasos:</strong></p>
+                <p>1. Guarda el token de registro en un lugar seguro</p>
+                <p>2. Inicia sesión con tu cuenta de administrador</p>
+                <p>3. Usa el token al instalar OpenPath en los PCs cliente con <code>--registration-token</code></p>
+            </div>
+
+            <a href="index.html" class="btn btn-primary">Ir al Login</a>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = localStorage.getItem('requests_api_url') || window.location.origin;
+
+        // Check setup status on load
+        async function checkSetupStatus() {
+            try {
+                const response = await fetch(`${API_URL}/api/setup/status`);
+                const data = await response.json();
+
+                document.getElementById('loading-state').classList.add('hidden');
+
+                if (data.needsSetup) {
+                    document.getElementById('setup-form').classList.remove('hidden');
+                } else {
+                    document.getElementById('already-setup').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error checking setup status:', error);
+                showError('Error al conectar con el servidor');
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('first-admin-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('admin-email').value;
+            const name = document.getElementById('admin-name').value;
+            const password = document.getElementById('admin-password').value;
+            const passwordConfirm = document.getElementById('admin-password-confirm').value;
+
+            // Client-side validation
+            if (password.length < 8) {
+                showError('La contraseña debe tener al menos 8 caracteres');
+                return;
+            }
+
+            if (password !== passwordConfirm) {
+                showError('Las contraseñas no coinciden');
+                return;
+            }
+
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creando...';
+
+            try {
+                const response = await fetch(`${API_URL}/api/setup/first-admin`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, name, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Show success state with token
+                    document.getElementById('setup-form').classList.add('hidden');
+                    document.getElementById('setup-success').classList.remove('hidden');
+                    document.getElementById('registration-token').value = data.registrationToken;
+                } else {
+                    showError(data.error || 'Error al crear administrador');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Crear Administrador';
+                }
+            } catch (error) {
+                console.error('Error creating admin:', error);
+                showError('Error al conectar con el servidor');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Crear Administrador';
+            }
+        });
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+            setTimeout(() => {
+                errorDiv.classList.add('hidden');
+            }, 5000);
+        }
+
+        function copyToken() {
+            const tokenInput = document.getElementById('registration-token');
+            tokenInput.select();
+            document.execCommand('copy');
+            
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = '✓ Copiado';
+            btn.style.background = '#059669';
+            
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.background = '';
+            }, 2000);
+        }
+
+        // Initialize
+        checkSetupStatus();
+    </script>
+</body>
+
+</html>
