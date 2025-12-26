@@ -68,7 +68,7 @@ describe('Security Tests', async () => {
     });
 
     after(async () => {
-        if (server) {
+        if (server !== undefined) {
             await new Promise<void>(resolve => server?.close(() => resolve()));
         }
     });

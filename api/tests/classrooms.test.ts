@@ -88,7 +88,7 @@ describe('Classroom API Tests', { timeout: 25000 }, () => {
             fs.unlinkSync(MACHINES_FILE);
         }
 
-        if (server) {
+        if (server !== undefined) {
             if ('closeAllConnections' in server && typeof server.closeAllConnections === 'function') {
                 server.closeAllConnections();
             }

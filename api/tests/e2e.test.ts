@@ -62,7 +62,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
     });
 
     after(async () => {
-        if (server) {
+        if (server !== undefined) {
             if ('closeAllConnections' in server && typeof server.closeAllConnections === 'function') {
                 server.closeAllConnections();
             }

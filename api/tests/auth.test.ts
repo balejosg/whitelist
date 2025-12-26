@@ -62,7 +62,7 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
     });
 
     after(async () => {
-        if (server) {
+        if (server !== undefined) {
             if ('closeAllConnections' in server && typeof server.closeAllConnections === 'function') {
                 server.closeAllConnections();
             }

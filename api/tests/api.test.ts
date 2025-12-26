@@ -55,7 +55,7 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
         }
 
         // Properly close the server
-        if (server) {
+        if (server !== undefined) {
             if ('closeAllConnections' in server && typeof server.closeAllConnections === 'function') {
                 server.closeAllConnections();
             }

@@ -96,7 +96,7 @@ describe('Integration: Complete User Workflow', () => {
     });
 
     after(() => {
-        if (server) server.close();
+        if (server !== undefined) server.close();
     });
 
     it('should complete user registration → login → profile access flow', async () => {
@@ -141,7 +141,7 @@ describe('Integration: Health Report Flow', () => {
     });
 
     after(() => {
-        if (server) server.close();
+        if (server !== undefined) server.close();
     });
 
     it('should complete health report submission → retrieval flow', async () => {
@@ -185,7 +185,7 @@ describe('Integration: Classroom Management Flow', () => {
     });
 
     after(() => {
-        if (server) server.close();
+        if (server !== undefined) server.close();
     });
 
     it('should complete classroom create → update → delete flow', async () => {
@@ -243,7 +243,7 @@ describe('Integration: Domain Request Workflow', () => {
     });
 
     after(() => {
-        if (server) server.close();
+        if (server !== undefined) server.close();
     });
 
     it('should complete domain request → review → decision flow', async () => {
