@@ -313,7 +313,10 @@
     </div>
 
     <script>
-        const API_URL = localStorage.getItem('requests_api_url') || window.location.origin;
+        // Use port 3006 for API when testing locally
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const API_URL = localStorage.getItem('requests_api_url') || 
+                        (isLocal ? 'http://localhost:3006' : window.location.origin);
 
         // Check setup status on load
         async function checkSetupStatus() {
