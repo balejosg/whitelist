@@ -342,8 +342,8 @@ export function getStats(): UserStats {
     const data = loadData();
     return {
         total: data.users.length,
-        active: data.users.filter((u) => u.isActive).length,
-        verified: data.users.filter((u) => u.emailVerified).length
+        active: data.users.filter((u) => u.isActive === true).length,
+        verified: data.users.filter((u) => u.emailVerified === true).length
     };
 }
 
