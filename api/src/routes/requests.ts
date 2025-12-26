@@ -301,7 +301,7 @@ router.post('/auto', autoInclusionLimiter, async (req: Request<object, unknown, 
             timestamp: new Date().toISOString()
         }));
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             domain: domain.toLowerCase(),
             group_id,
@@ -309,7 +309,7 @@ router.post('/auto', autoInclusionLimiter, async (req: Request<object, unknown, 
         });
     } catch (error) {
         console.error('Error in auto-inclusion:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to add domain',
             code: 'SERVER_ERROR'
@@ -360,7 +360,7 @@ router.post('/', publicLimiter, (req: Request<object, unknown, CreateRequestBody
             console.error('Push notification failed:', err.message);
         });
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             request_id: request.id,
             status: request.status,
@@ -370,7 +370,7 @@ router.post('/', publicLimiter, (req: Request<object, unknown, CreateRequestBody
         });
     } catch (error) {
         console.error('Error creating request:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to create request',
             code: 'SERVER_ERROR'
@@ -392,7 +392,7 @@ router.get('/status/:id', (req: Request, res: Response) => {
         });
     }
 
-    res.json({
+    return res.json({
         success: true,
         request_id: request.id,
         domain: request.domain,
@@ -414,13 +414,13 @@ router.get('/groups/list', adminLimiter, requireAuth, filterByUserGroups, async 
             groups = allGroups.filter(g => req.approvalGroups!.includes(g.name));
         }
 
-        res.json({
+        return res.json({
             success: true,
             groups
         });
     } catch (error) {
         console.error('Error listing groups:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to list groups'
         });
@@ -439,13 +439,13 @@ router.get('/domains/blocked', adminLimiter, requireAuth, requireAdmin, async (_
             .map(line => line.trim())
             .filter(line => line && !line.startsWith('#'));
 
-        res.json({
+        return res.json({
             success: true,
             blocked_domains: blockedDomains,
             count: blockedDomains.length
         });
     } catch {
-        res.json({
+        return res.json({
             success: true,
             blocked_domains: [],
             count: 0,
@@ -469,14 +469,14 @@ router.post('/domains/check', adminLimiter, requireAuth, async (req: Request<obj
 
     try {
         const result = await github.isDomainBlocked(domain);
-        res.json({
+        return res.json({
             success: true,
             domain,
             blocked: result.blocked,
             matched_rule: result.matchedRule
         });
     } catch {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to check domain'
         });
@@ -503,7 +503,7 @@ router.get('/', adminLimiter, requireAuth, filterByUserGroups, (req: RequestWith
             rejected: requests.filter(r => r.status === 'rejected').length
         };
 
-        res.json({
+        return res.json({
             success: true,
             stats,
             requests: requests.sort((a, b) =>
@@ -512,7 +512,7 @@ router.get('/', adminLimiter, requireAuth, filterByUserGroups, (req: RequestWith
         });
     } catch (error) {
         console.error('Error listing requests:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to list requests'
         });
@@ -523,7 +523,7 @@ router.get('/', adminLimiter, requireAuth, filterByUserGroups, (req: RequestWith
  * GET /api/requests/:id
  */
 router.get('/:id', adminLimiter, requireAuth, canApproveRequest, (req: RequestWithUser, res: Response) => {
-    res.json({
+    return res.json({
         success: true,
         request: req.request
     });
@@ -586,7 +586,7 @@ router.post('/:id/approve', adminLimiter, requireAuth, canApproveRequest, async 
             `Added to ${targetGroup}`
         );
 
-        res.json({
+        return res.json({
             success: true,
             message: `Domain ${request.domain} approved and added to ${targetGroup}`,
             domain: request.domain,
@@ -598,7 +598,7 @@ router.post('/:id/approve', adminLimiter, requireAuth, canApproveRequest, async 
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         console.error('Error approving request:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to approve request: ' + message
         });
@@ -628,7 +628,7 @@ router.post('/:id/reject', adminLimiter, requireAuth, canApproveRequest, (req: R
             sanitize(reason) || 'No reason provided'
         );
 
-        res.json({
+        return res.json({
             success: true,
             message: `Request for ${request.domain} rejected`,
             domain: request.domain,
@@ -638,7 +638,7 @@ router.post('/:id/reject', adminLimiter, requireAuth, canApproveRequest, (req: R
         });
     } catch (error) {
         console.error('Error rejecting request:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to reject request'
         });
@@ -658,7 +658,7 @@ router.delete('/:id', adminLimiter, requireAuth, requireAdmin, (req: Request, re
         });
     }
 
-    res.json({
+    return res.json({
         success: true,
         message: 'Request deleted'
     });

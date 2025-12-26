@@ -140,7 +140,7 @@ router.get('/classroom/:classroomId', requireAuth, (req: RequestWithUser, res: R
         can_edit: s.teacher_id === userId || isAdmin
     }));
 
-    res.json({
+    return res.json({
         success: true,
         classroom: {
             id: classroom.id,
@@ -164,7 +164,7 @@ router.get('/my', requireAuth, (req: RequestWithUser, res: Response) => {
 
     const schedules = scheduleStorage.getSchedulesByTeacher(req.user.sub);
 
-    res.json({
+    return res.json({
         success: true,
         schedules
     });
@@ -202,7 +202,7 @@ router.post('/', requireAuth, (req: RequestWithUser, res: Response) => {
             end_time
         });
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: 'Schedule created',
             schedule
@@ -217,7 +217,7 @@ router.post('/', requireAuth, (req: RequestWithUser, res: Response) => {
             });
         }
 
-        res.status(400).json({
+        return res.status(400).json({
             success: false,
             error: schedError.message
         });
@@ -248,7 +248,7 @@ router.put('/:id', requireAuth, canManageSchedule, (req: RequestWithUser, res: R
             group_id
         });
 
-        res.json({
+        return res.json({
             success: true,
             message: 'Schedule updated',
             schedule: updated
@@ -263,7 +263,7 @@ router.put('/:id', requireAuth, canManageSchedule, (req: RequestWithUser, res: R
             });
         }
 
-        res.status(400).json({
+        return res.status(400).json({
             success: false,
             error: schedError.message
         });
@@ -276,7 +276,7 @@ router.put('/:id', requireAuth, canManageSchedule, (req: RequestWithUser, res: R
 router.delete('/:id', requireAuth, canManageSchedule, (req: Request, res: Response) => {
     scheduleStorage.deleteSchedule(req.params.id!);
 
-    res.json({
+    return res.json({
         success: true,
         message: 'Schedule deleted'
     });
@@ -298,7 +298,7 @@ router.get('/classroom/:classroomId/current', requireAuth, (req: Request, res: R
 
     const currentSchedule = scheduleStorage.getCurrentSchedule(classroomId);
 
-    res.json({
+    return res.json({
         success: true,
         classroom_id: classroomId,
         current_schedule: currentSchedule,

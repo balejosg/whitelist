@@ -160,14 +160,14 @@ router.get('/', adminLimiter, requireAuth, requireAdmin, (_req: Request, res: Re
             };
         });
 
-        res.json({
+        return res.json({
             success: true,
             stats,
             users: enrichedUsers
         });
     } catch (error) {
         console.error('Error listing users:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to list users',
             code: 'SERVER_ERROR'
@@ -200,7 +200,7 @@ router.get('/roles/teachers', adminLimiter, requireAuth, requireAdmin, (_req: Re
         });
     } catch (error) {
         console.error('Error listing teachers:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to list teachers',
             code: 'SERVER_ERROR'
@@ -224,7 +224,7 @@ router.get('/:id', adminLimiter, requireAuth, requireAdmin, (req: Request, res: 
 
     const roles = roleStorage.getUserRoles(user.id);
 
-    res.json({
+    return res.json({
         success: true,
         user: {
             ...user,
@@ -274,7 +274,7 @@ router.post('/', adminLimiter, requireAuth, requireAdmin, async (req: RequestWit
 
         const roles = roleStorage.getUserRoles(user.id);
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             user: {
                 ...user,
@@ -287,7 +287,7 @@ router.post('/', adminLimiter, requireAuth, requireAdmin, async (req: RequestWit
         });
     } catch (error) {
         console.error('Error creating user:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to create user',
             code: 'SERVER_ERROR'
@@ -338,7 +338,7 @@ router.patch('/:id', adminLimiter, requireAuth, requireAdmin, async (req: Reques
 
         const roles = roleStorage.getUserRoles(updated.id);
 
-        res.json({
+        return res.json({
             success: true,
             user: {
                 ...updated,
@@ -351,7 +351,7 @@ router.patch('/:id', adminLimiter, requireAuth, requireAdmin, async (req: Reques
         });
     } catch (error) {
         console.error('Error updating user:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to update user',
             code: 'SERVER_ERROR'
@@ -385,13 +385,13 @@ router.delete('/:id', adminLimiter, requireAuth, requireAdmin, (req: RequestWith
         roleStorage.revokeAllUserRoles(req.params.id!, req.user?.sub);
         userStorage.deleteUser(req.params.id!);
 
-        res.json({
+        return res.json({
             success: true,
             message: 'User deleted'
         });
     } catch (error) {
         console.error('Error deleting user:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to delete user',
             code: 'SERVER_ERROR'
@@ -415,7 +415,7 @@ router.get('/:id/roles', adminLimiter, requireAuth, requireAdmin, (req: Request,
 
     const roles = roleStorage.getUserRoles(req.params.id!);
 
-    res.json({
+    return res.json({
         success: true,
         userId: req.params.id,
         roles
@@ -473,7 +473,7 @@ router.post('/:id/roles', adminLimiter, requireAuth, requireAdmin, (req: Request
             userStorage.updateUser(req.params.id!, { active: true });
         }
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: `Role '${role}' assigned to user`,
             role: newRole
@@ -481,7 +481,7 @@ router.post('/:id/roles', adminLimiter, requireAuth, requireAdmin, (req: Request
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to assign role';
         console.error('Error assigning role:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: message,
             code: 'SERVER_ERROR'
@@ -521,13 +521,13 @@ router.patch('/:id/roles/:roleId', adminLimiter, requireAuth, requireAdmin, (req
             });
         }
 
-        res.json({
+        return res.json({
             success: true,
             role: updated
         });
     } catch (error) {
         console.error('Error updating role:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to update role',
             code: 'SERVER_ERROR'
@@ -560,13 +560,13 @@ router.delete('/:id/roles/:roleId', adminLimiter, requireAuth, requireAdmin, (re
     try {
         roleStorage.revokeRole(req.params.roleId!, req.user?.sub);
 
-        res.json({
+        return res.json({
             success: true,
             message: 'Role revoked'
         });
     } catch (error) {
         console.error('Error revoking role:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to revoke role',
             code: 'SERVER_ERROR'

@@ -119,14 +119,14 @@ const router = Router();
 router.get('/', requireAuth, requireAdmin, (_req: Request, res: Response) => {
     try {
         const classrooms = classroomStorage.getAllClassrooms();
-        res.json({
+        return res.json({
             success: true,
             classrooms,
             count: classrooms.length
         });
     } catch (error) {
         console.error('Error listing classrooms:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to list classrooms'
         });
@@ -153,7 +153,7 @@ router.post('/', requireAuth, requireAdmin, (req: Request<object, unknown, Creat
             defaultGroupId: default_group_id
         });
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: 'Classroom created',
             classroom
@@ -167,7 +167,7 @@ router.post('/', requireAuth, requireAdmin, (req: Request<object, unknown, Creat
             });
         }
         console.error('Error creating classroom:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to create classroom'
         });
@@ -190,7 +190,7 @@ router.get('/:id', requireAuth, requireAdmin, (req: Request, res: Response) => {
     const machines = classroomStorage.getMachinesByClassroom(req.params.id!);
     const currentGroupId = classroomStorage.getCurrentGroupId(req.params.id!);
 
-    res.json({
+    return res.json({
         success: true,
         classroom: {
             ...classroom,
@@ -219,7 +219,7 @@ router.put('/:id', requireAuth, requireAdmin, (req: Request<{ id: string }, unkn
         });
     }
 
-    res.json({
+    return res.json({
         success: true,
         message: 'Classroom updated',
         classroom: updated
@@ -245,7 +245,7 @@ router.put('/:id/active-group', requireAuth, requireAdmin, (req: Request<{ id: s
 
     const currentGroupId = classroomStorage.getCurrentGroupId(req.params.id);
 
-    res.json({
+    return res.json({
         success: true,
         message: groupId ? `Active group set to ${groupId}` : 'Reset to default group',
         classroom: updated,
@@ -266,7 +266,7 @@ router.delete('/:id', requireAuth, requireAdmin, (req: Request, res: Response) =
         });
     }
 
-    res.json({
+    return res.json({
         success: true,
         message: 'Classroom deleted'
     });
@@ -315,7 +315,7 @@ router.post('/machines/register', requireSharedSecret, (req: Request<object, unk
             version
         });
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: 'Machine registered',
             machine,
@@ -327,7 +327,7 @@ router.post('/machines/register', requireSharedSecret, (req: Request<object, unk
         });
     } catch (error) {
         console.error('Error registering machine:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to register machine'
         });
@@ -352,7 +352,7 @@ router.get('/machines/:hostname/whitelist-url', requireSharedSecret, (req: Reque
         });
     }
 
-    res.json({
+    return res.json({
         success: true,
         ...result
     });
@@ -371,7 +371,7 @@ router.delete('/machines/:hostname', requireAuth, requireAdmin, (req: Request, r
         });
     }
 
-    res.json({
+    return res.json({
         success: true,
         message: 'Machine removed'
     });
@@ -382,7 +382,7 @@ router.delete('/machines/:hostname', requireAuth, requireAdmin, (req: Request, r
  */
 router.get('/stats', requireAuth, requireAdmin, (_req: Request, res: Response) => {
     const stats = classroomStorage.getStats();
-    res.json({
+    return res.json({
         success: true,
         stats
     });

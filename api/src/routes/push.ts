@@ -98,7 +98,7 @@ router.get('/vapid-key', (_req: Request, res: Response) => {
         });
     }
 
-    res.json({
+    return res.json({
         success: true,
         publicKey,
         enabled: true
@@ -119,7 +119,7 @@ router.get('/status', requireAuth, (req: RequestWithUser, res: Response) => {
     const enabled = push.isPushEnabled();
     const subscriptions = push.getSubscriptionsForUser(req.user.sub);
 
-    res.json({
+    return res.json({
         success: true,
         pushEnabled: enabled,
         subscriptionCount: subscriptions.length,
@@ -180,7 +180,7 @@ router.post('/subscribe', requireAuth, (req: RequestWithUser, res: Response) => 
             userAgent
         );
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: 'Push subscription registered',
             subscriptionId: record.id,
@@ -188,7 +188,7 @@ router.post('/subscribe', requireAuth, (req: RequestWithUser, res: Response) => 
         });
     } catch (error) {
         console.error('Error saving subscription:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to save subscription'
         });
@@ -217,12 +217,12 @@ router.delete('/subscribe', requireAuth, (req: Request<object, unknown, Unsubscr
     }
 
     if (deleted) {
-        res.json({
+        return res.json({
             success: true,
             message: 'Subscription removed'
         });
     } else {
-        res.status(404).json({
+        return res.status(404).json({
             success: false,
             error: 'Subscription not found'
         });

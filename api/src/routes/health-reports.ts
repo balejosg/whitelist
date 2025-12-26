@@ -189,7 +189,7 @@ router.post('/', requireSharedSecret, (req: Request<object, unknown, SubmitRepor
 
     console.log(`[HEALTH] ${hostname}: ${status}${actions ? ` (actions: ${actions})` : ''}`);
 
-    res.json({
+    return res.json({
         success: true,
         message: 'Health report received',
         hostname,
@@ -247,7 +247,7 @@ router.get('/', requireAdmin, (_req: Request, res: Response) => {
         (statusPriority[a.status ?? ''] ?? 5) - (statusPriority[b.status ?? ''] ?? 5)
     );
 
-    res.json({
+    return res.json({
         success: true,
         ...summary
     });
@@ -295,7 +295,7 @@ router.get('/alerts/active', requireAdmin, (req: Request, res: Response) => {
         }
     }
 
-    res.json({
+    return res.json({
         success: true,
         alertCount: alerts.length,
         alerts
@@ -324,7 +324,7 @@ router.get('/:hostname', requireAdmin, (req: Request, res: Response) => {
 
     const host = data.hosts[hostname];
 
-    res.json({
+    return res.json({
         success: true,
         hostname,
         currentStatus: host.currentStatus,
