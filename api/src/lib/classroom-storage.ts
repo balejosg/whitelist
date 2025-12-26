@@ -389,7 +389,7 @@ export function getStats(): ClassroomStats {
     return {
         classrooms: classrooms.classrooms.length,
         machines: machines.machines.length,
-        classroomsWithActiveGroup: classrooms.classrooms.filter((c) => c.active_group_id).length
+        classroomsWithActiveGroup: classrooms.classrooms.filter((c) => c.active_group_id !== null && c.active_group_id !== undefined).length
     };
 }
 

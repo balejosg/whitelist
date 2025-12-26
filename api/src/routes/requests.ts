@@ -351,7 +351,7 @@ router.post('/', publicLimiter, (req: Request<object, unknown, CreateRequestBody
     try {
         const request = storage.createRequest(stripUndefined({
             domain: domain.trim().toLowerCase(),
-            reason: sanitize(reason) || 'No reason provided',
+            reason: sanitize(reason) !== '' ? sanitize(reason) : 'No reason provided',
             requesterEmail: sanitize(requester_email, 100),
             groupId: group_id,
             priority: priority as 'low' | 'normal' | 'high' | 'urgent' | undefined
@@ -626,7 +626,7 @@ router.post('/:id/reject', adminLimiter, requireAuth, canApproveRequest, (req: R
             request.id,
             'rejected',
             rejecterName,
-            sanitize(reason) || 'No reason provided'
+            sanitize(reason) !== '' ? sanitize(reason) : 'No reason provided'
         );
 
         return res.json({

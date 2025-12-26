@@ -277,7 +277,7 @@ export function removeGroupsFromRole(roleId: string, groupIds: string[]): Stored
     const role = data.roles[index];
     if (role === undefined || role.revokedAt !== null) return null;
 
-    role.groupIds = role.groupIds.filter((g) => !groupIds.includes(g));
+    role.groupIds = role.groupIds.filter((g) => groupIds.includes(g) === false);
     role.updatedAt = new Date().toISOString();
     saveData(data);
 
