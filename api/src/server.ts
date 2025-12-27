@@ -42,17 +42,6 @@ import 'dotenv/config';
 // Structured logging with Winston
 import logger from './lib/logger.js';
 
-// Route handlers
-import setupRouter from './routes/setup.js';
-import requestsRouter from './routes/requests.js';
-import healthReportsRouter from './routes/health-reports.js';
-import authRouter from './routes/auth.js';
-import usersRouter from './routes/users.js';
-import pushRouter from './routes/push.js';
-import classroomsRouter from './routes/classrooms.js';
-import schedulesRouter from './routes/schedules.js';
-import healthcheckRouter from './routes/healthcheck.js';
-
 // Error tracking and request ID middleware
 import { requestIdMiddleware, errorTrackingMiddleware } from './lib/error-tracking.js';
 
@@ -113,7 +102,7 @@ if (corsOrigins === '*' && process.env.NODE_ENV === 'production') {
 app.use(cors({
     origin: corsOrigins === '*' ? '*' : corsOrigins.split(',').map(o => o.trim()),
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'trpc-batch-mode'],
     credentials: true
 }));
 
@@ -145,8 +134,10 @@ app.use(logger.requestMiddleware);
 // Routes
 // =============================================================================
 
-// Health check endpoints
-app.use('/health', healthcheckRouter);
+// Basic health check for liveness probes
+app.get('/health', (_req, res) => {
+    res.json({ status: 'ok', service: 'openpath-api' });
+});
 
 // Swagger/OpenAPI documentation
 if (swaggerUi && getSwaggerSpec) {
@@ -159,67 +150,6 @@ if (swaggerUi && getSwaggerSpec) {
         res.send(getSwaggerSpec());
     });
 }
-
-// API info endpoint
-app.get('/api', (_req: Request, res: Response) => {
-    res.json({
-        name: 'AulaFocus Request API',
-        version: '2.0.0',
-        endpoints: {
-            'GET /api/setup/status': 'Check if initial setup is needed (public)',
-            'POST /api/setup/first-admin': 'Create first admin user (public)',
-            'GET /api/setup/registration-token': 'Get registration token (admin)',
-            'POST /api/setup/regenerate-token': 'Regenerate registration token (admin)',
-            'POST /api/setup/validate-token': 'Validate registration token (public)',
-            'POST /api/auth/register': 'Register new user',
-            'POST /api/auth/login': 'Login with email/password',
-            'POST /api/auth/refresh': 'Refresh access token',
-            'POST /api/auth/logout': 'Logout (invalidate tokens)',
-            'GET /api/auth/me': 'Get current user info',
-            'GET /api/users': 'List all users',
-            'POST /api/users': 'Create user',
-            'PATCH /api/users/:id': 'Update user',
-            'DELETE /api/users/:id': 'Delete user',
-            'POST /api/requests': 'Submit a domain request (public)',
-            'GET /api/requests/status/:id': 'Check request status (public)',
-            'GET /api/requests': 'List all requests (admin/teacher)',
-            'POST /api/requests/:id/approve': 'Approve request (admin/teacher)',
-            'POST /api/requests/:id/reject': 'Reject request (admin/teacher)',
-            'GET /api/push/vapid-key': 'Get VAPID public key (public)',
-            'POST /api/push/subscribe': 'Register push subscription',
-            'POST /api/health-reports': 'Submit health report (shared secret)',
-            'GET /api/health-reports': 'List all hosts status (admin)',
-            'GET /api/classrooms': 'List all classrooms (admin)',
-            'POST /api/classrooms': 'Create classroom (admin)',
-            'GET /api/schedules/classroom/:id': 'Get classroom schedule (auth)',
-            'POST /api/schedules': 'Create reservation (teacher/admin)'
-        }
-    });
-});
-
-// Setup routes (before auth - must be accessible without authentication)
-app.use('/api/setup', setupRouter);
-
-// Authentication routes
-app.use('/api/auth', authRouter);
-
-// User management routes
-app.use('/api/users', usersRouter);
-
-// Request routes
-app.use('/api/requests', requestsRouter);
-
-// Health reports from student machines
-app.use('/api/health-reports', healthReportsRouter);
-
-// Push notifications
-app.use('/api/push', pushRouter);
-
-// Classroom management
-app.use('/api/classrooms', classroomsRouter);
-
-// Schedule reservations
-app.use('/api/schedules', schedulesRouter);
 
 // tRPC Adapter
 import { createExpressMiddleware } from '@trpc/server/adapters/express';

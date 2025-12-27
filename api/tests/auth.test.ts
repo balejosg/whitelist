@@ -17,7 +17,7 @@
  */
 
 /**
- * Authentication & User Management API Tests
+ * Authentication & User Management API Tests (tRPC)
  * 
  * Run with: npm run test:auth
  * 
@@ -39,17 +39,54 @@ const GLOBAL_TIMEOUT = setTimeout(() => {
 GLOBAL_TIMEOUT.unref();
 
 let server: Server | undefined;
-// let testUserToken: string | null = null;
 
-interface AuthResponse {
-    success: boolean;
+// Helper to call tRPC mutations
+async function trpcMutate(procedure: string, input: unknown, headers: Record<string, string> = {}) {
+    const response = await fetch(`${API_URL}/trpc/${procedure}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify(input)
+    });
+    return response;
+}
+
+// Helper to call tRPC queries
+async function trpcQuery(procedure: string, input?: unknown, headers: Record<string, string> = {}) {
+    let url = `${API_URL}/trpc/${procedure}`;
+    if (input !== undefined) {
+        url += `?input=${encodeURIComponent(JSON.stringify(input))}`;
+    }
+    const response = await fetch(url, { headers });
+    return response;
+}
+
+// Parse tRPC response
+interface TRPCResponse<T = unknown> {
+    result?: { data: T };
+    error?: { message: string; code: string };
+}
+
+interface AuthResult {
+    success?: boolean;
     user?: { id: string; email: string; name: string };
     accessToken?: string;
     refreshToken?: string;
+    expiresIn?: number;
     error?: string;
 }
 
-await describe('Authentication & User Management API Tests', { timeout: 30000 }, async () => {
+async function parseTRPC<T>(response: Response): Promise<{ data?: T; error?: string; code?: string }> {
+    const json = await response.json() as TRPCResponse<T>;
+    if (json.result) {
+        return { data: json.result.data };
+    }
+    if (json.error) {
+        return { error: json.error.message, code: json.error.code };
+    }
+    return {};
+}
+
+await describe('Authentication & User Management API Tests (tRPC)', { timeout: 30000 }, async () => {
     before(async () => {
         process.env.PORT = String(PORT);
         const { app } = await import('../src/server.js');
@@ -78,50 +115,36 @@ await describe('Authentication & User Management API Tests', { timeout: 30000 },
     // ============================================
     // Registration Tests
     // ============================================
-    await describe('POST /api/auth/register - User Registration', async () => {
+    await describe('tRPC auth.register - User Registration', async () => {
         await test('should register a new user', async () => {
-            const userData = {
+            const input = {
                 email: `test-${String(Date.now())}@example.com`,
                 password: 'SecurePassword123!',
                 name: 'Test User'
             };
 
-            const response = await fetch(`${API_URL}/api/auth/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(userData)
-            });
+            const response = await trpcMutate('auth.register', input);
+            assert.strictEqual(response.status, 200);
 
-            assert.strictEqual(response.status, 201);
-
-            const data = await response.json() as AuthResponse;
-            assert.ok(data.success);
-            assert.ok(data.user !== undefined);
-            assert.ok(data.user.id !== '');
+            const { data } = await parseTRPC<AuthResult>(response);
+            assert.ok(data?.user);
+            assert.ok(data?.user.id);
         });
 
         await test('should reject registration without email', async () => {
-            const response = await fetch(`${API_URL}/api/auth/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    password: 'SecurePassword123!',
-                    name: 'Test User'
-                })
+            const response = await trpcMutate('auth.register', {
+                password: 'SecurePassword123!',
+                name: 'Test User'
             });
 
             assert.strictEqual(response.status, 400);
         });
 
         await test('should reject registration with short password', async () => {
-            const response = await fetch(`${API_URL}/api/auth/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: `short-pwd-${String(Date.now())}@example.com`,
-                    password: '123',
-                    name: 'Test User'
-                })
+            const response = await trpcMutate('auth.register', {
+                email: `short-pwd-${String(Date.now())}@example.com`,
+                password: '123',
+                name: 'Test User'
             });
 
             assert.strictEqual(response.status, 400);
@@ -130,24 +153,16 @@ await describe('Authentication & User Management API Tests', { timeout: 30000 },
         await test('should reject duplicate email registration', async () => {
             const email = `duplicate-${String(Date.now())}@example.com`;
 
-            await fetch(`${API_URL}/api/auth/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email,
-                    password: 'SecurePassword123!',
-                    name: 'First User'
-                })
+            await trpcMutate('auth.register', {
+                email,
+                password: 'SecurePassword123!',
+                name: 'First User'
             });
 
-            const response = await fetch(`${API_URL}/api/auth/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email,
-                    password: 'DifferentPassword123!',
-                    name: 'Second User'
-                })
+            const response = await trpcMutate('auth.register', {
+                email,
+                password: 'DifferentPassword123!',
+                name: 'Second User'
             });
 
             assert.ok([409, 429].includes(response.status), `Expected 409 or 429, got ${String(response.status)}`);
@@ -157,70 +172,51 @@ await describe('Authentication & User Management API Tests', { timeout: 30000 },
     // ============================================
     // Login Tests
     // ============================================
-    await describe('POST /api/auth/login - User Login', async () => {
+    await describe('tRPC auth.login - User Login', async () => {
         let testEmail: string;
         const testPassword = 'SecurePassword123!';
 
         before(async () => {
             testEmail = `login-test-${String(Date.now())}-${Math.random().toString(36).slice(2)}@example.com`;
-            const regResponse = await fetch(`${API_URL}/api/auth/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: testEmail,
-                    password: testPassword,
-                    name: 'Login Test User'
-                })
+            const regResponse = await trpcMutate('auth.register', {
+                email: testEmail,
+                password: testPassword,
+                name: 'Login Test User'
             });
-            if (regResponse.status !== 201) {
+            if (regResponse.status !== 200) {
                 console.log(`Note: Registration returned ${String(regResponse.status)}`);
             }
         });
 
         await test('should login with valid credentials', async () => {
-            const response = await fetch(`${API_URL}/api/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: testEmail,
-                    password: testPassword
-                })
+            const response = await trpcMutate('auth.login', {
+                email: testEmail,
+                password: testPassword
             });
 
             assert.ok([200, 401].includes(response.status), `Expected 200 or 401, got ${String(response.status)}`);
 
             if (response.status === 200) {
-                const data = await response.json() as AuthResponse;
-                assert.ok(data.success);
-                assert.ok(data.accessToken !== undefined && data.accessToken !== '');
-                assert.ok(data.refreshToken !== undefined && data.refreshToken !== '');
-                assert.ok(data.user !== undefined);
-
-                // testUserToken = data.accessToken ?? null;
+                const { data } = await parseTRPC<AuthResult>(response);
+                assert.ok(data?.accessToken);
+                assert.ok(data?.refreshToken);
+                assert.ok(data?.user);
             }
         });
 
         await test('should reject login with wrong password', async () => {
-            const response = await fetch(`${API_URL}/api/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: testEmail,
-                    password: 'WrongPassword123!'
-                })
+            const response = await trpcMutate('auth.login', {
+                email: testEmail,
+                password: 'WrongPassword123!'
             });
 
             assert.strictEqual(response.status, 401);
         });
 
         await test('should reject login with non-existent email', async () => {
-            const response = await fetch(`${API_URL}/api/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: 'nonexistent@example.com',
-                    password: 'SomePassword123!'
-                })
+            const response = await trpcMutate('auth.login', {
+                email: 'nonexistent@example.com',
+                password: 'SomePassword123!'
             });
 
             assert.strictEqual(response.status, 401);
@@ -230,34 +226,26 @@ await describe('Authentication & User Management API Tests', { timeout: 30000 },
     // ============================================
     // Token Refresh Tests
     // ============================================
-    await describe('POST /api/auth/refresh - Token Refresh', async () => {
+    await describe('tRPC auth.refresh - Token Refresh', async () => {
         let refreshToken: string | null = null;
 
         before(async () => {
             const email = `refresh-test-${String(Date.now())}-${Math.random().toString(36).slice(2)}@example.com`;
 
-            await fetch(`${API_URL}/api/auth/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email,
-                    password: 'SecurePassword123!',
-                    name: 'Refresh Test User'
-                })
+            await trpcMutate('auth.register', {
+                email,
+                password: 'SecurePassword123!',
+                name: 'Refresh Test User'
             });
 
-            const loginResponse = await fetch(`${API_URL}/api/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email,
-                    password: 'SecurePassword123!'
-                })
+            const loginResponse = await trpcMutate('auth.login', {
+                email,
+                password: 'SecurePassword123!'
             });
 
             if (loginResponse.status === 200) {
-                const data = await loginResponse.json() as AuthResponse;
-                refreshToken = data.refreshToken ?? null;
+                const { data } = await parseTRPC<AuthResult>(loginResponse);
+                refreshToken = data?.refreshToken ?? null;
             }
         });
 
@@ -267,27 +255,16 @@ await describe('Authentication & User Management API Tests', { timeout: 30000 },
                 return;
             }
 
-            const response = await fetch(`${API_URL}/api/auth/refresh`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ refreshToken })
-            });
-
+            const response = await trpcMutate('auth.refresh', { refreshToken });
             assert.strictEqual(response.status, 200);
 
-            const data = await response.json() as AuthResponse;
-            assert.ok(data.success);
-            assert.ok(data.accessToken !== undefined && data.accessToken !== '');
-            assert.ok(data.refreshToken !== undefined && data.refreshToken !== '');
+            const { data } = await parseTRPC<AuthResult>(response);
+            assert.ok(data?.accessToken);
+            assert.ok(data?.refreshToken);
         });
 
         await test('should reject invalid refresh token', async () => {
-            const response = await fetch(`${API_URL}/api/auth/refresh`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ refreshToken: 'invalid-token' })
-            });
-
+            const response = await trpcMutate('auth.refresh', { refreshToken: 'invalid-token' });
             assert.strictEqual(response.status, 401);
         });
     });
@@ -295,17 +272,14 @@ await describe('Authentication & User Management API Tests', { timeout: 30000 },
     // ============================================
     // Current User Tests
     // ============================================
-    await describe('GET /api/auth/me - Get Current User', async () => {
+    await describe('tRPC auth.me - Get Current User', async () => {
         await test('should reject request without token', async () => {
-            const response = await fetch(`${API_URL}/api/auth/me`);
+            const response = await trpcQuery('auth.me');
             assert.strictEqual(response.status, 401);
         });
 
         await test('should reject request with invalid token', async () => {
-            const response = await fetch(`${API_URL}/api/auth/me`, {
-                headers: { 'Authorization': 'Bearer invalid-token' }
-            });
-
+            const response = await trpcQuery('auth.me', undefined, { 'Authorization': 'Bearer invalid-token' });
             assert.strictEqual(response.status, 401);
         });
     });
@@ -313,21 +287,17 @@ await describe('Authentication & User Management API Tests', { timeout: 30000 },
     // ============================================
     // User Management Tests (Admin Only)
     // ============================================
-    await describe('Admin User Management Endpoints', async () => {
-        await test('GET /api/users should require admin authentication', async () => {
-            const response = await fetch(`${API_URL}/api/users`);
+    await describe('tRPC users - Admin User Management Endpoints', async () => {
+        await test('users.list should require admin authentication', async () => {
+            const response = await trpcQuery('users.list');
             assert.strictEqual(response.status, 401);
         });
 
-        await test('POST /api/users should require admin authentication', async () => {
-            const response = await fetch(`${API_URL}/api/users`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: 'admin-create-test@example.com',
-                    password: 'SecurePassword123!',
-                    name: 'Admin Created User'
-                })
+        await test('users.create should require admin authentication', async () => {
+            const response = await trpcMutate('users.create', {
+                email: 'admin-create-test@example.com',
+                password: 'SecurePassword123!',
+                name: 'Admin Created User'
             });
 
             assert.strictEqual(response.status, 401);
@@ -337,22 +307,19 @@ await describe('Authentication & User Management API Tests', { timeout: 30000 },
     // ============================================
     // Role Management Tests
     // ============================================
-    await describe('Role Management Endpoints', async () => {
-        await test('POST /api/users/:id/roles should require admin authentication', async () => {
-            const response = await fetch(`${API_URL}/api/users/some-user-id/roles`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    role: 'teacher',
-                    groupIds: ['group1']
-                })
+    await describe('tRPC users - Role Management Endpoints', async () => {
+        await test('users.assignRole should require admin authentication', async () => {
+            const response = await trpcMutate('users.assignRole', {
+                userId: 'some-user-id',
+                role: 'teacher',
+                groupIds: ['group1']
             });
 
             assert.strictEqual(response.status, 401);
         });
 
-        await test('GET /api/users/teachers should require admin authentication', async () => {
-            const response = await fetch(`${API_URL}/api/users/teachers`);
+        await test('users.listTeachers should require admin authentication', async () => {
+            const response = await trpcQuery('users.listTeachers');
             assert.strictEqual(response.status, 401);
         });
     });

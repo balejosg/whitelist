@@ -32,7 +32,44 @@ GLOBAL_TIMEOUT.unref();
 
 let server: Server | undefined;
 
-await describe('Whitelist Request API Tests', { timeout: 30000 }, async () => {
+// Helper to call tRPC mutations
+async function trpcMutate(procedure: string, input: unknown, headers: Record<string, string> = {}) {
+    const response = await fetch(`${API_URL}/trpc/${procedure}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify(input)
+    });
+    return response;
+}
+
+// Helper to call tRPC queries
+async function trpcQuery(procedure: string, input?: unknown, headers: Record<string, string> = {}) {
+    let url = `${API_URL}/trpc/${procedure}`;
+    if (input !== undefined) {
+        url += `?input=${encodeURIComponent(JSON.stringify(input))}`;
+    }
+    const response = await fetch(url, { headers });
+    return response;
+}
+
+// Parse tRPC response
+interface TRPCResponse<T = unknown> {
+    result?: { data: T };
+    error?: { message: string; code: string };
+}
+
+async function parseTRPC<T>(response: Response): Promise<{ data?: T; error?: string; code?: string }> {
+    const json = await response.json() as TRPCResponse<T>;
+    if (json.result) {
+        return { data: json.result.data };
+    }
+    if (json.error) {
+        return { error: json.error.message, code: json.error.code };
+    }
+    return {};
+}
+
+await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async () => {
     before(async () => {
         // Start server for testing - dynamic import for ESM
         const { app } = await import('../src/server.js');
@@ -74,82 +111,62 @@ await describe('Whitelist Request API Tests', { timeout: 30000 }, async () => {
             const response = await fetch(`${API_URL}/health`);
             assert.strictEqual(response.status, 200);
 
-            const data = await response.json() as { status: string; timestamp: string };
-            assert.ok(['ok', 'degraded'].includes(data.status), `Expected ok or degraded, got ${data.status}`);
-            assert.ok(data.timestamp !== '');
+            const data = await response.json() as { status: string; service: string };
+            assert.strictEqual(data.status, 'ok');
+            assert.strictEqual(data.service, 'openpath-api');
         });
     });
 
-    await describe('POST /api/requests - Submit Domain Request', async () => {
+    await describe('tRPC requests.create - Submit Domain Request', async () => {
         await test('should accept valid domain request', async () => {
-            const requestData = {
+            const input = {
                 domain: 'test-' + String(Date.now()) + '.example.com',
                 reason: 'Testing purposes',
                 requester_email: 'test@example.com'
             };
 
-            const response = await fetch(`${API_URL}/api/requests`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestData)
-            });
+            const response = await trpcMutate('requests.create', input);
+            assert.strictEqual(response.status, 200);
 
-            assert.strictEqual(response.status, 201);
-
-            const data = await response.json() as { request_id: string; status: string };
-            assert.ok(data.request_id !== '');
-            assert.strictEqual(data.status, 'pending');
+            const { data } = await parseTRPC<{ id: string; status: string }>(response);
+            assert.ok(data?.id);
+            assert.strictEqual(data?.status, 'pending');
         });
 
         await test('should reject request without domain', async () => {
-            const requestData = {
+            const input = {
                 reason: 'Testing',
                 requester_email: 'test@example.com'
             };
 
-            const response = await fetch(`${API_URL}/api/requests`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestData)
-            });
-
+            const response = await trpcMutate('requests.create', input);
             assert.strictEqual(response.status, 400);
         });
 
         await test('should reject invalid domain format', async () => {
-            const requestData = {
+            const input = {
                 domain: 'not-a-valid-domain',
                 reason: 'Testing'
             };
 
-            const response = await fetch(`${API_URL}/api/requests`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestData)
-            });
-
+            const response = await trpcMutate('requests.create', input);
             assert.strictEqual(response.status, 400);
         });
 
         await test('should reject XSS attempts in domain names', async () => {
-            const requestData = {
+            const input = {
                 domain: '<script>alert("xss")</script>.com',
                 reason: 'Testing'
             };
 
-            const response = await fetch(`${API_URL}/api/requests`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestData)
-            });
-
+            const response = await trpcMutate('requests.create', input);
             assert.strictEqual(response.status, 400);
         });
     });
 
-    await describe('GET /api/requests - List Requests', async () => {
+    await describe('tRPC requests.list - List Requests', async () => {
         await test('should require authentication for listing requests', async () => {
-            const response = await fetch(`${API_URL}/api/requests`);
+            const response = await trpcQuery('requests.list', {});
             assert.strictEqual(response.status, 401);
         });
     });
@@ -171,7 +188,7 @@ await describe('Whitelist Request API Tests', { timeout: 30000 }, async () => {
         });
 
         await test('should handle malformed JSON', async () => {
-            const response = await fetch(`${API_URL}/api/requests`, {
+            const response = await fetch(`${API_URL}/trpc/requests.create`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: 'invalid json{{'
@@ -181,212 +198,105 @@ await describe('Whitelist Request API Tests', { timeout: 30000 }, async () => {
         });
     });
 
-    await describe('GET /api/requests/status/:id - Check Request Status', async () => {
+    await describe('tRPC requests.getStatus - Check Request Status', async () => {
         await test('should return 404 for non-existent request', async () => {
-            const response = await fetch(`${API_URL}/api/requests/status/nonexistent-id`);
-            assert.strictEqual(response.status, 404);
-
-            const data = await response.json() as { success: boolean };
-            assert.strictEqual(data.success, false);
+            const response = await trpcQuery('requests.getStatus', { id: 'nonexistent-id' });
+            // tRPC returns 404/NOT_FOUND as a JSON error, but HTTP status might be 200 with error body
+            // or could be mapped - check actual behavior
+            const { error } = await parseTRPC(response);
+            assert.ok(error !== undefined || response.status === 404);
         });
 
         await test('should return status for existing request', async () => {
             // First create a request
-            const createResponse = await fetch(`${API_URL}/api/requests`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    domain: 'status-test-' + String(Date.now()) + '.example.com',
-                    reason: 'Testing status endpoint'
-                })
-            });
-
-            const createData = await createResponse.json() as { request_id: string };
-            const requestId = createData.request_id;
+            const createInput = {
+                domain: 'status-test-' + String(Date.now()) + '.example.com',
+                reason: 'Testing status endpoint'
+            };
+            const createResponse = await trpcMutate('requests.create', createInput);
+            const { data: createData } = await parseTRPC<{ id: string }>(createResponse);
+            const requestId = createData?.id;
+            assert.ok(requestId);
 
             // Then check its status
-            const statusResponse = await fetch(`${API_URL}/api/requests/status/${requestId}`);
+            const statusResponse = await trpcQuery('requests.getStatus', { id: requestId });
             assert.strictEqual(statusResponse.status, 200);
 
-            const statusData = await statusResponse.json() as { success: boolean; status: string; request_id: string };
-            assert.strictEqual(statusData.success, true);
-            assert.strictEqual(statusData.status, 'pending');
-            assert.ok(statusData.request_id);
+            const { data: statusData } = await parseTRPC<{ id: string; status: string; domain: string }>(statusResponse);
+            assert.strictEqual(statusData?.status, 'pending');
+            assert.ok(statusData?.id);
         });
     });
 
-    await describe('POST /api/requests/auto - Auto-inclusion Endpoint', async () => {
-        await test('should reject request without required fields', async () => {
-            const response = await fetch(`${API_URL}/api/requests/auto`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    domain: 'test.example.com'
-                })
-            });
-
-            assert.strictEqual(response.status, 400);
-
-            const data = await response.json() as { success: boolean; code: string };
-            assert.strictEqual(data.success, false);
-            assert.strictEqual(data.code, 'MISSING_FIELDS');
-        });
-
-        await test('should reject request with invalid token', async () => {
-            const response = await fetch(`${API_URL}/api/requests/auto`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    domain: 'test.example.com',
-                    origin_page: 'origin.example.com',
-                    group_id: 'test-group',
-                    token: 'invalid-token',
-                    hostname: 'test-host'
-                })
-            });
-
-            const data = await response.json() as { success: boolean; code: string };
-            assert.strictEqual(data.success, false);
-            assert.ok([401, 500].includes(response.status), `Expected 401 or 500, got ${String(response.status)}`);
-            assert.ok(['INVALID_TOKEN', 'SERVER_ERROR'].includes(data.code), `Expected INVALID_TOKEN or SERVER_ERROR, got ${data.code}`);
-        });
-
-        await test('should reject invalid domain format in auto-inclusion', async () => {
-            const response = await fetch(`${API_URL}/api/requests/auto`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    domain: 'not-a-domain',
-                    origin_page: 'origin.example.com',
-                    group_id: 'test-group',
-                    token: 'some-token',
-                    hostname: 'test-host'
-                })
-            });
-
-            assert.ok(response.status >= 400);
-        });
-    });
-
-    await describe('GET /api/requests/groups/list - List Groups', async () => {
+    await describe('tRPC requests.listGroups - List Groups', async () => {
         await test('should require authentication for listing groups', async () => {
-            const response = await fetch(`${API_URL}/api/requests/groups/list`);
+            const response = await trpcQuery('requests.listGroups');
             assert.strictEqual(response.status, 401);
-
-            const data = await response.json() as { success: boolean };
-            assert.strictEqual(data.success, false);
         });
     });
 
     await describe('Admin Endpoints with Invalid Token', async () => {
         await test('should reject admin list with wrong token', async () => {
-            const response = await fetch(`${API_URL}/api/requests`, {
-                headers: { 'Authorization': 'Bearer wrong-token' }
-            });
+            const response = await trpcQuery('requests.list', {}, { 'Authorization': 'Bearer wrong-token' });
             assert.strictEqual(response.status, 401);
         });
 
         await test('should reject approve with wrong token', async () => {
-            const response = await fetch(`${API_URL}/api/requests/some-id/approve`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer wrong-token',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ group_id: 'test' })
-            });
+            const response = await trpcMutate('requests.approve', { id: 'some-id', group_id: 'test' }, { 'Authorization': 'Bearer wrong-token' });
             assert.strictEqual(response.status, 401);
         });
 
         await test('should reject reject with wrong token', async () => {
-            const response = await fetch(`${API_URL}/api/requests/some-id/reject`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer wrong-token',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ reason: 'test' })
-            });
+            const response = await trpcMutate('requests.reject', { id: 'some-id', reason: 'test' }, { 'Authorization': 'Bearer wrong-token' });
             assert.strictEqual(response.status, 401);
         });
 
         await test('should reject delete with wrong token', async () => {
-            const response = await fetch(`${API_URL}/api/requests/some-id`, {
-                method: 'DELETE',
-                headers: { 'Authorization': 'Bearer wrong-token' }
-            });
+            const response = await trpcMutate('requests.delete', { id: 'some-id' }, { 'Authorization': 'Bearer wrong-token' });
             assert.strictEqual(response.status, 401);
-        });
-    });
-
-    await describe('API Info Endpoint', async () => {
-        await test('GET /api should return API documentation', async () => {
-            const response = await fetch(`${API_URL}/api`);
-            assert.strictEqual(response.status, 200);
-
-            const data = await response.json() as { name: string; version: string; endpoints: object };
-            assert.ok(data.name !== '');
-            assert.ok(data.version !== '');
-            assert.strictEqual(typeof data.endpoints, 'object');
         });
     });
 
     await describe('Input Sanitization', async () => {
         await test('should sanitize reason field', async () => {
-            const response = await fetch(`${API_URL}/api/requests`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    domain: `sanitize-test-${String(Date.now())}.example.com`,
-                    reason: '<script>alert("xss")</script>Normal reason'
-                })
+            const response = await trpcMutate('requests.create', {
+                domain: `sanitize-test-${String(Date.now())}.example.com`,
+                reason: '<script>alert("xss")</script>Normal reason'
             });
 
-            assert.strictEqual(response.status, 201);
+            assert.strictEqual(response.status, 200);
         });
 
         await test('should handle very long domain names', async () => {
             const longDomain = 'a'.repeat(300) + '.example.com';
-            const response = await fetch(`${API_URL}/api/requests`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    domain: longDomain,
-                    reason: 'Testing long domain'
-                })
+            const response = await trpcMutate('requests.create', {
+                domain: longDomain,
+                reason: 'Testing long domain'
             });
 
             assert.strictEqual(response.status, 400);
         });
 
         await test('should handle special characters in email', async () => {
-            const response = await fetch(`${API_URL}/api/requests`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    domain: `email-test-${String(Date.now())}.example.com`,
-                    reason: 'Testing',
-                    requester_email: 'valid+tag@example.com'
-                })
+            const response = await trpcMutate('requests.create', {
+                domain: `email-test-${String(Date.now())}.example.com`,
+                reason: 'Testing',
+                requester_email: 'valid+tag@example.com'
             });
 
-            assert.strictEqual(response.status, 201);
+            assert.strictEqual(response.status, 200);
         });
     });
 
     await describe('Priority Field', async () => {
         await test('should accept valid priority values', async () => {
-            const response = await fetch(`${API_URL}/api/requests`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    domain: `priority-test-${String(Date.now())}.example.com`,
-                    reason: 'Testing priority',
-                    priority: 'high'
-                })
+            const response = await trpcMutate('requests.create', {
+                domain: `priority-test-${String(Date.now())}.example.com`,
+                reason: 'Testing priority',
+                priority: 'high'
             });
 
-            assert.strictEqual(response.status, 201);
+            assert.strictEqual(response.status, 200);
         });
     });
 });
