@@ -1,37 +1,39 @@
 /**
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
  * Configuration for OpenPath Firefox Extension
+ * 
+ * Settings can be overridden via browser.storage.sync
+ * Use the extension options page to configure.
  */
 
-import { Browser } from 'webextension-polyfill';
+// We use global declarations because this file is loaded via manifest scripts
+// and not bundled.
 
-// Declare global browser if not using webextension-polyfill import everywhere
-declare const browser: Browser;
+// Config interface is defined in types.d.ts
 
-export interface OpenPathConfig {
-    REQUEST_API_URL: string;
-    FALLBACK_API_URLS: string[];
-    REQUEST_TIMEOUT: number;
-    RETRY_ATTEMPTS: number;
-    RETRY_DELAY: number;
-    DEFAULT_GROUP: string;
-    ENABLE_REQUESTS: boolean;
-    DEBUG_MODE: boolean;
-    NATIVE_RETRY_ATTEMPTS: number;
-    NATIVE_RETRY_DELAY: number;
-    AUTO_INCLUDE_ENABLED: boolean;
-    SHARED_SECRET: string;
-}
-
-export const DEFAULT_CONFIG: OpenPathConfig = {
+const DEFAULT_CONFIG: Config = {
     // Home server URL for domain requests API
+    // Production API endpoint
     REQUEST_API_URL: 'https://openpath-api.duckdns.org',
 
-    // Fallback API URLs
+    // Fallback API URLs (tried in order if primary fails)
     FALLBACK_API_URLS: [],
 
     // Timeout for API requests (in milliseconds)
@@ -39,9 +41,9 @@ export const DEFAULT_CONFIG: OpenPathConfig = {
 
     // Retry configuration
     RETRY_ATTEMPTS: 3,
-    RETRY_DELAY: 1000,
+    RETRY_DELAY: 1000,  // Initial delay in ms (doubles each retry)
 
-    // Default group for requests
+    // Default group for requests (if not specified)
     DEFAULT_GROUP: 'informatica-3',
 
     // Enable/disable request feature
@@ -56,21 +58,24 @@ export const DEFAULT_CONFIG: OpenPathConfig = {
 
     // Auto-inclusion settings
     AUTO_INCLUDE_ENABLED: true,
-    SHARED_SECRET: 'openpath-secret-2024'
+    SHARED_SECRET: 'openpath-secret-2024'  // Change in production
 };
 
-// Runtime config
-let CONFIG: OpenPathConfig = { ...DEFAULT_CONFIG };
+// Runtime config (merged with stored settings)
+// eslint-disable-next-line
+let CONFIG: Config = { ...DEFAULT_CONFIG };
 
 /**
  * Load configuration from browser storage
+ * @returns {Promise<Config>} Current configuration
  */
-export async function loadConfig(): Promise<OpenPathConfig> {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function loadConfig(): Promise<Config> {
     try {
         if (typeof browser !== 'undefined' && browser.storage) {
             const stored = await browser.storage.sync.get('config');
             if (stored.config) {
-                CONFIG = { ...DEFAULT_CONFIG, ...(stored.config as Partial<OpenPathConfig>) };
+                CONFIG = { ...DEFAULT_CONFIG, ...stored.config };
             }
         }
     } catch (error) {
@@ -81,10 +86,12 @@ export async function loadConfig(): Promise<OpenPathConfig> {
 
 /**
  * Save configuration to browser storage
+ * @param {Partial<Config>} newConfig - Configuration to save
  */
-export async function saveConfig(newConfig: Partial<OpenPathConfig>): Promise<void> {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function saveConfig(newConfig: Partial<Config>): Promise<void> {
     try {
-        CONFIG = { ...CONFIG, ...newConfig };
+        CONFIG = { ...DEFAULT_CONFIG, ...newConfig };
         if (typeof browser !== 'undefined' && browser.storage) {
             await browser.storage.sync.set({ config: CONFIG });
         }
@@ -96,14 +103,26 @@ export async function saveConfig(newConfig: Partial<OpenPathConfig>): Promise<vo
 
 /**
  * Get current API URL
+ * @returns {string} Current API URL
  */
-export function getApiUrl(): string {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function getApiUrl(): string {
     return CONFIG.REQUEST_API_URL;
 }
 
 /**
  * Get all API URLs (primary + fallbacks)
+ * @returns {string[]} List of API URLs to try
  */
-export function getAllApiUrls(): string[] {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function getAllApiUrls(): string[] {
     return [CONFIG.REQUEST_API_URL, ...CONFIG.FALLBACK_API_URLS].filter(Boolean);
 }
+
+// Make config available globally
+if (typeof window !== 'undefined') {
+    (window as any).OPENPATH_CONFIG = CONFIG;
+    (window as any).loadOpenPathConfig = loadConfig;
+    (window as any).saveOpenPathConfig = saveConfig;
+}
+

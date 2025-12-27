@@ -185,14 +185,14 @@ await describe('Push Notifications API Tests (tRPC)', { timeout: 30000 }, async 
         });
     });
 
-    await describe('push.status - Subscription Status', async () => {
+    await describe('push.getStatus - Subscription Status', async () => {
         await test('should require authentication', async () => {
-            const response = await trpcQuery('push.status');
+            const response = await trpcQuery('push.getStatus');
             assert.strictEqual(response.status, 401);
         });
 
         await test('should return subscription status for admin', async () => {
-            const response = await trpcQuery('push.status', undefined, {
+            const response = await trpcQuery('push.getStatus', undefined, {
                 'Authorization': `Bearer ${String(adminToken)}`
             });
 

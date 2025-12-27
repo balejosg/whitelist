@@ -4,4 +4,6 @@ data/requests.json
 data/users.json
 data/user_roles.json
 data/setup.json
+data/health-reports.json
+data/push-subscriptions.json
 *.log

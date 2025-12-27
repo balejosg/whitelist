@@ -44,15 +44,17 @@ echo "  Versión: $VERSION"
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 
-# Copiar archivos necesarios (excluyendo native y scripts de build)
+# Copiar archivos necesarios
 echo "  → Copiando archivos..."
 
 cp "$SCRIPT_DIR/manifest.json" "$BUILD_DIR/"
-cp "$SCRIPT_DIR/background.js" "$BUILD_DIR/"
-cp "$SCRIPT_DIR/config.js" "$BUILD_DIR/"
 cp "$SCRIPT_DIR/PRIVACY.md" "$BUILD_DIR/"
 cp -r "$SCRIPT_DIR/popup" "$BUILD_DIR/"
 cp -r "$SCRIPT_DIR/icons" "$BUILD_DIR/"
+
+# Crear directorio dist y copiar compilados
+mkdir -p "$BUILD_DIR/dist"
+cp "$SCRIPT_DIR/dist/"* "$BUILD_DIR/dist/"
 
 # Crear el archivo XPI (es un ZIP con extensión .xpi)
 XPI_FILE="$SCRIPT_DIR/${XPI_NAME}-${VERSION}.xpi"

@@ -10,7 +10,9 @@
     "lint:shell": "shellcheck linux/lib/*.sh linux/scripts/**/*.sh || true",
     "test": "npm run test:shell && npm run test:api",
     "test:shell": "cd tests && bats *.bats",
-    "test:api": "cd api && npm test"
+    "test:api": "cd api && npm test",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "verify": "npm run typecheck && npm run lint"
   },
   "devDependencies": {
     "eslint": "^8.56.0",
@@ -18,7 +20,7 @@
     "lint-staged": "^15.2.10"
   },
   "lint-staged": {
-    "*.js": [
+    "*.{js,ts,tsx,mjs,cjs}": [
       "eslint --fix"
     ],
     "*.sh": [
@@ -43,6 +45,9 @@
   "workspaces": [
     "api",
     "spa",
-    "shared"
+    "shared",
+    "dashboard",
+    "auth-worker",
+    "firefox-extension"
   ]
 }

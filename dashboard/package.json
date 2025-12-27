@@ -2,14 +2,15 @@
     "name": "dashboard",
     "version": "1.0.0",
     "description": "Portal web para gestión de OpenPath DNS",
-    "main": "server/index.js",
+    "type": "module",
+    "main": "dist/index.js",
     "scripts": {
         "start": "node dist/index.js",
         "dev": "tsx watch src/index.ts",
         "build": "tsc && cp -r src/types dist/types",
         "typecheck": "tsc --noEmit",
-        "lint": "ESLINT_USE_FLAT_CONFIG=false eslint . --ext .ts",
-        "lint:fix": "ESLINT_USE_FLAT_CONFIG=false eslint . --ext .ts --fix",
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
         "test": "jest"
     },
     "dependencies": {

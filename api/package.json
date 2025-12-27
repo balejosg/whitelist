@@ -17,7 +17,7 @@
     "test:push": "bash -c 'fuser -k 3003/tcp 2>/dev/null || true; timeout 20 node --import tsx --test --test-force-exit tests/push.test.ts || true'",
     "test:security": "bash -c 'fuser -k 3004/tcp 2>/dev/null || true; timeout 30 node --import tsx --test --test-force-exit tests/security.test.ts || true'",
     "test:frontend": "bash -c 'timeout 5 node --test ../spa/tests/frontend.test.js || true'",
-    "test:all": "bash -c 'fuser -k 3000/tcp 3001/tcp 3002/tcp 3004/tcp 2>/dev/null || true; node --import tsx tests/run-all.js'",
+    "test:all": "bash -c 'fuser -k 3000/tcp 3001/tcp 3002/tcp 3004/tcp 2>/dev/null || true; node --import tsx tests/run-all.ts'",
     "test:coverage": "node --experimental-test-coverage --import tsx --test tests/api.test.ts tests/auth.test.ts",
     "test:load": "k6 run tests/load/load-test.js",
     "lint": "eslint .",

@@ -31,7 +31,7 @@ export interface Rule {
     created_at: string;
 }
 
-interface DatabaseSchema {
+export interface DatabaseSchema {
     users: User[];
     groups: Group[];
     rules: Rule[];

@@ -44,7 +44,7 @@ function handleLogin(env: Env): Response {
         state: crypto.randomUUID()
     });
 
-    return Response.redirect(`${GITHUB_AUTHORIZE_URL}?${params}`, 302);
+    return Response.redirect(`${GITHUB_AUTHORIZE_URL}?${params.toString()}`, 302);
 }
 
 /**
@@ -78,7 +78,7 @@ async function handleCallback(url: URL, env: Env): Promise<Response> {
             })
         });
 
-        const tokenData = await tokenResponse.json() as GitHubTokenResponse;
+        const tokenData: GitHubTokenResponse = await tokenResponse.json();
 
         if (tokenData.error) {
             return redirectToFrontend(env.FRONTEND_URL, { error: tokenData.error });
@@ -94,7 +94,7 @@ async function handleCallback(url: URL, env: Env): Promise<Response> {
 
         return redirectToFrontend(env.FRONTEND_URL, { error: 'invalid_token_response' });
 
-    } catch (err) {
+    } catch {
         return redirectToFrontend(env.FRONTEND_URL, { error: 'token_exchange_failed' });
     }
 }
@@ -116,7 +116,7 @@ export default {
             }
 
             if (url.pathname === '/auth/callback') {
-                return handleCallback(url, env);
+                return await handleCallback(url, env);
             }
 
             if (url.pathname === '/health') {

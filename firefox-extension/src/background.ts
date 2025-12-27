@@ -255,15 +255,8 @@ async function checkDomainsWithNative(domains: string[]): Promise<CheckResult> {
  */
 async function isNativeHostAvailable(): Promise<boolean> {
     try {
-        const response = await sendNativeMessage({ action: 'ping' });
-        interface NativeResponse {
-            success: boolean;
-            [key: string]: unknown;
-        }
-
-        // ... in isNativeHostAvailable ...
         const response = await sendNativeMessage({ action: 'ping' }) as NativeResponse;
-        return response && response.success === true;
+        return response.success === true;
     } catch {
         return false;
     }

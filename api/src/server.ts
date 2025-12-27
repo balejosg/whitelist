@@ -22,12 +22,19 @@
  * Home server deployment for handling domain requests.
  * Runs on your local network, exposed via DuckDNS.
  * 
- * Endpoints:
- *   POST /api/requests         - Submit domain request (public)
- *   GET  /api/requests         - List all requests (admin)
- *   POST /api/requests/:id/approve - Approve request (admin)
- *   POST /api/requests/:id/reject  - Reject request (admin)
- *   GET  /health               - Health check
+ * tRPC Routers (mounted at /trpc):
+ *   auth        - Authentication (login, register, logout, refresh)
+ *   users       - User management (admin only)
+ *   requests    - Domain request handling
+ *   classrooms  - Classroom/machine management
+ *   schedules   - Schedule reservations
+ *   push        - Push notification subscriptions
+ *   healthReports - Client health reporting
+ *   setup       - Initial setup endpoints
+ *   healthcheck - Server health status
+ * 
+ * Other Endpoints:
+ *   GET /health - Basic health check
  */
 
 import express from 'express';

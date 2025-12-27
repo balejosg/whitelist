@@ -8,8 +8,8 @@ import session from 'express-session';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import * as db from './db';
-import { User } from './db';
+import * as db from './db.js';
+import { User } from './db.js';
 
 // Extend Express Session to include User
 import './types/express-session';

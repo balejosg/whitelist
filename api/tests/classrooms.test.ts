@@ -228,17 +228,17 @@ await describe('Classroom API Tests (tRPC)', { timeout: 25000 }, async () => {
                 hostname: 'pc-01',
                 classroom_name: classroomName,
                 version: '3.5'
-            }, { 'X-Shared-Secret': SHARED_SECRET });
+            }, { 'Authorization': `Bearer ${SHARED_SECRET}` });
 
             assert.ok([200, 201].includes(response.status), `Expected 200 or 201, got ${String(response.status)}`);
 
-            const { data } = await parseTRPC<MachineResult>(response);
-            assert.strictEqual(data?.hostname, 'pc-01');
+            const { data } = await parseTRPC<{ machine: MachineResult }>(response);
+            assert.strictEqual(data?.machine?.hostname, 'pc-01');
         });
 
         await test('classrooms.getWhitelistUrl - returns URL', async () => {
             const response = await trpcQuery('classrooms.getWhitelistUrl', { hostname: 'pc-01' }, {
-                'X-Shared-Secret': SHARED_SECRET
+                'Authorization': `Bearer ${SHARED_SECRET}`
             });
 
             assert.strictEqual(response.status, 200);
@@ -250,7 +250,7 @@ await describe('Classroom API Tests (tRPC)', { timeout: 25000 }, async () => {
 
         await test('classrooms.getWhitelistUrl - 404 for unknown machine', async () => {
             const response = await trpcQuery('classrooms.getWhitelistUrl', { hostname: 'unknown-pc' }, {
-                'X-Shared-Secret': SHARED_SECRET
+                'Authorization': `Bearer ${SHARED_SECRET}`
             });
 
             assert.strictEqual(response.status, 404);

@@ -1,6 +1,19 @@
 /**
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -14,7 +27,49 @@
 
 import { Browser } from 'webextension-polyfill';
 
+// Declare browser globally available
 declare const browser: Browser;
+
+// Config is defined in types.d.ts
+
+interface BlockedDomainInfo {
+    errors: string[];
+    origin: string;
+}
+
+interface BlockedDomainsData {
+    [hostname: string]: BlockedDomainInfo;
+}
+
+interface VerifyResult {
+    domain: string;
+    in_whitelist: boolean;
+    resolved_ip?: string;
+    error?: string;
+}
+
+interface VerifyResponse {
+    success: boolean;
+    results: VerifyResult[];
+    error?: string;
+}
+
+interface RequestResponse {
+    success: boolean;
+    group_id?: string;
+    error?: string;
+}
+
+interface NativeAvailableResponse {
+    available: boolean;
+}
+
+interface HostnameResponse {
+    success: boolean;
+    hostname: string;
+    error?: string;
+}
+
 
 // DOM Elements
 const tabDomainEl = document.getElementById('tab-domain') as HTMLElement;
@@ -40,37 +95,22 @@ const requestStatusEl = document.getElementById('request-status') as HTMLElement
 // Current tab ID
 let currentTabId: number | null = null;
 
-interface BlockedDomainInfo {
-    errors: string[] | string;
-    origin: string | null;
-    timestamp: number;
-}
-
 // Current blocked domains data
-let blockedDomainsData: Record<string, BlockedDomainInfo> = {};
+let blockedDomainsData: BlockedDomainsData = {};
+
 
 // Native Messaging available
 let nativeAvailable = false;
 
-// Global config type (will be populated from config.ts if we imported it, 
-// but popup often loads config via message or storage)
-// For now we'll define a simple interface for the config object structure we expect
-interface Config {
-    [key: string]: any;
-}
-
-declare global {
-    interface Window {
-        WHITELIST_CONFIG?: Config;
-    }
-}
+// function checkRequestApiAvailable() uses it
+// let requestApiAvailable = false; // Unused
 
 /**
  * Muestra un toast de notificación temporal
- * @param message - Mensaje a mostrar
- * @param duration - Duración en ms
+ * @param {string} message - Mensaje a mostrar
+ * @param {number} duration - Duración en ms
  */
-function showToast(message: string, duration = 2000): void {
+function showToast(message: string, duration = 2000) {
     toastEl.textContent = message;
     toastEl.classList.remove('hidden');
 
@@ -81,8 +121,8 @@ function showToast(message: string, duration = 2000): void {
 
 /**
  * Formatea el tipo de error para mostrar al usuario
- * @param errors - Array de tipos de error
- * @returns Texto formateado
+ * @param {string[]} errors - Array de tipos de error
+ * @returns {string} - Texto formateado
  */
 function formatErrorTypes(errors: string[]): string {
     const errorLabels: Record<string, string> = {
@@ -98,21 +138,10 @@ function formatErrorTypes(errors: string[]): string {
 }
 
 /**
- * Escapa HTML para prevenir XSS
- * @param text - Texto a escapar
- * @returns Texto escapado
- */
-function escapeHtml(text: string): string {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-/**
  * Renderiza la lista de dominios bloqueados
- * @param domains - Objeto { hostname: { errors: [], origin: string } }
+ * @param {BlockedDomainsData} domains - Objeto { hostname: { errors: [], origin: string } }
  */
-function renderDomainsList(domains: Record<string, BlockedDomainInfo>): void {
+function renderDomainsList(domains: BlockedDomainsData): void {
     const hostnames = Object.keys(domains);
     countEl.textContent = hostnames.length.toString();
 
@@ -143,11 +172,12 @@ function renderDomainsList(domains: Record<string, BlockedDomainInfo>): void {
 
     domainsListEl.innerHTML = hostnames.map(hostname => {
         const data = domains[hostname];
-        if (!data) return ''; // Should not happen
-
-        // Support both old and new format (errors could be array or single string in legacy)
-        const errors = Array.isArray(data.errors) ? data.errors : [data.errors as string];
-        const origin = data.origin || '';
+        if (!data) return '';
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        const errors = (data?.errors) ? data.errors : [];
+        // Support both old and new format - actually data is BlockedDomainInfo
+        // If it was just errors array, type would misalign. Assuming strict structure now.
+        const origin = data.origin ?? '';
         const errorText = formatErrorTypes(errors);
 
         return `
@@ -161,24 +191,39 @@ function renderDomainsList(domains: Record<string, BlockedDomainInfo>): void {
 }
 
 /**
- * Extrae el hostname del URL de una pestaña
- * @param url - URL de la pestaña
- * @returns Hostname o texto por defecto
+ * Escapa HTML para prevenir XSS
+ * @param {string} text - Texto a escapar
+ * @returns {string} - Texto escapado
  */
-function extractTabHostname(url?: string): string {
-    if (!url) return 'Página local';
+/**
+ * Escapa HTML para prevenir XSS
+ * @param {string} text - Texto a escapar
+ * @returns {string} - Texto escapado
+ */
+function escapeHtml(text: string): string {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+/**
+ * Extrae el hostname del URL de una pestaña
+ * @param {string} url - URL de la pestaña
+ * @returns {string} - Hostname o texto por defecto
+ */
+function extractTabHostname(url: string | undefined): string {
+    if (!url) return 'Desconocido';
     try {
         const urlObj = new URL(url);
         return urlObj.hostname;
-    } catch (e) {
+    } catch {
         return 'Página local';
     }
 }
 
-interface BlockedDomainsResponse {
-    domains: Record<string, BlockedDomainInfo>;
-}
-
+/**
+ * Obtiene los dominios bloqueados del background script
+ */
 /**
  * Obtiene los dominios bloqueados del background script
  */
@@ -187,9 +232,9 @@ async function loadBlockedDomains(): Promise<void> {
         const response = await browser.runtime.sendMessage({
             action: 'getBlockedDomains',
             tabId: currentTabId
-        }) as BlockedDomainsResponse;
+        }) as { domains: BlockedDomainsData };
 
-        blockedDomainsData = response.domains || {};
+        blockedDomainsData = response.domains ?? {};
         renderDomainsList(blockedDomainsData);
     } catch (error) {
         console.error('[Popup] Error al obtener dominios:', error);
@@ -200,7 +245,7 @@ async function loadBlockedDomains(): Promise<void> {
 /**
  * Copia la lista de dominios al portapapeles
  */
-async function copyToClipboard(): Promise<void> {
+async function copyToClipboard() {
     const hostnames = Object.keys(blockedDomainsData);
 
     if (hostnames.length === 0) {
@@ -229,7 +274,7 @@ async function copyToClipboard(): Promise<void> {
 /**
  * Limpia la lista de dominios bloqueados
  */
-async function clearDomains(): Promise<void> {
+async function clearDomains() {
     try {
         await browser.runtime.sendMessage({
             action: 'clearBlockedDomains',
@@ -245,10 +290,9 @@ async function clearDomains(): Promise<void> {
     }
 }
 
-interface NativeAvailabilityResponse {
-    available: boolean;
-}
-
+/**
+ * Verifica si Native Messaging está disponible
+ */
 /**
  * Verifica si Native Messaging está disponible
  */
@@ -256,7 +300,7 @@ async function checkNativeAvailable(): Promise<boolean> {
     try {
         const response = await browser.runtime.sendMessage({
             action: 'isNativeAvailable'
-        }) as NativeAvailabilityResponse;
+        }) as NativeAvailableResponse;
 
         nativeAvailable = response && response.available;
 
@@ -272,18 +316,9 @@ async function checkNativeAvailable(): Promise<boolean> {
     }
 }
 
-interface VerifyResult {
-    domain: string;
-    in_whitelist: boolean;
-    resolved_ip?: string;
-}
-
-interface VerifyResponse {
-    success: boolean;
-    results: VerifyResult[];
-    error?: string;
-}
-
+/**
+ * Verifica los dominios bloqueados en el sistema de whitelist local
+ */
 /**
  * Verifica los dominios bloqueados en el sistema de whitelist local
  */
@@ -309,7 +344,7 @@ async function verifyDomainsWithNative(): Promise<void> {
             renderVerifyResults(response.results);
             showToast(`🔍 ${response.results.length} dominio(s) verificado(s)`);
         } else {
-            showToast(`❌ Error: ${response.error || 'Desconocido'}`);
+            showToast(`❌ Error: ${response.error ?? 'Desconocido'}`);
         }
     } catch (error) {
         console.error('[Popup] Error verificando dominios:', error);
@@ -322,7 +357,7 @@ async function verifyDomainsWithNative(): Promise<void> {
 
 /**
  * Renderiza los resultados de verificación
- * @param results - Array de resultados de verificación
+ * @param {VerifyResult[]} results - Array de resultados de verificación
  */
 function renderVerifyResults(results: VerifyResult[]): void {
     if (!results || results.length === 0) {
@@ -351,39 +386,34 @@ function renderVerifyResults(results: VerifyResult[]): void {
 /**
  * Oculta la sección de resultados de verificación
  */
-function hideVerifyResults(): void {
+function hideVerifyResults() {
     verifyResultsEl.classList.add('hidden');
     verifyListEl.innerHTML = '';
 }
 
 // =============================================================================
-// Request API Functions
+// Initialization
 // =============================================================================
 
-/**
- * Get config value with fallback
- */
-function getConfig<T>(key: string, defaultValue: T): T {
-    if (typeof window.WHITELIST_CONFIG !== 'undefined' && window.WHITELIST_CONFIG[key] !== undefined) {
-        return window.WHITELIST_CONFIG[key] as T;
-    }
-    return defaultValue;
-}
+// Access global config from config.js
+const CONFIG = (window as any).OPENPATH_CONFIG as Config;
+// loadConfig unused here, logic is inside background or handled via messages
+// const loadConfig = (window as any).loadOpenPathConfig as () => Promise<Config>;
 
 /**
  * Check if the request API is available
  */
 async function checkRequestApiAvailable(): Promise<boolean> {
-    const apiUrl = getConfig('REQUEST_API_URL', '');
+    const apiUrl = CONFIG.REQUEST_API_URL;
 
-    if (!apiUrl || !getConfig('ENABLE_REQUESTS', true)) {
+    if (!apiUrl || !CONFIG.ENABLE_REQUESTS) {
         return false;
     }
 
-    try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => { controller.abort(); }, 5000);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
 
+    try {
         const response = await fetch(`${apiUrl}/health`, {
             method: 'GET',
             signal: controller.signal
@@ -395,9 +425,9 @@ async function checkRequestApiAvailable(): Promise<boolean> {
             return true;
         }
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        if (getConfig('DEBUG_MODE', false)) {
-            console.log('[Popup] Request API not available:', errorMessage);
+        clearTimeout(timeout);
+        if (CONFIG.DEBUG_MODE) {
+            console.log('[Popup] Request API not available:', (error as any).message || String(error));
         }
     }
 
@@ -407,7 +437,7 @@ async function checkRequestApiAvailable(): Promise<boolean> {
 /**
  * Toggle request section visibility
  */
-function toggleRequestSection(): void {
+function toggleRequestSection() {
     const isHidden = requestSectionEl.classList.contains('hidden');
 
     if (isHidden) {
@@ -425,7 +455,7 @@ function toggleRequestSection(): void {
 /**
  * Populate the domain select dropdown with origin info
  */
-function populateRequestDomainSelect(): void {
+function populateRequestDomainSelect() {
     const hostnames = Object.keys(blockedDomainsData).sort();
 
     requestDomainSelectEl.innerHTML = '<option value="">Seleccionar dominio...</option>';
@@ -441,6 +471,8 @@ function populateRequestDomainSelect(): void {
         requestDomainSelectEl.appendChild(option);
     });
 
+
+
     updateSubmitButtonState();
 }
 
@@ -449,7 +481,8 @@ function populateRequestDomainSelect(): void {
  */
 function updateSubmitButtonState(): void {
     const hasSelection = requestDomainSelectEl.value !== '';
-    const hasReason = requestReasonEl.value.trim().length >= 3;
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    const hasReason = (requestReasonEl.value || '').trim().length >= 3;
 
     btnSubmitRequest.disabled = !hasSelection || !hasReason;
 }
@@ -461,36 +494,15 @@ async function generateToken(hostname: string, secret: string): Promise<string> 
     const data = new TextEncoder().encode(hostname + secret);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     const hashArray = new Uint8Array(hashBuffer);
+    // btoa is available in browser
     return btoa(String.fromCharCode(...hashArray));
-}
-
-interface HostnameResponse {
-    success: boolean;
-    hostname: string;
-    error?: string;
-}
-
-interface AutoIncludeResponse {
-    success: boolean;
-    group_id: string;
-    error?: string;
 }
 
 /**
  * Submit a domain request using auto-inclusion endpoint
  */
-async function submitDomainRequest(): Promise<void> {
+async function submitDomainRequest() {
     const domain = requestDomainSelectEl.value;
-    // reason is only used for validation check, not passed to auto logic directly here? 
-    // Wait, the logic uses 'reason' in validation: if (!domain || reason.length < 3).
-    // So it IS used. Why did eslint complain?
-    // Ah, line 484 has eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // The variable `reason` is defined: const reason = requestReasonEl.value.trim();
-    // And used: if (!domain || reason.length < 3)
-    // Maybe it was marked unused because I filtered previous grep?
-    // Let's look closer at line 484.
-    // The grep showed: // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // If it is used, I can just remove the comment.
     const reason = requestReasonEl.value.trim();
     const selectedOption = requestDomainSelectEl.selectedOptions[0];
     const origin = selectedOption ? selectedOption.dataset.origin : '';
@@ -505,9 +517,9 @@ async function submitDomainRequest(): Promise<void> {
         return;
     }
 
-    const apiUrl = getConfig('REQUEST_API_URL', '');
-    const groupId = getConfig('DEFAULT_GROUP', 'default');
-    const sharedSecret = getConfig('SHARED_SECRET', '');
+    const apiUrl = CONFIG.REQUEST_API_URL;
+    const groupId = CONFIG.DEFAULT_GROUP;
+    const sharedSecret = CONFIG.SHARED_SECRET;
 
     // Disable button while submitting
     btnSubmitRequest.disabled = true;
@@ -526,7 +538,7 @@ async function submitDomainRequest(): Promise<void> {
         const token = await generateToken(systemHostname, sharedSecret);
 
         const controller = new AbortController();
-        const timeout = setTimeout(() => { controller.abort(); }, getConfig('REQUEST_TIMEOUT', 10000));
+        const timeout = setTimeout(() => controller.abort(), CONFIG.REQUEST_TIMEOUT);
 
         // Use auto-inclusion endpoint
         const response = await fetch(`${apiUrl}/api/requests/auto`, {
@@ -544,7 +556,7 @@ async function submitDomainRequest(): Promise<void> {
 
         clearTimeout(timeout);
 
-        const data = await response.json() as AutoIncludeResponse;
+        const data = await response.json() as RequestResponse;
 
         if (response.ok && data.success) {
             showRequestStatus(
@@ -552,6 +564,7 @@ async function submitDomainRequest(): Promise<void> {
                 'success'
             );
 
+            // MultiReplace note: skipping lines for brevity where unchanged
             // Trigger local whitelist update
             try {
                 const updateResult = await browser.runtime.sendMessage({ action: 'triggerWhitelistUpdate' }) as { success: boolean };
@@ -584,19 +597,18 @@ async function submitDomainRequest(): Promise<void> {
 
     } catch (error) {
         let errorMsg = 'Error de conexión';
+        const err = error as Error;
 
-        if (error instanceof Error) {
-            if (error.name === 'AbortError') {
-                errorMsg = 'Timeout - servidor no responde';
-            } else {
-                errorMsg = error.message;
-            }
+        if (err.name === 'AbortError') {
+            errorMsg = 'Timeout - servidor no responde';
+        } else if (err.message) {
+            errorMsg = err.message;
         }
 
         showRequestStatus(`❌ ${errorMsg}`, 'error');
         showToast(`❌ Error al enviar`);
 
-        if (getConfig('DEBUG_MODE', false)) {
+        if (CONFIG.DEBUG_MODE) {
             console.error('[Popup] Request error:', error);
         }
     } finally {
@@ -618,7 +630,7 @@ function showRequestStatus(message: string, type = 'info'): void {
 /**
  * Hide request status message
  */
-function hideRequestStatus(): void {
+function hideRequestStatus() {
     requestStatusEl.classList.add('hidden');
     requestStatusEl.textContent = '';
 }
@@ -637,14 +649,14 @@ async function init(): Promise<void> {
         }
 
         const tab = tabs[0];
-        if (!tab || tab.id === undefined) {
-            tabDomainEl.textContent = 'Error: Tab ID undefined';
+        if (!tab || !tab.id) {
+            tabDomainEl.textContent = 'Error: Pestaña inválida';
             return;
         }
         currentTabId = tab.id;
 
         // Mostrar hostname de la pestaña actual
-        tabDomainEl.textContent = extractTabHostname(tab.url);
+        tabDomainEl.textContent = extractTabHostname(tab.url || '');
 
         // Cargar dominios bloqueados
         await loadBlockedDomains();
@@ -668,13 +680,14 @@ async function init(): Promise<void> {
 }
 
 // Event Listeners
-btnCopy.addEventListener('click', () => { void copyToClipboard(); });
-btnClear.addEventListener('click', () => { void clearDomains(); });
-btnVerify.addEventListener('click', () => { void verifyDomainsWithNative(); });
+btnCopy.addEventListener('click', copyToClipboard);
+btnClear.addEventListener('click', clearDomains);
+btnVerify.addEventListener('click', verifyDomainsWithNative);
 btnRequest.addEventListener('click', toggleRequestSection);
-btnSubmitRequest.addEventListener('click', () => { void submitDomainRequest(); });
+btnSubmitRequest.addEventListener('click', submitDomainRequest);
 requestDomainSelectEl.addEventListener('change', updateSubmitButtonState);
 requestReasonEl.addEventListener('input', updateSubmitButtonState);
 
 // Inicializar al cargar
-document.addEventListener('DOMContentLoaded', () => { void init(); });
+document.addEventListener('DOMContentLoaded', init);
+

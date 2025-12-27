@@ -6,10 +6,19 @@
  * E2E Tests - Teacher Role Workflow (tRPC)
  */
 
-/* eslint-disable */
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
+import {
+    TEST_RUN_ID,
+    uniqueEmail,
+    trpcMutate as _trpcMutate,
+    trpcQuery as _trpcQuery,
+    parseTRPC,
+    bearerAuth,
+    type AuthResult,
+    type RequestResult
+} from './test-utils.js';
 
 const PORT = 3002;
 const API_URL = `http://localhost:${String(PORT)}`;
@@ -26,60 +35,20 @@ let adminToken: string | null = null;
 let teacherToken: string | null = null;
 let teacherId: string | null = null;
 
-const ADMIN_EMAIL = 'maria.admin@test.com';
+// Use unique emails for this test run to ensure isolation
+const ADMIN_EMAIL = uniqueEmail('maria-admin');
 const ADMIN_PASSWORD = 'AdminPassword123!';
-const TEACHER_EMAIL = 'pedro.teacher@test.com';
+const TEACHER_EMAIL = uniqueEmail('pedro-teacher');
 const TEACHER_PASSWORD = 'TeacherPassword123!';
 const TEACHER_GROUP = 'informatica-3';
 
-// Helper to call tRPC mutations
-async function trpcMutate(procedure: string, input: unknown, headers: Record<string, string> = {}) {
-    const response = await fetch(`${API_URL}/trpc/${procedure}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify(input)
-    });
-    return response;
-}
+// Wrap helpers with baseUrl
+const trpcMutate = (procedure: string, input: unknown, headers: Record<string, string> = {}) =>
+    _trpcMutate(API_URL, procedure, input, headers);
+const trpcQuery = (procedure: string, input?: unknown, headers: Record<string, string> = {}) =>
+    _trpcQuery(API_URL, procedure, input, headers);
 
-// Helper to call tRPC queries
-async function trpcQuery(procedure: string, input?: unknown, headers: Record<string, string> = {}) {
-    let url = `${API_URL}/trpc/${procedure}`;
-    if (input !== undefined) {
-        url += `?input=${encodeURIComponent(JSON.stringify(input))}`;
-    }
-    const response = await fetch(url, { headers });
-    return response;
-}
-
-// Parse tRPC response
-interface TRPCResponse<T = unknown> {
-    result?: { data: T };
-    error?: { message: string; code: string };
-}
-
-interface AuthResult {
-    user?: { id: string; email: string; name: string; roles?: unknown[] };
-    accessToken?: string;
-    refreshToken?: string;
-}
-
-interface RequestResult {
-    id?: string;
-    status?: string;
-    domain?: string;
-}
-
-async function parseTRPC<T>(response: Response): Promise<{ data?: T; error?: string; code?: string }> {
-    const json = await response.json() as TRPCResponse<T>;
-    if (json.result) {
-        return { data: json.result.data };
-    }
-    if (json.error) {
-        return { error: json.error.message, code: json.error.code };
-    }
-    return {};
-}
+console.log(`E2E Test Run ID: ${TEST_RUN_ID}`);
 
 await describe('E2E: Teacher Role Workflow (tRPC)', { timeout: 60000 }, async () => {
     before(async () => {
@@ -162,22 +131,29 @@ await describe('E2E: Teacher Role Workflow (tRPC)', { timeout: 60000 }, async ()
                 if (regResponse.status === 200) {
                     const { data } = await parseTRPC<AuthResult>(regResponse);
                     teacherId = data?.user?.id ?? null;
-                } else {
-                    // User already exists, get ID from login
-                    console.log('Teacher user already exists');
-                    teacherId = 'existing-teacher-id';
                 }
+                // If 409, teacherId stays null - we'll get it from login
             } else {
                 assert.ok([200, 409].includes(response.status), `Expected 200 or 409, got ${String(response.status)}`);
                 if (response.status === 200) {
                     const { data } = await parseTRPC<AuthResult>(response);
                     teacherId = data?.user?.id ?? null;
-                } else {
-                    teacherId = 'existing-teacher-id';
                 }
+                // If 409, teacherId stays null - we'll get it from login
             }
 
-            assert.ok(teacherId !== null && teacherId !== '');
+            // If user already existed, get ID from login
+            if (teacherId === null) {
+                const loginRes = await trpcMutate('auth.login', {
+                    email: TEACHER_EMAIL,
+                    password: TEACHER_PASSWORD
+                });
+                assert.strictEqual(loginRes.status, 200, 'Should be able to login as existing teacher');
+                const { data: loginData } = await parseTRPC<AuthResult>(loginRes);
+                teacherId = loginData?.user?.id ?? null;
+            }
+
+            assert.ok(teacherId !== null && teacherId !== '', 'Should have valid teacherId');
         });
 
         await test('should assign teacher role with group', async () => {
@@ -222,10 +198,7 @@ await describe('E2E: Teacher Role Workflow (tRPC)', { timeout: 60000 }, async ()
 
     await describe('Step 3.5: Teacher Dashboard - US2', async () => {
         await test('teacher should get their assigned groups', async () => {
-            if (teacherToken === null) {
-                console.log('Skipping: No teacher token');
-                return;
-            }
+            assert.ok(teacherToken !== null, 'Prerequisite failed: teacherToken should be set from login');
 
             const response = await trpcQuery('requests.listGroups', undefined, {
                 'Authorization': `Bearer ${teacherToken}`
@@ -240,10 +213,7 @@ await describe('E2E: Teacher Role Workflow (tRPC)', { timeout: 60000 }, async ()
         });
 
         await test('teacher should only see requests for their groups', async () => {
-            if (teacherToken === null) {
-                console.log('Skipping: No teacher token');
-                return;
-            }
+            assert.ok(teacherToken !== null, 'Prerequisite failed: teacherToken should be set from login');
 
             const response = await trpcQuery('requests.list', {}, {
                 'Authorization': `Bearer ${teacherToken}`
@@ -262,10 +232,7 @@ await describe('E2E: Teacher Role Workflow (tRPC)', { timeout: 60000 }, async ()
         });
 
         await test('teacher can filter requests by status', async () => {
-            if (teacherToken === null) {
-                console.log('Skipping: No teacher token');
-                return;
-            }
+            assert.ok(teacherToken !== null, 'Prerequisite failed: teacherToken should be set from login');
 
             const response = await trpcQuery('requests.list', { status: 'pending' }, {
                 'Authorization': `Bearer ${teacherToken}`
@@ -286,10 +253,7 @@ await describe('E2E: Teacher Role Workflow (tRPC)', { timeout: 60000 }, async ()
         });
 
         await test('teacher cannot access admin-only endpoints', async () => {
-            if (teacherToken === null) {
-                console.log('Skipping: No teacher token');
-                return;
-            }
+            assert.ok(teacherToken !== null, 'Prerequisite failed: teacherToken should be set from login');
 
             const response = await trpcQuery('requests.listBlocked', undefined, {
                 'Authorization': `Bearer ${teacherToken}`

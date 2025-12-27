@@ -8,14 +8,14 @@
  * module cache conflicts when multiple test files need to start servers.
  */
 
-import { spawn } from 'child_process';
+import { spawn, type ChildProcess } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const currentFilePath = fileURLToPath(import.meta.url);
+const currentDirPath = path.dirname(currentFilePath);
 
-const testFiles = [
+const testFiles: readonly string[] = [
     'tests/api.test.ts',
     'tests/auth.test.ts',
     'tests/roles.test.ts',
@@ -29,7 +29,7 @@ const testFiles = [
 let currentIndex = 0;
 let hasFailures = false;
 
-function runNextTest() {
+function runNextTest(): void {
     if (currentIndex >= testFiles.length) {
         console.log('\n' + '='.repeat(60));
         if (hasFailures) {
@@ -43,23 +43,29 @@ function runNextTest() {
     }
 
     const testFile = testFiles[currentIndex];
+    if (testFile === undefined) {
+        console.error('Unexpected undefined test file');
+        process.exit(1);
+        return;
+    }
+
     console.log('\n' + '='.repeat(60));
     console.log(`Running: ${testFile}`);
     console.log('='.repeat(60) + '\n');
 
-    const child = spawn('node', ['--import', 'tsx', '--test', '--test-force-exit', testFile], {
-        cwd: path.join(__dirname, '..'),
+    const child: ChildProcess = spawn('node', ['--import', 'tsx', '--test', '--test-force-exit', testFile], {
+        cwd: path.join(currentDirPath, '..'),
         stdio: 'inherit',
         env: { ...process.env, PORT: '3006' }
     });
 
     // Timeout to kill hanging tests after 30 seconds
-    const timeout = setTimeout(() => {
+    const timeout = setTimeout((): void => {
         console.log(`\n⚠️  Test ${testFile} timed out after 30s, killing...`);
         child.kill('SIGKILL');
     }, 30000);
 
-    child.on('close', (code) => {
+    child.on('close', (code: number | null): void => {
         clearTimeout(timeout);
         if (code !== 0) {
             hasFailures = true;
@@ -69,7 +75,7 @@ function runNextTest() {
         setTimeout(runNextTest, 500);
     });
 
-    child.on('error', (err) => {
+    child.on('error', (err: Error): void => {
         clearTimeout(timeout);
         console.error(`Failed to run ${testFile}:`, err);
         hasFailures = true;

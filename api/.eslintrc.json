@@ -49,17 +49,6 @@
             ],
             "parserOptions": {
                 "project": "./tsconfig.tests.json"
-            },
-            "rules": {
-                "@typescript-eslint/no-explicit-any": "warn",
-                "@typescript-eslint/no-unused-vars": "warn",
-                "@typescript-eslint/restrict-template-expressions": "warn",
-                "@typescript-eslint/restrict-plus-operands": "warn",
-                "@typescript-eslint/no-unnecessary-type-parameters": "off",
-                "@typescript-eslint/no-unnecessary-condition": "off",
-                "@typescript-eslint/strict-boolean-expressions": "off",
-                "@typescript-eslint/explicit-function-return-type": "off",
-                "@typescript-eslint/no-floating-promises": "off"
             }
         }
     ],
