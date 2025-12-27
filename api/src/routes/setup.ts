@@ -248,6 +248,8 @@ router.post('/first-admin', firstAdminLimiter, (req: Request, res: Response, nex
                 error: 'Failed to create admin user'
             });
         }
+    });
+}
     })().catch(next);
 });
 

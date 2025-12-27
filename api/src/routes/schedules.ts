@@ -67,6 +67,7 @@ function requireAuth(req: RequestWithUser, res: Response, next: NextFunction): v
 
         try {
             const decoded = await auth.verifyAccessToken(token);
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (decoded === null) {
                 res.status(401).json({
                     success: false,

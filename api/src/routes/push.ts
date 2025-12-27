@@ -60,6 +60,7 @@ function requireAuth(req: RequestWithUser, res: Response, next: NextFunction): v
         const token = authHeader.slice(7);
 
         const decoded = await auth.verifyAccessToken(token);
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (decoded !== null) {
             req.user = decoded;
             next();
