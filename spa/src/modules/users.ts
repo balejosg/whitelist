@@ -122,9 +122,9 @@ window.deleteUser = async (userId: string) => {
 };
 
 window.openAssignRoleModal = (userId: string, userName: string) => {
-    const idInput = document.getElementById('assign-role-user-id') as HTMLInputElement | null;
+    const idInput = document.getElementById('assign-role-user-id') as HTMLInputElement;
     const nameDisplay = document.getElementById('assign-role-user-name');
-    if (idInput) idInput.value = userId;
+    idInput.value = userId;
     if (nameDisplay) nameDisplay.textContent = userName;
 
     // Populate groups select
@@ -139,17 +139,15 @@ window.openAssignRoleModal = (userId: string, userName: string) => {
     const roleSelect = document.getElementById('assign-role-select') as HTMLSelectElement;
     const groupsDiv = document.getElementById('assign-role-groups-div');
 
-    if (roleSelect && groupsDiv) {
-        roleSelect.onchange = () => {
-            if (roleSelect.value === 'teacher') {
-                groupsDiv.classList.remove('hidden');
-            } else {
-                groupsDiv.classList.add('hidden');
-            }
-        };
-        roleSelect.value = 'teacher'; // default
-        roleSelect.onchange(new Event('change')); // trigger
-    }
+    roleSelect.onchange = () => {
+        if (roleSelect.value === 'teacher') {
+            groupsDiv.classList.remove('hidden');
+        } else {
+            groupsDiv.classList.add('hidden');
+        }
+    };
+    roleSelect.value = 'teacher'; // default
+    roleSelect.onchange(new Event('change')); // trigger
 
     openModal('modal-assign-role');
 };
@@ -160,14 +158,14 @@ window.editUser = async (userId: string) => {
         if (!response.success || !response.data) throw new Error(response.error);
 
         const user = response.data.user;
-        const idInput = document.getElementById('edit-user-id') as HTMLInputElement | null;
-        const nameInput = document.getElementById('edit-user-name') as HTMLInputElement | null;
-        const emailInput = document.getElementById('edit-user-email') as HTMLInputElement | null;
+        const idInput = document.getElementById('edit-user-id') as HTMLInputElement;
+        const nameInput = document.getElementById('edit-user-name') as HTMLInputElement;
+        const emailInput = document.getElementById('edit-user-email') as HTMLInputElement;
         // const activeInput = document.getElementById('edit-user-active') as HTMLInputElement;
 
-        if (idInput) idInput.value = user.id;
-        if (nameInput) nameInput.value = user.name;
-        if (emailInput) emailInput.value = user.email;
+        idInput.value = user.id;
+        nameInput.value = user.name;
+        emailInput.value = user.email;
         // user.isActive check? interface User doesn't have isActive.
 
         openModal('modal-edit-user');
@@ -179,79 +177,85 @@ window.editUser = async (userId: string) => {
 };
 
 window.openNewUserModal = () => {
-    (document.getElementById('new-user-form') as HTMLFormElement)?.reset();
+    (document.getElementById('new-user-form') as HTMLFormElement).reset();
     openModal('modal-new-user');
 };
 
 // Init Listeners
 export function initUsersListeners(): void {
     // New User Form
-    document.getElementById('new-user-form')?.addEventListener('submit', (e) => void (async () => {
-        e.preventDefault();
-        const data = {
-            name: (document.getElementById('new-user-name') as HTMLInputElement).value,
-            email: (document.getElementById('new-user-email') as HTMLInputElement).value,
-            password: (document.getElementById('new-user-password') as HTMLInputElement).value
-            // role handled by separate call or API?
-            // Original JS had role in form.
-        };
+    document.getElementById('new-user-form')?.addEventListener('submit', (e) => {
+        void (async () => {
+            e.preventDefault();
+            const data = {
+                name: (document.getElementById('new-user-name') as HTMLInputElement).value,
+                email: (document.getElementById('new-user-email') as HTMLInputElement).value,
+                password: (document.getElementById('new-user-password') as HTMLInputElement).value
+                // role handled by separate call or API?
+                // Original JS had role in form.
+            };
 
-        try {
-            await UsersAPI.create(data);
-            closeModal('modal-new-user');
-            showToast('User created');
-            await loadUsers();
-        } catch (err) {
-            if (err instanceof Error) {
-                showToast('Error creating user: ' + err.message, 'error');
+            try {
+                await UsersAPI.create(data);
+                closeModal('modal-new-user');
+                showToast('User created');
+                await loadUsers();
+            } catch (err) {
+                if (err instanceof Error) {
+                    showToast('Error creating user: ' + err.message, 'error');
+                }
             }
-        }
-    })());
+        })();
+    });
 
     // Assign Role Form
-    document.getElementById('assign-role-form')?.addEventListener('submit', (e) => void (async () => {
-        e.preventDefault();
-        const userId = (document.getElementById('assign-role-user-id') as HTMLInputElement).value;
-        const role = (document.getElementById('assign-role-select') as HTMLSelectElement).value;
+    document.getElementById('assign-role-form')?.addEventListener('submit', (e) => {
+        void (async () => {
+            e.preventDefault();
+            const userId = (document.getElementById('assign-role-user-id') as HTMLInputElement).value;
+            const role = (document.getElementById('assign-role-select') as HTMLSelectElement).value;
 
-        // Get selected groups
-        const select = document.getElementById('assign-role-groups') as HTMLSelectElement;
-        const groupIds = Array.from(select.selectedOptions).map(opt => opt.value);
+            // Get selected groups
+            const select = document.getElementById('assign-role-groups') as HTMLSelectElement;
+            const groupIds = Array.from(select.selectedOptions).map(opt => opt.value);
 
-        try {
-            await UsersAPI.assignRole(userId, role, groupIds);
-            closeModal('modal-assign-role');
-            showToast('Role assigned');
-            await loadUsers();
-        } catch (err) {
-            if (err instanceof Error) {
-                showToast('Error assigning role: ' + err.message, 'error');
+            try {
+                await UsersAPI.assignRole(userId, role, groupIds);
+                closeModal('modal-assign-role');
+                showToast('Role assigned');
+                await loadUsers();
+            } catch (err) {
+                if (err instanceof Error) {
+                    showToast('Error assigning role: ' + err.message, 'error');
+                }
             }
-        }
-    })());
+        })();
+    });
 
     // Edit User Form
-    document.getElementById('edit-user-form')?.addEventListener('submit', (e) => void (async () => {
-        e.preventDefault();
-        const userId = (document.getElementById('edit-user-id') as HTMLInputElement).value;
-        const updates: Record<string, unknown> = {
-            name: (document.getElementById('edit-user-name') as HTMLInputElement).value,
-            email: (document.getElementById('edit-user-email') as HTMLInputElement).value,
-            // isActive...
-        };
+    document.getElementById('edit-user-form')?.addEventListener('submit', (e) => {
+        void (async () => {
+            e.preventDefault();
+            const userId = (document.getElementById('edit-user-id') as HTMLInputElement).value;
+            const updates: { name: string; email: string; password?: string } = {
+                name: (document.getElementById('edit-user-name') as HTMLInputElement).value,
+                email: (document.getElementById('edit-user-email') as HTMLInputElement).value,
+                // isActive...
+            };
 
-        const password = (document.getElementById('edit-user-password') as HTMLInputElement).value;
-        if (password) updates.password = password;
+            const password = (document.getElementById('edit-user-password') as HTMLInputElement).value;
+            if (password) updates.password = password;
 
-        try {
-            await UsersAPI.update(userId, updates);
-            closeModal('modal-edit-user');
-            showToast('User updated');
-            await loadUsers();
-        } catch (err) {
-            if (err instanceof Error) {
-                showToast('Error updating user: ' + err.message, 'error');
+            try {
+                await UsersAPI.update(userId, updates);
+                closeModal('modal-edit-user');
+                showToast('User updated');
+                await loadUsers();
+            } catch (err) {
+                if (err instanceof Error) {
+                    showToast('Error updating user: ' + err.message, 'error');
+                }
             }
-        }
-    })());
+        })();
+    });
 }

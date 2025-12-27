@@ -40,7 +40,9 @@ export async function init(): Promise<void> {
             try {
                 await Auth.getMe();
                 user = Auth.getUser();
-            } catch { }
+            } catch {
+                // Ignore errors when refreshing user info
+            }
             if (user) setCurrentUser(user);
         }
     } catch (err) {
@@ -82,7 +84,7 @@ export async function init(): Promise<void> {
                 token,
                 config.owner,
                 config.repo,
-                config.branch || 'main'
+                config.branch ?? 'main'
             );
             setGithub(api);
             const canWrite = await OAuth.canWrite(config.owner, config.repo);
@@ -94,7 +96,7 @@ export async function init(): Promise<void> {
     }
 
     // Update UI and start
-    const userName = state.currentUser.login || state.currentUser.name || state.currentUser.email;
+    const userName = state.currentUser.login ?? state.currentUser.name ?? state.currentUser.email;
     const userEl = document.getElementById('current-user');
     if (userEl) userEl.textContent = userName;
 
@@ -106,7 +108,7 @@ export async function init(): Promise<void> {
 export function showConfigScreen(): void {
     const el = document.getElementById('config-username');
     if (el && state.currentUser) {
-        el.textContent = state.currentUser.login || state.currentUser.email;
+        el.textContent = state.currentUser.login ?? state.currentUser.email;
     }
     showScreen('config-screen');
 }
@@ -175,7 +177,7 @@ export function updateEditUI(): void {
         scheduleSection.classList.toggle('hidden', !showSchedule);
 
         if (showSchedule) {
-            initScheduleSection();
+            void initScheduleSection();
         }
     }
 }
@@ -183,7 +185,7 @@ export function updateEditUI(): void {
 // Initialize schedule section with classroom selector
 async function initScheduleSection(): Promise<void> {
     const select = document.getElementById('schedule-classroom-select') as HTMLSelectElement;
-    if (!select || select.dataset.initialized) return;
+    if (!select) return;
 
     select.dataset.initialized = 'true';
 
@@ -192,7 +194,7 @@ async function initScheduleSection(): Promise<void> {
         const response = await fetch(`${RequestsAPI.apiUrl || ''}/api/classrooms`, {
             headers: Auth.getAuthHeaders()
         });
-        const data = (await response.json()) as { success: boolean, classrooms?: Classroom[] };
+        const data: { success: boolean; classrooms?: Classroom[] } = await response.json();
 
         if (data.success && data.classrooms) {
             select.innerHTML = '<option value="">Select classroom...</option>';
@@ -210,7 +212,7 @@ async function initScheduleSection(): Promise<void> {
     // Handle classroom selection
     select.addEventListener('change', () => void (async () => {
         const classroomId = select.value;
-        if (classroomId && SchedulesModule) {
+        if (classroomId) {
             await SchedulesModule.init(classroomId);
         } else {
             const container = document.getElementById('schedule-grid-container');
@@ -221,7 +223,7 @@ async function initScheduleSection(): Promise<void> {
     // Refresh button
     document.getElementById('schedule-refresh-btn')?.addEventListener('click', () => void (async () => {
         const classroomId = select.value;
-        if (classroomId && SchedulesModule) {
+        if (classroomId) {
             await SchedulesModule.loadSchedules();
             SchedulesModule.render();
         }

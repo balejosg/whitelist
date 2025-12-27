@@ -164,7 +164,38 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   # ============================================
-  # Job 5: Build Docker Image
+  # Job 5: Test SPA (Lint & Type Check)
+  # ============================================
+  test-spa:
+    name: SPA Lint & Type Check
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: spa
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: spa/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci || npm install
+      
+      - name: Run linting
+        run: npm run lint
+      
+      - name: TypeScript type-check
+        run: npm run typecheck
+
+  # ============================================
+  # Job 6: Build Docker Image
   # ============================================
   build-docker:
     name: Build Docker
@@ -228,7 +259,7 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
 
   # ============================================
-  # Job 6: Build Docker Image for API
+  # Job 7: Build Docker Image for API
   # ============================================
   build-docker-api:
     name: Build Docker API
@@ -285,7 +316,7 @@ jobs:
   ci-success:
     name: CI Success
     runs-on: ubuntu-latest
-    needs: [lint, test-web, test-bash, test-api, build-docker, build-docker-api]
+    needs: [lint, test-web, test-bash, test-api, test-spa, build-docker, build-docker-api]
     if: always()
     
     steps:
@@ -295,6 +326,7 @@ jobs:
              [[ "${{ needs.test-web.result }}" == "failure" ]] || \
              [[ "${{ needs.test-bash.result }}" == "failure" ]] || \
              [[ "${{ needs.test-api.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-spa.result }}" == "failure" ]] || \
              [[ "${{ needs.build-docker.result }}" == "failure" ]] || \
              [[ "${{ needs.build-docker-api.result }}" == "failure" ]]; then
             echo "❌ CI Failed"

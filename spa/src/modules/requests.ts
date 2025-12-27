@@ -10,8 +10,8 @@ export async function initRequestsSection(): Promise<void> {
     const savedUrl = localStorage.getItem('requests_api_url') ?? '';
     const savedToken = localStorage.getItem('requests_api_token') ?? '';
 
-    const urlInput = document.getElementById('requests-api-url') as HTMLInputElement | null;
-    const tokenInput = document.getElementById('requests-api-token') as HTMLInputElement | null;
+    const urlInput = document.getElementById('requests-api-url') as HTMLInputElement;
+    const tokenInput = document.getElementById('requests-api-token') as HTMLInputElement;
 
     if (urlInput) urlInput.value = savedUrl;
     if (tokenInput) tokenInput.value = savedToken;
@@ -150,11 +150,11 @@ declare global {
 }
 
 window.approveRequest = async (id: string, btn: HTMLElement) => {
-    const item = btn.closest('.request-item') as HTMLElement | null;
+    const item = btn.closest('.request-item');
     if (!item) return;
 
-    const select = item.querySelector('.request-group-select') as HTMLSelectElement | null;
-    const groupId = select?.value;
+    const select = item.querySelector('.request-group-select') as HTMLSelectElement;
+    const groupId = select.value;
 
     if (!groupId) {
         showToast('Selecciona un grupo primero', 'error');

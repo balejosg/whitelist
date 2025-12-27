@@ -52,8 +52,7 @@ export const PushManager = {
             const registration = await navigator.serviceWorker.register('/sw.js', {
                 scope: '/'
             });
-            // eslint-disable-next-line no-console
-            console.log('[Push] Service Worker registered:', registration.scope);
+            console.warn('[Push] Service Worker registered:', registration.scope);
             return registration;
         } catch (error) {
             console.error('[Push] Service Worker registration failed:', error);
@@ -80,8 +79,7 @@ export const PushManager = {
         }
 
         const permission = await Notification.requestPermission();
-        // eslint-disable-next-line no-console
-        console.log('[Push] Permission result:', permission);
+        console.warn('[Push] Permission result:', permission);
         return permission;
     },
 
@@ -141,8 +139,7 @@ export const PushManager = {
             applicationServerKey: applicationServerKey as unknown as BufferSource
         });
 
-        // eslint-disable-next-line no-console
-        console.log('[Push] Subscribed:', subscription.endpoint);
+        console.warn('[Push] Subscribed:', subscription.endpoint);
 
         // Send subscription to server
         const baseUrl = RequestsAPI.apiUrl;
@@ -157,8 +154,7 @@ export const PushManager = {
             throw new Error(data.error ?? 'Failed to register subscription');
         }
 
-        // eslint-disable-next-line no-console
-        console.log('[Push] Subscription registered on server');
+        console.warn('[Push] Subscription registered on server');
         return data;
     },
 
@@ -200,8 +196,7 @@ export const PushManager = {
             console.warn('[Push] Server unsubscribe failed:', error);
         }
 
-        // eslint-disable-next-line no-console
-        console.log('[Push] Unsubscribed');
+        console.warn('[Push] Unsubscribed');
         return { success: true };
     },
 
@@ -211,8 +206,7 @@ export const PushManager = {
      */
     async init(): Promise<void> {
         if (!this.isSupported()) {
-            // eslint-disable-next-line no-console
-            console.log('[Push] Push notifications not supported');
+            console.warn('[Push] Push notifications not supported');
             return;
         }
 

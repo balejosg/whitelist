@@ -58,7 +58,7 @@ export function renderClassroomsList(): void {
         <div class="classroom-card" data-id="${c.id}">
             <div class="classroom-info">
                 <h3>🏫 ${escapeHtml(c.display_name || c.name)}</h3>
-                <p>${c.machines ? c.machines.length : 0} computers</p>
+                <p>${c.machines?.length.toString() ?? '0'} computers</p>
             </div>
             <div class="classroom-group">
                 <label>Active group:</label>
@@ -117,32 +117,34 @@ export function initClassroomListeners(): void {
     // The renderClassroomsList uses window.openNewClassroomModal
 
     // New Classroom Form
-    document.getElementById('new-classroom-form')?.addEventListener('submit', (e) => void (async () => {
-        e.preventDefault();
-        const nameInput = document.getElementById('new-classroom-name') as HTMLInputElement | null;
-        const groupInput = document.getElementById('new-classroom-default-group') as HTMLSelectElement | null;
+    document.getElementById('new-classroom-form')?.addEventListener('submit', (e) => {
+        void (async () => {
+            e.preventDefault();
+            const nameInput = document.getElementById('new-classroom-name') as HTMLInputElement | null;
+            const groupInput = document.getElementById('new-classroom-default-group') as HTMLSelectElement | null;
 
-        if (!nameInput || !groupInput) return;
+            if (!nameInput || !groupInput) return;
 
-        const name = nameInput.value;
-        const defaultGroupId = groupInput.value;
+            const name = nameInput.value;
+            const defaultGroupId = groupInput.value;
 
-        try {
-            await ClassroomsAPI.createClassroom({
-                name,
-                display_name: name,
-                default_group_id: defaultGroupId || undefined
-            });
-            closeModal('modal-new-classroom');
-            (document.getElementById('new-classroom-form') as HTMLFormElement | null)?.reset();
-            showToast('Classroom created');
-            await loadClassrooms();
-        } catch (error) {
-            if (error instanceof Error) {
-                showToast('Error: ' + error.message, 'error');
+            try {
+                await ClassroomsAPI.createClassroom({
+                    name,
+                    display_name: name,
+                    default_group_id: defaultGroupId || undefined
+                });
+                closeModal('modal-new-classroom');
+                (document.getElementById('new-classroom-form') as HTMLFormElement | null)?.reset();
+                showToast('Classroom created');
+                await loadClassrooms();
+            } catch (error) {
+                if (error instanceof Error) {
+                    showToast('Error: ' + error.message, 'error');
+                }
             }
-        }
-    })());
+        })();
+    });
 }
 
 

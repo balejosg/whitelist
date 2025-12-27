@@ -118,17 +118,17 @@ export const SchedulesModule = {
     renderCell(dayOfWeek: number, slot: ScheduleSlot, schedule: Schedule | null): string {
         if (schedule) {
             const group = this.groups.find(g => g.id === schedule.group_id);
-            const groupName = group?.name || schedule.group_id;
+            const groupName = group?.name ?? schedule.group_id;
             // Assuming Schedule type has can_edit and is_mine properties (from API)
             // If they are not in the Interface yet, we might need to add them or cast.
             // Interface: "active: boolean" only.
             // Interface updated to include is_mine and can_edit
-            const canEdit = schedule.can_edit || schedule.is_mine;
+            const canEdit = (schedule.can_edit ?? false) || (schedule.is_mine ?? false);
 
             return `
                 <div class="schedule-cell schedule-cell-occupied ${schedule.is_mine ? 'is-mine' : 'is-other'}"
                      data-schedule-id="${schedule.id}"
-                     data-day="${String(dayOfWeek)}"
+                     data-day="${dayOfWeek.toString()}"
                      data-start="${slot.start}"
                      data-end="${slot.end}"
                      title="${schedule.is_mine ? 'Mi reserva' : 'Ocupado'}">
@@ -141,7 +141,7 @@ export const SchedulesModule = {
         // Empty cell - clickable for creating schedule
         return `
             <div class="schedule-cell schedule-cell-empty"
-                 data-day="${String(dayOfWeek)}"
+                 data-day="${dayOfWeek.toString()}"
                  data-start="${slot.start}"
                  data-end="${slot.end}"
                  title="Clic para reservar">
@@ -187,7 +187,7 @@ export const SchedulesModule = {
             s.day_of_week === dayOfWeek &&
             s.start_time === startTime &&
             s.end_time === endTime
-        ) || null;
+        ) ?? null;
     },
 
     /**
@@ -214,8 +214,8 @@ export const SchedulesModule = {
     async handleCellClick(e: Event): Promise<void> {
         const cell = e.currentTarget as HTMLElement;
         const dayOfWeek = parseInt(cell.dataset.day ?? '0');
-        const startTime = cell.dataset.start || '';
-        const endTime = cell.dataset.end || '';
+        const startTime = cell.dataset.start ?? '';
+        const endTime = cell.dataset.end ?? '';
 
         // Show group selection modal
         const groupId = await this.showGroupSelectionModal(dayOfWeek, startTime, endTime);
@@ -223,7 +223,7 @@ export const SchedulesModule = {
 
         // Create schedule
         const result = await SchedulesAPI.createSchedule({
-            classroom_id: this.currentClassroomId || '',
+            classroom_id: this.currentClassroomId ?? '',
             group_id: groupId,
             day_of_week: dayOfWeek,
             start_time: startTime,
@@ -251,7 +251,7 @@ export const SchedulesModule = {
     async handleDeleteClick(e: Event): Promise<void> {
         e.stopPropagation();
         const btn = e.target as HTMLElement;
-        const cell = btn.closest('.schedule-cell') as HTMLElement;
+        const cell = btn.closest('.schedule-cell')!;
         const scheduleId = cell.dataset.scheduleId;
 
         if (!scheduleId || !confirm('Delete this reservation?')) return;
@@ -324,7 +324,7 @@ export const SchedulesModule = {
 
             modal.querySelector('#schedule-group-form')?.addEventListener('submit', (e) => {
                 e.preventDefault();
-                const select = modal.querySelector('#schedule-group-select') as HTMLSelectElement;
+                const select = modal.querySelector('#schedule-group-select')!;
                 const groupId = select.value;
                 modal.remove();
                 resolve(groupId);

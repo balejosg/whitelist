@@ -33,26 +33,24 @@ export async function loadDashboard(): Promise<void> {
 
         for (const group of state.allGroups) {
             try {
-                if (group) {
-                    // Fetch content to check status (or enhance listFiles to return it?)
-                    // Doing N+1 fetches is slow. But that's how JS did it roughly or JS showed list first.
-                    // Actually, dashboard shows counts. So we need content.
-                    const result = await state.github?.getFile(group.path);
-                    if (result) {
-                        const data = WhitelistParser.parse(result.content);
-                        // Enhance group object with stats
-                        group.stats = {
-                            whitelist: data.whitelist.length,
-                            blocked_subdomains: data.blocked_subdomains.length,
-                            blocked_paths: data.blocked_paths.length
-                        };
-                        group.enabled = data.enabled;
+                // Fetch content to check status (or enhance listFiles to return it?)
+                // Doing N+1 fetches is slow. But that's how JS did it roughly or JS showed list first.
+                // Actually, dashboard shows counts. So we need content.
+                const result = await state.github?.getFile(group.path);
+                if (result) {
+                    const data = WhitelistParser.parse(result.content);
+                    // Enhance group object with stats
+                    group.stats = {
+                        whitelist: data.whitelist.length,
+                        blocked_subdomains: data.blocked_subdomains.length,
+                        blocked_paths: data.blocked_paths.length
+                    };
+                    group.enabled = data.enabled;
 
-                        // Only count stats for visible groups
-                        if (!assignedGroups || assignedGroups.includes(group.name)) {
-                            totalWhitelist += group.stats.whitelist;
-                            totalBlocked += group.stats.blocked_subdomains + group.stats.blocked_paths;
-                        }
+                    // Only count stats for visible groups
+                    if (!assignedGroups || assignedGroups.includes(group.name)) {
+                        totalWhitelist += group.stats.whitelist;
+                        totalBlocked += group.stats.blocked_subdomains + group.stats.blocked_paths;
                     }
                 }
             } catch {
@@ -116,7 +114,7 @@ export function renderGroupsList(): void {
                 <h3>${escapeHtml(g.name)}</h3>
                 <p>${g.path}</p>
             </div>
-            <div class="group-stats">${String(g.stats?.whitelist ?? 0)} dominios</div>
+            <div class="group-stats">${(g.stats?.whitelist ?? 0).toString()} dominios</div>
             <span class="group-status ${g.enabled ? 'active' : 'paused'}">
                 ${g.enabled ? '✅ Activo' : '⏸️ Pausado'}
             </span>
@@ -149,7 +147,8 @@ export async function openGroup(name: string): Promise<void> {
         if (nameDisplayEl) nameDisplayEl.textContent = name;
 
         const enabledSelect = document.getElementById('group-enabled') as HTMLSelectElement;
-        if (enabledSelect) enabledSelect.value = data.enabled ? '1' : '0';
+
+        enabledSelect.value = data.enabled ? '1' : '0';
 
         const exportUrlEl = document.getElementById('export-url');
         if (exportUrlEl) exportUrlEl.textContent = state.github?.getRawUrl(path) ?? '';
@@ -158,7 +157,7 @@ export async function openGroup(name: string): Promise<void> {
         updateRuleCounts();
         renderRules();
 
-        if (enabledSelect) enabledSelect.disabled = !state.canEdit;
+        enabledSelect.disabled = !state.canEdit;
 
         document.querySelectorAll('.tab').forEach((t) => {
             const el = t as HTMLElement;
@@ -214,9 +213,9 @@ export function updateRuleCounts(): void {
     const bSubEl = document.getElementById('count-blocked_subdomain');
     const bPathEl = document.getElementById('count-blocked_path');
 
-    if (wEl) wEl.textContent = String(state.currentGroupData.whitelist?.length ?? 0);
-    if (bSubEl) bSubEl.textContent = String(state.currentGroupData.blocked_subdomains?.length ?? 0);
-    if (bPathEl) bPathEl.textContent = String(state.currentGroupData.blocked_paths?.length ?? 0);
+    if (wEl) wEl.textContent = state.currentGroupData.whitelist.length.toString();
+    if (bSubEl) bSubEl.textContent = state.currentGroupData.blocked_subdomains.length.toString();
+    if (bPathEl) bPathEl.textContent = state.currentGroupData.blocked_paths.length.toString();
 }
 
 export async function deleteRule(value: string, event: Event): Promise<void> {

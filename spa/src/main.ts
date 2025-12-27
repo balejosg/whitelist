@@ -45,8 +45,6 @@ function initMainListeners() {
         const errorEl = document.getElementById('login-error');
         const btn = document.getElementById('email-login-btn') as HTMLButtonElement;
 
-        if (!emailInput || !passwordInput || !btn) return;
-
         if (errorEl) errorEl.textContent = '';
         btn.disabled = true;
         btn.textContent = 'Authenticating...';
@@ -76,8 +74,6 @@ function initMainListeners() {
 
         const btn = document.getElementById('notifications-btn') as HTMLButtonElement;
         const icon = document.getElementById('notifications-icon');
-
-        if (!btn || !icon) return;
 
         try {
             const subscription = await PushManager.getSubscription();
@@ -118,7 +114,7 @@ function initMainListeners() {
     document.getElementById('logout-btn')?.addEventListener('click', () => {
         if (confirm('Log out?')) {
             OAuth.logout();
-            Auth.logout();
+            void Auth.logout();
             showScreen('login-screen');
         }
     });
@@ -155,10 +151,10 @@ function initMainListeners() {
             setCanEdit(canWrite);
 
             const userEl = document.getElementById('current-user');
-            if (userEl && state.currentUser) userEl.textContent = state.currentUser.login || '';
+            if (userEl && state.currentUser) userEl.textContent = state.currentUser.login ?? '';
             updateEditUI();
             showScreen('dashboard-screen');
-            loadDashboard();
+            void loadDashboard();
         } catch (err: unknown) {
             if (errorEl && err instanceof Error) {
                 if (err.message.includes('Not Found')) {
@@ -197,7 +193,7 @@ function initMainListeners() {
     // Back button
     document.getElementById('back-btn')?.addEventListener('click', () => {
         showScreen('dashboard-screen');
-        loadDashboard();
+        void loadDashboard();
     });
 
     // Save group config (enable/disable)
@@ -210,14 +206,14 @@ function initMainListeners() {
 
     // Delete group
     document.getElementById('delete-group-btn')?.addEventListener('click', () => {
-        deleteGroup();
+        void deleteGroup();
     });
 
     // Copy URL
     document.getElementById('copy-url-btn')?.addEventListener('click', () => {
         const urlEl = document.getElementById('export-url');
         if (urlEl) {
-            navigator.clipboard.writeText(urlEl.textContent || '');
+            navigator.clipboard.writeText(urlEl.textContent ?? '');
             showToast('URL copied to clipboard');
         }
     });
@@ -243,7 +239,7 @@ function initMainListeners() {
 
         const typeKey = state.currentRuleType;
         // Check if rule exists
-        const list = state.currentGroupData[typeKey] || [];
+        const list = state.currentGroupData[typeKey] ?? [];
         if (list.includes(value)) {
             showToast('Rule already exists', 'error');
             return;
@@ -290,12 +286,12 @@ function initMainListeners() {
         }
 
         if (added > 0) {
-            await saveCurrentGroup(`Add ${added} rules to ${state.currentGroup}`);
+            await saveCurrentGroup(`Add ${added.toString()} rules to ${state.currentGroup}`);
         }
 
         closeModal('modal-bulk-add');
         (document.getElementById('bulk-add-form') as HTMLFormElement).reset();
-        showToast(`${added} rules added`);
+        showToast(`${added.toString()} rules added`);
     })());
 
     // New Group Form
@@ -312,7 +308,7 @@ function initMainListeners() {
         }
 
         const config = Config.get();
-        const gruposDir = config.gruposDir || 'grupos'; // Fix: config interface needs checking
+        const gruposDir = config.gruposDir ?? 'grupos'; // Fix: config interface needs checking
         const path = `${gruposDir}/${name}.txt`;
 
         const initialData: GroupData = {
@@ -328,7 +324,7 @@ function initMainListeners() {
             closeModal('modal-new-group');
             (document.getElementById('new-group-form') as HTMLFormElement).reset();
             showToast('Group created');
-            loadDashboard();
+            void loadDashboard();
         } catch (err: unknown) {
             if (err instanceof Error) showToast(err.message, 'error');
         }
