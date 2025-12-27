@@ -11,6 +11,63 @@ initModals();
 // Initialize User Management Listeners
 initUsersListeners();
 
+// ============== Setup Listeners ==============
+
+// Setup Form Submit
+document.getElementById('setup-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('setup-email').value;
+    const name = document.getElementById('setup-name').value;
+    const password = document.getElementById('setup-password').value;
+    const passwordConfirm = document.getElementById('setup-password-confirm').value;
+    const errorEl = document.getElementById('setup-error');
+    const btn = document.getElementById('setup-submit-btn');
+
+    errorEl.textContent = '';
+
+    // Client-side validation
+    if (password !== passwordConfirm) {
+        errorEl.textContent = 'Las contraseñas no coinciden';
+        return;
+    }
+
+    if (password.length < 8) {
+        errorEl.textContent = 'La contraseña debe tener al menos 8 caracteres';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Creando...';
+
+    try {
+        const result = await Setup.createFirstAdmin(email, name, password);
+        Setup.showSetupComplete(result.registrationToken);
+    } catch (err) {
+        errorEl.textContent = err.message;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Crear administrador';
+    }
+});
+
+// Copy Registration Token Button
+document.getElementById('copy-registration-token-btn')?.addEventListener('click', () => {
+    const token = document.getElementById('setup-registration-token').textContent;
+    navigator.clipboard.writeText(token);
+    showToast('Token copiado al portapapeles');
+});
+
+// Go to Login Button (after setup complete)
+document.getElementById('goto-login-btn')?.addEventListener('click', () => {
+    showScreen('login-screen');
+});
+
+// Already setup - go to login link
+document.getElementById('setup-goto-login')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    showScreen('login-screen');
+});
+
 // ============== Login Listeners ==============
 
 // Email Login

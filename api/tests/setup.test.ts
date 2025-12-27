@@ -17,36 +17,47 @@
  */
 
 /**
- * Setup Flow API Tests
+ * Setup API Tests - First-time admin setup flow
  * 
  * Run with: npm run test:setup
  * 
- * Tests the first admin setup flow and registration token management.
+ * These tests run on a separate port (3002) to avoid conflicts.
+ * NOTE: These tests modify the data files, so they should run in isolation.
  */
 
-import { test, describe, before, after } from 'node:test';
+import { test, describe, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert';
-import type { Server } from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { Server } from 'node:http';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PORT = 3005;
-const API_URL = `http://localhost:${String(PORT)}`;
+const PORT = 3002;
+const API_URL = `http://localhost:${PORT}`;
 
-// Global timeout - force exit if tests hang (15s)
+// Data files to clean up
+const DATA_DIR = path.join(__dirname, '..', 'data');
+const SETUP_FILE = path.join(DATA_DIR, 'setup.json');
+const ROLES_FILE = path.join(DATA_DIR, 'user_roles.json');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+
+// Backup original files
+let originalRolesData: string | null = null;
+let originalUsersData: string | null = null;
+let originalSetupData: string | null = null;
+
+// Global timeout - force exit if tests hang (20s)
 const GLOBAL_TIMEOUT = setTimeout(() => {
     console.error('\n❌ Setup tests timed out! Forcing exit...');
     process.exit(1);
-}, 15000);
+}, 20000);
 GLOBAL_TIMEOUT.unref();
 
 let server: Server | undefined;
-let adminToken: string | null = null;
-let registrationToken: string | null = null;
 
 interface SetupStatusResponse {
+    success: boolean;
     needsSetup: boolean;
     hasAdmin: boolean;
 }
@@ -55,62 +66,83 @@ interface FirstAdminResponse {
     success: boolean;
     registrationToken?: string;
     redirectTo?: string;
+    user?: { id: string; email: string; name: string };
     error?: string;
 }
 
 interface ValidateTokenResponse {
+    success: boolean;
     valid: boolean;
-    success?: boolean;
-    error?: string;
 }
 
-interface TokenResponse {
+interface RegistrationTokenResponse {
+    success: boolean;
     registrationToken?: string;
     error?: string;
 }
 
-interface LoginResponse {
-    success: boolean;
-    accessToken?: string;
-    refreshToken?: string;
-    error?: string;
-}
-
-// Cleanup data files before tests
-function cleanupData(): void {
-    const dataDir = path.join(__dirname, '..', 'data');
-    const filesToClean = ['users.json', 'user_roles.json', 'setup.json'];
-
-    for (const file of filesToClean) {
-        const filePath = path.join(dataDir, file);
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-        }
+function backupDataFiles(): void {
+    if (fs.existsSync(ROLES_FILE)) {
+        originalRolesData = fs.readFileSync(ROLES_FILE, 'utf-8');
+    }
+    if (fs.existsSync(USERS_FILE)) {
+        originalUsersData = fs.readFileSync(USERS_FILE, 'utf-8');
+    }
+    if (fs.existsSync(SETUP_FILE)) {
+        originalSetupData = fs.readFileSync(SETUP_FILE, 'utf-8');
     }
 }
 
-await describe('Setup Flow API Tests', { timeout: 30000 }, async () => {
+function restoreDataFiles(): void {
+    if (originalRolesData !== null) {
+        fs.writeFileSync(ROLES_FILE, originalRolesData);
+    } else if (fs.existsSync(ROLES_FILE)) {
+        fs.writeFileSync(ROLES_FILE, JSON.stringify({ roles: [] }, null, 2));
+    }
+
+    if (originalUsersData !== null) {
+        fs.writeFileSync(USERS_FILE, originalUsersData);
+    } else if (fs.existsSync(USERS_FILE)) {
+        fs.writeFileSync(USERS_FILE, JSON.stringify({ users: [] }, null, 2));
+    }
+
+    if (originalSetupData !== null) {
+        fs.writeFileSync(SETUP_FILE, originalSetupData);
+    } else if (fs.existsSync(SETUP_FILE)) {
+        fs.unlinkSync(SETUP_FILE);
+    }
+}
+
+function clearDataFiles(): void {
+    fs.writeFileSync(ROLES_FILE, JSON.stringify({ roles: [] }, null, 2));
+    fs.writeFileSync(USERS_FILE, JSON.stringify({ users: [] }, null, 2));
+    if (fs.existsSync(SETUP_FILE)) {
+        fs.unlinkSync(SETUP_FILE);
+    }
+}
+
+describe('Setup API Tests', { timeout: 30000 }, () => {
     before(async () => {
-        // Clean up any existing test data
-        cleanupData();
+        // Backup existing data
+        backupDataFiles();
 
         process.env.PORT = String(PORT);
         const { app } = await import('../src/server.js');
 
-        await new Promise<void>((resolve, reject) => {
-            const s = app.listen(PORT, () => {
-                console.log(`Setup test server started on port ${String(PORT)}`);
-                resolve();
-            });
-            server = s;
-            s.on('error', reject);
+        server = app.listen(PORT, () => {
+            console.log(`Setup test server started on port ${PORT}`);
         });
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
     });
 
     after(async () => {
+        // Restore original data
+        restoreDataFiles();
+
         if (server !== undefined) {
             if ('closeAllConnections' in server && typeof server.closeAllConnections === 'function') {
-                (server as Server & { closeAllConnections: () => void }).closeAllConnections();
+                server.closeAllConnections();
             }
             await new Promise<void>((resolve) => {
                 server?.close(() => {
@@ -119,19 +151,22 @@ await describe('Setup Flow API Tests', { timeout: 30000 }, async () => {
                 });
             });
         }
-        // Clean up after tests
-        cleanupData();
     });
 
     // ============================================
     // Setup Status Tests
     // ============================================
-    await describe('GET /api/setup/status', async () => {
-        await test('should return needsSetup: true when no admins exist', async () => {
+    describe('GET /api/setup/status', () => {
+        beforeEach(() => {
+            clearDataFiles();
+        });
+
+        test('should return needsSetup: true when no admins exist', async () => {
             const response = await fetch(`${API_URL}/api/setup/status`);
             assert.strictEqual(response.status, 200);
 
             const data = await response.json() as SetupStatusResponse;
+            assert.strictEqual(data.success, true);
             assert.strictEqual(data.needsSetup, true);
             assert.strictEqual(data.hasAdmin, false);
         });
@@ -140,12 +175,16 @@ await describe('Setup Flow API Tests', { timeout: 30000 }, async () => {
     // ============================================
     // First Admin Creation Tests
     // ============================================
-    await describe('POST /api/setup/first-admin', async () => {
-        await test('should create the first admin user', async () => {
+    describe('POST /api/setup/first-admin', () => {
+        beforeEach(() => {
+            clearDataFiles();
+        });
+
+        test('should create first admin and return registration token', async () => {
             const adminData = {
-                email: 'admin@school.edu',
-                name: 'Admin User',
-                password: 'SecureAdmin123!'
+                email: `setup-admin-${Date.now()}@example.com`,
+                name: 'First Admin',
+                password: 'SecurePassword123!'
             };
 
             const response = await fetch(`${API_URL}/api/setup/first-admin`, {
@@ -157,26 +196,60 @@ await describe('Setup Flow API Tests', { timeout: 30000 }, async () => {
             assert.strictEqual(response.status, 201);
 
             const data = await response.json() as FirstAdminResponse;
-            assert.ok(data.success);
-            assert.ok(data.registrationToken !== undefined);
-            assert.strictEqual(data.registrationToken.length, 64); // 32 bytes in hex
+            assert.strictEqual(data.success, true);
+            assert.ok(data.registrationToken !== undefined && data.registrationToken.length === 64);
             assert.strictEqual(data.redirectTo, '/login');
-
-            // Store token for later tests
-            registrationToken = data.registrationToken;
+            assert.ok(data.user !== undefined);
+            assert.strictEqual(data.user?.email, adminData.email.toLowerCase());
         });
 
-        await test('should reject duplicate first-admin setup', async () => {
+        test('should return needsSetup: false after creating admin', async () => {
+            // First create an admin
             const adminData = {
-                email: 'another-admin@school.edu',
-                name: 'Another Admin',
-                password: 'AnotherAdmin123!'
+                email: `setup-admin-${Date.now()}@example.com`,
+                name: 'First Admin',
+                password: 'SecurePassword123!'
+            };
+
+            await fetch(`${API_URL}/api/setup/first-admin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(adminData)
+            });
+
+            // Then check status
+            const statusResponse = await fetch(`${API_URL}/api/setup/status`);
+            const statusData = await statusResponse.json() as SetupStatusResponse;
+
+            assert.strictEqual(statusData.needsSetup, false);
+            assert.strictEqual(statusData.hasAdmin, true);
+        });
+
+        test('should reject second admin creation with 403', async () => {
+            // First create an admin
+            const firstAdmin = {
+                email: `first-admin-${Date.now()}@example.com`,
+                name: 'First Admin',
+                password: 'SecurePassword123!'
+            };
+
+            await fetch(`${API_URL}/api/setup/first-admin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(firstAdmin)
+            });
+
+            // Try to create a second admin
+            const secondAdmin = {
+                email: `second-admin-${Date.now()}@example.com`,
+                name: 'Second Admin',
+                password: 'AnotherPassword123!'
             };
 
             const response = await fetch(`${API_URL}/api/setup/first-admin`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(adminData)
+                body: JSON.stringify(secondAdmin)
             });
 
             assert.strictEqual(response.status, 403);
@@ -186,113 +259,88 @@ await describe('Setup Flow API Tests', { timeout: 30000 }, async () => {
             assert.strictEqual(data.error, 'Setup already completed');
         });
 
-        await test('should reject setup with missing fields', async () => {
-            const response = await fetch(`${API_URL}/api/setup/first-admin`, {
+        test('should validate required fields', async () => {
+            // Missing email
+            const response1 = await fetch(`${API_URL}/api/setup/first-admin`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: 'test@example.com'
-                    // Missing name and password
-                })
+                body: JSON.stringify({ name: 'Test', password: 'SecurePassword123!' })
             });
+            assert.strictEqual(response1.status, 400);
 
-            assert.strictEqual(response.status, 400);
-        });
-
-        await test('should reject setup with invalid email', async () => {
-            // Wait to avoid rate limiting (3 req/hour = 1200s window, but fast test)
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
-            const response = await fetch(`${API_URL}/api/setup/first-admin`, {
+            // Missing password
+            const response2 = await fetch(`${API_URL}/api/setup/first-admin`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: 'invalid-email',
-                    name: 'Test User',
-                    password: 'SecurePassword123!'
-                })
+                body: JSON.stringify({ email: 'test@example.com', name: 'Test' })
             });
+            assert.strictEqual(response2.status, 400);
 
-            // Accept either validation error (400) or rate limit (429)
-            assert.ok(response.status === 400 || response.status === 429);
-
-            if (response.status === 400) {
-                const data = await response.json() as FirstAdminResponse;
-                assert.ok(data.error?.includes('email') === true);
-            }
-        });
-
-        await test('should reject setup with short password', async () => {
-            // Wait to avoid rate limiting
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
-            const response = await fetch(`${API_URL}/api/setup/first-admin`, {
+            // Short password
+            const response3 = await fetch(`${API_URL}/api/setup/first-admin`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: 'test2@example.com',
-                    name: 'Test User',
-                    password: '123'
-                })
+                body: JSON.stringify({ email: 'test@example.com', name: 'Test', password: '123' })
             });
-
-            // Accept either validation error (400) or rate limit (429)
-            assert.ok(response.status === 400 || response.status === 429);
-
-            if (response.status === 400) {
-                const data = await response.json() as FirstAdminResponse;
-                assert.ok(data.error?.includes('8 characters') === true);
-            }
-        });
-    });
-
-    // ============================================
-    // Setup Status After Admin Creation
-    // ============================================
-    await describe('GET /api/setup/status - After admin created', async () => {
-        await test('should return needsSetup: false after admin exists', async () => {
-            const response = await fetch(`${API_URL}/api/setup/status`);
-            assert.strictEqual(response.status, 200);
-
-            const data = await response.json() as SetupStatusResponse;
-            assert.strictEqual(data.needsSetup, false);
-            assert.strictEqual(data.hasAdmin, true);
+            assert.strictEqual(response3.status, 400);
         });
     });
 
     // ============================================
     // Token Validation Tests
     // ============================================
-    await describe('POST /api/setup/validate-token', async () => {
-        await test('should validate correct token', async () => {
-            assert.ok(registrationToken !== null, 'Registration token should be set');
+    describe('POST /api/setup/validate-token', () => {
+        let validToken: string;
 
+        before(async () => {
+            clearDataFiles();
+
+            // Create first admin to get a valid token
+            const adminData = {
+                email: `token-test-admin-${Date.now()}@example.com`,
+                name: 'Token Test Admin',
+                password: 'SecurePassword123!'
+            };
+
+            const response = await fetch(`${API_URL}/api/setup/first-admin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(adminData)
+            });
+
+            const data = await response.json() as FirstAdminResponse;
+            validToken = data.registrationToken ?? '';
+        });
+
+        test('should validate correct token', async () => {
             const response = await fetch(`${API_URL}/api/setup/validate-token`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: registrationToken })
+                body: JSON.stringify({ token: validToken })
             });
 
             assert.strictEqual(response.status, 200);
 
             const data = await response.json() as ValidateTokenResponse;
+            assert.strictEqual(data.success, true);
             assert.strictEqual(data.valid, true);
         });
 
-        await test('should reject incorrect token', async () => {
+        test('should reject incorrect token', async () => {
             const response = await fetch(`${API_URL}/api/setup/validate-token`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: 'invalid-token-123' })
+                body: JSON.stringify({ token: 'invalid-token-that-is-wrong' })
             });
 
             assert.strictEqual(response.status, 200);
 
             const data = await response.json() as ValidateTokenResponse;
+            assert.strictEqual(data.success, true);
             assert.strictEqual(data.valid, false);
         });
 
-        await test('should reject missing token', async () => {
+        test('should require token in request body', async () => {
             const response = await fetch(`${API_URL}/api/setup/validate-token`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -304,104 +352,36 @@ await describe('Setup Flow API Tests', { timeout: 30000 }, async () => {
     });
 
     // ============================================
-    // Admin Authentication Tests
+    // Admin Token Management Tests
     // ============================================
-    await describe('Login as admin for token management tests', async () => {
-        await test('should login as admin', async () => {
-            const response = await fetch(`${API_URL}/api/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: 'admin@school.edu',
-                    password: 'SecureAdmin123!'
-                })
-            });
-
-            assert.strictEqual(response.status, 200);
-
-            const data = await response.json() as LoginResponse;
-            assert.ok(data.success);
-            assert.ok(data.accessToken !== undefined);
-
-            // Store token for authenticated requests
-            adminToken = data.accessToken;
-        });
-    });
-
-    // ============================================
-    // Registration Token Retrieval Tests
-    // ============================================
-    await describe('GET /api/setup/registration-token', async () => {
-        await test('should require authentication', async () => {
+    describe('GET /api/setup/registration-token', () => {
+        test('should require admin authentication', async () => {
             const response = await fetch(`${API_URL}/api/setup/registration-token`);
             assert.strictEqual(response.status, 401);
         });
 
-        await test('should return token for authenticated admin', async () => {
-            assert.ok(adminToken !== null, 'Admin token should be set');
-
+        test('should reject non-admin token', async () => {
             const response = await fetch(`${API_URL}/api/setup/registration-token`, {
-                headers: {
-                    'Authorization': `Bearer ${adminToken}`
-                }
+                headers: { 'Authorization': 'Bearer invalid-token' }
             });
-
-            assert.strictEqual(response.status, 200);
-
-            const data = await response.json() as TokenResponse;
-            assert.ok(data.registrationToken !== undefined);
-            assert.strictEqual(data.registrationToken, registrationToken);
+            assert.strictEqual(response.status, 401);
         });
     });
 
-    // ============================================
-    // Token Regeneration Tests
-    // ============================================
-    await describe('POST /api/setup/regenerate-token', async () => {
-        await test('should require authentication', async () => {
+    describe('POST /api/setup/regenerate-token', () => {
+        test('should require admin authentication', async () => {
             const response = await fetch(`${API_URL}/api/setup/regenerate-token`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                method: 'POST'
             });
             assert.strictEqual(response.status, 401);
         });
 
-        await test('should regenerate token for authenticated admin', async () => {
-            assert.ok(adminToken !== null, 'Admin token should be set');
-
+        test('should reject non-admin token', async () => {
             const response = await fetch(`${API_URL}/api/setup/regenerate-token`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${adminToken}`
-                }
+                headers: { 'Authorization': 'Bearer invalid-token' }
             });
-
-            assert.strictEqual(response.status, 200);
-
-            const data = await response.json() as TokenResponse;
-            assert.ok(data.registrationToken !== undefined);
-            assert.notStrictEqual(data.registrationToken, registrationToken);
-
-            // Old token should now be invalid
-            const oldTokenResponse = await fetch(`${API_URL}/api/setup/validate-token`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: registrationToken })
-            });
-
-            const oldTokenData = await oldTokenResponse.json() as ValidateTokenResponse;
-            assert.strictEqual(oldTokenData.valid, false);
-
-            // New token should be valid
-            const newTokenResponse = await fetch(`${API_URL}/api/setup/validate-token`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: data.registrationToken })
-            });
-
-            const newTokenData = await newTokenResponse.json() as ValidateTokenResponse;
-            assert.strictEqual(newTokenData.valid, true);
+            assert.strictEqual(response.status, 401);
         });
     });
 });

@@ -2,8 +2,8 @@
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
  *
- * Setup Storage - JSON file-based setup configuration
- * Stores initial setup data and registration tokens
+ * Setup Storage - Manages first-time setup configuration
+ * Stores setup data in data/setup.json
  */
 
 import fs from 'node:fs';
@@ -34,7 +34,7 @@ export interface SetupData {
 // =============================================================================
 
 // Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
+if (fs.existsSync(DATA_DIR) === false) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
@@ -43,14 +43,15 @@ if (!fs.existsSync(DATA_DIR)) {
 // =============================================================================
 
 /**
- * Get setup data from file
- * @returns SetupData or null if setup not completed
+ * Get setup configuration data
+ * @returns SetupData if setup has been completed, null otherwise
  */
 export function getSetupData(): SetupData | null {
+    if (fs.existsSync(SETUP_FILE) === false) {
+        return null;
+    }
+
     try {
-        if (!fs.existsSync(SETUP_FILE)) {
-            return null;
-        }
         const data = fs.readFileSync(SETUP_FILE, 'utf-8');
         return JSON.parse(data) as SetupData;
     } catch (error) {
@@ -60,16 +61,14 @@ export function getSetupData(): SetupData | null {
 }
 
 /**
- * Save setup data to file
- * @param data Setup configuration to save
+ * Save setup configuration data
  */
 export function saveSetupData(data: SetupData): void {
     fs.writeFileSync(SETUP_FILE, JSON.stringify(data, null, 2));
 }
 
 /**
- * Check if initial setup is complete
- * @returns true if setup has been completed
+ * Check if initial setup has been completed
  */
 export function isSetupComplete(): boolean {
     return getSetupData() !== null;
@@ -77,26 +76,70 @@ export function isSetupComplete(): boolean {
 
 /**
  * Get the current registration token
- * @returns Registration token or null if setup not complete
+ * @returns Token string if setup is complete, null otherwise
  */
 export function getRegistrationToken(): string | null {
     const data = getSetupData();
-    return data ? data.registrationToken : null;
+    return data?.registrationToken ?? null;
 }
 
 /**
- * Generate a new registration token and save it
- * @returns The new registration token
+ * Generate a new registration token
+ * @returns The new 64-character hex token
  */
-export function regenerateRegistrationToken(): string {
+export function generateRegistrationToken(): string {
+    return crypto.randomBytes(32).toString('hex');
+}
+
+/**
+ * Regenerate the registration token and save it
+ * @returns The new registration token, or null if setup not complete
+ */
+export function regenerateRegistrationToken(): string | null {
     const data = getSetupData();
     if (data === null) {
-        throw new Error('Setup not complete - cannot regenerate token');
+        return null;
     }
 
-    const newToken = crypto.randomBytes(32).toString('hex');
+    const newToken = generateRegistrationToken();
     data.registrationToken = newToken;
     saveSetupData(data);
 
     return newToken;
 }
+
+/**
+ * Validate a registration token using timing-safe comparison
+ * @param token Token to validate
+ * @returns true if token matches, false otherwise
+ */
+export function validateRegistrationToken(token: string): boolean {
+    const storedToken = getRegistrationToken();
+    if (storedToken === null || token === undefined || token === '') {
+        return false;
+    }
+
+    try {
+        const tokenBuffer = Buffer.from(token, 'utf-8');
+        const storedBuffer = Buffer.from(storedToken, 'utf-8');
+
+        // Ensure buffers are same length for timing-safe comparison
+        if (tokenBuffer.length !== storedBuffer.length) {
+            return false;
+        }
+
+        return crypto.timingSafeEqual(tokenBuffer, storedBuffer);
+    } catch {
+        return false;
+    }
+}
+
+export default {
+    getSetupData,
+    saveSetupData,
+    isSetupComplete,
+    getRegistrationToken,
+    generateRegistrationToken,
+    regenerateRegistrationToken,
+    validateRegistrationToken
+};

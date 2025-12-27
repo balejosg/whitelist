@@ -62,11 +62,11 @@ interface TeacherInfo {
 // Initialization
 // =============================================================================
 
-if (!fs.existsSync(DATA_DIR)) {
+if (fs.existsSync(DATA_DIR) === false) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-if (!fs.existsSync(ROLES_FILE)) {
+if (fs.existsSync(ROLES_FILE) === false) {
     fs.writeFileSync(ROLES_FILE, JSON.stringify({ roles: [] }, null, 2));
 }
 
@@ -139,7 +139,7 @@ export function getAllAdmins(): StoredRole[] {
 }
 
 /**
- * Check if any admin exists in the system
+ * Check if there are any admin users
  */
 export function hasAnyAdmins(): boolean {
     return getAllAdmins().length > 0;
@@ -246,7 +246,7 @@ export function updateRoleGroups(roleId: string, groupIds: string[]): StoredRole
 
     if (index === -1) return null;
     const role = data.roles[index];
-    if (role?.revokedAt !== null) return null;
+    if (role === undefined || role.revokedAt !== null) return null;
 
     role.groupIds = groupIds;
     role.updatedAt = new Date().toISOString();
@@ -264,7 +264,7 @@ export function addGroupsToRole(roleId: string, groupIds: string[]): StoredRole 
 
     if (index === -1) return null;
     const role = data.roles[index];
-    if (role?.revokedAt !== null) return null;
+    if (role === undefined || role.revokedAt !== null) return null;
 
     role.groupIds = [...new Set([...role.groupIds, ...groupIds])];
     role.updatedAt = new Date().toISOString();
@@ -282,9 +282,9 @@ export function removeGroupsFromRole(roleId: string, groupIds: string[]): Stored
 
     if (index === -1) return null;
     const role = data.roles[index];
-    if (role?.revokedAt !== null) return null;
+    if (role === undefined || role.revokedAt !== null) return null;
 
-    role.groupIds = role.groupIds.filter((g) => !groupIds.includes(g));
+    role.groupIds = role.groupIds.filter((g) => groupIds.includes(g) === false);
     role.updatedAt = new Date().toISOString();
     saveData(data);
 
@@ -300,7 +300,7 @@ export function revokeRole(roleId: string, revokedBy?: string): StoredRole | nul
 
     if (index === -1) return null;
     const role = data.roles[index];
-    if (role?.revokedAt !== null) return null;
+    if (role === undefined || role.revokedAt !== null) return null;
 
     role.revokedAt = new Date().toISOString();
     role.revokedBy = revokedBy ?? 'system';
