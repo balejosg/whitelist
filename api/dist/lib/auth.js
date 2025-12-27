@@ -57,7 +57,7 @@ export function generateAccessToken(user, roles = []) {
         name: user.name,
         roles: roles.map((r) => ({
             role: r.role,
-            groupIds: r.groupIds ?? []
+            groupIds: r.groupIds
         })),
         type: 'access'
     };
@@ -100,7 +100,7 @@ export async function verifyToken(token) {
     try {
         // Check blacklist (async for Redis support)
         const isBlacklistedToken = await tokenStore.has(token);
-        if (isBlacklistedToken === true) {
+        if (isBlacklistedToken) {
             return null;
         }
         const decoded = jwt.verify(token, JWT_SECRET, {
@@ -125,7 +125,7 @@ export async function verifyToken(token) {
  */
 export async function verifyAccessToken(token) {
     const decoded = await verifyToken(token);
-    if (decoded && decoded.type === 'access') {
+    if (decoded?.type === 'access') {
         return decoded;
     }
     return null;
@@ -135,7 +135,7 @@ export async function verifyAccessToken(token) {
  */
 export async function verifyRefreshToken(token) {
     const decoded = await verifyToken(token);
-    if (decoded && decoded.type === 'refresh') {
+    if (decoded?.type === 'refresh') {
         return decoded;
     }
     return null;
@@ -194,7 +194,7 @@ export function getApprovalGroups(decoded) {
     decoded.roles
         .filter((r) => r.role === 'teacher')
         .forEach((r) => {
-        (r.groupIds ?? []).forEach((g) => groups.add(g));
+        r.groupIds.forEach((g) => groups.add(g));
     });
     return Array.from(groups);
 }
@@ -202,7 +202,7 @@ export function getApprovalGroups(decoded) {
  * Get the highest role from decoded token
  */
 export function getHighestRole(decoded) {
-    if (decoded === null || decoded === undefined || decoded.roles === undefined || decoded.roles.length === 0)
+    if (decoded?.roles === undefined || decoded.roles.length === 0)
         return null;
     const roles = decoded.roles.map((r) => r.role);
     if (roles.includes('admin'))

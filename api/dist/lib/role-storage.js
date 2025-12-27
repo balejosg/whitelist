@@ -19,10 +19,10 @@ export const VALID_ROLES = ['admin', 'teacher', 'student'];
 // =============================================================================
 // Initialization
 // =============================================================================
-if (fs.existsSync(DATA_DIR) === false) {
+if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
-if (fs.existsSync(ROLES_FILE) === false) {
+if (!fs.existsSync(ROLES_FILE)) {
     fs.writeFileSync(ROLES_FILE, JSON.stringify({ roles: [] }, null, 2));
 }
 // =============================================================================
@@ -86,7 +86,7 @@ export function getAllAdmins() {
     return getUsersByRole('admin');
 }
 /**
- * Check if any admin exists in the system
+ * Check if there are any admin users
  */
 export function hasAnyAdmins() {
     return getAllAdmins().length > 0;
@@ -172,7 +172,7 @@ export function updateRoleGroups(roleId, groupIds) {
     if (index === -1)
         return null;
     const role = data.roles[index];
-    if (role === undefined || role.revokedAt !== null)
+    if (role?.revokedAt !== null)
         return null;
     role.groupIds = groupIds;
     role.updatedAt = new Date().toISOString();
@@ -188,7 +188,7 @@ export function addGroupsToRole(roleId, groupIds) {
     if (index === -1)
         return null;
     const role = data.roles[index];
-    if (role === undefined || role.revokedAt !== null)
+    if (role?.revokedAt !== null)
         return null;
     role.groupIds = [...new Set([...role.groupIds, ...groupIds])];
     role.updatedAt = new Date().toISOString();
@@ -204,9 +204,9 @@ export function removeGroupsFromRole(roleId, groupIds) {
     if (index === -1)
         return null;
     const role = data.roles[index];
-    if (role === undefined || role.revokedAt !== null)
+    if (role?.revokedAt !== null)
         return null;
-    role.groupIds = role.groupIds.filter((g) => groupIds.includes(g) === false);
+    role.groupIds = role.groupIds.filter((g) => !groupIds.includes(g));
     role.updatedAt = new Date().toISOString();
     saveData(data);
     return role;
@@ -220,7 +220,7 @@ export function revokeRole(roleId, revokedBy) {
     if (index === -1)
         return null;
     const role = data.roles[index];
-    if (role === undefined || role.revokedAt !== null)
+    if (role?.revokedAt !== null)
         return null;
     role.revokedAt = new Date().toISOString();
     role.revokedBy = revokedBy ?? 'system';

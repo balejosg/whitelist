@@ -32,7 +32,7 @@
   "license": "MIT",
   "dependencies": {
     "@trpc/server": "^11.8.1",
-    "@openpath/shared": "*",
+    "@openpath/shared": "file:../shared",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
     "bcrypt": "^5.1.1",

@@ -32,15 +32,15 @@ function githubRequest(method, endpoint, body = null) {
         };
         const req = https.request(options, (res) => {
             let data = '';
-            res.on('data', (chunk) => { data += chunk; });
+            res.on('data', (chunk) => { data += String(chunk); });
             res.on('end', () => {
                 try {
-                    const json = data ? JSON.parse(data) : {};
+                    const json = (data !== '' ? JSON.parse(data) : {});
                     if (res.statusCode !== undefined && res.statusCode >= 200 && res.statusCode < 300) {
                         resolve(json);
                     }
                     else {
-                        const message = json.message ?? `HTTP ${res.statusCode}`;
+                        const message = json.message ?? `HTTP ${String(res.statusCode)}`;
                         reject(new Error(message));
                     }
                 }
@@ -50,15 +50,15 @@ function githubRequest(method, endpoint, body = null) {
             });
         });
         req.on('error', reject);
-        if (body !== undefined) {
+        if (body !== null) {
             req.write(JSON.stringify(body));
         }
         req.end();
     });
 }
 export async function getFileContent(filePath) {
-    const owner = process.env.GITHUB_OWNER;
-    const repo = process.env.GITHUB_REPO;
+    const owner = process.env.GITHUB_OWNER ?? '';
+    const repo = process.env.GITHUB_REPO ?? '';
     const branch = process.env.GITHUB_BRANCH ?? 'main';
     const endpoint = `/repos/${owner}/${repo}/contents/${encodeURIComponent(filePath)}?ref=${branch}`;
     const response = await githubRequest('GET', endpoint);
@@ -72,8 +72,8 @@ export async function getFileContent(filePath) {
     };
 }
 export async function updateFile(filePath, content, message, sha = null) {
-    const owner = process.env.GITHUB_OWNER;
-    const repo = process.env.GITHUB_REPO;
+    const owner = process.env.GITHUB_OWNER ?? '';
+    const repo = process.env.GITHUB_REPO ?? '';
     const branch = process.env.GITHUB_BRANCH ?? 'main';
     const endpoint = `/repos/${owner}/${repo}/contents/${encodeURIComponent(filePath)}`;
     const body = {
@@ -105,7 +105,7 @@ export async function addDomainToWhitelist(domain, groupId) {
             const trimmed = line.trim().toLowerCase();
             return trimmed === domainLower || trimmed === `*.${domainLower}`;
         });
-        if (exists === true) {
+        if (exists) {
             return {
                 success: false,
                 message: `Domain ${domain} already exists in ${groupId}`
@@ -120,7 +120,7 @@ export async function addDomainToWhitelist(domain, groupId) {
                 inWhitelistSection = true;
             }
             else if (line.startsWith('## ') && inWhitelistSection) {
-                if (addedDomain === false) {
+                if (!addedDomain) {
                     const lastNewline = newContent.lastIndexOf('\n');
                     const beforeLastNewline = newContent.lastIndexOf('\n', lastNewline - 1);
                     newContent = newContent.slice(0, beforeLastNewline + 1) +
@@ -131,8 +131,8 @@ export async function addDomainToWhitelist(domain, groupId) {
                 inWhitelistSection = false;
             }
         }
-        if (addedDomain === false) {
-            if (currentContent.includes('## WHITELIST') === false) {
+        if (!addedDomain) {
+            if (!currentContent.includes('## WHITELIST')) {
                 newContent = '## WHITELIST\n' + domainLower + '\n\n' + currentContent;
             }
             else {
@@ -157,8 +157,8 @@ export async function addDomainToWhitelist(domain, groupId) {
 }
 export async function listWhitelistFiles() {
     try {
-        const owner = process.env.GITHUB_OWNER;
-        const repo = process.env.GITHUB_REPO;
+        const owner = process.env.GITHUB_OWNER ?? '';
+        const repo = process.env.GITHUB_REPO ?? '';
         const branch = process.env.GITHUB_BRANCH ?? 'main';
         const endpoint = `/repos/${owner}/${repo}/contents/?ref=${branch}`;
         const response = await githubRequest('GET', endpoint);

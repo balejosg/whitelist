@@ -20,11 +20,11 @@ const MAX_HOSTS = 500;
 // =============================================================================
 // Data Access
 // =============================================================================
-if (fs.existsSync(DATA_DIR) === false) {
+if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 function initReportsFile() {
-    if (fs.existsSync(REPORTS_FILE) === false) {
+    if (!fs.existsSync(REPORTS_FILE)) {
         fs.writeFileSync(REPORTS_FILE, JSON.stringify({ hosts: {}, lastUpdated: null }));
     }
 }
@@ -88,11 +88,12 @@ const router = Router();
  */
 router.post('/', requireSharedSecret, (req, res) => {
     const { hostname, status, dnsmasq_running, dns_resolving, fail_count, actions, version } = req.body;
-    if (hostname === undefined || hostname === '' || status === undefined || status === '') {
-        return res.status(400).json({
+    if (typeof hostname !== 'string' || hostname === '' || typeof status !== 'string' || status === '') {
+        res.status(400).json({
             success: false,
             error: 'Missing required fields: hostname, status'
         });
+        return;
     }
     const data = loadReports();
     const now = new Date().toISOString();
@@ -102,8 +103,10 @@ router.post('/', requireSharedSecret, (req, res) => {
             const entries = Object.entries(data.hosts);
             const sorted = entries.sort((a, b) => new Date(a[1].lastSeen ?? 0).getTime() - new Date(b[1].lastSeen ?? 0).getTime());
             const oldest = sorted[0];
-            if (oldest !== undefined)
-                delete data.hosts[oldest[0]];
+            if (oldest !== undefined) {
+                const keyToDelete = oldest[0];
+                Reflect.deleteProperty(data.hosts, keyToDelete);
+            }
         }
         data.hosts[hostname] = { reports: [], lastSeen: null, currentStatus: null };
     }
@@ -127,8 +130,8 @@ router.post('/', requireSharedSecret, (req, res) => {
         host.reports = host.reports.slice(-MAX_REPORTS_PER_HOST);
     }
     saveReports(data);
-    console.log(`[HEALTH] ${hostname}: ${status}${actions !== undefined && actions !== '' ? ` (actions: ${actions})` : ''}`);
-    return res.json({
+    console.log(`[HEALTH] ${hostname}: ${status}${typeof actions === 'string' && actions !== '' ? ` (actions: ${actions})` : ''}`);
+    res.json({
         success: true,
         message: 'Health report received',
         hostname,
@@ -166,7 +169,7 @@ router.get('/', requireAdmin, (_req, res) => {
         'OK': 4
     };
     summary.hosts.sort((a, b) => (statusPriority[a.status ?? ''] ?? 5) - (statusPriority[b.status ?? ''] ?? 5));
-    return res.json({
+    res.json({
         success: true,
         ...summary
     });
@@ -198,11 +201,11 @@ router.get('/alerts/active', requireAdmin, (req, res) => {
                 type: 'stale',
                 status: 'STALE',
                 lastSeen: host.lastSeen,
-                message: `Host hasn't reported in ${Math.round(minutesSinceLastSeen)} minutes`
+                message: `Host hasn't reported in ${String(Math.round(minutesSinceLastSeen))} minutes`
             });
         }
     }
-    return res.json({
+    res.json({
         success: true,
         alertCount: alerts.length,
         alerts

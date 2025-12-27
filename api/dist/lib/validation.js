@@ -169,10 +169,12 @@ export const classroomSchemas = {
 export function validate(schema, property = 'body') {
     return (req, res, next) => {
         const dataToValidate = req[property];
-        const { error, value } = schema.validate(dataToValidate, {
+        const result = schema.validate(dataToValidate, {
             abortEarly: false,
             stripUnknown: true
         });
+        const error = result.error;
+        const value = result.value;
         if (error !== undefined) {
             const details = error.details.map((d) => ({
                 field: d.path.join('.'),

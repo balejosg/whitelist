@@ -109,9 +109,7 @@ let swaggerSpec = null;
  * Get or generate the OpenAPI specification
  */
 export function getSwaggerSpec() {
-    if (!swaggerSpec) {
-        swaggerSpec = swaggerJsdoc(options);
-    }
+    swaggerSpec ??= swaggerJsdoc(options);
     return swaggerSpec;
 }
 export default { getSwaggerSpec };

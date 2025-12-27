@@ -69,7 +69,7 @@ export function errorTrackingMiddleware(err, req, res, _next) {
     const statusCode = err.statusCode ?? err.status ?? 500;
     const category = categorizeError(err, statusCode);
     logError(err, req, category);
-    if (res.headersSent === false) {
+    if (!res.headersSent) {
         res.status(statusCode).json({
             success: false,
             error: statusCode === 500 ? 'Internal server error' : err.message,

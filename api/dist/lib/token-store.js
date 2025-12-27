@@ -17,20 +17,20 @@ export class MemoryTokenStore {
         this.cleanupInterval = null;
         this._startCleanup();
     }
-    async add(token) {
+    add(token) {
         this.blacklist.add(token);
-        return true;
+        return Promise.resolve(true);
     }
-    async has(token) {
-        return this.blacklist.has(token);
+    has(token) {
+        return Promise.resolve(this.blacklist.has(token));
     }
-    async delete(token) {
-        return this.blacklist.delete(token);
+    delete(token) {
+        return Promise.resolve(this.blacklist.delete(token));
     }
-    async size() {
-        return this.blacklist.size;
+    size() {
+        return Promise.resolve(this.blacklist.size);
     }
-    async cleanup(secret) {
+    cleanup(secret) {
         for (const token of this.blacklist) {
             try {
                 jwt.verify(token, secret, { ignoreExpiration: false });
@@ -41,6 +41,7 @@ export class MemoryTokenStore {
                 }
             }
         }
+        return Promise.resolve();
     }
     _startCleanup() {
         this.cleanupInterval = setInterval(() => {
@@ -68,7 +69,11 @@ export class RedisTokenStore {
     async _connect() {
         try {
             // Dynamic import for optional redis dependency
+            // redis is an optional dependency
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+            // @ts-ignore - redis is an optional dependency
             const redis = await import('redis');
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
             this.client = redis.createClient({ url: this.redisUrl });
             this.client.on('error', (err) => {
                 const message = err instanceof Error ? err.message : 'Unknown error';
@@ -88,7 +93,7 @@ export class RedisTokenStore {
         }
     }
     async add(token) {
-        if (this.connected === false || this.client === undefined || this.client === null) {
+        if (!this.connected || this.client === null) {
             return false;
         }
         try {
@@ -106,7 +111,7 @@ export class RedisTokenStore {
         }
     }
     async has(token) {
-        if (this.connected === false || this.client === undefined || this.client === null) {
+        if (!this.connected || this.client === null) {
             return false;
         }
         try {
@@ -120,7 +125,7 @@ export class RedisTokenStore {
         }
     }
     async delete(token) {
-        if (this.connected === false || this.client === undefined || this.client === null) {
+        if (!this.connected || this.client === null) {
             return false;
         }
         try {
@@ -134,7 +139,7 @@ export class RedisTokenStore {
         }
     }
     async size() {
-        if (this.connected === false || this.client === undefined || this.client === null) {
+        if (!this.connected || this.client === null) {
             return 0;
         }
         try {
@@ -145,8 +150,9 @@ export class RedisTokenStore {
             return 0;
         }
     }
-    async cleanup() {
+    cleanup() {
         // No-op: Redis handles expiration automatically via TTL
+        return Promise.resolve();
     }
     async destroy() {
         if (this.client) {
@@ -188,8 +194,8 @@ export function createTokenStoreAdapter(store) {
         async isBlacklisted(token) {
             return store.has(token);
         },
-        async cleanup() {
-            return 0;
+        cleanup() {
+            return Promise.resolve(0);
         }
     };
 }

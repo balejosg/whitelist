@@ -19,11 +19,11 @@ const REQUESTS_FILE = path.join(DATA_DIR, 'requests.json');
 // Initialization
 // =============================================================================
 // Ensure data directory exists
-if (fs.existsSync(DATA_DIR) === false) {
+if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 // Initialize empty requests file if not exists
-if (fs.existsSync(REQUESTS_FILE) === false) {
+if (!fs.existsSync(REQUESTS_FILE)) {
     fs.writeFileSync(REQUESTS_FILE, JSON.stringify({ requests: [] }, null, 2));
 }
 // =============================================================================

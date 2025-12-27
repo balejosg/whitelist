@@ -39,7 +39,7 @@ const baseLogger = winston.createLogger({
     ]
 });
 // Add file transport in production
-if (isProduction === true) {
+if (isProduction) {
     baseLogger.add(new winston.transports.File({
         filename: 'logs/error.log',
         level: 'error',
@@ -100,11 +100,11 @@ function requestMiddleware(req, res, next) {
             ip: req.ip
         };
         // Add slow request flag for alerting
-        if (isSlow === true) {
+        if (isSlow) {
             logData.slow = true;
             logData.threshold = SLOW_REQUEST_THRESHOLD_MS;
         }
-        const message = `${req.method} ${req.path} ${res.statusCode} ${duration}ms${isSlow ? ' [SLOW]' : ''}`;
+        const message = `${req.method} ${req.path} ${String(res.statusCode)} ${String(duration)}ms${isSlow ? ' [SLOW]' : ''}`;
         baseLogger[level](message, logData);
     });
     next();

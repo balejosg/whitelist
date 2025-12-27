@@ -188,6 +188,14 @@ app.use('/api/push', pushRouter);
 app.use('/api/classrooms', classroomsRouter);
 // Schedule reservations
 app.use('/api/schedules', schedulesRouter);
+// tRPC Adapter
+import { createExpressMiddleware } from '@trpc/server/adapters/express';
+import { appRouter } from './trpc/routers/index.js';
+import { createContext } from './trpc/context.js';
+app.use('/trpc', createExpressMiddleware({
+    router: appRouter,
+    createContext,
+}));
 // Serve SPA static files
 app.use(express.static(path.join(__dirname, '../../spa')));
 // JSON parsing error handler
@@ -220,15 +228,16 @@ let server;
 let isShuttingDown = false;
 const SHUTDOWN_TIMEOUT_MS = 30000;
 const gracefulShutdown = (signal) => {
-    if (isShuttingDown === true) {
+    if (isShuttingDown) {
         logger.warn(`Shutdown already in progress, ignoring ${signal}`);
         return;
     }
     isShuttingDown = true;
     logger.info(`Received ${signal}, starting graceful shutdown...`);
     if (server !== undefined) {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         server.close((err) => {
-            if (err !== null && err !== undefined) {
+            if (err) {
                 logger.error('Error during server close', { error: err.message });
                 process.exit(1);
             }
@@ -244,8 +253,8 @@ const gracefulShutdown = (signal) => {
     process.exit(0);
 };
 // Start server when run directly
-const isMainModule = import.meta.url === `file://${process.argv[1]}`;
-if (isMainModule === true) {
+const isMainModule = import.meta.url === `file://${process.argv[1] ?? ''}`;
+if (isMainModule) {
     server = app.listen(PORT, HOST, () => {
         logger.info('Server started', {
             host: HOST,
@@ -261,7 +270,7 @@ if (isMainModule === true) {
         console.log('╔═══════════════════════════════════════════════════════╗');
         console.log('║       🛡️  OpenPath Request API Server                 ║');
         console.log('╠═══════════════════════════════════════════════════════╣');
-        console.log(`║  Running on: http://${HOST}:${PORT}                      ║`);
+        console.log(`║  Running on: http://${HOST}:${String(PORT)}                      ║`);
         console.log('║  Health:     /health                                  ║');
         console.log('║  API Docs:   /api-docs                                ║');
         console.log('╚═══════════════════════════════════════════════════════╝');
@@ -273,8 +282,8 @@ if (isMainModule === true) {
             logger.warn('GITHUB_TOKEN not set - approval will fail to push to GitHub');
         }
     });
-    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    process.on('SIGTERM', () => { gracefulShutdown('SIGTERM'); });
+    process.on('SIGINT', () => { gracefulShutdown('SIGINT'); });
     process.on('uncaughtException', (err) => {
         logger.error('Uncaught exception', {
             error: err.message,

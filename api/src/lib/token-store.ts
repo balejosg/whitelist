@@ -115,11 +115,13 @@ export class RedisTokenStore implements TokenStore {
         try {
             // Dynamic import for optional redis dependency
             // redis is an optional dependency
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+            interface RedisModule {
+                createClient: (options: { url: string }) => RedisClient;
+            }
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore - redis is an optional dependency
-            const redis: any = await import('redis');
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-            this.client = redis.createClient({ url: this.redisUrl }) as RedisClient;
+            const redis = await import('redis') as unknown as RedisModule;
+            this.client = redis.createClient({ url: this.redisUrl });
 
             this.client.on('error', (err: unknown) => {
                 const message = err instanceof Error ? err.message : 'Unknown error';
