@@ -15,7 +15,7 @@ import type { GroupData } from './types/index.js';
 
 // Initialize application
 document.addEventListener('DOMContentLoaded', () => void (async () => {
-    console.log('OpenPath SPA initializing...');
+    console.warn('OpenPath SPA initializing...');
 
     // Initialize UI listeners
     initModals();
@@ -82,20 +82,20 @@ function initMainListeners() {
                 // Already subscribed, offer to unsubscribe
                 if (confirm('Disable push notifications?')) {
                     await PushManager.unsubscribe();
-                    icon.textContent = '🔕';
+                    if (icon) icon.textContent = '🔕';
                     showToast('Notifications disabled');
                 }
             } else {
                 // Not subscribed, subscribe
                 btn.disabled = true;
-                icon.textContent = '⏳';
+                if (icon) icon.textContent = '⏳';
                 await PushManager.subscribe();
-                icon.textContent = '🔔';
+                if (icon) icon.textContent = '🔔';
                 showToast('Notifications enabled! You will receive alerts when a student requests access.');
             }
         } catch (err: unknown) {
             console.error('Push notification error:', err);
-            icon.textContent = '🔕';
+            if (icon) icon.textContent = '🔕';
             if (err instanceof Error) {
                 if (err.message.includes('denied')) {
                     showToast('Notification permission denied. Enable it in browser settings.', 'error');
@@ -213,7 +213,7 @@ function initMainListeners() {
     document.getElementById('copy-url-btn')?.addEventListener('click', () => {
         const urlEl = document.getElementById('export-url');
         if (urlEl) {
-            navigator.clipboard.writeText(urlEl.textContent ?? '');
+            void navigator.clipboard.writeText(urlEl.textContent || '');
             showToast('URL copied to clipboard');
         }
     });
@@ -239,14 +239,14 @@ function initMainListeners() {
 
         const typeKey = state.currentRuleType;
         // Check if rule exists
-        const list = state.currentGroupData[typeKey] ?? [];
+        const list = state.currentGroupData[typeKey];
         if (list.includes(value)) {
             showToast('Rule already exists', 'error');
             return;
         }
 
         state.currentGroupData[typeKey].push(value);
-        await saveCurrentGroup(`Add ${value} to ${state.currentGroup}`);
+        await saveCurrentGroup(`Add ${value} to ${state.currentGroup ?? ''}`);
 
         closeModal('modal-add-rule');
         (document.getElementById('add-rule-form') as HTMLFormElement).reset();
@@ -276,7 +276,7 @@ function initMainListeners() {
         let added = 0;
 
         // Ensure array exists
-        if (!state.currentGroupData[typeKey]) state.currentGroupData[typeKey] = [];
+        // Array already exists per GroupData type definition
 
         for (const value of values) {
             if (!state.currentGroupData[typeKey].includes(value)) {
@@ -286,7 +286,7 @@ function initMainListeners() {
         }
 
         if (added > 0) {
-            await saveCurrentGroup(`Add ${added.toString()} rules to ${state.currentGroup}`);
+            await saveCurrentGroup(`Add ${added.toString()} rules to ${state.currentGroup ?? ''}`);
         }
 
         closeModal('modal-bulk-add');
@@ -308,7 +308,7 @@ function initMainListeners() {
         }
 
         const config = Config.get();
-        const gruposDir = config.gruposDir ?? 'grupos'; // Fix: config interface needs checking
+        const gruposDir = config.gruposDir ?? 'grupos';
         const path = `${gruposDir}/${name}.txt`;
 
         const initialData: GroupData = {

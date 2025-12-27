@@ -96,7 +96,10 @@ export async function init(): Promise<void> {
     }
 
     // Update UI and start
-    const userName = state.currentUser.login ?? state.currentUser.name ?? state.currentUser.email;
+    let userName = '';
+    if (state.currentUser.login) userName = state.currentUser.login;
+    else if (state.currentUser.name) userName = state.currentUser.name;
+    else if (state.currentUser.email) userName = state.currentUser.email;
     const userEl = document.getElementById('current-user');
     if (userEl) userEl.textContent = userName;
 
@@ -185,7 +188,6 @@ export function updateEditUI(): void {
 // Initialize schedule section with classroom selector
 async function initScheduleSection(): Promise<void> {
     const select = document.getElementById('schedule-classroom-select') as HTMLSelectElement;
-    if (!select) return;
 
     select.dataset.initialized = 'true';
 
@@ -194,7 +196,8 @@ async function initScheduleSection(): Promise<void> {
         const response = await fetch(`${RequestsAPI.apiUrl || ''}/api/classrooms`, {
             headers: Auth.getAuthHeaders()
         });
-        const data: { success: boolean; classrooms?: Classroom[] } = await response.json();
+        interface ClassroomsResponse { success: boolean; classrooms?: Classroom[] }
+        const data: ClassroomsResponse = await response.json() as ClassroomsResponse;
 
         if (data.success && data.classrooms) {
             select.innerHTML = '<option value="">Select classroom...</option>';

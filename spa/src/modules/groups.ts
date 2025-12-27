@@ -177,9 +177,10 @@ export function renderRules(): void {
     const typeKey = state.currentRuleType;
 
     const searchInput = document.getElementById('search-rules') as HTMLInputElement;
-    const search = searchInput?.value.toLowerCase();
 
-    const rulesList = state.currentGroupData[typeKey] ?? [];
+    const search = searchInput.value.toLowerCase();
+
+    const rulesList = state.currentGroupData[typeKey];
 
     const displayed = search
         ? rulesList.filter((r: string) => r.toLowerCase().includes(search))
@@ -220,7 +221,7 @@ export function updateRuleCounts(): void {
 
 export async function deleteRule(value: string, event: Event): Promise<void> {
     if (!state.canEdit) return;
-    if (event) event.stopPropagation();
+    event.stopPropagation();
     if (!state.currentGroupData) return;
 
     const typeKey = state.currentRuleType;
@@ -229,7 +230,7 @@ export async function deleteRule(value: string, event: Event): Promise<void> {
     const list = state.currentGroupData[typeKey];
     state.currentGroupData[typeKey] = list.filter(r => r !== value);
 
-    await saveCurrentGroup(`Eliminar ${value} de ${state.currentGroup}`);
+    await saveCurrentGroup(`Eliminar ${value} de ${state.currentGroup ?? ''}`);
 }
 
 
@@ -237,7 +238,7 @@ export async function deleteRule(value: string, event: Event): Promise<void> {
 export async function saveCurrentGroup(message: string): Promise<void> {
     const config = Config.get();
     const gruposDir = config.gruposDir ?? 'grupos';
-    const path = `${gruposDir}/${state.currentGroup}.txt`;
+    const path = `${gruposDir}/${state.currentGroup ?? ''}.txt`;
     if (!state.currentGroupData) return;
     const content = WhitelistParser.serialize(state.currentGroupData);
 
@@ -245,7 +246,7 @@ export async function saveCurrentGroup(message: string): Promise<void> {
         if (!state.github) throw new Error('GitHub API not initialized');
 
         // Use updateFile (returns boolean in current types)
-        await state.github.updateFile(path, content, message, state.currentGroupSha || '');
+        await state.github.updateFile(path, content, message, state.currentGroupSha ?? '');
 
         // Since we don't get new SHA from boolean return, we risk concurrency issues if we save again immediately.
         // Ideally we should re-fetch module SHA.
@@ -269,10 +270,10 @@ export async function deleteGroup(): Promise<void> {
 
     const config = Config.get();
     const gruposDir = config.gruposDir ?? 'grupos';
-    const path = `${gruposDir}/${state.currentGroup}.txt`;
+    const path = `${gruposDir}/${state.currentGroup ?? ''}.txt`;
 
     try {
-        await state.github?.deleteFile(path, `Eliminar grupo ${state.currentGroup}`, state.currentGroupSha || '');
+        await state.github?.deleteFile(path, `Eliminar grupo ${state.currentGroup ?? ''}`, state.currentGroupSha ?? '');
         showToast('Grupo eliminado');
         showScreen('dashboard-screen');
         void loadDashboard();

@@ -58,7 +58,7 @@ export function renderClassroomsList(): void {
         <div class="classroom-card" data-id="${c.id}">
             <div class="classroom-info">
                 <h3>🏫 ${escapeHtml(c.display_name || c.name)}</h3>
-                <p>${c.machines?.length.toString() ?? '0'} computers</p>
+                <p>{(c.machines?.length ?? 0).toString()} computers</p>
             </div>
             <div class="classroom-group">
                 <label>Active group:</label>

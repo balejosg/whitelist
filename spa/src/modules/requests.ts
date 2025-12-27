@@ -13,8 +13,8 @@ export async function initRequestsSection(): Promise<void> {
     const urlInput = document.getElementById('requests-api-url') as HTMLInputElement;
     const tokenInput = document.getElementById('requests-api-token') as HTMLInputElement;
 
-    if (urlInput) urlInput.value = savedUrl;
-    if (tokenInput) tokenInput.value = savedToken;
+    urlInput.value = savedUrl;
+    tokenInput.value = savedToken;
 
     if (savedUrl && savedToken) {
         RequestsAPI.init(savedUrl, savedToken);
@@ -76,7 +76,7 @@ export async function loadPendingRequests(): Promise<void> {
 
     try {
         const response = await RequestsAPI.getPendingRequests();
-        const requests = response.requests ?? [];
+        const requests = response.requests;
 
         // Update stat card
         statEl.textContent = requests.length.toString();
@@ -114,7 +114,7 @@ export async function loadPendingRequests(): Promise<void> {
                         <span class="request-domain">${escapeHtml(req.domain)}</span>
                         <span class="request-time">${relativeTime(req.created_at)}</span>
                         <span class="request-meta">
-                            ${escapeHtml(req.requester_email ?? 'Anonymous')} •
+                            ${escapeHtml(req.requester_email || 'Anonymous')} •
                             <span class="request-reason">${escapeHtml(req.reason)}</span>
                         </span>
                         ${req.group_id ? `<span class="request-group-tag">Grupo: ${escapeHtml(req.group_id)}</span>` : ''}
@@ -153,7 +153,8 @@ window.approveRequest = async (id: string, btn: HTMLElement) => {
     const item = btn.closest('.request-item');
     if (!item) return;
 
-    const select = item.querySelector('.request-group-select') as HTMLSelectElement;
+    const select = item.querySelector('.request-group-select');
+    if (!select || !(select instanceof HTMLSelectElement)) return;
     const groupId = select.value;
 
     if (!groupId) {
@@ -178,7 +179,7 @@ window.rejectRequest = async (id: string) => {
     if (reason === null) return; // Cancelled
 
     try {
-        await RequestsAPI.rejectRequest(id, reason ?? '', Auth.getToken() ?? undefined);
+        await RequestsAPI.rejectRequest(id, reason || '', Auth.getToken() ?? undefined);
         showToast('Solicitud rechazada');
         const itemEl = document.querySelector(`.request-item[data-id="${id}"]`);
         if (itemEl) itemEl.remove();

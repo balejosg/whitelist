@@ -261,17 +261,19 @@ export const Auth: AuthAPI = {
 
     async fetch(url: string, options: RequestInit = {}): Promise<Response> {
         const authHeaders = this.getAuthHeaders();
-        options.headers = {
-            ...(options.headers as Record<string, string> ?? {}),
-            ...authHeaders
-        };
+        // Merge existing headers with auth headers
+        const mergedHeaders: Record<string, string> = { ...authHeaders };
+        if (options.headers) {
+            Object.assign(mergedHeaders, options.headers);
+        }
+        options.headers = mergedHeaders;
 
         let response = await fetch(url, options);
 
         if (response.status === 401 && this.getRefreshToken()) {
             try {
                 await this.refresh();
-                options.headers = { ...(options.headers as Record<string, string>), ...this.getAuthHeaders() };
+                options.headers = { ...mergedHeaders, ...this.getAuthHeaders() };
                 response = await fetch(url, options);
             } catch (e) {
                 console.warn('Token refresh failed:', e);

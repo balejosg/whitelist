@@ -34,8 +34,9 @@ export class GitHubAPI implements GitHubAPIInstance {
         const response = await fetch(url, { ...options, headers });
 
         if (!response.ok) {
-            const error: { message?: string } = await response.json().catch(() => ({}));
-            const message: string = error.message ?? `Error ${response.status.toString()}`;
+            interface ErrorResponse { message?: string }
+            const errorData: ErrorResponse = await response.json().catch(() => ({})) as ErrorResponse;
+            const message: string = errorData.message ?? `Error ${response.status.toString()}`;
             throw new Error(message);
         }
 

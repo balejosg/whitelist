@@ -141,9 +141,9 @@ window.openAssignRoleModal = (userId: string, userName: string) => {
 
     roleSelect.onchange = () => {
         if (roleSelect.value === 'teacher') {
-            groupsDiv.classList.remove('hidden');
+            groupsDiv?.classList.remove('hidden');
         } else {
-            groupsDiv.classList.add('hidden');
+            groupsDiv?.classList.add('hidden');
         }
     };
     roleSelect.value = 'teacher'; // default

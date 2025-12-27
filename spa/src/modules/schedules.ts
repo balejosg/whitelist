@@ -251,7 +251,8 @@ export const SchedulesModule = {
     async handleDeleteClick(e: Event): Promise<void> {
         e.stopPropagation();
         const btn = e.target as HTMLElement;
-        const cell = btn.closest('.schedule-cell')!;
+        const cell = btn.closest('.schedule-cell');
+        if (!cell || !(cell instanceof HTMLElement)) return;
         const scheduleId = cell.dataset.scheduleId;
 
         if (!scheduleId || !confirm('Delete this reservation?')) return;
@@ -324,7 +325,8 @@ export const SchedulesModule = {
 
             modal.querySelector('#schedule-group-form')?.addEventListener('submit', (e) => {
                 e.preventDefault();
-                const select = modal.querySelector('#schedule-group-select')!;
+                const select = modal.querySelector('#schedule-group-select');
+                if (!select || !(select instanceof HTMLSelectElement)) return;
                 const groupId = select.value;
                 modal.remove();
                 resolve(groupId);

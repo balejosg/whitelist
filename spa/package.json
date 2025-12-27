@@ -11,7 +11,7 @@
         "test:e2e": "npx playwright test",
         "test:e2e:headed": "npx playwright test --headed",
         "test:e2e:ui": "npx playwright test --ui",
-        "lint": "ESLINT_USE_FLAT_CONFIG=false eslint src/ --ext .ts"
+        "lint": "eslint src/"
     },
     "devDependencies": {
         "@playwright/test": "^1.40.0",
@@ -28,7 +28,8 @@
         "eslint-plugin-jest": "^29.11.0",
         "ts-jest": "^29.4.6",
         "tsx": "^4.21.0",
-        "typescript": "^5.9.3"
+        "typescript": "^5.9.3",
+        "typescript-eslint": "^8.50.1"
     },
     "engines": {
         "node": ">=18.0.0"
