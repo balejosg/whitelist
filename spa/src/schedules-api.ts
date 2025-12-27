@@ -11,7 +11,7 @@ export const SchedulesAPI = {
      * Get API base URL
      */
     getApiUrl(): string {
-        return RequestsAPI?.apiUrl || localStorage.getItem('openpath_api_url') || '';
+        return RequestsAPI?.apiUrl ?? localStorage.getItem('openpath_api_url') ?? '';
     },
 
     /**
@@ -29,14 +29,14 @@ export const SchedulesAPI = {
         const response = await fetch(`${this.getApiUrl()}/api/schedules/classroom/${classroomId}`, {
             headers: this.getHeaders()
         });
-        return response.json();
+        return response.json() as Promise<{ success: boolean; schedules: Schedule[] }>;
     },
 
     async getCurrentSchedule(classroomId: string): Promise<{ success: boolean; current_schedule: Schedule | null; active_group_id: string | null }> {
         const response = await fetch(`${this.getApiUrl()}/api/schedules/classroom/${classroomId}/current`, {
             headers: this.getHeaders()
         });
-        return response.json();
+        return response.json() as Promise<{ success: boolean; current_schedule: Schedule | null; active_group_id: string | null }>;
     },
 
     // =========================================================================
@@ -47,7 +47,7 @@ export const SchedulesAPI = {
         const response = await fetch(`${this.getApiUrl()}/api/schedules/my`, {
             headers: this.getHeaders()
         });
-        return response.json();
+        return response.json() as Promise<{ success: boolean; schedules: Schedule[] }>;
     },
 
     // =========================================================================
@@ -60,7 +60,7 @@ export const SchedulesAPI = {
             headers: this.getHeaders(),
             body: JSON.stringify(scheduleData)
         });
-        return response.json();
+        return response.json() as Promise<{ success: boolean; schedule: Schedule }>;
     },
 
     async updateSchedule(id: string, updates: Partial<Schedule>): Promise<{ success: boolean; schedule: Schedule }> {
@@ -69,7 +69,7 @@ export const SchedulesAPI = {
             headers: this.getHeaders(),
             body: JSON.stringify(updates)
         });
-        return response.json();
+        return response.json() as Promise<{ success: boolean; schedule: Schedule }>;
     },
 
     async deleteSchedule(id: string): Promise<{ success: boolean }> {
@@ -77,7 +77,7 @@ export const SchedulesAPI = {
             method: 'DELETE',
             headers: this.getHeaders()
         });
-        return response.json();
+        return response.json() as Promise<{ success: boolean }>;
     },
 
     // =========================================================================
@@ -90,12 +90,12 @@ export const SchedulesAPI = {
     generateTimeSlots(startHour = '08:00', endHour = '15:00', intervalMinutes = 60): ScheduleSlot[] {
         const slots: ScheduleSlot[] = [];
         const startParts = startHour.split(':').map(Number);
-        let h = startParts[0] || 0;
-        let m = startParts[1] || 0;
+        let h = startParts[0] ?? 0;
+        let m = startParts[1] ?? 0;
 
         const endParts = endHour.split(':').map(Number);
-        const endH = endParts[0] || 0;
-        const endM = endParts[1] || 0;
+        const endH = endParts[0] ?? 0;
+        const endM = endParts[1] ?? 0;
 
         while (h < endH || (h === endH && m < endM)) {
             const start = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
@@ -116,14 +116,14 @@ export const SchedulesAPI = {
             s.day_of_week === dayOfWeek &&
             s.start_time === startTime &&
             s.end_time === endTime
-        ) || null;
+        ) ?? null;
     },
 
     findConflict(schedules: Schedule[], dayOfWeek: number, startTime: string, endTime: string): Schedule | null {
         const timeToMinutes = (time: string) => {
             const parts = time.split(':').map(Number);
-            const h = parts[0] || 0;
-            const m = parts[1] || 0;
+            const h = parts[0] ?? 0;
+            const m = parts[1] ?? 0;
             return h * 60 + m;
         };
 
@@ -135,6 +135,6 @@ export const SchedulesAPI = {
             const sStart = timeToMinutes(s.start_time);
             const sEnd = timeToMinutes(s.end_time);
             return start < sEnd && sStart < end;
-        }) || null;
+        }) ?? null;
     }
 };

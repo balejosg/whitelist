@@ -200,12 +200,12 @@ export const SchedulesModule = {
 
         // Click on empty cell to create
         container.querySelectorAll('.schedule-cell-empty').forEach(cell => {
-            cell.addEventListener('click', (e) => this.handleCellClick(e));
+            cell.addEventListener('click', (e) => { void this.handleCellClick(e); });
         });
 
         // Click on delete button
         container.querySelectorAll('.schedule-delete-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.handleDeleteClick(e));
+            btn.addEventListener('click', (e) => { void this.handleDeleteClick(e); });
         });
     },
 

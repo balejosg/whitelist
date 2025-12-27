@@ -6,8 +6,8 @@ import { Auth } from '../auth.js';
 // Initialize requests section
 export async function initRequestsSection() {
     // Load saved config
-    const savedUrl = localStorage.getItem('requests_api_url') || '';
-    const savedToken = localStorage.getItem('requests_api_token') || '';
+    const savedUrl = localStorage.getItem('requests_api_url') ?? '';
+    const savedToken = localStorage.getItem('requests_api_token') ?? '';
     const urlInput = document.getElementById('requests-api-url');
     const tokenInput = document.getElementById('requests-api-token');
     if (urlInput)
@@ -70,7 +70,7 @@ export async function loadPendingRequests() {
     }
     try {
         const response = await RequestsAPI.getPendingRequests();
-        const requests = response.requests || [];
+        const requests = response.requests ?? [];
         // Update stat card
         statEl.textContent = requests.length.toString();
         // Highlight if there are pending requests
@@ -102,7 +102,7 @@ export async function loadPendingRequests() {
                         <span class="request-domain">${escapeHtml(req.domain)}</span>
                         <span class="request-time">${relativeTime(req.created_at)}</span>
                         <span class="request-meta">
-                            ${escapeHtml(req.requester_email || 'Anonymous')} •
+                            ${escapeHtml(req.requester_email ?? 'Anonymous')} •
                             <span class="request-reason">${escapeHtml(req.reason)}</span>
                         </span>
                         ${req.group_id ? `<span class="request-group-tag">Grupo: ${escapeHtml(req.group_id)}</span>` : ''}
@@ -139,10 +139,10 @@ window.approveRequest = async (id, btn) => {
         return;
     }
     try {
-        await RequestsAPI.approveRequest(id, groupId, Auth.getToken() || undefined);
+        await RequestsAPI.approveRequest(id, groupId, Auth.getToken() ?? undefined);
         showToast('Solicitud aprobada');
         item.remove();
-        loadPendingRequests(); // Refresh count
+        void loadPendingRequests(); // Refresh count
     }
     catch (err) {
         if (err instanceof Error) {
@@ -155,12 +155,12 @@ window.rejectRequest = async (id) => {
     if (reason === null)
         return; // Cancelled
     try {
-        await RequestsAPI.rejectRequest(id, reason, Auth.getToken() || undefined);
+        await RequestsAPI.rejectRequest(id, reason ?? '', Auth.getToken() ?? undefined);
         showToast('Solicitud rechazada');
-        const item = document.querySelector(`.request-item[data-id="${id}"]`);
-        if (item)
-            item.remove();
-        loadPendingRequests(); // Refresh count
+        const itemEl = document.querySelector(`.request-item[data-id="${id}"]`);
+        if (itemEl)
+            itemEl.remove();
+        void loadPendingRequests(); // Refresh count
     }
     catch (err) {
         if (err instanceof Error) {

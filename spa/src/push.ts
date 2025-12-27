@@ -1,7 +1,16 @@
 import { Auth } from './auth.js';
 import { RequestsAPI } from './requests-api.js';
-// import type { APIResponse } from './types/index.js'; // Unused
 
+interface VapidKeyResponse {
+    success: boolean;
+    publicKey?: string;
+    error?: string;
+}
+
+interface SubscribeResponse {
+    success: boolean;
+    error?: string;
+}
 
 /**
  * Push Notifications Manager
@@ -37,6 +46,7 @@ export const PushManager = {
             const registration = await navigator.serviceWorker.register('/sw.js', {
                 scope: '/'
             });
+            // eslint-disable-next-line no-console
             console.log('[Push] Service Worker registered:', registration.scope);
             return registration;
         } catch (error) {
@@ -64,6 +74,7 @@ export const PushManager = {
         }
 
         const permission = await Notification.requestPermission();
+        // eslint-disable-next-line no-console
         console.log('[Push] Permission result:', permission);
         return permission;
     },
@@ -72,11 +83,11 @@ export const PushManager = {
      * Get VAPID public key from server
      */
     async getVapidKey(): Promise<string> {
-        const baseUrl = RequestsAPI.apiUrl || '';
+        const baseUrl = RequestsAPI.apiUrl;
         const response = await fetch(`${baseUrl}/api/push/vapid-key`);
-        const data = await response.json();
+        const data = await response.json() as VapidKeyResponse;
 
-        if (!data.success) {
+        if (!data.success || !data.publicKey) {
             throw new Error(data.error || 'Failed to get VAPID key');
         }
 
@@ -104,7 +115,7 @@ export const PushManager = {
     /**
      * Subscribe to push notifications
      */
-    async subscribe(): Promise<unknown> {
+    async subscribe(): Promise<SubscribeResponse> {
         // Check permission
         const permission = await this.requestPermission();
         if (permission !== 'granted') {
@@ -121,24 +132,26 @@ export const PushManager = {
         // Subscribe
         const subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: applicationServerKey as unknown as string // Lib dom vs implementation mismatch
+            applicationServerKey: applicationServerKey
         });
 
+        // eslint-disable-next-line no-console
         console.log('[Push] Subscribed:', subscription.endpoint);
 
         // Send subscription to server
-        const baseUrl = RequestsAPI.apiUrl || '';
+        const baseUrl = RequestsAPI.apiUrl;
         const response = await Auth.fetch(`${baseUrl}/api/push/subscribe`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ subscription })
         });
 
-        const data = await response.json();
+        const data = await response.json() as SubscribeResponse;
         if (!data.success) {
             throw new Error(data.error || 'Failed to register subscription');
         }
 
+        // eslint-disable-next-line no-console
         console.log('[Push] Subscription registered on server');
         return data;
     },
@@ -170,7 +183,7 @@ export const PushManager = {
         await subscription.unsubscribe();
 
         // Remove from server
-        const baseUrl = RequestsAPI.apiUrl || '';
+        const baseUrl = RequestsAPI.apiUrl;
         try {
             await Auth.fetch(`${baseUrl}/api/push/subscribe`, {
                 method: 'DELETE',
@@ -181,6 +194,7 @@ export const PushManager = {
             console.warn('[Push] Server unsubscribe failed:', error);
         }
 
+        // eslint-disable-next-line no-console
         console.log('[Push] Unsubscribed');
         return { success: true };
     },
@@ -191,6 +205,7 @@ export const PushManager = {
      */
     async init(): Promise<void> {
         if (!this.isSupported()) {
+            // eslint-disable-next-line no-console
             console.log('[Push] Push notifications not supported');
             return;
         }
@@ -200,13 +215,16 @@ export const PushManager = {
 
         // Listen for messages from service worker
         navigator.serviceWorker.addEventListener('message', (event) => {
-            if (event.data?.type === 'NAVIGATE') {
+            const data = event.data as Record<string, unknown> | null;
+            if (data && typeof data === 'object' && data.type === 'NAVIGATE') {
                 // Handle navigation request from SW
-                const requestId = event.data.requestId;
-                // @ts-expect-error - highlightRequest is global UI function, not typed yet
-                if (requestId && typeof window.highlightRequest === 'function') {
-                    // @ts-expect-error
-                    window.highlightRequest(requestId);
+                const requestId = data.requestId as string | undefined;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const win = window as any;
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                if (requestId && typeof win.highlightRequest === 'function') {
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+                    win.highlightRequest(requestId);
                 }
             }
         });

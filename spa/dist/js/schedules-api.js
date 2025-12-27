@@ -9,7 +9,7 @@ export const SchedulesAPI = {
      * Get API base URL
      */
     getApiUrl() {
-        return RequestsAPI?.apiUrl || localStorage.getItem('openpath_api_url') || '';
+        return RequestsAPI?.apiUrl ?? localStorage.getItem('openpath_api_url') ?? '';
     },
     /**
      * Get auth headers using the Auth module
@@ -75,11 +75,11 @@ export const SchedulesAPI = {
     generateTimeSlots(startHour = '08:00', endHour = '15:00', intervalMinutes = 60) {
         const slots = [];
         const startParts = startHour.split(':').map(Number);
-        let h = startParts[0] || 0;
-        let m = startParts[1] || 0;
+        let h = startParts[0] ?? 0;
+        let m = startParts[1] ?? 0;
         const endParts = endHour.split(':').map(Number);
-        const endH = endParts[0] || 0;
-        const endM = endParts[1] || 0;
+        const endH = endParts[0] ?? 0;
+        const endM = endParts[1] ?? 0;
         while (h < endH || (h === endH && m < endM)) {
             const start = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
             m += intervalMinutes;
@@ -95,13 +95,13 @@ export const SchedulesAPI = {
     findScheduleForSlot(schedules, dayOfWeek, startTime, endTime) {
         return schedules.find(s => s.day_of_week === dayOfWeek &&
             s.start_time === startTime &&
-            s.end_time === endTime) || null;
+            s.end_time === endTime) ?? null;
     },
     findConflict(schedules, dayOfWeek, startTime, endTime) {
         const timeToMinutes = (time) => {
             const parts = time.split(':').map(Number);
-            const h = parts[0] || 0;
-            const m = parts[1] || 0;
+            const h = parts[0] ?? 0;
+            const m = parts[1] ?? 0;
             return h * 60 + m;
         };
         const start = timeToMinutes(startTime);
@@ -112,7 +112,7 @@ export const SchedulesAPI = {
             const sStart = timeToMinutes(s.start_time);
             const sEnd = timeToMinutes(s.end_time);
             return start < sEnd && sStart < end;
-        }) || null;
+        }) ?? null;
     }
 };
 //# sourceMappingURL=schedules-api.js.map

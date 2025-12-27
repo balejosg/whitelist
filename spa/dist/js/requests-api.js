@@ -10,8 +10,8 @@ export const RequestsAPI = {
         timeout: 10000
     },
     init(url, token) {
-        this.apiUrl = url?.replace(/\/$/, '') || '';
-        this._config.adminToken = token || '';
+        this.apiUrl = url?.replace(/\/$/, '') ?? '';
+        this._config.adminToken = token ?? '';
     },
     isConfigured() {
         return !!this.apiUrl && !!this._config.adminToken;
@@ -34,7 +34,7 @@ export const RequestsAPI = {
                 if (data.code) {
                     return data;
                 }
-                throw new Error(data.error || `HTTP ${response.status}`);
+                throw new Error(data.error ?? `HTTP ${String(response.status)}`);
             }
             return data;
         }
@@ -69,7 +69,7 @@ export const RequestsAPI = {
         return this.request('POST', `/api/requests/${id}/approve`, { group_id: groupId });
     },
     async rejectRequest(id, reason, _token) {
-        return this.request('POST', `/api/requests/${id}/reject`, { reason: reason || '' });
+        return this.request('POST', `/api/requests/${id}/reject`, { reason: reason ?? '' });
     },
     async deleteRequest(id) {
         return this.request('DELETE', `/api/requests/${id}`);

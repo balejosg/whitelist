@@ -6,7 +6,7 @@ export const Config = {
     STORAGE_KEY: 'openpath-spa-config',
     get() {
         try {
-            return JSON.parse(localStorage.getItem(this.STORAGE_KEY) || '{}');
+            return JSON.parse(localStorage.getItem(this.STORAGE_KEY) ?? '{}');
         }
         catch {
             return {};

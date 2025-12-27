@@ -25,7 +25,7 @@ export const ClassroomsAPI = {
         });
         const data = await response.json();
         if (!data.success)
-            throw new Error(data.error);
+            throw new Error(data.error ?? 'Failed to list classrooms');
         return data.classrooms;
     },
     /**
@@ -37,7 +37,7 @@ export const ClassroomsAPI = {
         });
         const data = await response.json();
         if (!data.success)
-            throw new Error(data.error);
+            throw new Error(data.error ?? 'Failed to get classroom');
         return data.classroom;
     },
     /**
@@ -51,7 +51,7 @@ export const ClassroomsAPI = {
         });
         const data = await response.json();
         if (!data.success)
-            throw new Error(data.error);
+            throw new Error(data.error ?? 'Failed to create classroom');
         return data.classroom;
     },
     /**
@@ -65,7 +65,7 @@ export const ClassroomsAPI = {
         });
         const data = await response.json();
         if (!data.success)
-            throw new Error(data.error);
+            throw new Error(data.error ?? 'Failed to update classroom');
         return data.classroom;
     },
     /**
@@ -79,7 +79,7 @@ export const ClassroomsAPI = {
         });
         const data = await response.json();
         if (!data.success)
-            throw new Error(data.error);
+            throw new Error(data.error ?? 'Failed to set active group');
         return {
             classroom: data.classroom,
             currentGroupId: data.current_group_id
@@ -95,7 +95,7 @@ export const ClassroomsAPI = {
         });
         const data = await response.json();
         if (!data.success)
-            throw new Error(data.error);
+            throw new Error(data.error ?? 'Failed to delete classroom');
     },
     /**
      * Remove a machine from a classroom
@@ -107,7 +107,7 @@ export const ClassroomsAPI = {
         });
         const data = await response.json();
         if (!data.success)
-            throw new Error(data.error);
+            throw new Error(data.error ?? 'Failed to remove machine');
     },
     /**
      * Get classroom statistics
@@ -118,7 +118,7 @@ export const ClassroomsAPI = {
         });
         const data = await response.json();
         if (!data.success)
-            throw new Error(data.error);
+            throw new Error(data.error ?? 'Failed to get stats');
         return data.stats;
     }
 };

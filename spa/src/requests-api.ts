@@ -14,8 +14,8 @@ export const RequestsAPI = {
     },
 
     init(url: string, token?: string): void {
-        this.apiUrl = url?.replace(/\/$/, '') || '';
-        this._config.adminToken = token || '';
+        this.apiUrl = url?.replace(/\/$/, '') ?? '';
+        this._config.adminToken = token ?? '';
     },
 
     isConfigured(): boolean {
@@ -38,16 +38,16 @@ export const RequestsAPI = {
                 body: body ? JSON.stringify(body) : null
             });
 
-            const data = await response.json();
+            const data = await response.json() as T & { code?: string; error?: string };
 
             if (!response.ok) {
                 if (data.code) {
-                    return data as T;
+                    return data;
                 }
-                throw new Error(data.error || `HTTP ${response.status}`);
+                throw new Error(data.error ?? `HTTP ${String(response.status)}`);
             }
 
-            return data as T;
+            return data;
         } catch (error) {
             console.error('RequestsAPI.request failed:', error);
             throw error;
@@ -83,7 +83,7 @@ export const RequestsAPI = {
     },
 
     async rejectRequest(id: string, reason?: string, _token?: string): Promise<APIResponse<DomainRequest>> {
-        return this.request<APIResponse<DomainRequest>>('POST', `/api/requests/${id}/reject`, { reason: reason || '' });
+        return this.request<APIResponse<DomainRequest>>('POST', `/api/requests/${id}/reject`, { reason: reason ?? '' });
     },
 
     async deleteRequest(id: string): Promise<APIResponse<void>> {

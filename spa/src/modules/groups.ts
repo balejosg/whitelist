@@ -116,7 +116,7 @@ export function renderGroupsList(): void {
                 <h3>${escapeHtml(g.name)}</h3>
                 <p>${g.path}</p>
             </div>
-            <div class="group-stats">${g.stats?.whitelist || 0} dominios</div>
+            <div class="group-stats">${String(g.stats?.whitelist ?? 0)} dominios</div>
             <span class="group-status ${g.enabled ? 'active' : 'paused'}">
                 ${g.enabled ? '✅ Activo' : '⏸️ Pausado'}
             </span>
@@ -127,7 +127,7 @@ export function renderGroupsList(): void {
 
 export async function openGroup(name: string): Promise<void> {
     const config = Config.get();
-    const gruposDir = config.gruposDir || 'grupos';
+    const gruposDir = config.gruposDir ?? 'grupos';
     const path = `${gruposDir}/${name}.txt`;
 
     try {
@@ -152,7 +152,7 @@ export async function openGroup(name: string): Promise<void> {
         if (enabledSelect) enabledSelect.value = data.enabled ? '1' : '0';
 
         const exportUrlEl = document.getElementById('export-url');
-        if (exportUrlEl) exportUrlEl.textContent = state.github?.getRawUrl(path) || '';
+        if (exportUrlEl) exportUrlEl.textContent = state.github?.getRawUrl(path) ?? '';
 
         showScreen('editor-screen');
         updateRuleCounts();
@@ -186,7 +186,7 @@ export function renderRules(): void {
     const searchInput = document.getElementById('search-rules') as HTMLInputElement;
     const search = searchInput?.value.toLowerCase();
 
-    const rulesList = state.currentGroupData[typeKey] || [];
+    const rulesList = state.currentGroupData[typeKey] ?? [];
 
     const displayed = search
         ? rulesList.filter((r: string) => r.toLowerCase().includes(search))
@@ -220,9 +220,9 @@ export function updateRuleCounts(): void {
     const bSubEl = document.getElementById('count-blocked_subdomain');
     const bPathEl = document.getElementById('count-blocked_path');
 
-    if (wEl) wEl.textContent = (state.currentGroupData.whitelist?.length || 0).toString();
-    if (bSubEl) bSubEl.textContent = (state.currentGroupData.blocked_subdomains?.length || 0).toString();
-    if (bPathEl) bPathEl.textContent = (state.currentGroupData.blocked_paths?.length || 0).toString();
+    if (wEl) wEl.textContent = String(state.currentGroupData.whitelist?.length ?? 0);
+    if (bSubEl) bSubEl.textContent = String(state.currentGroupData.blocked_subdomains?.length ?? 0);
+    if (bPathEl) bPathEl.textContent = String(state.currentGroupData.blocked_paths?.length ?? 0);
 }
 
 export async function deleteRule(value: string, event: Event): Promise<void> {
@@ -243,7 +243,7 @@ export async function deleteRule(value: string, event: Event): Promise<void> {
 
 export async function saveCurrentGroup(message: string): Promise<void> {
     const config = Config.get();
-    const gruposDir = config.gruposDir || 'grupos';
+    const gruposDir = config.gruposDir ?? 'grupos';
     const path = `${gruposDir}/${state.currentGroup}.txt`;
     if (!state.currentGroupData) return;
     const content = WhitelistParser.serialize(state.currentGroupData);
@@ -275,14 +275,14 @@ export async function deleteGroup(): Promise<void> {
     if (!confirm('Delete this group and all its rules?')) return;
 
     const config = Config.get();
-    const gruposDir = config.gruposDir || 'grupos';
+    const gruposDir = config.gruposDir ?? 'grupos';
     const path = `${gruposDir}/${state.currentGroup}.txt`;
 
     try {
         await state.github?.deleteFile(path, `Eliminar grupo ${state.currentGroup}`, state.currentGroupSha || '');
         showToast('Grupo eliminado');
         showScreen('dashboard-screen');
-        loadDashboard();
+        void loadDashboard();
     } catch (err) {
         if (err instanceof Error) {
             showToast('Error eliminando grupo: ' + err.message, 'error');
@@ -304,13 +304,8 @@ window.openGroup = openGroup;
 window.deleteRule = deleteRule;
 window.openNewGroupModal = () => {
     if (!state.canEdit) return;
-    // @ts-ignore - cleaner to wrap
-    // We imported openModal.
-    // We need to access it. 
-    // openModal('modal-new-group');
-    // But `openModal` is imported.
     const modalId = 'modal-new-group';
-    document.getElementById(modalId)?.classList.remove('hidden'); // Manual open or use imported
+    document.getElementById(modalId)?.classList.remove('hidden');
 };
 window.deleteGroup = deleteGroup;
 

@@ -106,7 +106,7 @@ export const OAuth = {
 
             if (!response.ok) return false;
 
-            const data = await response.json();
+            const data = await response.json() as { permissions?: { admin: boolean; push: boolean } };
             if (data.permissions) {
                 return data.permissions.admin || data.permissions.push;
             }

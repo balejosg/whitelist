@@ -1,5 +1,5 @@
 name = "openpath-oauth"
-main = "worker.js"
+main = "dist/worker.js"
 compatibility_date = "2024-01-01"
 
 # Variables de entorno (secretos se configuran con wrangler secret put)

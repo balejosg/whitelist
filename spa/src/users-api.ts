@@ -11,7 +11,7 @@ export const UsersAPI = {
     // ==========================================================================
 
     getApiUrl(): string {
-        return localStorage.getItem('requests_api_url') || '';
+        return localStorage.getItem('requests_api_url') ?? '';
     },
 
     async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -29,13 +29,13 @@ export const UsersAPI = {
             }
         });
 
-        const data = await response.json();
+        const data = await response.json() as T & { error?: string };
 
         if (!response.ok) {
-            throw new Error(data.error || 'Request failed');
+            throw new Error(data.error ?? 'Request failed');
         }
 
-        return data as T;
+        return data;
     },
 
     // ==========================================================================

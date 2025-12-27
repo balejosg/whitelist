@@ -12,7 +12,7 @@ export const Auth: AuthAPI = {
 
     // API base URL (uses RequestsAPI config if available)
     getApiUrl(): string {
-        return localStorage.getItem('requests_api_url') || '';
+        return localStorage.getItem('requests_api_url') ?? '';
     },
 
     // ==========================================================================
@@ -39,7 +39,7 @@ export const Auth: AuthAPI = {
             return {
                 'Content-Type': 'application/json',
                 'Authorization': adminToken ? `Bearer ${adminToken}` : ''
-            };
+            } as const;
         }
         return {
             'Content-Type': 'application/json',
@@ -162,17 +162,17 @@ export const Auth: AuthAPI = {
             body: JSON.stringify({ email, password })
         });
 
-        const data = await response.json();
+        const data = await response.json() as AuthTokens & { user: User; error?: string };
 
         if (!response.ok) {
-            throw new Error(data.error || 'Login failed');
+            throw new Error(data.error ?? 'Login failed');
         }
 
         // Store tokens and user
         this.storeTokens(data);
         this.storeUser(data.user);
 
-        return data;
+        return { success: true, data: { user: data.user } };
     },
 
     async register(email: string, name: string, password: string): Promise<APIResponse<{ user: User }>> {
@@ -187,13 +187,13 @@ export const Auth: AuthAPI = {
             body: JSON.stringify({ email, name, password })
         });
 
-        const data = await response.json();
+        const data = await response.json() as { user: User; error?: string };
 
         if (!response.ok) {
-            throw new Error(data.error || 'Registration failed');
+            throw new Error(data.error ?? 'Registration failed');
         }
 
-        return data;
+        return { success: true, data: { user: data.user } };
     },
 
     async refresh(): Promise<APIResponse<AuthTokens>> {
@@ -210,15 +210,15 @@ export const Auth: AuthAPI = {
             body: JSON.stringify({ refreshToken })
         });
 
-        const data = await response.json();
+        const data = await response.json() as AuthTokens & { error?: string };
 
         if (!response.ok) {
             this.clearAuth();
-            throw new Error(data.error || 'Token refresh failed');
+            throw new Error(data.error ?? 'Token refresh failed');
         }
 
         this.storeTokens(data);
-        return data;
+        return { success: true, data };
     },
 
     async logout(): Promise<void> {
@@ -249,14 +249,14 @@ export const Auth: AuthAPI = {
             headers: this.getAuthHeaders()
         });
 
-        const data = await response.json();
+        const data = await response.json() as { user: User; error?: string };
 
         if (!response.ok) {
-            throw new Error(data.error || 'Failed to get user info');
+            throw new Error(data.error ?? 'Failed to get user info');
         }
 
         this.storeUser(data.user);
-        return data;
+        return { success: true, data: { user: data.user } };
     },
 
     async fetch(url: string, options: RequestInit = {}): Promise<Response> {

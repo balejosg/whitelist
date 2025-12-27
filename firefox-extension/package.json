@@ -7,11 +7,15 @@
     "scripts": {
         "build": "tsc",
         "typecheck": "tsc --noEmit",
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
         "dev": "tsc --watch"
     },
     "devDependencies": {
-        "@anthropic-ai/tokenizer": "^1.0.0",
         "@types/webextension-polyfill": "^0.12.1",
+        "@typescript-eslint/eslint-plugin": "^8.50.1",
+        "@typescript-eslint/parser": "^8.50.1",
+        "eslint": "^9.39.2",
         "typescript": "^5.7.2",
         "webextension-polyfill": "^0.12.0"
     },

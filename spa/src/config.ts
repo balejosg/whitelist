@@ -9,7 +9,7 @@ export const Config = {
 
     get(): Partial<SPAConfig> {
         try {
-            return JSON.parse(localStorage.getItem(this.STORAGE_KEY) || '{}');
+            return JSON.parse(localStorage.getItem(this.STORAGE_KEY) ?? '{}') as Partial<SPAConfig>;
         } catch {
             return {};
         }

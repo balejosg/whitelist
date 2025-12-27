@@ -27,8 +27,8 @@ export const ClassroomsAPI = {
         const response = await fetch(`${this.getBaseUrl()}/api/classrooms`, {
             headers: this.getHeaders()
         });
-        const data = await response.json();
-        if (!data.success) throw new Error(data.error);
+        const data = await response.json() as { success: boolean; classrooms: Classroom[]; error?: string };
+        if (!data.success) throw new Error(data.error ?? 'Failed to list classrooms');
         return data.classrooms;
     },
 
@@ -39,8 +39,8 @@ export const ClassroomsAPI = {
         const response = await fetch(`${this.getBaseUrl()}/api/classrooms/${classroomId}`, {
             headers: this.getHeaders()
         });
-        const data = await response.json();
-        if (!data.success) throw new Error(data.error);
+        const data = await response.json() as { success: boolean; classroom: Classroom; error?: string };
+        if (!data.success) throw new Error(data.error ?? 'Failed to get classroom');
         return data.classroom;
     },
 
@@ -53,8 +53,8 @@ export const ClassroomsAPI = {
             headers: this.getHeaders(),
             body: JSON.stringify(classroomData)
         });
-        const data = await response.json();
-        if (!data.success) throw new Error(data.error);
+        const data = await response.json() as { success: boolean; classroom: Classroom; error?: string };
+        if (!data.success) throw new Error(data.error ?? 'Failed to create classroom');
         return data.classroom;
     },
 
@@ -67,8 +67,8 @@ export const ClassroomsAPI = {
             headers: this.getHeaders(),
             body: JSON.stringify(updates)
         });
-        const data = await response.json();
-        if (!data.success) throw new Error(data.error);
+        const data = await response.json() as { success: boolean; classroom: Classroom; error?: string };
+        if (!data.success) throw new Error(data.error ?? 'Failed to update classroom');
         return data.classroom;
     },
 
@@ -81,8 +81,8 @@ export const ClassroomsAPI = {
             headers: this.getHeaders(),
             body: JSON.stringify({ group_id: groupId })
         });
-        const data = await response.json();
-        if (!data.success) throw new Error(data.error);
+        const data = await response.json() as { success: boolean; classroom: Classroom; current_group_id: string | null; error?: string };
+        if (!data.success) throw new Error(data.error ?? 'Failed to set active group');
         return {
             classroom: data.classroom,
             currentGroupId: data.current_group_id
@@ -97,8 +97,8 @@ export const ClassroomsAPI = {
             method: 'DELETE',
             headers: this.getHeaders()
         });
-        const data = await response.json();
-        if (!data.success) throw new Error(data.error);
+        const data = await response.json() as { success: boolean; error?: string };
+        if (!data.success) throw new Error(data.error ?? 'Failed to delete classroom');
     },
 
     /**
@@ -109,8 +109,8 @@ export const ClassroomsAPI = {
             method: 'DELETE',
             headers: this.getHeaders()
         });
-        const data = await response.json();
-        if (!data.success) throw new Error(data.error);
+        const data = await response.json() as { success: boolean; error?: string };
+        if (!data.success) throw new Error(data.error ?? 'Failed to remove machine');
     },
 
     /**
@@ -120,8 +120,8 @@ export const ClassroomsAPI = {
         const response = await fetch(`${this.getBaseUrl()}/api/classrooms/stats`, {
             headers: this.getHeaders()
         });
-        const data = await response.json();
-        if (!data.success) throw new Error(data.error);
+        const data = await response.json() as { success: boolean; stats: ClassroomStats; error?: string };
+        if (!data.success) throw new Error(data.error ?? 'Failed to get stats');
         return data.stats;
     }
 };

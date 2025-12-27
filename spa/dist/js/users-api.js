@@ -8,7 +8,7 @@ export const UsersAPI = {
     // Helper
     // ==========================================================================
     getApiUrl() {
-        return localStorage.getItem('requests_api_url') || '';
+        return localStorage.getItem('requests_api_url') ?? '';
     },
     async request(endpoint, options = {}) {
         const apiUrl = this.getApiUrl();
@@ -25,7 +25,7 @@ export const UsersAPI = {
         });
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.error || 'Request failed');
+            throw new Error(data.error ?? 'Request failed');
         }
         return data;
     },

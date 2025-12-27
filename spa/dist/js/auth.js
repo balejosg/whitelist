@@ -9,7 +9,7 @@ export const Auth = {
     USER_KEY: 'openpath_user',
     // API base URL (uses RequestsAPI config if available)
     getApiUrl() {
-        return localStorage.getItem('requests_api_url') || '';
+        return localStorage.getItem('requests_api_url') ?? '';
     },
     // ==========================================================================
     // Token Management
@@ -139,12 +139,12 @@ export const Auth = {
         });
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.error || 'Login failed');
+            throw new Error(data.error ?? 'Login failed');
         }
         // Store tokens and user
         this.storeTokens(data);
         this.storeUser(data.user);
-        return data;
+        return { success: true, data: { user: data.user } };
     },
     async register(email, name, password) {
         const apiUrl = this.getApiUrl();
@@ -158,9 +158,9 @@ export const Auth = {
         });
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.error || 'Registration failed');
+            throw new Error(data.error ?? 'Registration failed');
         }
-        return data;
+        return { success: true, data: { user: data.user } };
     },
     async refresh() {
         const apiUrl = this.getApiUrl();
@@ -176,10 +176,10 @@ export const Auth = {
         const data = await response.json();
         if (!response.ok) {
             this.clearAuth();
-            throw new Error(data.error || 'Token refresh failed');
+            throw new Error(data.error ?? 'Token refresh failed');
         }
         this.storeTokens(data);
-        return data;
+        return { success: true, data };
     },
     async logout() {
         const apiUrl = this.getApiUrl();
@@ -207,10 +207,10 @@ export const Auth = {
         });
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.error || 'Failed to get user info');
+            throw new Error(data.error ?? 'Failed to get user info');
         }
         this.storeUser(data.user);
-        return data;
+        return { success: true, data: { user: data.user } };
     },
     async fetch(url, options = {}) {
         options.headers = {

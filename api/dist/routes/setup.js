@@ -177,7 +177,7 @@ router.post('/first-admin', firstAdminLimiter, async (req, res) => {
         });
         // Log the event
         logger.info('First admin created', { userId: user.id, email: user.email });
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             registrationToken,
             redirectTo: '/login'
@@ -185,7 +185,7 @@ router.post('/first-admin', firstAdminLimiter, async (req, res) => {
     }
     catch (error) {
         logger.error('Error creating first admin', { error });
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to create admin user'
         });
@@ -205,13 +205,13 @@ router.get('/registration-token', requireAuth, requireAdmin, (_req, res) => {
                 error: 'Setup not complete'
             });
         }
-        res.json({
+        return res.json({
             registrationToken: token
         });
     }
     catch (error) {
         logger.error('Error getting registration token', { error });
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to get registration token'
         });
@@ -228,13 +228,13 @@ router.post('/regenerate-token', requireAuth, requireAdmin, (req, res) => {
         // Log the regeneration event
         const userId = req.user?.sub ?? 'unknown';
         logger.info('Registration token regenerated', { userId });
-        res.json({
+        return res.json({
             registrationToken: newToken
         });
     }
     catch (error) {
         logger.error('Error regenerating registration token', { error });
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to regenerate token'
         });
@@ -273,13 +273,13 @@ router.post('/validate-token', setupLimiter, (req, res) => {
             });
         }
         const isValid = crypto.timingSafeEqual(tokenBuffer, validTokenBuffer);
-        res.json({
+        return res.json({
             valid: isValid
         });
     }
     catch (error) {
         logger.error('Error validating token', { error });
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to validate token',
             valid: false
