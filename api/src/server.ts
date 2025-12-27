@@ -277,8 +277,9 @@ const gracefulShutdown = (signal: string): void => {
     logger.info(`Received ${signal}, starting graceful shutdown...`);
 
     if (server !== undefined) {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         server.close((err) => {
-            if (err !== undefined) {
+            if (err) {
                 logger.error('Error during server close', { error: err.message });
                 process.exit(1);
             }
@@ -297,7 +298,7 @@ const gracefulShutdown = (signal: string): void => {
 };
 
 // Start server when run directly
-const isMainModule = import.meta.url === `file://${process.argv[1] ?? ''}`;
+const isMainModule = import.meta.url === `file://${String(process.argv[1] ?? '')}`;
 
 if (isMainModule) {
     server = app.listen(PORT, HOST, () => {
@@ -316,7 +317,7 @@ if (isMainModule) {
         console.log('╔═══════════════════════════════════════════════════════╗');
         console.log('║       🛡️  OpenPath Request API Server                 ║');
         console.log('╠═══════════════════════════════════════════════════════╣');
-        console.log(`║  Running on: http://${HOST}:${String(PORT)}                      ║`);
+        console.log(`║  Running on: http://${HOST}:${PORT}                      ║`);
         console.log('║  Health:     /health                                  ║');
         console.log('║  API Docs:   /api-docs                                ║');
         console.log('╚═══════════════════════════════════════════════════════╝');
