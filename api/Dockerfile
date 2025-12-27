@@ -14,6 +14,9 @@ RUN npm ci
 COPY api ./api
 COPY shared ./shared
 
+# Build shared package first
+RUN cd shared && npm run build
+
 # Build TypeScript to dist/
 WORKDIR /app/api
 RUN npm run build
