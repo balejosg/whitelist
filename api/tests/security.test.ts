@@ -1,3 +1,4 @@
+/* eslint-disable */
 /**
  * Security Tests for OpenPath API
  *
