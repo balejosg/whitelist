@@ -1,5 +1,23 @@
 # Changelog
 
+## [4.2.0](https://github.com/balejosg/openpath/compare/v4.1.0...v4.2.0) (2025-12-27)
+
+
+### Features
+
+* migrate dashboard to strict TS, refactor spa/firefox-ext ([18da7b7](https://github.com/balejosg/openpath/commit/18da7b7ce9eed7ff74d72c554efc5114520e0be6))
+* strict TypeScript enforcement across SPA ([0b92f41](https://github.com/balejosg/openpath/commit/0b92f41c931a2e30bf0a69d7b32ed022608d24db))
+* strict TypeScript enforcement and ESLint Flat Config migration across SPA ([14037c9](https://github.com/balejosg/openpath/commit/14037c9f6ccf4f97eb9eb62bd47df46ae7974d08))
+
+
+### Bug Fixes
+
+* **ci:** consistent returns in setup.ts and markdown styles ([5d9d5af](https://github.com/balejosg/openpath/commit/5d9d5af16d273b42a4c283bed006902ef7995f51))
+* **ci:** disable arm64 docker build to prevent qemu crashes ([c072caa](https://github.com/balejosg/openpath/commit/c072caa34e6fafbc52b8271c553d7774b134d1fa))
+* **dashboard:** add missing supertest dependency for API tests ([bfec885](https://github.com/balejosg/openpath/commit/bfec8854fe178ff171f0869278a33ce6e0969c8c))
+* **docker:** implement multi-stage build and remove legacy server.js ([99bf744](https://github.com/balejosg/openpath/commit/99bf7440d232fe94be74b6043de6ca8804d08129))
+* rename lighthouserc.js to .cjs for ES module compatibility ([8fb2e00](https://github.com/balejosg/openpath/commit/8fb2e000dbb076ff969ec4b0ce62e774dd552add))
+
 ## [4.1.0](https://github.com/balejosg/openpath/compare/v4.0.0...v4.1.0) (2025-12-26)
 
 
