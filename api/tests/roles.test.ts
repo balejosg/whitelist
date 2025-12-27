@@ -10,7 +10,7 @@ import assert from 'node:assert';
 import type { Server } from 'node:http';
 
 const PORT = 3002;
-const API_URL = `http://localhost:${PORT}`;
+const API_URL = `http://localhost:${String(PORT)}`;
 
 const GLOBAL_TIMEOUT = setTimeout(() => {
     console.error('\n❌ Tests timed out! Forcing exit...');
@@ -30,17 +30,17 @@ interface UserResponse {
 interface RoleResponse {
     success: boolean;
     role?: { id: string; role: string; groupIds: string[] };
-    roles?: Array<{ id: string; role: string; groupIds: string[] }>;
+    roles?: { id: string; role: string; groupIds: string[] }[];
     message?: string;
     code?: string;
 }
 
 interface TeachersResponse {
     success: boolean;
-    teachers: Array<{ userId: string; groupIds: string[] }>;
+    teachers: { userId: string; groupIds: string[] }[];
 }
 
-describe('Role Management E2E Tests', { timeout: 30000 }, () => {
+await describe('Role Management E2E Tests', { timeout: 30000 }, async () => {
     before(async () => {
         process.env.PORT = String(PORT);
         process.env.ADMIN_TOKEN = 'test-admin-token';
@@ -48,7 +48,7 @@ describe('Role Management E2E Tests', { timeout: 30000 }, () => {
         const { app } = await import('../src/server.js');
 
         server = app.listen(PORT, () => {
-            console.log(`Roles test server started on port ${PORT}`);
+            console.log(`Roles test server started on port ${String(PORT)}`);
         });
 
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -69,15 +69,15 @@ describe('Role Management E2E Tests', { timeout: 30000 }, () => {
         }
     });
 
-    describe('Setup: Create Teacher User', () => {
-        test('should create a new user for teacher role', async () => {
-            const email = `teacher-${Date.now()}@school.edu`;
+    await describe('Setup: Create Teacher User', async () => {
+        await test('should create a new user for teacher role', async () => {
+            const email = `teacher-${String(Date.now())}@school.edu`;
 
             const response = await fetch(`${API_URL}/api/users`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${adminToken}`
+                    'Authorization': `Bearer ${String(adminToken)}`
                 },
                 body: JSON.stringify({
                     email,
@@ -89,21 +89,21 @@ describe('Role Management E2E Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 201);
 
             const data = await response.json() as UserResponse;
-            assert.ok(data.success === true);
+            assert.strictEqual(data.success, true);
             assert.ok(data.user !== undefined);
-            assert.ok(data.user?.id !== undefined && data.user?.id !== '');
+            assert.ok(data.user.id !== '');
 
-            teacherUserId = data.user?.id ?? null;
+            teacherUserId = data.user.id;
         });
     });
 
-    describe('POST /api/users/:id/roles - Role Assignment', () => {
-        test('should assign teacher role with groups', async () => {
-            const response = await fetch(`${API_URL}/api/users/${teacherUserId}/roles`, {
+    await describe('POST /api/users/:id/roles - Role Assignment', async () => {
+        await test('should assign teacher role with groups', async () => {
+            const response = await fetch(`${API_URL}/api/users/${String(teacherUserId)}/roles`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${adminToken}`
+                    'Authorization': `Bearer ${String(adminToken)}`
                 },
                 body: JSON.stringify({
                     role: 'teacher',
@@ -114,32 +114,32 @@ describe('Role Management E2E Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 201);
 
             const data = await response.json() as RoleResponse;
-            assert.ok(data.success === true);
+            assert.strictEqual(data.success, true);
             assert.ok(data.role !== undefined);
-            assert.strictEqual(data.role?.role, 'teacher');
-            assert.deepStrictEqual(data.role?.groupIds, ['ciencias-3eso', 'matematicas-4eso']);
+            assert.strictEqual(data.role.role, 'teacher');
+            assert.deepStrictEqual(data.role.groupIds, ['ciencias-3eso', 'matematicas-4eso']);
         });
 
-        test('should reject teacher role without groups', async () => {
+        await test('should reject teacher role without groups', async () => {
             const createRes = await fetch(`${API_URL}/api/users`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${adminToken}`
+                    'Authorization': `Bearer ${String(adminToken)}`
                 },
                 body: JSON.stringify({
-                    email: `teacher2-${Date.now()}@school.edu`,
+                    email: `teacher2-${String(Date.now())}@school.edu`,
                     password: 'Password123!',
                     name: 'Another Teacher'
                 })
             });
             const userData = await createRes.json() as UserResponse;
 
-            const response = await fetch(`${API_URL}/api/users/${userData.user?.id}/roles`, {
+            const response = await fetch(`${API_URL}/api/users/${String(userData.user?.id)}/roles`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${adminToken}`
+                    'Authorization': `Bearer ${String(adminToken)}`
                 },
                 body: JSON.stringify({
                     role: 'teacher',
@@ -152,12 +152,12 @@ describe('Role Management E2E Tests', { timeout: 30000 }, () => {
             assert.strictEqual(data.code, 'MISSING_GROUPS');
         });
 
-        test('should reject invalid role', async () => {
-            const response = await fetch(`${API_URL}/api/users/${teacherUserId}/roles`, {
+        await test('should reject invalid role', async () => {
+            const response = await fetch(`${API_URL}/api/users/${String(teacherUserId)}/roles`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${adminToken}`
+                    'Authorization': `Bearer ${String(adminToken)}`
                 },
                 body: JSON.stringify({
                     role: 'superadmin',
@@ -171,42 +171,42 @@ describe('Role Management E2E Tests', { timeout: 30000 }, () => {
         });
     });
 
-    describe('GET /api/users/:id/roles - Get User Roles', () => {
-        test('should return assigned roles for user', async () => {
-            const response = await fetch(`${API_URL}/api/users/${teacherUserId}/roles`, {
-                headers: { 'Authorization': `Bearer ${adminToken}` }
+    await describe('GET /api/users/:id/roles - Get User Roles', async () => {
+        await test('should return assigned roles for user', async () => {
+            const response = await fetch(`${API_URL}/api/users/${String(teacherUserId)}/roles`, {
+                headers: { 'Authorization': `Bearer ${String(adminToken)}` }
             });
 
             assert.strictEqual(response.status, 200);
 
             const data = await response.json() as RoleResponse;
-            assert.ok(data.success === true);
-            assert.ok(Array.isArray(data.roles) === true);
-            assert.ok(data.roles !== undefined && data.roles.length > 0);
+            assert.strictEqual(data.success, true);
+            assert.ok(Array.isArray(data.roles));
+            assert.ok(data.roles.length > 0);
 
-            const teacherRole = data.roles?.find(r => r.role === 'teacher');
+            const teacherRole = data.roles.find(r => r.role === 'teacher');
             assert.ok(teacherRole !== undefined);
-            assert.ok(teacherRole?.groupIds.includes('ciencias-3eso') === true);
+            assert.ok(teacherRole.groupIds.includes('ciencias-3eso'));
         });
     });
 
-    describe('PATCH /api/users/:id/roles/:roleId - Update Role Groups', () => {
+    await describe('PATCH /api/users/:id/roles/:roleId - Update Role Groups', async () => {
         let roleId: string | undefined;
 
         before(async () => {
-            const response = await fetch(`${API_URL}/api/users/${teacherUserId}/roles`, {
-                headers: { 'Authorization': `Bearer ${adminToken}` }
+            const response = await fetch(`${API_URL}/api/users/${String(teacherUserId)}/roles`, {
+                headers: { 'Authorization': `Bearer ${String(adminToken)}` }
             });
             const data = await response.json() as RoleResponse;
             roleId = data.roles?.find(r => r.role === 'teacher')?.id;
         });
 
-        test('should add groups to teacher role', async () => {
-            const response = await fetch(`${API_URL}/api/users/${teacherUserId}/roles/${roleId}`, {
+        await test('should add groups to teacher role', async () => {
+            const response = await fetch(`${API_URL}/api/users/${String(teacherUserId)}/roles/${String(roleId)}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${adminToken}`
+                    'Authorization': `Bearer ${String(adminToken)}`
                 },
                 body: JSON.stringify({
                     addGroups: ['historia-2eso']
@@ -216,16 +216,17 @@ describe('Role Management E2E Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 200);
 
             const data = await response.json() as RoleResponse;
-            assert.ok(data.success === true);
-            assert.ok(data.role?.groupIds.includes('historia-2eso') === true);
+            assert.strictEqual(data.success, true);
+            assert.ok(data.role !== undefined);
+            assert.ok(data.role.groupIds.includes('historia-2eso'));
         });
 
-        test('should remove groups from teacher role', async () => {
-            const response = await fetch(`${API_URL}/api/users/${teacherUserId}/roles/${roleId}`, {
+        await test('should remove groups from teacher role', async () => {
+            const response = await fetch(`${API_URL}/api/users/${String(teacherUserId)}/roles/${String(roleId)}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${adminToken}`
+                    'Authorization': `Bearer ${String(adminToken)}`
                 },
                 body: JSON.stringify({
                     removeGroups: ['historia-2eso']
@@ -235,12 +236,13 @@ describe('Role Management E2E Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 200);
 
             const data = await response.json() as RoleResponse;
-            assert.ok(data.success === true);
-            assert.ok(data.role?.groupIds.includes('historia-2eso') === false);
+            assert.strictEqual(data.success, true);
+            assert.ok(data.role !== undefined);
+            assert.ok(!data.role.groupIds.includes('historia-2eso'));
         });
     });
 
-    describe('DELETE /api/users/:id/roles/:roleId - Revoke Role', () => {
+    await describe('DELETE /api/users/:id/roles/:roleId - Revoke Role', async () => {
         let roleIdToRevoke: string | undefined;
         let tempUserId: string | undefined;
 
@@ -249,10 +251,10 @@ describe('Role Management E2E Tests', { timeout: 30000 }, () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${adminToken}`
+                    'Authorization': `Bearer ${String(adminToken)}`
                 },
                 body: JSON.stringify({
-                    email: `revoke-test-${Date.now()}@school.edu`,
+                    email: `revoke-test-${String(Date.now())}@school.edu`,
                     password: 'Password123!',
                     name: 'Revoke Test User'
                 })
@@ -260,11 +262,11 @@ describe('Role Management E2E Tests', { timeout: 30000 }, () => {
             const userData = await createRes.json() as UserResponse;
             tempUserId = userData.user?.id;
 
-            const roleRes = await fetch(`${API_URL}/api/users/${tempUserId}/roles`, {
+            const roleRes = await fetch(`${API_URL}/api/users/${String(tempUserId)}/roles`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${adminToken}`
+                    'Authorization': `Bearer ${String(adminToken)}`
                 },
                 body: JSON.stringify({
                     role: 'teacher',
@@ -275,23 +277,23 @@ describe('Role Management E2E Tests', { timeout: 30000 }, () => {
             roleIdToRevoke = roleData.role?.id;
         });
 
-        test('should revoke a role', async () => {
-            const response = await fetch(`${API_URL}/api/users/${tempUserId}/roles/${roleIdToRevoke}`, {
+        await test('should revoke a role', async () => {
+            const response = await fetch(`${API_URL}/api/users/${String(tempUserId)}/roles/${String(roleIdToRevoke)}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${adminToken}` }
+                headers: { 'Authorization': `Bearer ${String(adminToken)}` }
             });
 
             assert.strictEqual(response.status, 200);
 
             const data = await response.json() as RoleResponse;
-            assert.ok(data.success === true);
+            assert.strictEqual(data.success, true);
             assert.strictEqual(data.message, 'Role revoked');
         });
 
-        test('should not allow revoking already revoked role', async () => {
-            const response = await fetch(`${API_URL}/api/users/${tempUserId}/roles/${roleIdToRevoke}`, {
+        await test('should not allow revoking already revoked role', async () => {
+            const response = await fetch(`${API_URL}/api/users/${String(tempUserId)}/roles/${String(roleIdToRevoke)}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${adminToken}` }
+                headers: { 'Authorization': `Bearer ${String(adminToken)}` }
             });
 
             assert.strictEqual(response.status, 400);
@@ -301,9 +303,9 @@ describe('Role Management E2E Tests', { timeout: 30000 }, () => {
         });
     });
 
-    describe('Authorization: Non-admin Access', () => {
-        test('should reject role assignment without admin token', async () => {
-            const response = await fetch(`${API_URL}/api/users/${teacherUserId}/roles`, {
+    await describe('Authorization: Non-admin Access', async () => {
+        await test('should reject role assignment without admin token', async () => {
+            const response = await fetch(`${API_URL}/api/users/${String(teacherUserId)}/roles`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -315,27 +317,27 @@ describe('Role Management E2E Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 401);
         });
 
-        test('should reject user listing without admin token', async () => {
+        await test('should reject user listing without admin token', async () => {
             const response = await fetch(`${API_URL}/api/users`);
             assert.strictEqual(response.status, 401);
         });
     });
 
-    describe('GET /api/users/roles/teachers - List Teachers', () => {
-        test('should list all teachers with their groups', async () => {
+    await describe('GET /api/users/roles/teachers - List Teachers', async () => {
+        await test('should list all teachers with their groups', async () => {
             const response = await fetch(`${API_URL}/api/users/roles/teachers`, {
-                headers: { 'Authorization': `Bearer ${adminToken}` }
+                headers: { 'Authorization': `Bearer ${String(adminToken)}` }
             });
 
             assert.strictEqual(response.status, 200);
 
             const data = await response.json() as TeachersResponse;
-            assert.ok(data.success === true);
-            assert.ok(Array.isArray(data.teachers) === true);
+            assert.strictEqual(data.success, true);
+            assert.ok(Array.isArray(data.teachers));
 
             const ourTeacher = data.teachers.find(t => t.userId === teacherUserId);
             assert.ok(ourTeacher !== undefined, 'Our test teacher should be in the list');
-            assert.ok(ourTeacher?.groupIds.includes('ciencias-3eso') === true);
+            assert.ok(ourTeacher.groupIds.includes('ciencias-3eso'));
         });
     });
 });

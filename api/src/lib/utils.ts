@@ -12,7 +12,7 @@
  */
 export function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
     const result: Partial<T> = {};
-    for (const key of Object.keys(obj) as Array<keyof T>) {
+    for (const key of Object.keys(obj) as (keyof T)[]) {
         if (obj[key] !== undefined) {
             result[key] = obj[key];
         }

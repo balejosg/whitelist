@@ -100,7 +100,7 @@ export function generateAccessToken(user: User, roles: RoleInfo[] = []): string 
         name: user.name,
         roles: roles.map((r) => ({
             role: r.role,
-            groupIds: r.groupIds ?? []
+            groupIds: r.groupIds
         })),
         type: 'access'
     };
@@ -149,7 +149,7 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
     try {
         // Check blacklist (async for Redis support)
         const isBlacklistedToken = await tokenStore.has(token);
-        if (isBlacklistedToken === true) {
+        if (isBlacklistedToken) {
             return null;
         }
 
@@ -175,7 +175,7 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
  */
 export async function verifyAccessToken(token: string): Promise<JWTPayload | null> {
     const decoded = await verifyToken(token);
-    if (decoded && decoded.type === 'access') {
+    if (decoded?.type === 'access') {
         return decoded;
     }
     return null;
@@ -186,7 +186,7 @@ export async function verifyAccessToken(token: string): Promise<JWTPayload | nul
  */
 export async function verifyRefreshToken(token: string): Promise<JWTPayload | null> {
     const decoded = await verifyToken(token);
-    if (decoded && decoded.type === 'refresh') {
+    if (decoded?.type === 'refresh') {
         return decoded;
     }
     return null;
@@ -264,7 +264,7 @@ export function getApprovalGroups(decoded: DecodedWithRoles | null | undefined):
     decoded.roles
         .filter((r) => r.role === 'teacher')
         .forEach((r) => {
-            (r.groupIds ?? []).forEach((g) => groups.add(g));
+            r.groupIds.forEach((g) => groups.add(g));
         });
 
     return Array.from(groups);
@@ -274,7 +274,7 @@ export function getApprovalGroups(decoded: DecodedWithRoles | null | undefined):
  * Get the highest role from decoded token
  */
 export function getHighestRole(decoded: DecodedWithRoles | null): UserRole | null {
-    if (decoded === null || decoded === undefined || decoded.roles === undefined || decoded.roles.length === 0) return null;
+    if (decoded?.roles === undefined || decoded.roles.length === 0) return null;
 
     const roles = decoded.roles.map((r) => r.role);
 

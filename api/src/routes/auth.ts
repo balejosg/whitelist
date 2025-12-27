@@ -7,7 +7,7 @@
  */
 
 import { Router } from 'express';
-import type { Request, Response } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
 import * as userStorage from '../lib/user-storage.js';
 import * as roleStorage from '../lib/role-storage.js';
@@ -35,6 +35,10 @@ interface RefreshBody {
 interface LogoutBody {
     refreshToken?: string;
 }
+
+// =============================================================================
+// Middleware
+// =============================================================================
 
 // =============================================================================
 // Rate Limiting
@@ -74,7 +78,7 @@ function isValidEmail(email: string): boolean {
 }
 
 function isValidPassword(password: string): boolean {
-    return password !== undefined && password !== '' && password.length >= 8;
+    return password.length >= 8;
 }
 
 // =============================================================================
@@ -86,260 +90,289 @@ const router = Router();
 /**
  * POST /api/auth/register
  */
-router.post('/register', registerLimiter, async (req: Request<object, unknown, RegisterBody>, res: Response) => {
-    const { email, name, password } = req.body;
+router.post('/register', registerLimiter, (req: Request, res: Response, next: NextFunction): void => {
+    void (async (): Promise<void> => {
+        const body = req.body as Partial<RegisterBody>;
+        const email = body.email;
+        const name = body.name;
+        const password = body.password;
 
-    if (email === undefined || email === '' || name === undefined || name === '' || password === undefined || password === '') {
-        return res.status(400).json({
-            success: false,
-            error: 'Email, name, and password are required',
-            code: 'MISSING_FIELDS'
-        });
-    }
+        if (email === undefined || email === '' || 
+            name === undefined || name === '' || 
+            password === undefined || password === '') {
+            res.status(400).json({
+                success: false,
+                error: 'Email, name, and password are required',
+                code: 'MISSING_FIELDS'
+            });
+            return;
+        }
 
-    if (!isValidEmail(email)) {
-        return res.status(400).json({
-            success: false,
-            error: 'Invalid email format',
-            code: 'INVALID_EMAIL'
-        });
-    }
+        if (!isValidEmail(email)) {
+            res.status(400).json({
+                success: false,
+                error: 'Invalid email format',
+                code: 'INVALID_EMAIL'
+            });
+            return;
+        }
 
-    if (!isValidPassword(password)) {
-        return res.status(400).json({
-            success: false,
-            error: 'Password must be at least 8 characters',
-            code: 'WEAK_PASSWORD'
-        });
-    }
+        if (!isValidPassword(password)) {
+            res.status(400).json({
+                success: false,
+                error: 'Password must be at least 8 characters',
+                code: 'WEAK_PASSWORD'
+            });
+            return;
+        }
 
-    if (userStorage.emailExists(email)) {
-        return res.status(409).json({
-            success: false,
-            error: 'Email already registered',
-            code: 'EMAIL_EXISTS'
-        });
-    }
+        if (userStorage.emailExists(email)) {
+            res.status(409).json({
+                success: false,
+                error: 'Email already registered',
+                code: 'EMAIL_EXISTS'
+            });
+            return;
+        }
 
-    try {
-        const user = await userStorage.createUser({ email, name, password });
+        try {
+            const user = await userStorage.createUser({ email, name, password });
 
-        return res.status(201).json({
-            success: true,
-            message: 'User registered. Please contact an administrator to activate your account.',
-            user: {
-                id: user.id,
-                email: user.email,
-                name: user.name
-            }
-        });
-    } catch (error) {
-        console.error('Error registering user:', error);
-        return res.status(500).json({
-            success: false,
-            error: 'Failed to register user',
-            code: 'SERVER_ERROR'
-        });
-    }
+            res.status(201).json({
+                success: true,
+                message: 'User registered. Please contact an administrator to activate your account.',
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    name: user.name
+                }
+            });
+        } catch (error) {
+            console.error('Error registering user:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to register user',
+                code: 'SERVER_ERROR'
+            });
+        }
+    })().catch(next);
 });
 
 /**
  * POST /api/auth/login
  */
-router.post('/login', loginLimiter, async (req: Request<object, unknown, LoginBody>, res: Response) => {
-    const { email, password } = req.body;
+router.post('/login', loginLimiter, (req: Request, res: Response, next: NextFunction): void => {
+    void (async (): Promise<void> => {
+        const { email, password } = req.body as LoginBody;
 
-    if (email === undefined || email === '' || password === undefined || password === '') {
-        return res.status(400).json({
-            success: false,
-            error: 'Email and password are required',
-            code: 'MISSING_FIELDS'
-        });
-    }
-
-    try {
-        const user = await userStorage.verifyPasswordByEmail(email, password);
-
-        if (user === null) {
-            return res.status(401).json({
+        if (email.length === 0 || password.length === 0) {
+            res.status(400).json({
                 success: false,
-                error: 'Invalid email or password',
-                code: 'INVALID_CREDENTIALS'
+                error: 'Email and password are required',
+                code: 'MISSING_FIELDS'
             });
+            return;
         }
 
-        if (user.isActive === false) {
-            return res.status(403).json({
-                success: false,
-                error: 'Account is not active. Please contact an administrator.',
-                code: 'ACCOUNT_INACTIVE'
-            });
-        }
+        try {
+            const user = await userStorage.verifyPasswordByEmail(email, password);
 
-        const roles = roleStorage.getUserRoles(user.id);
-
-        if (roles.length === 0) {
-            return res.status(403).json({
-                success: false,
-                error: 'No role assigned. Please contact an administrator.',
-                code: 'NO_ROLE'
-            });
-        }
-
-        const tokens = auth.generateTokens(user, roles);
-
-        return res.json({
-            success: true,
-            ...tokens,
-            user: {
-                id: user.id,
-                email: user.email,
-                name: user.name,
-                emailVerified: user.emailVerified,
-                roles: roles.map((r) => ({
-                    role: r.role,
-                    groupIds: r.groupIds
-                }))
+            if (user === null) {
+                res.status(401).json({
+                    success: false,
+                    error: 'Invalid email or password',
+                    code: 'INVALID_CREDENTIALS'
+                });
+                return;
             }
-        });
-    } catch (error) {
-        console.error('Error during login:', error);
-        return res.status(500).json({
-            success: false,
-            error: 'Login failed',
-            code: 'SERVER_ERROR'
-        });
-    }
+
+            if (!user.isActive) {
+                res.status(403).json({
+                    success: false,
+                    error: 'Account is not active. Please contact an administrator.',
+                    code: 'ACCOUNT_INACTIVE'
+                });
+                return;
+            }
+
+            const roles = roleStorage.getUserRoles(user.id);
+
+            if (roles.length === 0) {
+                res.status(403).json({
+                    success: false,
+                    error: 'No role assigned. Please contact an administrator.',
+                    code: 'NO_ROLE'
+                });
+                return;
+            }
+
+            const tokens = auth.generateTokens(user, roles);
+
+            res.json({
+                success: true,
+                ...tokens,
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    name: user.name,
+                    emailVerified: user.emailVerified,
+                    roles: roles.map((r) => ({
+                        role: r.role,
+                        groupIds: r.groupIds
+                    }))
+                }
+            });
+        } catch (error) {
+            console.error('Error during login:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Login failed',
+                code: 'SERVER_ERROR'
+            });
+        }
+    })().catch(next);
 });
 
 /**
  * POST /api/auth/refresh
  */
-router.post('/refresh', async (req: Request<object, unknown, RefreshBody>, res: Response) => {
-    const { refreshToken } = req.body;
+router.post('/refresh', (req: Request, res: Response, next: NextFunction): void => {
+    void (async (): Promise<void> => {
+        const { refreshToken } = req.body as RefreshBody;
 
-    if (refreshToken === undefined || refreshToken === '') {
-        return res.status(400).json({
-            success: false,
-            error: 'Refresh token is required',
-            code: 'MISSING_TOKEN'
-        });
-    }
-
-    try {
-        const decoded = await auth.verifyRefreshToken(refreshToken);
-
-        if (!decoded) {
-            return res.status(401).json({
+        if (refreshToken.length === 0) {
+            res.status(400).json({
                 success: false,
-                error: 'Invalid or expired refresh token',
-                code: 'INVALID_TOKEN'
+                error: 'Refresh token is required',
+                code: 'MISSING_TOKEN'
             });
+            return;
         }
 
-        const user = userStorage.getUserById(decoded.sub);
+        try {
+            const decoded = await auth.verifyRefreshToken(refreshToken);
 
-        if (user === null || user === undefined || user.isActive === false) {
-            return res.status(401).json({
+            if (!decoded) {
+                res.status(401).json({
+                    success: false,
+                    error: 'Invalid or expired refresh token',
+                    code: 'INVALID_TOKEN'
+                });
+                return;
+            }
+
+            const user = userStorage.getUserById(decoded.sub);
+
+            if (user === null || user.isActive === false) {
+                res.status(401).json({
+                    success: false,
+                    error: 'User not found or inactive',
+                    code: 'USER_NOT_FOUND'
+                });
+                return;
+            }
+
+            const roles = roleStorage.getUserRoles(user.id);
+            const tokens = auth.generateTokens(user, roles);
+
+            await auth.blacklistToken(refreshToken);
+
+            res.json({
+                success: true,
+                ...tokens
+            });
+        } catch (error) {
+            console.error('Error refreshing token:', error);
+            res.status(500).json({
                 success: false,
-                error: 'User not found or inactive',
-                code: 'USER_NOT_FOUND'
+                error: 'Token refresh failed',
+                code: 'SERVER_ERROR'
             });
         }
-
-        const roles = roleStorage.getUserRoles(user.id);
-        const tokens = auth.generateTokens(user, roles);
-
-        await auth.blacklistToken(refreshToken);
-
-        return res.json({
-            success: true,
-            ...tokens
-        });
-    } catch (error) {
-        console.error('Error refreshing token:', error);
-        return res.status(500).json({
-            success: false,
-            error: 'Token refresh failed',
-            code: 'SERVER_ERROR'
-        });
-    }
+    })().catch(next);
 });
 
 /**
  * POST /api/auth/logout
  */
-router.post('/logout', async (req: Request<object, unknown, LogoutBody>, res: Response) => {
-    const authHeader = req.headers.authorization;
-    const { refreshToken } = req.body;
+router.post('/logout', (req: Request, res: Response, next: NextFunction): void => {
+    void (async (): Promise<void> => {
+        const authHeader = req.headers.authorization;
+        const { refreshToken } = req.body as LogoutBody;
 
-    if (authHeader !== undefined && authHeader.startsWith('Bearer ')) {
-        const accessToken = authHeader.slice(7);
-        await auth.blacklistToken(accessToken);
-    }
+        if (authHeader?.startsWith('Bearer ') === true) {
+            const accessToken = authHeader.slice(7);
+            await auth.blacklistToken(accessToken);
+        }
 
-    if (refreshToken !== undefined && refreshToken !== '') {
-        await auth.blacklistToken(refreshToken);
-    }
+        if (refreshToken !== undefined && refreshToken.length > 0) {
+            await auth.blacklistToken(refreshToken);
+        }
 
-    return res.json({
-        success: true,
-        message: 'Logged out successfully'
-    });
+        res.json({
+            success: true,
+            message: 'Logged out successfully'
+        });
+    })().catch(next);
 });
 
 /**
  * GET /api/auth/me
  */
-router.get('/me', async (req: Request, res: Response) => {
-    const authHeader = req.headers.authorization;
+router.get('/me', (req: Request, res: Response, next: NextFunction): void => {
+    void (async (): Promise<void> => {
+        const authHeader = req.headers.authorization;
 
-    if (authHeader === undefined || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({
-            success: false,
-            error: 'Authorization header required',
-            code: 'MISSING_TOKEN'
-        });
-    }
-
-    const token = authHeader.slice(7);
-    const decoded = await auth.verifyAccessToken(token);
-
-    if (!decoded) {
-        return res.status(401).json({
-            success: false,
-            error: 'Invalid or expired token',
-            code: 'INVALID_TOKEN'
-        });
-    }
-
-    const user = userStorage.getUserById(decoded.sub);
-
-    if (user === null) {
-        return res.status(404).json({
-            success: false,
-            error: 'User not found',
-            code: 'USER_NOT_FOUND'
-        });
-    }
-
-    const roles = roleStorage.getUserRoles(user.id);
-
-    return res.json({
-        success: true,
-        user: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            emailVerified: user.emailVerified,
-            isActive: user.isActive,
-            roles: roles.map((r) => ({
-                id: r.id,
-                role: r.role,
-                groupIds: r.groupIds
-            }))
+        if (authHeader?.startsWith('Bearer ') !== true) {
+            res.status(401).json({
+                success: false,
+                error: 'Authorization header required',
+                code: 'MISSING_TOKEN'
+            });
+            return;
         }
-    });
+
+        const token = authHeader.slice(7);
+        const decoded = await auth.verifyAccessToken(token);
+
+        if (!decoded) {
+            res.status(401).json({
+                success: false,
+                error: 'Invalid or expired token',
+                code: 'INVALID_TOKEN'
+            });
+            return;
+        }
+
+        const user = userStorage.getUserById(decoded.sub);
+
+        if (user === null) {
+            res.status(404).json({
+                success: false,
+                error: 'User not found',
+                code: 'USER_NOT_FOUND'
+            });
+            return;
+        }
+
+        const roles = roleStorage.getUserRoles(user.id);
+
+        res.json({
+            success: true,
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                emailVerified: user.emailVerified,
+                isActive: user.isActive,
+                roles: roles.map((r) => ({
+                    id: r.id,
+                    role: r.role,
+                    groupIds: r.groupIds
+                }))
+            }
+        });
+    })().catch(next);
 });
 
 export default router;

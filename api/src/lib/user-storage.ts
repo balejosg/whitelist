@@ -55,12 +55,12 @@ interface UserStats {
 // =============================================================================
 
 // Ensure data directory exists
-if (fs.existsSync(DATA_DIR) === false) {
+if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
 // Initialize empty users file if not exists
-if (fs.existsSync(USERS_FILE) === false) {
+if (!fs.existsSync(USERS_FILE)) {
     fs.writeFileSync(USERS_FILE, JSON.stringify({ users: [] }, null, 2));
 }
 
@@ -342,8 +342,8 @@ export function getStats(): UserStats {
     const data = loadData();
     return {
         total: data.users.length,
-        active: data.users.filter((u) => u.isActive === true).length,
-        verified: data.users.filter((u) => u.emailVerified === true).length
+        active: data.users.filter((u) => u.isActive).length,
+        verified: data.users.filter((u) => u.emailVerified).length
     };
 }
 

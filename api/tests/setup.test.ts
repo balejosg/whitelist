@@ -33,7 +33,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = 3005;
-const API_URL = `http://localhost:${PORT}`;
+const API_URL = `http://localhost:${String(PORT)}`;
 
 // Global timeout - force exit if tests hang (15s)
 const GLOBAL_TIMEOUT = setTimeout(() => {
@@ -89,7 +89,7 @@ function cleanupData(): void {
     }
 }
 
-describe('Setup Flow API Tests', { timeout: 30000 }, () => {
+await describe('Setup Flow API Tests', { timeout: 30000 }, async () => {
     before(async () => {
         // Clean up any existing test data
         cleanupData();
@@ -97,17 +97,20 @@ describe('Setup Flow API Tests', { timeout: 30000 }, () => {
         process.env.PORT = String(PORT);
         const { app } = await import('../src/server.js');
 
-        server = app.listen(PORT, () => {
-            console.log(`Setup test server started on port ${PORT}`);
+        await new Promise<void>((resolve, reject) => {
+            const s = app.listen(PORT, () => {
+                console.log(`Setup test server started on port ${String(PORT)}`);
+                resolve();
+            });
+            server = s;
+            s.on('error', reject);
         });
-
-        await new Promise(resolve => setTimeout(resolve, 1000));
     });
 
     after(async () => {
         if (server !== undefined) {
             if ('closeAllConnections' in server && typeof server.closeAllConnections === 'function') {
-                server.closeAllConnections();
+                (server as Server & { closeAllConnections: () => void }).closeAllConnections();
             }
             await new Promise<void>((resolve) => {
                 server?.close(() => {
@@ -123,8 +126,8 @@ describe('Setup Flow API Tests', { timeout: 30000 }, () => {
     // ============================================
     // Setup Status Tests
     // ============================================
-    describe('GET /api/setup/status', () => {
-        test('should return needsSetup: true when no admins exist', async () => {
+    await describe('GET /api/setup/status', async () => {
+        await test('should return needsSetup: true when no admins exist', async () => {
             const response = await fetch(`${API_URL}/api/setup/status`);
             assert.strictEqual(response.status, 200);
 
@@ -137,8 +140,8 @@ describe('Setup Flow API Tests', { timeout: 30000 }, () => {
     // ============================================
     // First Admin Creation Tests
     // ============================================
-    describe('POST /api/setup/first-admin', () => {
-        test('should create the first admin user', async () => {
+    await describe('POST /api/setup/first-admin', async () => {
+        await test('should create the first admin user', async () => {
             const adminData = {
                 email: 'admin@school.edu',
                 name: 'Admin User',
@@ -154,16 +157,16 @@ describe('Setup Flow API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 201);
 
             const data = await response.json() as FirstAdminResponse;
-            assert.ok(data.success === true);
+            assert.ok(data.success);
             assert.ok(data.registrationToken !== undefined);
-            assert.strictEqual(data.registrationToken?.length, 64); // 32 bytes in hex
+            assert.strictEqual(data.registrationToken.length, 64); // 32 bytes in hex
             assert.strictEqual(data.redirectTo, '/login');
 
             // Store token for later tests
-            registrationToken = data.registrationToken ?? null;
+            registrationToken = data.registrationToken;
         });
 
-        test('should reject duplicate first-admin setup', async () => {
+        await test('should reject duplicate first-admin setup', async () => {
             const adminData = {
                 email: 'another-admin@school.edu',
                 name: 'Another Admin',
@@ -183,7 +186,7 @@ describe('Setup Flow API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(data.error, 'Setup already completed');
         });
 
-        test('should reject setup with missing fields', async () => {
+        await test('should reject setup with missing fields', async () => {
             const response = await fetch(`${API_URL}/api/setup/first-admin`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -196,7 +199,7 @@ describe('Setup Flow API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 400);
         });
 
-        test('should reject setup with invalid email', async () => {
+        await test('should reject setup with invalid email', async () => {
             // Wait to avoid rate limiting (3 req/hour = 1200s window, but fast test)
             await new Promise(resolve => setTimeout(resolve, 1500));
 
@@ -215,11 +218,11 @@ describe('Setup Flow API Tests', { timeout: 30000 }, () => {
 
             if (response.status === 400) {
                 const data = await response.json() as FirstAdminResponse;
-                assert.ok(data.error !== undefined && data.error.includes('email'));
+                assert.ok(data.error?.includes('email') === true);
             }
         });
 
-        test('should reject setup with short password', async () => {
+        await test('should reject setup with short password', async () => {
             // Wait to avoid rate limiting
             await new Promise(resolve => setTimeout(resolve, 1500));
 
@@ -238,7 +241,7 @@ describe('Setup Flow API Tests', { timeout: 30000 }, () => {
 
             if (response.status === 400) {
                 const data = await response.json() as FirstAdminResponse;
-                assert.ok(data.error !== undefined && data.error.includes('8 characters'));
+                assert.ok(data.error?.includes('8 characters') === true);
             }
         });
     });
@@ -246,8 +249,8 @@ describe('Setup Flow API Tests', { timeout: 30000 }, () => {
     // ============================================
     // Setup Status After Admin Creation
     // ============================================
-    describe('GET /api/setup/status - After admin created', () => {
-        test('should return needsSetup: false after admin exists', async () => {
+    await describe('GET /api/setup/status - After admin created', async () => {
+        await test('should return needsSetup: false after admin exists', async () => {
             const response = await fetch(`${API_URL}/api/setup/status`);
             assert.strictEqual(response.status, 200);
 
@@ -260,8 +263,8 @@ describe('Setup Flow API Tests', { timeout: 30000 }, () => {
     // ============================================
     // Token Validation Tests
     // ============================================
-    describe('POST /api/setup/validate-token', () => {
-        test('should validate correct token', async () => {
+    await describe('POST /api/setup/validate-token', async () => {
+        await test('should validate correct token', async () => {
             assert.ok(registrationToken !== null, 'Registration token should be set');
 
             const response = await fetch(`${API_URL}/api/setup/validate-token`, {
@@ -276,7 +279,7 @@ describe('Setup Flow API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(data.valid, true);
         });
 
-        test('should reject incorrect token', async () => {
+        await test('should reject incorrect token', async () => {
             const response = await fetch(`${API_URL}/api/setup/validate-token`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -289,7 +292,7 @@ describe('Setup Flow API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(data.valid, false);
         });
 
-        test('should reject missing token', async () => {
+        await test('should reject missing token', async () => {
             const response = await fetch(`${API_URL}/api/setup/validate-token`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -303,8 +306,8 @@ describe('Setup Flow API Tests', { timeout: 30000 }, () => {
     // ============================================
     // Admin Authentication Tests
     // ============================================
-    describe('Login as admin for token management tests', () => {
-        test('should login as admin', async () => {
+    await describe('Login as admin for token management tests', async () => {
+        await test('should login as admin', async () => {
             const response = await fetch(`${API_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -317,24 +320,24 @@ describe('Setup Flow API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 200);
 
             const data = await response.json() as LoginResponse;
-            assert.ok(data.success === true);
+            assert.ok(data.success);
             assert.ok(data.accessToken !== undefined);
 
             // Store token for authenticated requests
-            adminToken = data.accessToken ?? null;
+            adminToken = data.accessToken;
         });
     });
 
     // ============================================
     // Registration Token Retrieval Tests
     // ============================================
-    describe('GET /api/setup/registration-token', () => {
-        test('should require authentication', async () => {
+    await describe('GET /api/setup/registration-token', async () => {
+        await test('should require authentication', async () => {
             const response = await fetch(`${API_URL}/api/setup/registration-token`);
             assert.strictEqual(response.status, 401);
         });
 
-        test('should return token for authenticated admin', async () => {
+        await test('should return token for authenticated admin', async () => {
             assert.ok(adminToken !== null, 'Admin token should be set');
 
             const response = await fetch(`${API_URL}/api/setup/registration-token`, {
@@ -354,8 +357,8 @@ describe('Setup Flow API Tests', { timeout: 30000 }, () => {
     // ============================================
     // Token Regeneration Tests
     // ============================================
-    describe('POST /api/setup/regenerate-token', () => {
-        test('should require authentication', async () => {
+    await describe('POST /api/setup/regenerate-token', async () => {
+        await test('should require authentication', async () => {
             const response = await fetch(`${API_URL}/api/setup/regenerate-token`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
@@ -363,7 +366,7 @@ describe('Setup Flow API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 401);
         });
 
-        test('should regenerate token for authenticated admin', async () => {
+        await test('should regenerate token for authenticated admin', async () => {
             assert.ok(adminToken !== null, 'Admin token should be set');
 
             const response = await fetch(`${API_URL}/api/setup/regenerate-token`, {

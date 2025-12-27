@@ -72,17 +72,21 @@ interface NotificationResult {
 // Configuration
 // =============================================================================
 
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? '';
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY ?? '';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY ?? '';
+
 const VAPID_CONFIGURED = (
-    process.env.VAPID_PUBLIC_KEY !== undefined && process.env.VAPID_PUBLIC_KEY !== '' &&
-    process.env.VAPID_PRIVATE_KEY !== undefined && process.env.VAPID_PRIVATE_KEY !== '' &&
-    process.env.VAPID_SUBJECT !== undefined && process.env.VAPID_SUBJECT !== ''
+    VAPID_PUBLIC_KEY !== '' &&
+    VAPID_PRIVATE_KEY !== '' &&
+    VAPID_SUBJECT !== ''
 );
 
-if (VAPID_CONFIGURED === true) {
+if (VAPID_CONFIGURED) {
     webPush.setVapidDetails(
-        process.env.VAPID_SUBJECT!,
-        process.env.VAPID_PUBLIC_KEY!,
-        process.env.VAPID_PRIVATE_KEY!
+        VAPID_SUBJECT,
+        VAPID_PUBLIC_KEY,
+        VAPID_PRIVATE_KEY
     );
 } else {
     console.warn('⚠️  WARNING: VAPID keys not configured. Push notifications disabled.');
@@ -95,7 +99,7 @@ if (VAPID_CONFIGURED === true) {
 
 function loadSubscriptions(): SubscriptionsData {
     try {
-        if (fs.existsSync(SUBSCRIPTIONS_FILE) === false) {
+        if (!fs.existsSync(SUBSCRIPTIONS_FILE)) {
             return { subscriptions: [] };
         }
         const data = fs.readFileSync(SUBSCRIPTIONS_FILE, 'utf-8');
@@ -107,7 +111,7 @@ function loadSubscriptions(): SubscriptionsData {
 }
 
 function saveSubscriptions(data: SubscriptionsData): void {
-    if (fs.existsSync(DATA_DIR) === false) {
+    if (!fs.existsSync(DATA_DIR)) {
         fs.mkdirSync(DATA_DIR, { recursive: true });
     }
     fs.writeFileSync(SUBSCRIPTIONS_FILE, JSON.stringify(data, null, 2));
@@ -233,7 +237,7 @@ export async function notifyTeachersOfNewRequest(
         }
     });
 
-    console.log(`Push notifications sent: ${sent}/${subscriptions.length} for request ${request.id}`);
+    console.log(`Push notifications sent: ${String(sent)}/${String(subscriptions.length)} for request ${request.id}`);
     return { sent, failed, total: subscriptions.length };
 }
 

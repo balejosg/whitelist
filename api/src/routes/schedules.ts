@@ -52,21 +52,22 @@ interface ScheduleConflictError extends Error {
 // =============================================================================
 
 function requireAuth(req: RequestWithUser, res: Response, next: NextFunction): void {
-    const authHeader = req.headers.authorization;
+    void (async (): Promise<void> => {
+        const authHeader = req.headers.authorization;
 
-    if (authHeader === undefined || !authHeader.startsWith('Bearer ')) {
-        res.status(401).json({
-            success: false,
-            error: 'Authentication required'
-        });
-        return;
-    }
+        if (authHeader?.startsWith('Bearer ') !== true) {
+            res.status(401).json({
+                success: false,
+                error: 'Authentication required'
+            });
+            return;
+        }
 
-    const token = authHeader.substring(7);
+        const token = authHeader.substring(7);
 
-    auth.verifyAccessToken(token)
-        .then(decoded => {
-            if (!decoded) {
+        try {
+            const decoded = await auth.verifyAccessToken(token);
+            if (decoded === null) {
                 res.status(401).json({
                     success: false,
                     error: 'Invalid or expired token'
@@ -75,17 +76,26 @@ function requireAuth(req: RequestWithUser, res: Response, next: NextFunction): v
             }
             req.user = decoded;
             next();
-        })
-        .catch(() => {
+        } catch {
             res.status(401).json({
                 success: false,
                 error: 'Token verification failed'
             });
-        });
+        }
+    })().catch(next);
 }
 
 function canManageSchedule(req: RequestWithUser, res: Response, next: NextFunction): void {
-    const schedule = scheduleStorage.getScheduleById(req.params.id!);
+    const id = req.params.id;
+    if (id === undefined) {
+        res.status(400).json({
+            success: false,
+            error: 'Schedule ID is required'
+        });
+        return;
+    }
+
+    const schedule = scheduleStorage.getScheduleById(id);
 
     if (schedule === null) {
         res.status(404).json({
@@ -98,7 +108,7 @@ function canManageSchedule(req: RequestWithUser, res: Response, next: NextFuncti
     const isOwner = schedule.teacher_id === req.user?.sub;
     const isAdmin = req.user !== undefined ? auth.isAdminToken(req.user) : false;
 
-    if (isOwner === false && isAdmin === false) {
+    if (!isOwner && !isAdmin) {
         res.status(403).json({
             success: false,
             error: 'You can only manage your own schedules'
@@ -120,14 +130,22 @@ const router = Router();
  * GET /api/schedules/classroom/:classroomId
  */
 router.get('/classroom/:classroomId', requireAuth, (req: RequestWithUser, res: Response) => {
-    const classroomId = req.params.classroomId!;
+    const classroomId = req.params.classroomId;
+    if (classroomId === undefined) {
+        res.status(400).json({
+            success: false,
+            error: 'Classroom ID is required'
+        });
+        return;
+    }
 
     const classroom = classroomStorage.getClassroomById(classroomId);
     if (classroom === null) {
-        return res.status(404).json({
+        res.status(404).json({
             success: false,
             error: 'Classroom not found'
         });
+        return;
     }
 
     const schedules = scheduleStorage.getSchedulesByClassroom(classroomId);
@@ -141,7 +159,7 @@ router.get('/classroom/:classroomId', requireAuth, (req: RequestWithUser, res: R
         can_edit: s.teacher_id === userId || isAdmin
     }));
 
-    return res.json({
+    res.json({
         success: true,
         classroom: {
             id: classroom.id,
@@ -157,15 +175,16 @@ router.get('/classroom/:classroomId', requireAuth, (req: RequestWithUser, res: R
  */
 router.get('/my', requireAuth, (req: RequestWithUser, res: Response) => {
     if (req.user === undefined) {
-        return res.status(401).json({
+        res.status(401).json({
             success: false,
             error: 'Authentication required'
         });
+        return;
     }
 
     const schedules = scheduleStorage.getSchedulesByTeacher(req.user.sub);
 
-    return res.json({
+    res.json({
         success: true,
         schedules
     });
@@ -179,18 +198,20 @@ router.post('/', requireAuth, (req: RequestWithUser, res: Response) => {
 
     const classroom = classroomStorage.getClassroomById(classroom_id);
     if (classroom === null) {
-        return res.status(404).json({
+        res.status(404).json({
             success: false,
             error: 'Classroom not found'
         });
+        return;
     }
 
     const isAdmin = req.user !== undefined ? auth.isAdminToken(req.user) : false;
-    if (isAdmin === false && auth.canApproveGroup(req.user, group_id) === false) {
-        return res.status(403).json({
+    if (!isAdmin && (req.user === undefined || !auth.canApproveGroup(req.user, group_id))) {
+        res.status(403).json({
             success: false,
             error: 'You can only create schedules for your assigned groups'
         });
+        return;
     }
 
     try {
@@ -203,7 +224,7 @@ router.post('/', requireAuth, (req: RequestWithUser, res: Response) => {
             end_time
         });
 
-        return res.status(201).json({
+        res.status(201).json({
             success: true,
             message: 'Schedule created',
             schedule
@@ -211,14 +232,15 @@ router.post('/', requireAuth, (req: RequestWithUser, res: Response) => {
     } catch (error) {
         const schedError = error as ScheduleConflictError;
         if (schedError.message === 'Schedule conflict') {
-            return res.status(409).json({
+            res.status(409).json({
                 success: false,
                 error: 'This time slot is already reserved',
                 conflict: schedError.conflict
             });
+            return;
         }
 
-        return res.status(400).json({
+        res.status(400).json({
             success: false,
             error: schedError.message
         });
@@ -230,26 +252,36 @@ router.post('/', requireAuth, (req: RequestWithUser, res: Response) => {
  */
 router.put('/:id', requireAuth, canManageSchedule, (req: RequestWithUser, res: Response) => {
     const { day_of_week, start_time, end_time, group_id } = req.body as UpdateScheduleBody;
+    const id = req.params.id;
+
+    if (id === undefined) {
+        res.status(400).json({
+            success: false,
+            error: 'Schedule ID is required'
+        });
+        return;
+    }
 
     if (group_id !== undefined && group_id !== '' && req.schedule !== undefined && req.schedule !== null && group_id !== req.schedule.group_id) {
         const isAdmin = req.user !== undefined ? auth.isAdminToken(req.user) : false;
-        if (isAdmin === false && auth.canApproveGroup(req.user, group_id) === false) {
-            return res.status(403).json({
+        if (!isAdmin && (req.user === undefined || !auth.canApproveGroup(req.user, group_id))) {
+            res.status(403).json({
                 success: false,
                 error: 'You can only use your assigned groups'
             });
+            return;
         }
     }
 
     try {
-        const updated = scheduleStorage.updateSchedule(req.params.id!, stripUndefined({
+        const updated = scheduleStorage.updateSchedule(id, stripUndefined({
             day_of_week,
             start_time,
             end_time,
             group_id
         }) as Parameters<typeof scheduleStorage.updateSchedule>[1]);
 
-        return res.json({
+        res.json({
             success: true,
             message: 'Schedule updated',
             schedule: updated
@@ -257,14 +289,15 @@ router.put('/:id', requireAuth, canManageSchedule, (req: RequestWithUser, res: R
     } catch (error) {
         const schedError = error as ScheduleConflictError;
         if (schedError.message === 'Schedule conflict') {
-            return res.status(409).json({
+            res.status(409).json({
                 success: false,
                 error: 'This time slot is already reserved',
                 conflict: schedError.conflict
             });
+            return;
         }
 
-        return res.status(400).json({
+        res.status(400).json({
             success: false,
             error: schedError.message
         });
@@ -275,9 +308,18 @@ router.put('/:id', requireAuth, canManageSchedule, (req: RequestWithUser, res: R
  * DELETE /api/schedules/:id
  */
 router.delete('/:id', requireAuth, canManageSchedule, (req: Request, res: Response) => {
-    scheduleStorage.deleteSchedule(req.params.id!);
+    const id = req.params.id;
+    if (id === undefined) {
+        res.status(400).json({
+            success: false,
+            error: 'Schedule ID is required'
+        });
+        return;
+    }
 
-    return res.json({
+    scheduleStorage.deleteSchedule(id);
+
+    res.json({
         success: true,
         message: 'Schedule deleted'
     });
@@ -287,19 +329,27 @@ router.delete('/:id', requireAuth, canManageSchedule, (req: Request, res: Respon
  * GET /api/schedules/classroom/:classroomId/current
  */
 router.get('/classroom/:classroomId/current', requireAuth, (req: Request, res: Response) => {
-    const classroomId = req.params.classroomId!;
+    const classroomId = req.params.classroomId;
+    if (classroomId === undefined) {
+        res.status(400).json({
+            success: false,
+            error: 'Classroom ID is required'
+        });
+        return;
+    }
 
     const classroom = classroomStorage.getClassroomById(classroomId);
     if (classroom === null) {
-        return res.status(404).json({
+        res.status(404).json({
             success: false,
             error: 'Classroom not found'
         });
+        return;
     }
 
     const currentSchedule = scheduleStorage.getCurrentSchedule(classroomId);
 
-    return res.json({
+    res.json({
         success: true,
         classroom_id: classroomId,
         current_schedule: currentSchedule,

@@ -62,12 +62,12 @@ interface SubmitReportBody {
 // Data Access
 // =============================================================================
 
-if (fs.existsSync(DATA_DIR) === false) {
+if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
 function initReportsFile(): void {
-    if (fs.existsSync(REPORTS_FILE) === false) {
+    if (!fs.existsSync(REPORTS_FILE)) {
         fs.writeFileSync(REPORTS_FILE, JSON.stringify({ hosts: {}, lastUpdated: null }));
     }
 }
@@ -141,11 +141,12 @@ const router = Router();
 router.post('/', requireSharedSecret, (req: Request<object, unknown, SubmitReportBody>, res: Response) => {
     const { hostname, status, dnsmasq_running, dns_resolving, fail_count, actions, version } = req.body;
 
-    if (hostname === undefined || hostname === '' || status === undefined || status === '') {
-        return res.status(400).json({
+    if (typeof hostname !== 'string' || hostname === '' || typeof status !== 'string' || status === '') {
+        res.status(400).json({
             success: false,
             error: 'Missing required fields: hostname, status'
         });
+        return;
     }
 
     const data = loadReports();
@@ -159,7 +160,10 @@ router.post('/', requireSharedSecret, (req: Request<object, unknown, SubmitRepor
                 new Date(a[1].lastSeen ?? 0).getTime() - new Date(b[1].lastSeen ?? 0).getTime()
             );
             const oldest = sorted[0];
-            if (oldest !== undefined) delete data.hosts[oldest[0]];
+            if (oldest !== undefined) {
+                const keyToDelete = oldest[0];
+                Reflect.deleteProperty(data.hosts, keyToDelete);
+            }
         }
         data.hosts[hostname] = { reports: [], lastSeen: null, currentStatus: null };
     }
@@ -189,9 +193,9 @@ router.post('/', requireSharedSecret, (req: Request<object, unknown, SubmitRepor
 
     saveReports(data);
 
-    console.log(`[HEALTH] ${hostname}: ${status}${actions !== undefined && actions !== '' ? ` (actions: ${actions})` : ''}`);
+    console.log(`[HEALTH] ${hostname}: ${status}${typeof actions === 'string' && actions !== '' ? ` (actions: ${actions})` : ''}`);
 
-    return res.json({
+    res.json({
         success: true,
         message: 'Health report received',
         hostname,
@@ -209,13 +213,13 @@ router.get('/', requireAdmin, (_req: Request, res: Response) => {
         totalHosts: number;
         lastUpdated: string | null;
         byStatus: Record<string, number>;
-        hosts: Array<{
+        hosts: {
             hostname: string;
             status: string | null;
             lastSeen: string | null;
             version?: string;
             recentFailCount: number;
-        }>;
+        }[];
     } = {
         totalHosts: Object.keys(data.hosts).length,
         lastUpdated: data.lastUpdated,
@@ -249,7 +253,7 @@ router.get('/', requireAdmin, (_req: Request, res: Response) => {
         (statusPriority[a.status ?? ''] ?? 5) - (statusPriority[b.status ?? ''] ?? 5)
     );
 
-    return res.json({
+    res.json({
         success: true,
         ...summary
     });
@@ -264,13 +268,13 @@ router.get('/alerts/active', requireAdmin, (req: Request, res: Response) => {
     const staleThresholdMinutes = parseInt(req.query.stale_threshold as string) || 10;
     const now = new Date();
 
-    const alerts: Array<{
+    const alerts: {
         hostname: string;
         type: string;
         status: string;
         lastSeen: string | null;
         message: string;
-    }> = [];
+    }[] = [];
 
     for (const [hostname, host] of Object.entries(data.hosts)) {
         const lastSeen = new Date(host.lastSeen ?? 0);
@@ -292,12 +296,12 @@ router.get('/alerts/active', requireAdmin, (req: Request, res: Response) => {
                 type: 'stale',
                 status: 'STALE',
                 lastSeen: host.lastSeen,
-                message: `Host hasn't reported in ${Math.round(minutesSinceLastSeen)} minutes`
+                message: `Host hasn't reported in ${String(Math.round(minutesSinceLastSeen))} minutes`
             });
         }
     }
 
-    return res.json({
+    res.json({
         success: true,
         alertCount: alerts.length,
         alerts

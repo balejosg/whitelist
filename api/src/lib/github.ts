@@ -83,15 +83,15 @@ function githubRequest<T>(
         const req = https.request(options, (res) => {
             let data = '';
 
-            res.on('data', (chunk) => { data += chunk; });
+            res.on('data', (chunk: Buffer | string) => { data += String(chunk); });
             res.on('end', () => {
                 try {
-                    const json = data ? JSON.parse(data) : {};
+                    const json = (data !== '' ? JSON.parse(data) : {}) as unknown;
 
                     if (res.statusCode !== undefined && res.statusCode >= 200 && res.statusCode < 300) {
                         resolve(json as T);
                     } else {
-                        const message = (json as { message?: string }).message ?? `HTTP ${res.statusCode}`;
+                        const message = (json as { message?: string }).message ?? `HTTP ${String(res.statusCode)}`;
                         reject(new Error(message));
                     }
                 } catch {
@@ -102,7 +102,7 @@ function githubRequest<T>(
 
         req.on('error', reject);
 
-        if (body !== undefined) {
+        if (body !== null) {
             req.write(JSON.stringify(body));
         }
 
@@ -111,8 +111,8 @@ function githubRequest<T>(
 }
 
 export async function getFileContent(filePath: string): Promise<{ content: string; sha: string }> {
-    const owner = process.env.GITHUB_OWNER;
-    const repo = process.env.GITHUB_REPO;
+    const owner = process.env.GITHUB_OWNER ?? '';
+    const repo = process.env.GITHUB_REPO ?? '';
     const branch = process.env.GITHUB_BRANCH ?? 'main';
 
     const endpoint = `/repos/${owner}/${repo}/contents/${encodeURIComponent(filePath)}?ref=${branch}`;
@@ -137,8 +137,8 @@ export async function updateFile(
     message: string,
     sha: string | null = null
 ): Promise<unknown> {
-    const owner = process.env.GITHUB_OWNER;
-    const repo = process.env.GITHUB_REPO;
+    const owner = process.env.GITHUB_OWNER ?? '';
+    const repo = process.env.GITHUB_REPO ?? '';
     const branch = process.env.GITHUB_BRANCH ?? 'main';
 
     const endpoint = `/repos/${owner}/${repo}/contents/${encodeURIComponent(filePath)}`;
@@ -182,7 +182,7 @@ export async function addDomainToWhitelist(
             return trimmed === domainLower || trimmed === `*.${domainLower}`;
         });
 
-        if (exists === true) {
+        if (exists) {
             return {
                 success: false,
                 message: `Domain ${domain} already exists in ${groupId}`
@@ -199,7 +199,7 @@ export async function addDomainToWhitelist(
             if (line.trim() === '## WHITELIST') {
                 inWhitelistSection = true;
             } else if (line.startsWith('## ') && inWhitelistSection) {
-                if (addedDomain === false) {
+                if (!addedDomain) {
                     const lastNewline = newContent.lastIndexOf('\n');
                     const beforeLastNewline = newContent.lastIndexOf('\n', lastNewline - 1);
                     newContent = newContent.slice(0, beforeLastNewline + 1) +
@@ -211,8 +211,8 @@ export async function addDomainToWhitelist(
             }
         }
 
-        if (addedDomain === false) {
-            if (currentContent.includes('## WHITELIST') === false) {
+        if (!addedDomain) {
+            if (!currentContent.includes('## WHITELIST')) {
                 newContent = '## WHITELIST\n' + domainLower + '\n\n' + currentContent;
             } else {
                 newContent = currentContent.replace(
@@ -242,8 +242,8 @@ export async function addDomainToWhitelist(
 
 export async function listWhitelistFiles(): Promise<WhitelistFile[]> {
     try {
-        const owner = process.env.GITHUB_OWNER;
-        const repo = process.env.GITHUB_REPO;
+        const owner = process.env.GITHUB_OWNER ?? '';
+        const repo = process.env.GITHUB_REPO ?? '';
         const branch = process.env.GITHUB_BRANCH ?? 'main';
 
         const endpoint = `/repos/${owner}/${repo}/contents/?ref=${branch}`;

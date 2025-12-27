@@ -37,7 +37,7 @@ let server: Server | undefined;
 interface ClassroomResponse {
     success: boolean;
     classroom?: { id: string; name: string; display_name: string; default_group_id: string; machines?: unknown[] };
-    classrooms?: Array<{ id: string; name: string }>;
+    classrooms?: { id: string; name: string }[];
     current_group_id?: string;
 }
 
@@ -48,7 +48,7 @@ interface MachineResponse {
     group_id?: string;
 }
 
-describe('Classroom API Tests', { timeout: 25000 }, () => {
+await describe('Classroom API Tests', { timeout: 25000 }, async () => {
     before(async () => {
         // Backup existing data files
         if (fs.existsSync(CLASSROOMS_FILE)) {
@@ -68,7 +68,7 @@ describe('Classroom API Tests', { timeout: 25000 }, () => {
 
         const { app } = await import('../src/server.js');
         server = app.listen(TEST_PORT, () => {
-            console.log(`Classroom test server started on port ${TEST_PORT}`);
+            console.log(`Classroom test server started on port ${String(TEST_PORT)}`);
         });
 
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -101,13 +101,13 @@ describe('Classroom API Tests', { timeout: 25000 }, () => {
         }
     });
 
-    describe('Classroom CRUD', () => {
-        test('GET /api/classrooms - requires authentication', async () => {
+    await describe('Classroom CRUD', async () => {
+        await test('GET /api/classrooms - requires authentication', async () => {
             const response = await fetch(`${API_URL}/api/classrooms`);
             assert.strictEqual(response.status, 401);
         });
 
-        test('GET /api/classrooms - returns empty list initially', async () => {
+        await test('GET /api/classrooms - returns empty list initially', async () => {
             const response = await fetch(`${API_URL}/api/classrooms`, {
                 headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` }
             });
@@ -115,10 +115,10 @@ describe('Classroom API Tests', { timeout: 25000 }, () => {
 
             const data = await response.json() as ClassroomResponse;
             assert.strictEqual(data.success, true);
-            assert.ok(Array.isArray(data.classrooms) === true);
+            assert.ok(Array.isArray(data.classrooms));
         });
 
-        test('POST /api/classrooms - creates classroom', async () => {
+        await test('POST /api/classrooms - creates classroom', async () => {
             const response = await fetch(`${API_URL}/api/classrooms`, {
                 method: 'POST',
                 headers: {
@@ -136,13 +136,14 @@ describe('Classroom API Tests', { timeout: 25000 }, () => {
 
             const data = await response.json() as ClassroomResponse;
             assert.strictEqual(data.success, true);
-            assert.ok(data.classroom?.id !== undefined && data.classroom?.id !== '');
-            assert.strictEqual(data.classroom?.name, 'informatica-3');
-            assert.strictEqual(data.classroom?.display_name, 'Aula Informática 3');
-            assert.strictEqual(data.classroom?.default_group_id, 'base-centro');
+            assert.ok(data.classroom !== undefined);
+            assert.ok(data.classroom.id !== '');
+            assert.strictEqual(data.classroom.name, 'informatica-3');
+            assert.strictEqual(data.classroom.display_name, 'Aula Informática 3');
+            assert.strictEqual(data.classroom.default_group_id, 'base-centro');
         });
 
-        test('POST /api/classrooms - rejects duplicate name', async () => {
+        await test('POST /api/classrooms - rejects duplicate name', async () => {
             const response = await fetch(`${API_URL}/api/classrooms`, {
                 method: 'POST',
                 headers: {
@@ -157,14 +158,14 @@ describe('Classroom API Tests', { timeout: 25000 }, () => {
             assert.strictEqual(response.status, 409);
         });
 
-        test('GET /api/classrooms/:id - returns classroom with machines', async () => {
+        await test('GET /api/classrooms/:id - returns classroom with machines', async () => {
             const listResponse = await fetch(`${API_URL}/api/classrooms`, {
                 headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` }
             });
             const listData = await listResponse.json() as ClassroomResponse;
             const classroomId = listData.classrooms?.[0]?.id;
 
-            const response = await fetch(`${API_URL}/api/classrooms/${classroomId}`, {
+            const response = await fetch(`${API_URL}/api/classrooms/${String(classroomId)}`, {
                 headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` }
             });
 
@@ -173,17 +174,17 @@ describe('Classroom API Tests', { timeout: 25000 }, () => {
             const data = await response.json() as ClassroomResponse;
             assert.strictEqual(data.success, true);
             assert.ok(data.classroom !== undefined);
-            assert.ok(Array.isArray(data.classroom?.machines) === true);
+            assert.ok(Array.isArray(data.classroom.machines));
         });
 
-        test('PUT /api/classrooms/:id/active-group - sets active group', async () => {
+        await test('PUT /api/classrooms/:id/active-group - sets active group', async () => {
             const listResponse = await fetch(`${API_URL}/api/classrooms`, {
                 headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` }
             });
             const listData = await listResponse.json() as ClassroomResponse;
             const classroomId = listData.classrooms?.[0]?.id;
 
-            const response = await fetch(`${API_URL}/api/classrooms/${classroomId}/active-group`, {
+            const response = await fetch(`${API_URL}/api/classrooms/${String(classroomId)}/active-group`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${ADMIN_TOKEN}`,
@@ -200,8 +201,8 @@ describe('Classroom API Tests', { timeout: 25000 }, () => {
         });
     });
 
-    describe('Machine Registration', () => {
-        test('POST /api/classrooms/machines/register - registers machine', async () => {
+    await describe('Machine Registration', async () => {
+        await test('POST /api/classrooms/machines/register - registers machine', async () => {
             const listResponse = await fetch(`${API_URL}/api/classrooms`, {
                 headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` }
             });
@@ -226,10 +227,10 @@ describe('Classroom API Tests', { timeout: 25000 }, () => {
             const data = await response.json() as MachineResponse;
             assert.strictEqual(data.success, true);
             assert.ok(data.machine !== undefined);
-            assert.strictEqual(data.machine?.hostname, 'pc-01');
+            assert.strictEqual(data.machine.hostname, 'pc-01');
         });
 
-        test('GET /api/classrooms/machines/:hostname/whitelist-url - returns URL', async () => {
+        await test('GET /api/classrooms/machines/:hostname/whitelist-url - returns URL', async () => {
             const response = await fetch(`${API_URL}/api/classrooms/machines/pc-01/whitelist-url`, {
                 headers: { 'Authorization': `Bearer ${SHARED_SECRET}` }
             });
@@ -242,7 +243,7 @@ describe('Classroom API Tests', { timeout: 25000 }, () => {
             assert.strictEqual(data.group_id, 'lengua-2eso');
         });
 
-        test('GET /api/classrooms/machines/:hostname/whitelist-url - 404 for unknown machine', async () => {
+        await test('GET /api/classrooms/machines/:hostname/whitelist-url - 404 for unknown machine', async () => {
             const response = await fetch(`${API_URL}/api/classrooms/machines/unknown-pc/whitelist-url`, {
                 headers: { 'Authorization': `Bearer ${SHARED_SECRET}` }
             });
@@ -251,8 +252,8 @@ describe('Classroom API Tests', { timeout: 25000 }, () => {
         });
     });
 
-    describe('Cleanup', () => {
-        test('DELETE /api/classrooms/machines/:hostname - removes machine', async () => {
+    await describe('Cleanup', async () => {
+        await test('DELETE /api/classrooms/machines/:hostname - removes machine', async () => {
             const response = await fetch(`${API_URL}/api/classrooms/machines/pc-01`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` }
@@ -261,14 +262,14 @@ describe('Classroom API Tests', { timeout: 25000 }, () => {
             assert.strictEqual(response.status, 200);
         });
 
-        test('DELETE /api/classrooms/:id - deletes classroom', async () => {
+        await test('DELETE /api/classrooms/:id - deletes classroom', async () => {
             const listResponse = await fetch(`${API_URL}/api/classrooms`, {
                 headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` }
             });
             const listData = await listResponse.json() as ClassroomResponse;
             const classroomId = listData.classrooms?.[0]?.id;
 
-            const response = await fetch(`${API_URL}/api/classrooms/${classroomId}`, {
+            const response = await fetch(`${API_URL}/api/classrooms/${String(classroomId)}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` }
             });

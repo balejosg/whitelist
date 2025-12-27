@@ -47,10 +47,10 @@ function runNextTest() {
     console.log(`Running: ${testFile}`);
     console.log('='.repeat(60) + '\n');
 
-    const child = spawn('node', ['--test', '--test-force-exit', testFile], {
+    const child = spawn('node', ['--import', 'tsx', '--test', '--test-force-exit', testFile], {
         cwd: path.join(__dirname, '..'),
         stdio: 'inherit',
-        env: { ...process.env }
+        env: { ...process.env, PORT: '3006' }
     });
 
     // Timeout to kill hanging tests after 30 seconds

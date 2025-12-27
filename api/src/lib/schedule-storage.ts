@@ -64,11 +64,11 @@ interface UpdateScheduleInput {
 // Initialization
 // =============================================================================
 
-if (fs.existsSync(DATA_DIR) === false) {
+if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-if (fs.existsSync(SCHEDULES_FILE) === false) {
+if (!fs.existsSync(SCHEDULES_FILE)) {
     fs.writeFileSync(SCHEDULES_FILE, JSON.stringify({ schedules: [] }, null, 2));
 }
 
@@ -156,16 +156,12 @@ export function findConflict(
 export function createSchedule(scheduleData: CreateScheduleInput): StoredSchedule {
     const { classroom_id, teacher_id, group_id, day_of_week, start_time, end_time } = scheduleData;
 
-    if (classroom_id === undefined || teacher_id === undefined || group_id === undefined || day_of_week === undefined || start_time === undefined || end_time === undefined) {
-        throw new Error('Missing required fields');
-    }
-
     if (day_of_week < 1 || day_of_week > 5) {
         throw new Error('day_of_week must be between 1 (Monday) and 5 (Friday)');
     }
 
     const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-    if (timeRegex.test(start_time) === false || timeRegex.test(end_time) === false) {
+    if (!timeRegex.test(start_time) || !timeRegex.test(end_time)) {
         throw new Error('Invalid time format. Use HH:MM (24h)');
     }
 

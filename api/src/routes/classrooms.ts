@@ -46,37 +46,39 @@ interface RegisterMachineBody {
 // Middleware
 // =============================================================================
 
-async function requireAuth(req: RequestWithUser, res: Response, next: NextFunction): Promise<void> {
-    const authHeader = req.headers.authorization;
+function requireAuth(req: RequestWithUser, res: Response, next: NextFunction): void {
+    void (async (): Promise<void> => {
+        const authHeader = req.headers.authorization;
 
-    if (authHeader === undefined || !authHeader.startsWith('Bearer ')) {
+        if (authHeader?.startsWith('Bearer ') !== true) {
+            res.status(401).json({
+                success: false,
+                error: 'Authorization header required'
+            });
+            return;
+        }
+
+        const token = authHeader.slice(7);
+
+        const decoded = await auth.verifyAccessToken(token);
+        if (decoded !== null) {
+            req.user = decoded;
+            next();
+            return;
+        }
+
+        const adminToken = process.env.ADMIN_TOKEN;
+        if (adminToken !== undefined && adminToken.length > 0 && token === adminToken) {
+            req.user = auth.createLegacyAdminPayload();
+            next();
+            return;
+        }
+
         res.status(401).json({
             success: false,
-            error: 'Authorization header required'
+            error: 'Invalid or expired token'
         });
-        return;
-    }
-
-    const token = authHeader.slice(7);
-
-    const decoded = await auth.verifyAccessToken(token);
-    if (decoded !== null) {
-        req.user = decoded;
-        next();
-        return;
-    }
-
-    const adminToken = process.env.ADMIN_TOKEN;
-    if (adminToken !== undefined && adminToken !== '' && token === adminToken) {
-        req.user = auth.createLegacyAdminPayload();
-        next();
-        return;
-    }
-
-    res.status(401).json({
-        success: false,
-        error: 'Invalid or expired token'
-    });
+    })().catch(next);
 }
 
 function requireAdmin(req: RequestWithUser, res: Response, next: NextFunction): void {
@@ -140,7 +142,7 @@ router.get('/', requireAuth, requireAdmin, (_req: Request, res: Response) => {
 router.post('/', requireAuth, requireAdmin, (req: Request<object, unknown, CreateClassroomBody>, res: Response) => {
     const { name, display_name, default_group_id } = req.body;
 
-    if (name === undefined || name === '') {
+    if (name.length === 0) {
         return res.status(400).json({
             success: false,
             error: 'Name is required'
@@ -179,7 +181,7 @@ router.post('/', requireAuth, requireAdmin, (req: Request<object, unknown, Creat
  * GET /api/classrooms/:id
  */
 router.get('/:id', requireAuth, requireAdmin, (req: Request, res: Response) => {
-    const classroom = classroomStorage.getClassroomById(req.params.id!);
+    const classroom = classroomStorage.getClassroomById(req.params.id);
 
     if (classroom === null) {
         return res.status(404).json({
@@ -188,8 +190,8 @@ router.get('/:id', requireAuth, requireAdmin, (req: Request, res: Response) => {
         });
     }
 
-    const machines = classroomStorage.getMachinesByClassroom(req.params.id!);
-    const currentGroupId = classroomStorage.getCurrentGroupId(req.params.id!);
+    const machines = classroomStorage.getMachinesByClassroom(req.params.id);
+    const currentGroupId = classroomStorage.getCurrentGroupId(req.params.id);
 
     return res.json({
         success: true,
@@ -258,7 +260,7 @@ router.put('/:id/active-group', requireAuth, requireAdmin, (req: Request<{ id: s
  * DELETE /api/classrooms/:id
  */
 router.delete('/:id', requireAuth, requireAdmin, (req: Request, res: Response) => {
-    const deleted = classroomStorage.deleteClassroom(req.params.id!);
+    const deleted = classroomStorage.deleteClassroom(req.params.id);
 
     if (!deleted) {
         return res.status(404).json({
@@ -279,7 +281,7 @@ router.delete('/:id', requireAuth, requireAdmin, (req: Request, res: Response) =
 router.post('/machines/register', requireSharedSecret, (req: Request<object, unknown, RegisterMachineBody>, res: Response) => {
     const { hostname, classroom_id, classroom_name, version } = req.body;
 
-    if (hostname === undefined || hostname === '') {
+    if (hostname.length === 0) {
         return res.status(400).json({
             success: false,
             error: 'Hostname is required'
@@ -287,14 +289,14 @@ router.post('/machines/register', requireSharedSecret, (req: Request<object, unk
     }
 
     let classroomId = classroom_id;
-    if ((classroomId === undefined || classroomId === '') && (classroom_name !== undefined && classroom_name !== '')) {
+    if ((classroomId === undefined || classroomId.length === 0) && (classroom_name !== undefined && classroom_name.length > 0)) {
         const classroom = classroomStorage.getClassroomByName(classroom_name);
         if (classroom !== null) {
             classroomId = classroom.id;
         }
     }
 
-    if (classroomId === undefined || classroomId === '') {
+    if (classroomId === undefined || classroomId.length === 0) {
         return res.status(400).json({
             success: false,
             error: 'Valid classroom_id or classroom_name is required'
@@ -339,13 +341,13 @@ router.post('/machines/register', requireSharedSecret, (req: Request<object, unk
  * GET /api/classrooms/machines/:hostname/whitelist-url
  */
 router.get('/machines/:hostname/whitelist-url', requireSharedSecret, (req: Request, res: Response) => {
-    const hostname = req.params.hostname!;
+    const hostname = req.params.hostname;
 
     classroomStorage.updateMachineLastSeen(hostname);
 
     const result = classroomStorage.getWhitelistUrlForMachine(hostname);
 
-    if (!result) {
+    if (result === null) {
         return res.status(404).json({
             success: false,
             error: 'Machine not found or no group configured',
@@ -363,7 +365,7 @@ router.get('/machines/:hostname/whitelist-url', requireSharedSecret, (req: Reque
  * DELETE /api/classrooms/machines/:hostname
  */
 router.delete('/machines/:hostname', requireAuth, requireAdmin, (req: Request, res: Response) => {
-    const deleted = classroomStorage.deleteMachine(req.params.hostname!);
+    const deleted = classroomStorage.deleteMachine(req.params.hostname);
 
     if (!deleted) {
         return res.status(404).json({

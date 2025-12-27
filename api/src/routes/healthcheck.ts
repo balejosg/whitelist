@@ -74,7 +74,7 @@ router.get('/live', (_req: Request, res: Response) => {
  * GET /health/ready
  * Readiness probe
  */
-router.get('/ready', async (_req: Request, res: Response) => {
+router.get('/ready', (_req: Request, res: Response) => {
     const startTime = Date.now();
     const health: HealthCheck = {
         status: 'ok',
@@ -126,7 +126,7 @@ router.get('/ready', async (_req: Request, res: Response) => {
             jwtSecret: (process.env.JWT_SECRET !== undefined && process.env.JWT_SECRET !== '') ? 'set' : 'using_random'
         }
     };
-    if (authConfigured === false) {
+    if (!authConfigured) {
         health.status = 'degraded';
     }
 
@@ -138,13 +138,13 @@ router.get('/ready', async (_req: Request, res: Response) => {
 
     health.checks.memory = {
         status: heapPercent < 90 ? 'ok' : 'warning',
-        heapUsed: `${heapUsedMB}MB`,
-        heapTotal: `${heapTotalMB}MB`,
-        heapPercent: `${heapPercent}%`,
-        rss: `${Math.round(memUsage.rss / 1024 / 1024)}MB`
+        heapUsed: `${String(heapUsedMB)}MB`,
+        heapTotal: `${String(heapTotalMB)}MB`,
+        heapPercent: `${String(heapPercent)}%`,
+        rss: `${String(Math.round(memUsage.rss / 1024 / 1024))}MB`
     };
 
-    health.responseTime = `${Date.now() - startTime}ms`;
+    health.responseTime = `${String(Date.now() - startTime)}ms`;
 
     const statusCode = health.status === 'ok' ? 200 :
         health.status === 'degraded' ? 200 : 503;

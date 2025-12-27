@@ -29,7 +29,7 @@ import assert from 'node:assert';
 import type { Server } from 'node:http';
 
 const PORT = 3001;
-const API_URL = `http://localhost:${PORT}`;
+const API_URL = `http://localhost:${String(PORT)}`;
 
 // Global timeout - force exit if tests hang (15s)
 const GLOBAL_TIMEOUT = setTimeout(() => {
@@ -49,13 +49,13 @@ interface AuthResponse {
     error?: string;
 }
 
-describe('Authentication & User Management API Tests', { timeout: 30000 }, () => {
+await describe('Authentication & User Management API Tests', { timeout: 30000 }, async () => {
     before(async () => {
         process.env.PORT = String(PORT);
         const { app } = await import('../src/server.js');
 
         server = app.listen(PORT, () => {
-            console.log(`Auth test server started on port ${PORT}`);
+            console.log(`Auth test server started on port ${String(PORT)}`);
         });
 
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -78,10 +78,10 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
     // ============================================
     // Registration Tests
     // ============================================
-    describe('POST /api/auth/register - User Registration', () => {
-        test('should register a new user', async () => {
+    await describe('POST /api/auth/register - User Registration', async () => {
+        await test('should register a new user', async () => {
             const userData = {
-                email: `test-${Date.now()}@example.com`,
+                email: `test-${String(Date.now())}@example.com`,
                 password: 'SecurePassword123!',
                 name: 'Test User'
             };
@@ -95,12 +95,12 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
             assert.strictEqual(response.status, 201);
 
             const data = await response.json() as AuthResponse;
-            assert.ok(data.success === true);
+            assert.ok(data.success);
             assert.ok(data.user !== undefined);
-            assert.ok(data.user?.id !== undefined && data.user?.id !== '');
+            assert.ok(data.user.id !== '');
         });
 
-        test('should reject registration without email', async () => {
+        await test('should reject registration without email', async () => {
             const response = await fetch(`${API_URL}/api/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -113,12 +113,12 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
             assert.strictEqual(response.status, 400);
         });
 
-        test('should reject registration with short password', async () => {
+        await test('should reject registration with short password', async () => {
             const response = await fetch(`${API_URL}/api/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    email: `short-pwd-${Date.now()}@example.com`,
+                    email: `short-pwd-${String(Date.now())}@example.com`,
                     password: '123',
                     name: 'Test User'
                 })
@@ -127,8 +127,8 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
             assert.strictEqual(response.status, 400);
         });
 
-        test('should reject duplicate email registration', async () => {
-            const email = `duplicate-${Date.now()}@example.com`;
+        await test('should reject duplicate email registration', async () => {
+            const email = `duplicate-${String(Date.now())}@example.com`;
 
             await fetch(`${API_URL}/api/auth/register`, {
                 method: 'POST',
@@ -150,19 +150,19 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
                 })
             });
 
-            assert.ok([409, 429].includes(response.status) === true, `Expected 409 or 429, got ${response.status}`);
+            assert.ok([409, 429].includes(response.status), `Expected 409 or 429, got ${String(response.status)}`);
         });
     });
 
     // ============================================
     // Login Tests
     // ============================================
-    describe('POST /api/auth/login - User Login', () => {
+    await describe('POST /api/auth/login - User Login', async () => {
         let testEmail: string;
         const testPassword = 'SecurePassword123!';
 
         before(async () => {
-            testEmail = `login-test-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
+            testEmail = `login-test-${String(Date.now())}-${Math.random().toString(36).slice(2)}@example.com`;
             const regResponse = await fetch(`${API_URL}/api/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -173,11 +173,11 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
                 })
             });
             if (regResponse.status !== 201) {
-                console.log(`Note: Registration returned ${regResponse.status}`);
+                console.log(`Note: Registration returned ${String(regResponse.status)}`);
             }
         });
 
-        test('should login with valid credentials', async () => {
+        await test('should login with valid credentials', async () => {
             const response = await fetch(`${API_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -187,11 +187,11 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
                 })
             });
 
-            assert.ok([200, 401].includes(response.status) === true, `Expected 200 or 401, got ${response.status}`);
+            assert.ok([200, 401].includes(response.status), `Expected 200 or 401, got ${String(response.status)}`);
 
             if (response.status === 200) {
                 const data = await response.json() as AuthResponse;
-                assert.ok(data.success === true);
+                assert.ok(data.success);
                 assert.ok(data.accessToken !== undefined && data.accessToken !== '');
                 assert.ok(data.refreshToken !== undefined && data.refreshToken !== '');
                 assert.ok(data.user !== undefined);
@@ -200,7 +200,7 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
             }
         });
 
-        test('should reject login with wrong password', async () => {
+        await test('should reject login with wrong password', async () => {
             const response = await fetch(`${API_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -213,7 +213,7 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
             assert.strictEqual(response.status, 401);
         });
 
-        test('should reject login with non-existent email', async () => {
+        await test('should reject login with non-existent email', async () => {
             const response = await fetch(`${API_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -230,11 +230,11 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
     // ============================================
     // Token Refresh Tests
     // ============================================
-    describe('POST /api/auth/refresh - Token Refresh', () => {
+    await describe('POST /api/auth/refresh - Token Refresh', async () => {
         let refreshToken: string | null = null;
 
         before(async () => {
-            const email = `refresh-test-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
+            const email = `refresh-test-${String(Date.now())}-${Math.random().toString(36).slice(2)}@example.com`;
 
             await fetch(`${API_URL}/api/auth/register`, {
                 method: 'POST',
@@ -261,7 +261,7 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
             }
         });
 
-        test('should refresh tokens with valid refresh token', async () => {
+        await test('should refresh tokens with valid refresh token', async () => {
             if (refreshToken === null) {
                 console.log('Skipping: refreshToken not available');
                 return;
@@ -276,12 +276,12 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
             assert.strictEqual(response.status, 200);
 
             const data = await response.json() as AuthResponse;
-            assert.ok(data.success === true);
+            assert.ok(data.success);
             assert.ok(data.accessToken !== undefined && data.accessToken !== '');
             assert.ok(data.refreshToken !== undefined && data.refreshToken !== '');
         });
 
-        test('should reject invalid refresh token', async () => {
+        await test('should reject invalid refresh token', async () => {
             const response = await fetch(`${API_URL}/api/auth/refresh`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -295,13 +295,13 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
     // ============================================
     // Current User Tests
     // ============================================
-    describe('GET /api/auth/me - Get Current User', () => {
-        test('should reject request without token', async () => {
+    await describe('GET /api/auth/me - Get Current User', async () => {
+        await test('should reject request without token', async () => {
             const response = await fetch(`${API_URL}/api/auth/me`);
             assert.strictEqual(response.status, 401);
         });
 
-        test('should reject request with invalid token', async () => {
+        await test('should reject request with invalid token', async () => {
             const response = await fetch(`${API_URL}/api/auth/me`, {
                 headers: { 'Authorization': 'Bearer invalid-token' }
             });
@@ -313,13 +313,13 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
     // ============================================
     // User Management Tests (Admin Only)
     // ============================================
-    describe('Admin User Management Endpoints', () => {
-        test('GET /api/users should require admin authentication', async () => {
+    await describe('Admin User Management Endpoints', async () => {
+        await test('GET /api/users should require admin authentication', async () => {
             const response = await fetch(`${API_URL}/api/users`);
             assert.strictEqual(response.status, 401);
         });
 
-        test('POST /api/users should require admin authentication', async () => {
+        await test('POST /api/users should require admin authentication', async () => {
             const response = await fetch(`${API_URL}/api/users`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -337,8 +337,8 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
     // ============================================
     // Role Management Tests
     // ============================================
-    describe('Role Management Endpoints', () => {
-        test('POST /api/users/:id/roles should require admin authentication', async () => {
+    await describe('Role Management Endpoints', async () => {
+        await test('POST /api/users/:id/roles should require admin authentication', async () => {
             const response = await fetch(`${API_URL}/api/users/some-user-id/roles`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -351,7 +351,7 @@ describe('Authentication & User Management API Tests', { timeout: 30000 }, () =>
             assert.strictEqual(response.status, 401);
         });
 
-        test('GET /api/users/teachers should require admin authentication', async () => {
+        await test('GET /api/users/teachers should require admin authentication', async () => {
             const response = await fetch(`${API_URL}/api/users/teachers`);
             assert.strictEqual(response.status, 401);
         });

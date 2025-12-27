@@ -40,24 +40,24 @@ export class MemoryTokenStore implements TokenStore {
         this._startCleanup();
     }
 
-    async add(token: string): Promise<boolean> {
+    add(token: string): Promise<boolean> {
         this.blacklist.add(token);
-        return true;
+        return Promise.resolve(true);
     }
 
-    async has(token: string): Promise<boolean> {
-        return this.blacklist.has(token);
+    has(token: string): Promise<boolean> {
+        return Promise.resolve(this.blacklist.has(token));
     }
 
-    async delete(token: string): Promise<boolean> {
-        return this.blacklist.delete(token);
+    delete(token: string): Promise<boolean> {
+        return Promise.resolve(this.blacklist.delete(token));
     }
 
-    async size(): Promise<number> {
-        return this.blacklist.size;
+    size(): Promise<number> {
+        return Promise.resolve(this.blacklist.size);
     }
 
-    async cleanup(secret: string): Promise<void> {
+    cleanup(secret: string): Promise<void> {
         for (const token of this.blacklist) {
             try {
                 jwt.verify(token, secret, { ignoreExpiration: false });
@@ -67,6 +67,7 @@ export class MemoryTokenStore implements TokenStore {
                 }
             }
         }
+        return Promise.resolve();
     }
 
     private _startCleanup(): void {
@@ -114,7 +115,7 @@ export class RedisTokenStore implements TokenStore {
         try {
             // Dynamic import for optional redis dependency
             const redis = await import('redis');
-            this.client = redis.createClient({ url: this.redisUrl }) as unknown as RedisClient;
+            this.client = redis.createClient({ url: this.redisUrl }) as RedisClient;
 
             this.client.on('error', (err: unknown) => {
                 const message = err instanceof Error ? err.message : 'Unknown error';
@@ -136,7 +137,7 @@ export class RedisTokenStore implements TokenStore {
     }
 
     async add(token: string): Promise<boolean> {
-        if (this.connected === false || this.client === undefined || this.client === null) {
+        if (!this.connected || this.client === null) {
             return false;
         }
 
@@ -156,7 +157,7 @@ export class RedisTokenStore implements TokenStore {
     }
 
     async has(token: string): Promise<boolean> {
-        if (this.connected === false || this.client === undefined || this.client === null) {
+        if (!this.connected || this.client === null) {
             return false;
         }
 
@@ -171,7 +172,7 @@ export class RedisTokenStore implements TokenStore {
     }
 
     async delete(token: string): Promise<boolean> {
-        if (this.connected === false || this.client === undefined || this.client === null) {
+        if (!this.connected || this.client === null) {
             return false;
         }
 
@@ -186,7 +187,7 @@ export class RedisTokenStore implements TokenStore {
     }
 
     async size(): Promise<number> {
-        if (this.connected === false || this.client === undefined || this.client === null) {
+        if (!this.connected || this.client === null) {
             return 0;
         }
 
@@ -198,8 +199,9 @@ export class RedisTokenStore implements TokenStore {
         }
     }
 
-    async cleanup(): Promise<void> {
+    cleanup(): Promise<void> {
         // No-op: Redis handles expiration automatically via TTL
+        return Promise.resolve();
     }
 
     async destroy(): Promise<void> {
@@ -249,8 +251,8 @@ export function createTokenStoreAdapter(store: TokenStore): ITokenStore {
         async isBlacklisted(token: string): Promise<boolean> {
             return store.has(token);
         },
-        async cleanup(): Promise<number> {
-            return 0;
+        cleanup(): Promise<number> {
+            return Promise.resolve(0);
         }
     };
 }

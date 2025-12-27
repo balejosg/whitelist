@@ -20,12 +20,12 @@ interface SwaggerOptions {
             license: { name: string; url: string };
             contact: { name: string; url: string };
         };
-        servers: Array<{ url: string; description: string }>;
+        servers: { url: string; description: string }[];
         components: {
             securitySchemes: Record<string, unknown>;
             schemas: Record<string, unknown>;
         };
-        tags: Array<{ name: string; description: string }>;
+        tags: { name: string; description: string }[];
     };
     apis: string[];
 }
@@ -138,9 +138,7 @@ let swaggerSpec: object | null = null;
  * Get or generate the OpenAPI specification
  */
 export function getSwaggerSpec(): object {
-    if (!swaggerSpec) {
-        swaggerSpec = swaggerJsdoc(options);
-    }
+    swaggerSpec ??= swaggerJsdoc(options);
     return swaggerSpec;
 }
 

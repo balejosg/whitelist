@@ -156,7 +156,7 @@ if (swaggerUi && getSwaggerSpec) {
     }));
     app.get('/api-docs.json', (_req: Request, res: Response) => {
         res.setHeader('Content-Type', 'application/json');
-        res.send(getSwaggerSpec!());
+        res.send(getSwaggerSpec());
     });
 }
 
@@ -268,7 +268,7 @@ let isShuttingDown = false;
 const SHUTDOWN_TIMEOUT_MS = 30000;
 
 const gracefulShutdown = (signal: string): void => {
-    if (isShuttingDown === true) {
+    if (isShuttingDown) {
         logger.warn(`Shutdown already in progress, ignoring ${signal}`);
         return;
     }
@@ -278,7 +278,7 @@ const gracefulShutdown = (signal: string): void => {
 
     if (server !== undefined) {
         server.close((err) => {
-            if (err !== null && err !== undefined) {
+            if (err !== undefined) {
                 logger.error('Error during server close', { error: err.message });
                 process.exit(1);
             }
@@ -297,9 +297,9 @@ const gracefulShutdown = (signal: string): void => {
 };
 
 // Start server when run directly
-const isMainModule = import.meta.url === `file://${process.argv[1]}`;
+const isMainModule = import.meta.url === `file://${process.argv[1] ?? ''}`;
 
-if (isMainModule === true) {
+if (isMainModule) {
     server = app.listen(PORT, HOST, () => {
         logger.info('Server started', {
             host: HOST,
@@ -316,7 +316,7 @@ if (isMainModule === true) {
         console.log('╔═══════════════════════════════════════════════════════╗');
         console.log('║       🛡️  OpenPath Request API Server                 ║');
         console.log('╠═══════════════════════════════════════════════════════╣');
-        console.log(`║  Running on: http://${HOST}:${PORT}                      ║`);
+        console.log(`║  Running on: http://${HOST}:${String(PORT)}                      ║`);
         console.log('║  Health:     /health                                  ║');
         console.log('║  API Docs:   /api-docs                                ║');
         console.log('╚═══════════════════════════════════════════════════════╝');
@@ -330,8 +330,8 @@ if (isMainModule === true) {
         }
     });
 
-    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    process.on('SIGTERM', () => { gracefulShutdown('SIGTERM'); });
+    process.on('SIGINT', () => { gracefulShutdown('SIGINT'); });
 
     process.on('uncaughtException', (err) => {
         logger.error('Uncaught exception', {

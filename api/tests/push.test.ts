@@ -15,7 +15,7 @@ import type { Server } from 'node:http';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const PORT = 3003;
-const API_URL = `http://localhost:${PORT}`;
+const API_URL = `http://localhost:${String(PORT)}`;
 
 const GLOBAL_TIMEOUT = setTimeout(() => {
     console.error('\n❌ Tests timed out! Forcing exit...');
@@ -52,7 +52,7 @@ interface UserResponse {
     accessToken?: string;
 }
 
-describe('Push Notifications API Tests', { timeout: 30000 }, () => {
+await describe('Push Notifications API Tests', { timeout: 30000 }, async () => {
     before(async () => {
         process.env.PORT = String(PORT);
         process.env.ADMIN_TOKEN = 'test-admin-token';
@@ -67,7 +67,7 @@ describe('Push Notifications API Tests', { timeout: 30000 }, () => {
         const { app } = await import('../src/server.js');
 
         server = app.listen(PORT, () => {
-            console.log(`Push test server started on port ${PORT}`);
+            console.log(`Push test server started on port ${String(PORT)}`);
         });
 
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -88,8 +88,8 @@ describe('Push Notifications API Tests', { timeout: 30000 }, () => {
         }
     });
 
-    describe('GET /api/push/vapid-key - Get VAPID Key', () => {
-        test('should return error when VAPID not configured', async () => {
+    await describe('GET /api/push/vapid-key - Get VAPID Key', async () => {
+        await test('should return error when VAPID not configured', async () => {
             const response = await fetch(`${API_URL}/api/push/vapid-key`);
 
             assert.strictEqual(response.status, 503);
@@ -99,8 +99,8 @@ describe('Push Notifications API Tests', { timeout: 30000 }, () => {
         });
     });
 
-    describe('POST /api/push/subscribe - Subscribe', () => {
-        test('should require authentication', async () => {
+    await describe('POST /api/push/subscribe - Subscribe', async () => {
+        await test('should require authentication', async () => {
             const response = await fetch(`${API_URL}/api/push/subscribe`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -110,12 +110,12 @@ describe('Push Notifications API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 401);
         });
 
-        test('should reject invalid subscription object', async () => {
+        await test('should reject invalid subscription object', async () => {
             const response = await fetch(`${API_URL}/api/push/subscribe`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${adminToken}`
+                    'Authorization': `Bearer ${String(adminToken)}`
                 },
                 body: JSON.stringify({ subscription: {} })
             });
@@ -125,45 +125,45 @@ describe('Push Notifications API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(data.code, 'INVALID_SUBSCRIPTION');
         });
 
-        test('should accept valid subscription (admin)', async () => {
+        await test('should accept valid subscription (admin)', async () => {
             const response = await fetch(`${API_URL}/api/push/subscribe`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${adminToken}`
+                    'Authorization': `Bearer ${String(adminToken)}`
                 },
                 body: JSON.stringify({ subscription: mockSubscription })
             });
 
             assert.strictEqual(response.status, 201);
             const data = await response.json() as PushResponse;
-            assert.ok(data.success === true);
+            assert.strictEqual(data.success, true);
             assert.ok(data.subscriptionId !== undefined && data.subscriptionId !== '');
-            assert.ok(data.groupIds?.includes('*') === true);
+            assert.strictEqual(data.groupIds?.includes('*'), true);
         });
     });
 
-    describe('GET /api/push/status - Subscription Status', () => {
-        test('should require authentication', async () => {
+    await describe('GET /api/push/status - Subscription Status', async () => {
+        await test('should require authentication', async () => {
             const response = await fetch(`${API_URL}/api/push/status`);
             assert.strictEqual(response.status, 401);
         });
 
-        test('should return subscription status for admin', async () => {
+        await test('should return subscription status for admin', async () => {
             const response = await fetch(`${API_URL}/api/push/status`, {
-                headers: { 'Authorization': `Bearer ${adminToken}` }
+                headers: { 'Authorization': `Bearer ${String(adminToken)}` }
             });
 
             assert.strictEqual(response.status, 200);
             const data = await response.json() as PushResponse;
-            assert.ok(data.success === true);
+            assert.strictEqual(data.success, true);
             assert.strictEqual(typeof data.pushEnabled, 'boolean');
-            assert.ok(Array.isArray(data.subscriptions) === true);
+            assert.ok(Array.isArray(data.subscriptions));
         });
     });
 
-    describe('DELETE /api/push/subscribe - Unsubscribe', () => {
-        test('should require authentication', async () => {
+    await describe('DELETE /api/push/subscribe - Unsubscribe', async () => {
+        await test('should require authentication', async () => {
             const response = await fetch(`${API_URL}/api/push/subscribe`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
@@ -173,30 +173,30 @@ describe('Push Notifications API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 401);
         });
 
-        test('should delete subscription by endpoint', async () => {
+        await test('should delete subscription by endpoint', async () => {
             const response = await fetch(`${API_URL}/api/push/subscribe`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${adminToken}`
+                    'Authorization': `Bearer ${String(adminToken)}`
                 },
                 body: JSON.stringify({ endpoint: mockSubscription.endpoint })
             });
 
             assert.strictEqual(response.status, 200);
             const data = await response.json() as PushResponse;
-            assert.ok(data.success === true);
+            assert.strictEqual(data.success, true);
         });
     });
 
-    describe('Teacher Push Subscription', () => {
+    await describe('Teacher Push Subscription', async () => {
         before(async () => {
-            const email = `teacher-push-${Date.now()}@school.edu`;
+            const email = `teacher-push-${String(Date.now())}@school.edu`;
             const createRes = await fetch(`${API_URL}/api/users`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${adminToken}`
+                    'Authorization': `Bearer ${String(adminToken)}`
                 },
                 body: JSON.stringify({
                     email,
@@ -207,11 +207,11 @@ describe('Push Notifications API Tests', { timeout: 30000 }, () => {
             const userData = await createRes.json() as UserResponse;
             teacherUserId = userData.user?.id ?? null;
 
-            await fetch(`${API_URL}/api/users/${teacherUserId}/roles`, {
+            await fetch(`${API_URL}/api/users/${String(teacherUserId)}/roles`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${adminToken}`
+                    'Authorization': `Bearer ${String(adminToken)}`
                 },
                 body: JSON.stringify({
                     role: 'teacher',
@@ -231,7 +231,7 @@ describe('Push Notifications API Tests', { timeout: 30000 }, () => {
             teacherToken = loginData.accessToken ?? null;
         });
 
-        test('should subscribe teacher with assigned groups', async () => {
+        await test('should subscribe teacher with assigned groups', async () => {
             const teacherSubscription = {
                 endpoint: 'https://fcm.googleapis.com/fcm/send/teacher-endpoint',
                 keys: {
@@ -244,26 +244,26 @@ describe('Push Notifications API Tests', { timeout: 30000 }, () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${teacherToken}`
+                    'Authorization': `Bearer ${String(teacherToken)}`
                 },
                 body: JSON.stringify({ subscription: teacherSubscription })
             });
 
             assert.strictEqual(response.status, 201);
             const data = await response.json() as PushResponse;
-            assert.ok(data.success === true);
-            assert.ok(data.groupIds?.includes('ciencias-3eso') === true);
-            assert.ok(data.groupIds?.includes('fisica-4eso') === true);
+            assert.strictEqual(data.success, true);
+            assert.strictEqual(data.groupIds.includes('ciencias-3eso'), true);
+            assert.strictEqual(data.groupIds.includes('fisica-4eso'), true);
         });
     });
 
-    describe('POST /api/requests - Push Notification Trigger', () => {
-        test('should create request successfully (push disabled)', async () => {
+    await describe('POST /api/requests - Push Notification Trigger', async () => {
+        await test('should create request successfully (push disabled)', async () => {
             const response = await fetch(`${API_URL}/api/requests`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    domain: `test-push-${Date.now()}.com`,
+                    domain: `test-push-${String(Date.now())}.com`,
                     reason: 'Testing push notification trigger',
                     group_id: 'ciencias-3eso'
                 })
@@ -271,7 +271,7 @@ describe('Push Notifications API Tests', { timeout: 30000 }, () => {
 
             assert.strictEqual(response.status, 201);
             const data = await response.json() as PushResponse;
-            assert.ok(data.success === true);
+            assert.strictEqual(data.success, true);
             assert.ok(data.request_id !== undefined && data.request_id !== '');
         });
     });

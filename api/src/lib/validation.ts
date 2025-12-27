@@ -214,10 +214,12 @@ export function validate(
 ): (req: Request, res: Response, next: NextFunction) => void {
     return (req: Request, res: Response, next: NextFunction): void => {
         const dataToValidate = req[property] as unknown;
-        const { error, value } = schema.validate(dataToValidate, {
+        const result: Joi.ValidationResult = schema.validate(dataToValidate, {
             abortEarly: false,
             stripUnknown: true
         });
+        const error = result.error;
+        const value = result.value as unknown;
 
         if (error !== undefined) {
             const details: ValidationDetail[] = error.details.map((d) => ({

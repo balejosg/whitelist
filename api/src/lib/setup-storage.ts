@@ -34,7 +34,7 @@ export interface SetupData {
 // =============================================================================
 
 // Ensure data directory exists
-if (fs.existsSync(DATA_DIR) === false) {
+if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
@@ -48,7 +48,7 @@ if (fs.existsSync(DATA_DIR) === false) {
  */
 export function getSetupData(): SetupData | null {
     try {
-        if (fs.existsSync(SETUP_FILE) === false) {
+        if (!fs.existsSync(SETUP_FILE)) {
             return null;
         }
         const data = fs.readFileSync(SETUP_FILE, 'utf-8');

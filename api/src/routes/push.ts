@@ -45,37 +45,39 @@ interface UnsubscribeBody {
 // Middleware
 // =============================================================================
 
-async function requireAuth(req: RequestWithUser, res: Response, next: NextFunction): Promise<void> {
-    const authHeader = req.headers.authorization;
+function requireAuth(req: RequestWithUser, res: Response, next: NextFunction): void {
+    void (async (): Promise<void> => {
+        const authHeader = req.headers.authorization;
 
-    if (authHeader === undefined || !authHeader.startsWith('Bearer ')) {
+        if (authHeader?.startsWith('Bearer ') !== true) {
+            res.status(401).json({
+                success: false,
+                error: 'Authorization header required'
+            });
+            return;
+        }
+
+        const token = authHeader.slice(7);
+
+        const decoded = await auth.verifyAccessToken(token);
+        if (decoded !== null) {
+            req.user = decoded;
+            next();
+            return;
+        }
+
+        const adminToken = process.env.ADMIN_TOKEN;
+        if (adminToken !== undefined && adminToken !== '' && token === adminToken) {
+            req.user = auth.createLegacyAdminPayload();
+            next();
+            return;
+        }
+
         res.status(401).json({
             success: false,
-            error: 'Authorization header required'
+            error: 'Invalid or expired token'
         });
-        return;
-    }
-
-    const token = authHeader.slice(7);
-
-    const decoded = await auth.verifyAccessToken(token);
-    if (decoded !== null) {
-        req.user = decoded;
-        next();
-        return;
-    }
-
-    const adminToken = process.env.ADMIN_TOKEN;
-    if (adminToken !== undefined && adminToken !== '' && token === adminToken) {
-        req.user = auth.createLegacyAdminPayload();
-        next();
-        return;
-    }
-
-    res.status(401).json({
-        success: false,
-        error: 'Invalid or expired token'
-    });
+    })().catch(next);
 }
 
 // =============================================================================
@@ -91,14 +93,15 @@ router.get('/vapid-key', (_req: Request, res: Response) => {
     const publicKey = push.getVapidPublicKey();
 
     if (publicKey === null) {
-        return res.status(503).json({
+        res.status(503).json({
             success: false,
             error: 'Push notifications not configured',
             code: 'PUSH_DISABLED'
         });
+        return;
     }
 
-    return res.json({
+    res.json({
         success: true,
         publicKey,
         enabled: true
@@ -110,16 +113,17 @@ router.get('/vapid-key', (_req: Request, res: Response) => {
  */
 router.get('/status', requireAuth, (req: RequestWithUser, res: Response) => {
     if (req.user === undefined) {
-        return res.status(401).json({
+        res.status(401).json({
             success: false,
             error: 'Authentication required'
         });
+        return;
     }
 
     const enabled = push.isPushEnabled();
     const subscriptions = push.getSubscriptionsForUser(req.user.sub);
 
-    return res.json({
+    res.json({
         success: true,
         pushEnabled: enabled,
         subscriptionCount: subscriptions.length,
@@ -136,38 +140,44 @@ router.get('/status', requireAuth, (req: RequestWithUser, res: Response) => {
  * POST /api/push/subscribe
  */
 router.post('/subscribe', requireAuth, (req: RequestWithUser, res: Response) => {
-    const { subscription, groupIds } = req.body as SubscribeBody;
+    const body = req.body as Partial<SubscribeBody>;
+    const subscription = body.subscription;
+    const groupIds = body.groupIds;
+    const keys = (subscription as Partial<PushSubscriptionData> | undefined)?.keys;
 
-    if (subscription === undefined || subscription === null || subscription.endpoint === undefined || subscription.keys === undefined) {
-        return res.status(400).json({
+    if (subscription === undefined || subscription.endpoint === '' || keys === undefined) {
+        res.status(400).json({
             success: false,
             error: 'Invalid subscription object',
             code: 'INVALID_SUBSCRIPTION'
         });
+        return;
     }
 
-    if (subscription.keys.p256dh === undefined || subscription.keys.p256dh === '' || subscription.keys.auth === undefined || subscription.keys.auth === '') {
-        return res.status(400).json({
+    if (subscription.keys.p256dh === '' || subscription.keys.auth === '') {
+        res.status(400).json({
             success: false,
             error: 'Subscription missing required keys',
             code: 'INVALID_SUBSCRIPTION'
         });
+        return;
     }
 
     let targetGroups = groupIds;
 
-    if (targetGroups === undefined || targetGroups === null || targetGroups.length === 0) {
+    if (targetGroups === undefined || targetGroups.length === 0) {
         const userGroups = auth.getApprovalGroups(req.user);
         if (userGroups === 'all') {
             targetGroups = ['*'];
         } else if (userGroups.length > 0) {
             targetGroups = userGroups;
         } else {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 error: 'No groups to subscribe to',
                 code: 'NO_GROUPS'
             });
+            return;
         }
     }
 
@@ -180,7 +190,7 @@ router.post('/subscribe', requireAuth, (req: RequestWithUser, res: Response) => 
             userAgent
         );
 
-        return res.status(201).json({
+        res.status(201).json({
             success: true,
             message: 'Push subscription registered',
             subscriptionId: record.id,
@@ -188,7 +198,7 @@ router.post('/subscribe', requireAuth, (req: RequestWithUser, res: Response) => 
         });
     } catch (error) {
         console.error('Error saving subscription:', error);
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             error: 'Failed to save subscription'
         });
@@ -202,10 +212,11 @@ router.delete('/subscribe', requireAuth, (req: Request<object, unknown, Unsubscr
     const { endpoint, subscriptionId } = req.body;
 
     if ((endpoint === undefined || endpoint === '') && (subscriptionId === undefined || subscriptionId === '')) {
-        return res.status(400).json({
+        res.status(400).json({
             success: false,
             error: 'Either endpoint or subscriptionId required'
         });
+        return;
     }
 
     let deleted = false;
@@ -216,13 +227,13 @@ router.delete('/subscribe', requireAuth, (req: Request<object, unknown, Unsubscr
         deleted = push.deleteSubscriptionById(subscriptionId);
     }
 
-    if (deleted === true) {
-        return res.json({
+    if (deleted) {
+        res.json({
             success: true,
             message: 'Subscription removed'
         });
     } else {
-        return res.status(404).json({
+        res.status(404).json({
             success: false,
             error: 'Subscription not found'
         });

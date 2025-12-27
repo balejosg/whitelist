@@ -20,7 +20,8 @@ import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
 
-const API_URL = 'http://localhost:3000';
+const PORT = process.env.PORT ?? '3000';
+const API_URL = `http://localhost:${PORT}`;
 
 // Global timeout - force exit if tests hang
 const GLOBAL_TIMEOUT = setTimeout(() => {
@@ -31,14 +32,14 @@ GLOBAL_TIMEOUT.unref();
 
 let server: Server | undefined;
 
-describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
+await describe('Whitelist Request API Tests', { timeout: 30000 }, async () => {
     before(async () => {
         // Start server for testing - dynamic import for ESM
         const { app } = await import('../src/server.js');
         const PORT = parseInt(process.env.PORT ?? '3000', 10);
 
         server = app.listen(PORT, () => {
-            console.log(`Test server started on port ${PORT}`);
+            console.log(`Test server started on port ${String(PORT)}`);
         });
 
         // Wait for server to start
@@ -68,21 +69,21 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
         }
     });
 
-    describe('Health Check', () => {
-        test('GET /health should return 200 OK', async () => {
+    await describe('Health Check', async () => {
+        await test('GET /health should return 200 OK', async () => {
             const response = await fetch(`${API_URL}/health`);
             assert.strictEqual(response.status, 200);
 
             const data = await response.json() as { status: string; timestamp: string };
-            assert.ok(['ok', 'degraded'].includes(data.status) === true, `Expected ok or degraded, got ${data.status}`);
-            assert.ok(data.timestamp !== undefined && data.timestamp !== '');
+            assert.ok(['ok', 'degraded'].includes(data.status), `Expected ok or degraded, got ${data.status}`);
+            assert.ok(data.timestamp !== '');
         });
     });
 
-    describe('POST /api/requests - Submit Domain Request', () => {
-        test('should accept valid domain request', async () => {
+    await describe('POST /api/requests - Submit Domain Request', async () => {
+        await test('should accept valid domain request', async () => {
             const requestData = {
-                domain: 'test-' + Date.now() + '.example.com',
+                domain: 'test-' + String(Date.now()) + '.example.com',
                 reason: 'Testing purposes',
                 requester_email: 'test@example.com'
             };
@@ -96,11 +97,11 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 201);
 
             const data = await response.json() as { request_id: string; status: string };
-            assert.ok(data.request_id !== undefined && data.request_id !== '');
+            assert.ok(data.request_id !== '');
             assert.strictEqual(data.status, 'pending');
         });
 
-        test('should reject request without domain', async () => {
+        await test('should reject request without domain', async () => {
             const requestData = {
                 reason: 'Testing',
                 requester_email: 'test@example.com'
@@ -115,7 +116,7 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 400);
         });
 
-        test('should reject invalid domain format', async () => {
+        await test('should reject invalid domain format', async () => {
             const requestData = {
                 domain: 'not-a-valid-domain',
                 reason: 'Testing'
@@ -130,7 +131,7 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 400);
         });
 
-        test('should reject XSS attempts in domain names', async () => {
+        await test('should reject XSS attempts in domain names', async () => {
             const requestData = {
                 domain: '<script>alert("xss")</script>.com',
                 reason: 'Testing'
@@ -146,15 +147,15 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
         });
     });
 
-    describe('GET /api/requests - List Requests', () => {
-        test('should require authentication for listing requests', async () => {
+    await describe('GET /api/requests - List Requests', async () => {
+        await test('should require authentication for listing requests', async () => {
             const response = await fetch(`${API_URL}/api/requests`);
             assert.strictEqual(response.status, 401);
         });
     });
 
-    describe('CORS Headers', () => {
-        test('should include CORS headers', async () => {
+    await describe('CORS Headers', async () => {
+        await test('should include CORS headers', async () => {
             const response = await fetch(`${API_URL}/health`, {
                 headers: { 'Origin': 'http://localhost:3000' }
             });
@@ -163,13 +164,13 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
         });
     });
 
-    describe('Error Handling', () => {
-        test('should return 404 for unknown routes', async () => {
+    await describe('Error Handling', async () => {
+        await test('should return 404 for unknown routes', async () => {
             const response = await fetch(`${API_URL}/unknown-route`);
             assert.strictEqual(response.status, 404);
         });
 
-        test('should handle malformed JSON', async () => {
+        await test('should handle malformed JSON', async () => {
             const response = await fetch(`${API_URL}/api/requests`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -180,8 +181,8 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
         });
     });
 
-    describe('GET /api/requests/status/:id - Check Request Status', () => {
-        test('should return 404 for non-existent request', async () => {
+    await describe('GET /api/requests/status/:id - Check Request Status', async () => {
+        await test('should return 404 for non-existent request', async () => {
             const response = await fetch(`${API_URL}/api/requests/status/nonexistent-id`);
             assert.strictEqual(response.status, 404);
 
@@ -189,13 +190,13 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(data.success, false);
         });
 
-        test('should return status for existing request', async () => {
+        await test('should return status for existing request', async () => {
             // First create a request
             const createResponse = await fetch(`${API_URL}/api/requests`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    domain: 'status-test-' + Date.now() + '.example.com',
+                    domain: 'status-test-' + String(Date.now()) + '.example.com',
                     reason: 'Testing status endpoint'
                 })
             });
@@ -214,8 +215,8 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
         });
     });
 
-    describe('POST /api/requests/auto - Auto-inclusion Endpoint', () => {
-        test('should reject request without required fields', async () => {
+    await describe('POST /api/requests/auto - Auto-inclusion Endpoint', async () => {
+        await test('should reject request without required fields', async () => {
             const response = await fetch(`${API_URL}/api/requests/auto`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -231,7 +232,7 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(data.code, 'MISSING_FIELDS');
         });
 
-        test('should reject request with invalid token', async () => {
+        await test('should reject request with invalid token', async () => {
             const response = await fetch(`${API_URL}/api/requests/auto`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -246,11 +247,11 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
 
             const data = await response.json() as { success: boolean; code: string };
             assert.strictEqual(data.success, false);
-            assert.ok([401, 500].includes(response.status) === true, `Expected 401 or 500, got ${response.status}`);
-            assert.ok(['INVALID_TOKEN', 'SERVER_ERROR'].includes(data.code) === true, `Expected INVALID_TOKEN or SERVER_ERROR, got ${data.code}`);
+            assert.ok([401, 500].includes(response.status), `Expected 401 or 500, got ${String(response.status)}`);
+            assert.ok(['INVALID_TOKEN', 'SERVER_ERROR'].includes(data.code), `Expected INVALID_TOKEN or SERVER_ERROR, got ${data.code}`);
         });
 
-        test('should reject invalid domain format in auto-inclusion', async () => {
+        await test('should reject invalid domain format in auto-inclusion', async () => {
             const response = await fetch(`${API_URL}/api/requests/auto`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -267,8 +268,8 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
         });
     });
 
-    describe('GET /api/requests/groups/list - List Groups', () => {
-        test('should require authentication for listing groups', async () => {
+    await describe('GET /api/requests/groups/list - List Groups', async () => {
+        await test('should require authentication for listing groups', async () => {
             const response = await fetch(`${API_URL}/api/requests/groups/list`);
             assert.strictEqual(response.status, 401);
 
@@ -277,15 +278,15 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
         });
     });
 
-    describe('Admin Endpoints with Invalid Token', () => {
-        test('should reject admin list with wrong token', async () => {
+    await describe('Admin Endpoints with Invalid Token', async () => {
+        await test('should reject admin list with wrong token', async () => {
             const response = await fetch(`${API_URL}/api/requests`, {
                 headers: { 'Authorization': 'Bearer wrong-token' }
             });
             assert.strictEqual(response.status, 401);
         });
 
-        test('should reject approve with wrong token', async () => {
+        await test('should reject approve with wrong token', async () => {
             const response = await fetch(`${API_URL}/api/requests/some-id/approve`, {
                 method: 'POST',
                 headers: {
@@ -297,7 +298,7 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 401);
         });
 
-        test('should reject reject with wrong token', async () => {
+        await test('should reject reject with wrong token', async () => {
             const response = await fetch(`${API_URL}/api/requests/some-id/reject`, {
                 method: 'POST',
                 headers: {
@@ -309,7 +310,7 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 401);
         });
 
-        test('should reject delete with wrong token', async () => {
+        await test('should reject delete with wrong token', async () => {
             const response = await fetch(`${API_URL}/api/requests/some-id`, {
                 method: 'DELETE',
                 headers: { 'Authorization': 'Bearer wrong-token' }
@@ -318,25 +319,25 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
         });
     });
 
-    describe('API Info Endpoint', () => {
-        test('GET /api should return API documentation', async () => {
+    await describe('API Info Endpoint', async () => {
+        await test('GET /api should return API documentation', async () => {
             const response = await fetch(`${API_URL}/api`);
             assert.strictEqual(response.status, 200);
 
             const data = await response.json() as { name: string; version: string; endpoints: object };
-            assert.ok(data.name !== undefined && data.name !== '');
-            assert.ok(data.version !== undefined && data.version !== '');
-            assert.ok(data.endpoints !== undefined);
+            assert.ok(data.name !== '');
+            assert.ok(data.version !== '');
+            assert.strictEqual(typeof data.endpoints, 'object');
         });
     });
 
-    describe('Input Sanitization', () => {
-        test('should sanitize reason field', async () => {
+    await describe('Input Sanitization', async () => {
+        await test('should sanitize reason field', async () => {
             const response = await fetch(`${API_URL}/api/requests`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    domain: `sanitize-test-${Date.now()}.example.com`,
+                    domain: `sanitize-test-${String(Date.now())}.example.com`,
                     reason: '<script>alert("xss")</script>Normal reason'
                 })
             });
@@ -344,7 +345,7 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 201);
         });
 
-        test('should handle very long domain names', async () => {
+        await test('should handle very long domain names', async () => {
             const longDomain = 'a'.repeat(300) + '.example.com';
             const response = await fetch(`${API_URL}/api/requests`, {
                 method: 'POST',
@@ -358,12 +359,12 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(response.status, 400);
         });
 
-        test('should handle special characters in email', async () => {
+        await test('should handle special characters in email', async () => {
             const response = await fetch(`${API_URL}/api/requests`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    domain: `email-test-${Date.now()}.example.com`,
+                    domain: `email-test-${String(Date.now())}.example.com`,
                     reason: 'Testing',
                     requester_email: 'valid+tag@example.com'
                 })
@@ -373,13 +374,13 @@ describe('Whitelist Request API Tests', { timeout: 30000 }, () => {
         });
     });
 
-    describe('Priority Field', () => {
-        test('should accept valid priority values', async () => {
+    await describe('Priority Field', async () => {
+        await test('should accept valid priority values', async () => {
             const response = await fetch(`${API_URL}/api/requests`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    domain: `priority-test-${Date.now()}.example.com`,
+                    domain: `priority-test-${String(Date.now())}.example.com`,
                     reason: 'Testing priority',
                     priority: 'high'
                 })

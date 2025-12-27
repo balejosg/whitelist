@@ -15,7 +15,7 @@ import type { Server } from 'node:http';
 
 // Test configuration
 const PORT = 3004;
-const BASE_URL = `http://localhost:${PORT}`;
+const BASE_URL = `http://localhost:${String(PORT)}`;
 
 // Store server reference
 let server: Server | undefined;
@@ -29,12 +29,14 @@ interface RequestResult {
 // Helper function for HTTP requests
 async function request(path: string, options: RequestInit = {}): Promise<RequestResult> {
     const url = `${BASE_URL}${path}`;
+    const headers = new Headers(options.headers);
+    if (!headers.has('Content-Type')) {
+        headers.set('Content-Type', 'application/json');
+    }
+
     const response = await fetch(url, {
-        headers: {
-            'Content-Type': 'application/json',
-            ...options.headers
-        },
-        ...options
+        ...options,
+        headers
     });
 
     const text = await response.text();
@@ -48,7 +50,7 @@ async function request(path: string, options: RequestInit = {}): Promise<Request
     return { status: response.status, data, headers: response.headers };
 }
 
-describe('Security Tests', async () => {
+await describe('Security Tests', async () => {
     before(async () => {
         // Set test environment
         process.env.PORT = String(PORT);
@@ -60,16 +62,17 @@ describe('Security Tests', async () => {
         const app = serverModule.app;
 
         await new Promise<void>((resolve, reject) => {
-            server = app.listen(PORT, () => {
+            const s = app.listen(PORT, () => {
                 resolve();
             });
-            server?.on('error', reject);
+            server = s;
+            s.on('error', reject);
         });
     });
 
     after(async () => {
         if (server !== undefined) {
-            await new Promise<void>(resolve => server?.close(() => resolve()));
+            await new Promise<void>(resolve => server?.close(() => { resolve(); }));
         }
     });
 
@@ -77,29 +80,29 @@ describe('Security Tests', async () => {
     // Security Headers Tests
     // =========================================================================
 
-    describe('Security Headers', async () => {
-        it('should include X-Content-Type-Options header', async () => {
+    await describe('Security Headers', async () => {
+        await it('should include X-Content-Type-Options header', async () => {
             const { headers } = await request('/health');
             assert.strictEqual(headers.get('x-content-type-options'), 'nosniff');
         });
 
-        it('should include X-Frame-Options header', async () => {
+        await it('should include X-Frame-Options header', async () => {
             const { headers } = await request('/health');
             const frameOptions = headers.get('x-frame-options');
             assert.ok(frameOptions === 'DENY' || frameOptions === 'SAMEORIGIN');
         });
 
-        it('should include X-XSS-Protection header', async () => {
+        await it('should include X-XSS-Protection header', async () => {
             await request('/health');
             // Helmet may not set this in newer versions as browsers deprecated it
             assert.ok(true);
         });
 
-        it('should include Content-Security-Policy header', async () => {
+        await it('should include Content-Security-Policy header', async () => {
             const { headers } = await request('/health');
             const csp = headers.get('content-security-policy');
-            assert.ok(csp !== null && csp !== '', 'CSP header should be present');
-            assert.ok(csp !== null && csp.includes('default-src') === true, 'CSP should include default-src');
+            assert.ok(csp !== '', 'CSP header should be present');
+            assert.ok(csp.includes('default-src'), 'CSP should include default-src');
         });
     });
 
@@ -107,38 +110,38 @@ describe('Security Tests', async () => {
     // Authentication Bypass Tests
     // =========================================================================
 
-    describe('Authentication Bypass', async () => {
-        it('should reject requests without auth header', async () => {
+    await describe('Authentication Bypass', async () => {
+        await it('should reject requests without auth header', async () => {
             const { status, data } = await request('/api/requests');
             assert.strictEqual(status, 401);
             const d = data as { error?: string; message?: string; success?: boolean };
-            assert.ok(d.error !== undefined || d.message !== undefined || d.success === false, 'Should return error response');
+            assert.ok(Boolean(d.error) || Boolean(d.message) || d.success === false, 'Should return error response');
         });
 
-        it('should reject requests with empty Bearer token', async () => {
+        await it('should reject requests with empty Bearer token', async () => {
             const { status } = await request('/api/requests', {
                 headers: { 'Authorization': 'Bearer ' }
             });
             assert.strictEqual(status, 401);
         });
 
-        it('should reject requests with invalid token format', async () => {
+        await it('should reject requests with invalid token format', async () => {
             const { status } = await request('/api/requests', {
                 headers: { 'Authorization': 'InvalidFormat token123' }
             });
             assert.strictEqual(status, 401);
         });
 
-        it('should reject requests with malformed JWT', async () => {
+        await it('should reject requests with malformed JWT', async () => {
             const { status, data } = await request('/api/requests', {
                 headers: { 'Authorization': 'Bearer not.a.valid.jwt.token' }
             });
             assert.strictEqual(status, 401);
             const d = data as { error?: string; message?: string; success?: boolean };
-            assert.ok(d.error !== undefined || d.message !== undefined || d.success === false, 'Should return error response');
+            assert.ok(Boolean(d.error) || Boolean(d.message) || d.success === false, 'Should return error response');
         });
 
-        it('should reject requests with expired-like token', async () => {
+        await it('should reject requests with expired-like token', async () => {
             const expiredToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZXhwIjoxfQ.invalid';
             const { status } = await request('/api/requests', {
                 headers: { 'Authorization': `Bearer ${expiredToken}` }
@@ -146,7 +149,7 @@ describe('Security Tests', async () => {
             assert.strictEqual(status, 401);
         });
 
-        it('should reject SQL injection in auth header', async () => {
+        await it('should reject SQL injection in auth header', async () => {
             const { status } = await request('/api/requests', {
                 headers: { 'Authorization': "Bearer ' OR '1'='1" }
             });
@@ -158,8 +161,8 @@ describe('Security Tests', async () => {
     // Input Validation Tests
     // =========================================================================
 
-    describe('Input Validation', async () => {
-        it('should reject domain with script tags (XSS attempt)', async () => {
+    await describe('Input Validation', async () => {
+        await it('should reject domain with script tags (XSS attempt)', async () => {
             const { status } = await request('/api/requests', {
                 method: 'POST',
                 body: JSON.stringify({
@@ -169,7 +172,7 @@ describe('Security Tests', async () => {
             assert.strictEqual(status, 400);
         });
 
-        it('should reject domain with SQL injection', async () => {
+        await it('should reject domain with SQL injection', async () => {
             const { status } = await request('/api/requests', {
                 method: 'POST',
                 body: JSON.stringify({
@@ -179,7 +182,7 @@ describe('Security Tests', async () => {
             assert.strictEqual(status, 400);
         });
 
-        it('should reject extremely long domain (DoS attempt)', async () => {
+        await it('should reject extremely long domain (DoS attempt)', async () => {
             const { status } = await request('/api/requests', {
                 method: 'POST',
                 body: JSON.stringify({
@@ -189,7 +192,7 @@ describe('Security Tests', async () => {
             assert.strictEqual(status, 400);
         });
 
-        it('should reject domain with null bytes', async () => {
+        await it('should reject domain with null bytes', async () => {
             const { status } = await request('/api/requests', {
                 method: 'POST',
                 body: JSON.stringify({
@@ -199,17 +202,17 @@ describe('Security Tests', async () => {
             assert.ok(status === 400 || status === 201);
         });
 
-        it('should reject domain with unicode tricks', async () => {
+        await it('should reject domain with unicode tricks', async () => {
             const { status } = await request('/api/requests', {
                 method: 'POST',
                 body: JSON.stringify({
                     domain: 'exаmple.com' // Uses Cyrillic 'а' instead of Latin 'a'
                 })
             });
-            assert.ok([400, 201].includes(status) === true);
+            assert.ok([400, 201].includes(status));
         });
 
-        it('should handle missing required fields', async () => {
+        await it('should handle missing required fields', async () => {
             const { status } = await request('/api/requests', {
                 method: 'POST',
                 body: JSON.stringify({})
@@ -217,7 +220,7 @@ describe('Security Tests', async () => {
             assert.strictEqual(status, 400);
         });
 
-        it('should reject malformed JSON', async () => {
+        await it('should reject malformed JSON', async () => {
             const response = await fetch(`${BASE_URL}/api/requests`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -233,13 +236,13 @@ describe('Security Tests', async () => {
     // Path Traversal Tests
     // =========================================================================
 
-    describe('Path Traversal', async () => {
-        it('should not allow path traversal in request ID', async () => {
+    await describe('Path Traversal', async () => {
+        await it('should not allow path traversal in request ID', async () => {
             const { status } = await request('/api/requests/../../../etc/passwd');
             assert.strictEqual(status, 404);
         });
 
-        it('should handle encoded path traversal', async () => {
+        await it('should handle encoded path traversal', async () => {
             const { status } = await request('/api/requests/%2e%2e%2f%2e%2e%2fetc/passwd');
             assert.strictEqual(status, 404);
         });
@@ -249,8 +252,8 @@ describe('Security Tests', async () => {
     // Rate Limiting Tests
     // =========================================================================
 
-    describe('Rate Limiting', async () => {
-        it('should include rate limit headers', async () => {
+    await describe('Rate Limiting', async () => {
+        await it('should include rate limit headers', async () => {
             await request('/api/requests', {
                 method: 'POST',
                 body: JSON.stringify({ domain: 'test.com' })
@@ -267,8 +270,8 @@ describe('Security Tests', async () => {
     // CORS Tests
     // =========================================================================
 
-    describe('CORS Policy', async () => {
-        it('should handle preflight OPTIONS request', async () => {
+    await describe('CORS Policy', async () => {
+        await it('should handle preflight OPTIONS request', async () => {
             const response = await fetch(`${BASE_URL}/api/requests`, {
                 method: 'OPTIONS',
                 headers: {
@@ -276,7 +279,7 @@ describe('Security Tests', async () => {
                     'Access-Control-Request-Method': 'POST'
                 }
             });
-            assert.ok([200, 204].includes(response.status) === true);
+            assert.ok([200, 204].includes(response.status));
         });
     });
 
@@ -284,15 +287,14 @@ describe('Security Tests', async () => {
     // Request ID Tracking
     // =========================================================================
 
-    describe('Request Tracking', async () => {
-        it('should include X-Request-ID header in response', async () => {
+    await describe('Request Tracking', async () => {
+        await it('should include X-Request-ID header in response', async () => {
             const { headers } = await request('/health');
             const requestId = headers.get('x-request-id');
-            assert.ok(requestId !== null && requestId !== '', 'X-Request-ID header should be present');
-            assert.ok(requestId !== null && requestId.length > 0, 'Request ID should not be empty');
+            assert.ok(requestId !== '', 'X-Request-ID header should be present');
         });
 
-        it('should generate unique request IDs', async () => {
+        await it('should generate unique request IDs', async () => {
             const { headers: h1 } = await request('/health');
             const { headers: h2 } = await request('/health');
 
@@ -307,22 +309,22 @@ describe('Security Tests', async () => {
     // Error Information Leakage
     // =========================================================================
 
-    describe('Error Information Leakage', async () => {
-        it('should not leak stack traces in error responses', async () => {
+    await describe('Error Information Leakage', async () => {
+        await it('should not leak stack traces in error responses', async () => {
             const { data } = await request('/api/nonexistent');
 
             const responseStr = JSON.stringify(data);
-            assert.ok(responseStr.includes('at ') === false, 'Should not include stack traces');
-            assert.ok(responseStr.includes('.js:') === false, 'Should not include file references');
+            assert.ok(!responseStr.includes('at '), 'Should not include stack traces');
+            assert.ok(!responseStr.includes('.js:'), 'Should not include file references');
         });
 
-        it('should not leak internal paths', async () => {
+        await it('should not leak internal paths', async () => {
             const { data } = await request('/api/requests/invalid-id');
 
             const responseStr = JSON.stringify(data);
-            assert.ok(responseStr.includes('/home/') === false, 'Should not leak home paths');
-            assert.ok(responseStr.includes('/usr/') === false, 'Should not leak system paths');
-            assert.ok(responseStr.includes('node_modules') === false, 'Should not leak node_modules');
+            assert.ok(!responseStr.includes('/home/'), 'Should not leak home paths');
+            assert.ok(!responseStr.includes('/usr/'), 'Should not leak system paths');
+            assert.ok(!responseStr.includes('node_modules'), 'Should not leak node_modules');
         });
     });
 });

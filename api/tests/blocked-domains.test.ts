@@ -10,7 +10,7 @@ import assert from 'node:assert';
 import type { Server } from 'node:http';
 
 const PORT = 3002;
-const API_URL = `http://localhost:${PORT}`;
+const API_URL = `http://localhost:${String(PORT)}`;
 
 const GLOBAL_TIMEOUT = setTimeout(() => {
     console.error('\n❌ Blocked domains tests timed out! Forcing exit...');
@@ -24,7 +24,7 @@ let teacherToken: string | null = null;
 let teacherUserId: string | null = null;
 let pendingRequestId: string | null = null;
 
-const TEACHER_EMAIL = `blocked-test-teacher-${Date.now()}@school.edu`;
+const TEACHER_EMAIL = `blocked-test-teacher-${String(Date.now())}@school.edu`;
 const TEACHER_PASSWORD = 'TeacherPassword123!';
 const TEACHER_GROUP = 'ciencias-3eso';
 
@@ -49,7 +49,7 @@ interface RequestResponse {
     id?: string;
 }
 
-describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
+await describe('Blocked Domains Tests - US3', { timeout: 45000 }, async () => {
     before(async () => {
         process.env.PORT = String(PORT);
         process.env.ADMIN_TOKEN = 'test-admin-token';
@@ -57,7 +57,7 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
         const { app } = await import('../src/server.js');
 
         server = app.listen(PORT, () => {
-            console.log(`Blocked domains test server started on port ${PORT}`);
+            console.log(`Blocked domains test server started on port ${String(PORT)}`);
         });
 
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -78,13 +78,13 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
         }
     });
 
-    describe('Setup: Create Teacher with Role', () => {
-        test('should create teacher user', async () => {
+    await describe('Setup: Create Teacher with Role', async () => {
+        await test('should create teacher user', async () => {
             const response = await fetch(`${API_URL}/api/users`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${adminToken}`
+                    'Authorization': `Bearer ${String(adminToken)}`
                 },
                 body: JSON.stringify({
                     email: TEACHER_EMAIL,
@@ -98,12 +98,12 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
             teacherUserId = data.user?.id ?? null;
         });
 
-        test('should assign teacher role with groups', async () => {
-            const response = await fetch(`${API_URL}/api/users/${teacherUserId}/roles`, {
+        await test('should assign teacher role with groups', async () => {
+            const response = await fetch(`${API_URL}/api/users/${String(teacherUserId)}/roles`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${adminToken}`
+                    'Authorization': `Bearer ${String(adminToken)}`
                 },
                 body: JSON.stringify({
                     role: 'teacher',
@@ -114,7 +114,7 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
             assert.strictEqual(response.status, 201);
         });
 
-        test('should login as teacher and get token', async () => {
+        await test('should login as teacher and get token', async () => {
             const response = await fetch(`${API_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -131,39 +131,39 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
         });
     });
 
-    describe('POST /api/requests/domains/check - Check if domain is blocked', () => {
-        test('should return blocked:true for known blocked domain', async () => {
+    await describe('POST /api/requests/domains/check - Check if domain is blocked', async () => {
+        await test('should return blocked:true for known blocked domain', async () => {
             const response = await fetch(`${API_URL}/api/requests/domains/check`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${teacherToken}`
+                    'Authorization': `Bearer ${String(teacherToken)}`
                 },
                 body: JSON.stringify({ domain: 'facebook.com' })
             });
 
             assert.strictEqual(response.status, 200);
             const data = await response.json() as DomainCheckResponse;
-            assert.ok(data.success === true);
+            assert.ok(data.success);
             assert.strictEqual(typeof data.blocked, 'boolean');
         });
 
-        test('should return blocked:false for non-blocked domain', async () => {
+        await test('should return blocked:false for non-blocked domain', async () => {
             const response = await fetch(`${API_URL}/api/requests/domains/check`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${teacherToken}`
+                    'Authorization': `Bearer ${String(teacherToken)}`
                 },
                 body: JSON.stringify({ domain: 'wikipedia.org' })
             });
 
             assert.strictEqual(response.status, 200);
             const data = await response.json() as DomainCheckResponse;
-            assert.ok(data.success === true);
+            assert.ok(data.success);
         });
 
-        test('should reject check without authentication', async () => {
+        await test('should reject check without authentication', async () => {
             const response = await fetch(`${API_URL}/api/requests/domains/check`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -173,12 +173,12 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
             assert.strictEqual(response.status, 401);
         });
 
-        test('should reject check without domain parameter', async () => {
+        await test('should reject check without domain parameter', async () => {
             const response = await fetch(`${API_URL}/api/requests/domains/check`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${teacherToken}`
+                    'Authorization': `Bearer ${String(teacherToken)}`
                 },
                 body: JSON.stringify({})
             });
@@ -187,37 +187,37 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
         });
     });
 
-    describe('GET /api/requests/domains/blocked - List blocked domains', () => {
-        test('should return list of blocked domains for admin', async () => {
+    await describe('GET /api/requests/domains/blocked - List blocked domains', async () => {
+        await test('should return list of blocked domains for admin', async () => {
             const response = await fetch(`${API_URL}/api/requests/domains/blocked`, {
-                headers: { 'Authorization': `Bearer ${adminToken}` }
+                headers: { 'Authorization': `Bearer ${String(adminToken)}` }
             });
 
             assert.strictEqual(response.status, 200);
             const data = await response.json() as DomainCheckResponse;
-            assert.ok(data.success === true);
-            assert.ok(Array.isArray(data.domains) === true);
+            assert.ok(data.success);
+            assert.ok(Array.isArray(data.domains));
         });
 
-        test('should reject for non-admin (teacher)', async () => {
+        await test('should reject for non-admin (teacher)', async () => {
             const response = await fetch(`${API_URL}/api/requests/domains/blocked`, {
-                headers: { 'Authorization': `Bearer ${teacherToken}` }
+                headers: { 'Authorization': `Bearer ${String(teacherToken)}` }
             });
 
             assert.strictEqual(response.status, 403);
         });
 
-        test('should reject without authentication', async () => {
+        await test('should reject without authentication', async () => {
             const response = await fetch(`${API_URL}/api/requests/domains/blocked`);
 
             assert.strictEqual(response.status, 401);
         });
     });
 
-    describe('Teacher Approval of Blocked Domains', () => {
-        test('setup: create a pending request for blocked domain', async () => {
+    await describe('Teacher Approval of Blocked Domains', async () => {
+        await test('setup: create a pending request for blocked domain', async () => {
             const blockedRes = await fetch(`${API_URL}/api/requests/domains/blocked`, {
-                headers: { 'Authorization': `Bearer ${adminToken}` }
+                headers: { 'Authorization': `Bearer ${String(adminToken)}` }
             });
             const blockedData = await blockedRes.json() as DomainCheckResponse;
 
@@ -227,7 +227,7 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${teacherToken}`
+                    'Authorization': `Bearer ${String(teacherToken)}`
                 },
                 body: JSON.stringify({
                     domain: blockedDomain,
@@ -243,7 +243,7 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
             }
         });
 
-        test('teacher should get DOMAIN_BLOCKED error when approving blocked domain', async () => {
+        await test('teacher should get DOMAIN_BLOCKED error when approving blocked domain', async () => {
             if (pendingRequestId === null) {
                 console.log('Skipping: No pending request available for blocked domain test');
                 return;
@@ -253,7 +253,7 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${teacherToken}`
+                    'Authorization': `Bearer ${String(teacherToken)}`
                 },
                 body: JSON.stringify({})
             });
@@ -265,7 +265,7 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
             assert.ok(data.hint !== undefined && data.hint !== '');
         });
 
-        test('admin should be able to approve blocked domain (override)', async () => {
+        await test('admin should be able to approve blocked domain (override)', async () => {
             if (pendingRequestId === null) {
                 console.log('Skipping: No pending request available for admin override test');
                 return;
@@ -275,29 +275,29 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${adminToken}`
+                    'Authorization': `Bearer ${String(adminToken)}`
                 },
                 body: JSON.stringify({})
             });
 
             assert.ok(
                 response.status === 200 || response.status === 400,
-                `Expected 200 or 400, got ${response.status}`
+                `Expected 200 or 400, got ${String(response.status)}`
             );
         });
     });
 
-    describe('Teacher Approval of Non-blocked Domains', () => {
+    await describe('Teacher Approval of Non-blocked Domains', async () => {
         let nonBlockedRequestId: string | null = null;
 
-        test('setup: create request for non-blocked domain', async () => {
-            const safeDomain = `safe-test-${Date.now()}.example.org`;
+        await test('setup: create request for non-blocked domain', async () => {
+            const safeDomain = `safe-test-${String(Date.now())}.example.org`;
 
             const response = await fetch(`${API_URL}/api/requests`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${teacherToken}`
+                    'Authorization': `Bearer ${String(teacherToken)}`
                 },
                 body: JSON.stringify({
                     domain: safeDomain,
@@ -313,7 +313,7 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
             }
         });
 
-        test('teacher should successfully approve non-blocked domain', async () => {
+        await test('teacher should successfully approve non-blocked domain', async () => {
             if (nonBlockedRequestId === null) {
                 console.log('Skipping: No pending request for non-blocked domain');
                 return;
@@ -323,14 +323,14 @@ describe('Blocked Domains Tests - US3', { timeout: 45000 }, () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${teacherToken}`
+                    'Authorization': `Bearer ${String(teacherToken)}`
                 },
                 body: JSON.stringify({})
             });
 
             assert.ok(
                 response.status === 200 || response.status === 400,
-                `Expected success or already processed, got ${response.status}`
+                `Expected success or already processed, got ${String(response.status)}`
             );
         });
     });

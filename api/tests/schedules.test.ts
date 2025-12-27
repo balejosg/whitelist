@@ -60,42 +60,45 @@ interface ClassroomStorage {
 
 let scheduleStorage: ScheduleStorage;
 
-describe('Schedule Storage', () => {
+await describe('Schedule Storage', async () => {
     before(async () => {
-        const testDataDir = process.env.DATA_DIR!;
-        if (fs.existsSync(testDataDir)) {
+        const testDataDir = process.env.DATA_DIR ?? '';
+        if (testDataDir && fs.existsSync(testDataDir)) {
             fs.rmSync(testDataDir, { recursive: true });
         }
-        fs.mkdirSync(testDataDir, { recursive: true });
+        if (testDataDir) fs.mkdirSync(testDataDir, { recursive: true });
 
-        fs.writeFileSync(path.join(testDataDir, 'schedules.json'), JSON.stringify({ schedules: [] }));
-        fs.writeFileSync(path.join(testDataDir, 'classrooms.json'), JSON.stringify({ classrooms: [] }));
-        fs.writeFileSync(path.join(testDataDir, 'machines.json'), JSON.stringify({ machines: [] }));
+        if (testDataDir) {
+            fs.writeFileSync(path.join(testDataDir, 'schedules.json'), JSON.stringify({ schedules: [] }));
+            fs.writeFileSync(path.join(testDataDir, 'classrooms.json'), JSON.stringify({ classrooms: [] }));
+            fs.writeFileSync(path.join(testDataDir, 'machines.json'), JSON.stringify({ machines: [] }));
+        }
 
         scheduleStorage = await import('../src/lib/schedule-storage.js') as unknown as ScheduleStorage;
     });
 
     beforeEach(() => {
-        const schedulesFile = path.join(process.env.DATA_DIR!, 'schedules.json');
+        const testDataDir = process.env.DATA_DIR ?? '';
+        const schedulesFile = path.join(testDataDir, 'schedules.json');
         fs.writeFileSync(schedulesFile, JSON.stringify({ schedules: [] }));
     });
 
     after(() => {
-        const testDataDir = process.env.DATA_DIR!;
-        if (fs.existsSync(testDataDir)) {
+        const testDataDir = process.env.DATA_DIR ?? '';
+        if (testDataDir && fs.existsSync(testDataDir)) {
             fs.rmSync(testDataDir, { recursive: true });
         }
     });
 
-    describe('Time Utilities', () => {
-        it('should convert time string to minutes', () => {
+    await describe('Time Utilities', async () => {
+        await it('should convert time string to minutes', () => {
             assert.strictEqual(scheduleStorage.timeToMinutes('00:00'), 0);
             assert.strictEqual(scheduleStorage.timeToMinutes('01:00'), 60);
             assert.strictEqual(scheduleStorage.timeToMinutes('08:30'), 510);
             assert.strictEqual(scheduleStorage.timeToMinutes('23:59'), 1439);
         });
 
-        it('should detect overlapping time ranges', () => {
+        await it('should detect overlapping time ranges', () => {
             assert.strictEqual(scheduleStorage.timesOverlap('08:00', '09:00', '09:00', '10:00'), false);
             assert.strictEqual(scheduleStorage.timesOverlap('08:00', '09:00', '10:00', '11:00'), false);
             assert.strictEqual(scheduleStorage.timesOverlap('08:00', '09:00', '08:30', '09:30'), true);
@@ -104,8 +107,8 @@ describe('Schedule Storage', () => {
         });
     });
 
-    describe('CRUD Operations', () => {
-        it('should create a schedule', () => {
+    await describe('CRUD Operations', async () => {
+        await it('should create a schedule', () => {
             const schedule = scheduleStorage.createSchedule({
                 classroom_id: testClassroomId,
                 teacher_id: testTeacherId,
@@ -115,13 +118,13 @@ describe('Schedule Storage', () => {
                 end_time: '09:00'
             });
 
-            assert.ok(schedule.id !== undefined && schedule.id !== '');
+            assert.ok(schedule.id !== '');
             assert.strictEqual(schedule.classroom_id, testClassroomId);
             assert.strictEqual(schedule.teacher_id, testTeacherId);
             assert.strictEqual(schedule.recurrence, 'weekly');
         });
 
-        it('should reject invalid day of week', () => {
+        await it('should reject invalid day of week', () => {
             assert.throws(() => {
                 scheduleStorage.createSchedule({
                     classroom_id: testClassroomId,
@@ -134,7 +137,7 @@ describe('Schedule Storage', () => {
             }, /day_of_week must be between 1.*and 5/);
         });
 
-        it('should reject invalid time format', () => {
+        await it('should reject invalid time format', () => {
             assert.throws(() => {
                 scheduleStorage.createSchedule({
                     classroom_id: testClassroomId,
@@ -147,7 +150,7 @@ describe('Schedule Storage', () => {
             }, /Invalid time format/);
         });
 
-        it('should reject start_time >= end_time', () => {
+        await it('should reject start_time >= end_time', () => {
             assert.throws(() => {
                 scheduleStorage.createSchedule({
                     classroom_id: testClassroomId,
@@ -160,7 +163,7 @@ describe('Schedule Storage', () => {
             }, /start_time must be before end_time/);
         });
 
-        it('should detect conflicts', () => {
+        await it('should detect conflicts', () => {
             scheduleStorage.createSchedule({
                 classroom_id: testClassroomId,
                 teacher_id: testTeacherId,
@@ -182,7 +185,7 @@ describe('Schedule Storage', () => {
             }, /Schedule conflict/);
         });
 
-        it('should allow non-overlapping schedules', () => {
+        await it('should allow non-overlapping schedules', () => {
             scheduleStorage.createSchedule({
                 classroom_id: testClassroomId,
                 teacher_id: testTeacherId,
@@ -201,10 +204,10 @@ describe('Schedule Storage', () => {
                 end_time: '10:00'
             });
 
-            assert.ok(schedule2.id !== undefined && schedule2.id !== '');
+            assert.ok(schedule2.id !== '');
         });
 
-        it('should update a schedule', () => {
+        await it('should update a schedule', () => {
             const schedule = scheduleStorage.createSchedule({
                 classroom_id: testClassroomId,
                 teacher_id: testTeacherId,
@@ -223,7 +226,7 @@ describe('Schedule Storage', () => {
             assert.strictEqual(updated.end_time, '09:30');
         });
 
-        it('should delete a schedule', () => {
+        await it('should delete a schedule', () => {
             const schedule = scheduleStorage.createSchedule({
                 classroom_id: testClassroomId,
                 teacher_id: testTeacherId,
@@ -241,7 +244,7 @@ describe('Schedule Storage', () => {
         });
     });
 
-    describe('Query Operations', () => {
+    await describe('Query Operations', async () => {
         beforeEach(() => {
             scheduleStorage.createSchedule({
                 classroom_id: testClassroomId,
@@ -261,25 +264,26 @@ describe('Schedule Storage', () => {
             });
         });
 
-        it('should get schedules by classroom', () => {
+        await it('should get schedules by classroom', () => {
             const schedules = scheduleStorage.getSchedulesByClassroom(testClassroomId);
             assert.strictEqual(schedules.length, 2);
         });
 
-        it('should get schedules by teacher', () => {
+        await it('should get schedules by teacher', () => {
             const schedules = scheduleStorage.getSchedulesByTeacher(testTeacherId);
             assert.strictEqual(schedules.length, 1);
             assert.strictEqual(schedules[0].teacher_id, testTeacherId);
         });
     });
 
-    describe('getCurrentSchedule', () => {
+    await describe('getCurrentSchedule', async () => {
         beforeEach(() => {
-            const schedulesFile = path.join(process.env.DATA_DIR!, 'schedules.json');
+            const testDataDir = process.env.DATA_DIR ?? '';
+            const schedulesFile = path.join(testDataDir, 'schedules.json');
             fs.writeFileSync(schedulesFile, JSON.stringify({ schedules: [] }));
         });
 
-        it('should return null on weekends', () => {
+        await it('should return null on weekends', () => {
             scheduleStorage.createSchedule({
                 classroom_id: testClassroomId,
                 teacher_id: testTeacherId,
@@ -294,7 +298,7 @@ describe('Schedule Storage', () => {
             assert.strictEqual(result, null);
         });
 
-        it('should return correct schedule for current time', () => {
+        await it('should return correct schedule for current time', () => {
             scheduleStorage.createSchedule({
                 classroom_id: testClassroomId,
                 teacher_id: testTeacherId,
@@ -308,10 +312,10 @@ describe('Schedule Storage', () => {
             const result = scheduleStorage.getCurrentSchedule(testClassroomId, wednesday);
 
             assert.ok(result !== null);
-            assert.strictEqual(result?.group_id, testGroupId);
+            assert.strictEqual(result.group_id, testGroupId);
         });
 
-        it('should return null outside scheduled times', () => {
+        await it('should return null outside scheduled times', () => {
             scheduleStorage.createSchedule({
                 classroom_id: testClassroomId,
                 teacher_id: testTeacherId,
@@ -327,7 +331,7 @@ describe('Schedule Storage', () => {
         });
     });
 
-    describe('Whitelist Integration', () => {
+    await describe('Whitelist Integration', async () => {
         let classroomStorage: ClassroomStorage;
 
         before(async () => {
@@ -335,13 +339,15 @@ describe('Schedule Storage', () => {
         });
 
         beforeEach(() => {
-            const testDataDir = process.env.DATA_DIR!;
-            fs.writeFileSync(path.join(testDataDir, 'schedules.json'), JSON.stringify({ schedules: [] }));
-            fs.writeFileSync(path.join(testDataDir, 'classrooms.json'), JSON.stringify({ classrooms: [] }));
-            fs.writeFileSync(path.join(testDataDir, 'machines.json'), JSON.stringify({ machines: [] }));
+            const testDataDir = process.env.DATA_DIR ?? '';
+            if (testDataDir) {
+                fs.writeFileSync(path.join(testDataDir, 'schedules.json'), JSON.stringify({ schedules: [] }));
+                fs.writeFileSync(path.join(testDataDir, 'classrooms.json'), JSON.stringify({ classrooms: [] }));
+                fs.writeFileSync(path.join(testDataDir, 'machines.json'), JSON.stringify({ machines: [] }));
+            }
         });
 
-        it('should use schedule group when no manual override', () => {
+        await it('should use schedule group when no manual override', () => {
             const classroom = classroomStorage.createClassroom({
                 name: 'aula-test',
                 displayName: 'Aula Test',
@@ -376,11 +382,11 @@ describe('Schedule Storage', () => {
             const result = classroomStorage.getWhitelistUrlForMachine('pc-test-01');
 
             assert.ok(result !== null);
-            assert.strictEqual(result?.group_id, 'scheduled-group');
-            assert.strictEqual(result?.source, 'schedule');
+            assert.strictEqual(result.group_id, 'scheduled-group');
+            assert.strictEqual(result.source, 'schedule');
         });
 
-        it('should prefer manual override over schedule', () => {
+        await it('should prefer manual override over schedule', () => {
             const classroom = classroomStorage.createClassroom({
                 name: 'aula-override',
                 displayName: 'Aula Override',
@@ -397,11 +403,11 @@ describe('Schedule Storage', () => {
             const result = classroomStorage.getWhitelistUrlForMachine('pc-override-01');
 
             assert.ok(result !== null);
-            assert.strictEqual(result?.group_id, 'manual-group');
-            assert.strictEqual(result?.source, 'manual');
+            assert.strictEqual(result.group_id, 'manual-group');
+            assert.strictEqual(result.source, 'manual');
         });
 
-        it('should fall back to default group when no schedule', () => {
+        await it('should fall back to default group when no schedule', () => {
             const classroom = classroomStorage.createClassroom({
                 name: 'aula-default',
                 displayName: 'Aula Default',
@@ -416,8 +422,8 @@ describe('Schedule Storage', () => {
             const result = classroomStorage.getWhitelistUrlForMachine('pc-default-01');
 
             assert.ok(result !== null);
-            assert.strictEqual(result?.group_id, 'fallback-group');
-            assert.strictEqual(result?.source, 'default');
+            assert.strictEqual(result.group_id, 'fallback-group');
+            assert.strictEqual(result.source, 'default');
         });
     });
 });

@@ -10,7 +10,7 @@ import assert from 'node:assert';
 import type { Server } from 'node:http';
 
 const PORT = 3002;
-const API_URL = `http://localhost:${PORT}`;
+const API_URL = `http://localhost:${String(PORT)}`;
 
 const GLOBAL_TIMEOUT = setTimeout(() => {
     console.error('\n❌ E2E tests timed out! Forcing exit...');
@@ -38,7 +38,7 @@ interface AuthResponse {
 
 interface RequestsResponse {
     success?: boolean;
-    requests?: Array<{ status: string }>;
+    requests?: { status: string }[];
     groups?: unknown[];
     request_id?: string;
     code?: string;
@@ -49,13 +49,13 @@ interface RequestsResponse {
     domains?: string[];
 }
 
-describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
+await describe('E2E: Teacher Role Workflow', { timeout: 60000 }, async () => {
     before(async () => {
         process.env.PORT = String(PORT);
         const { app } = await import('../src/server.js');
 
         server = app.listen(PORT, () => {
-            console.log(`E2E test server started on port ${PORT}`);
+            console.log(`E2E test server started on port ${String(PORT)}`);
         });
 
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -75,8 +75,8 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
         }
     });
 
-    describe('Step 1: Setup Admin User', () => {
-        test('should register admin user (María)', async () => {
+    await describe('Step 1: Setup Admin User', async () => {
+        await test('should register admin user (María)', async () => {
             const response = await fetch(`${API_URL}/api/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -89,10 +89,10 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
 
             assert.strictEqual(response.status, 201);
             const data = await response.json() as AuthResponse;
-            assert.ok(data.success === true);
+            assert.strictEqual(data.success, true);
         });
 
-        test('should login as admin', async () => {
+        await test('should login as admin', async () => {
             const response = await fetch(`${API_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -109,13 +109,13 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
         });
     });
 
-    describe('Step 2: Admin Creates Teacher User (Pedro)', () => {
-        test('should create teacher user', async () => {
+    await describe('Step 2: Admin Creates Teacher User (Pedro)', async () => {
+        await test('should create teacher user', async () => {
             const response = await fetch(`${API_URL}/api/users`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${adminToken}`
+                    'Authorization': `Bearer ${String(adminToken)}`
                 },
                 body: JSON.stringify({
                     email: TEACHER_EMAIL,
@@ -147,12 +147,12 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             assert.ok(teacherId !== null && teacherId !== '');
         });
 
-        test('should assign teacher role with group', async () => {
-            const response = await fetch(`${API_URL}/api/users/${teacherId}/roles`, {
+        await test('should assign teacher role with group', async () => {
+            const response = await fetch(`${API_URL}/api/users/${String(teacherId)}/roles`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${adminToken}`
+                    'Authorization': `Bearer ${String(adminToken)}`
                 },
                 body: JSON.stringify({
                     role: 'teacher',
@@ -162,15 +162,15 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
 
             if (response.status === 200) {
                 const data = await response.json() as { success: boolean };
-                assert.ok(data.success === true);
+                assert.ok(data.success);
             } else {
                 console.log('Note: Role assignment requires admin permissions');
             }
         });
     });
 
-    describe('Step 3: Teacher Login and Verify Access', () => {
-        test('should login as teacher (Pedro)', async () => {
+    await describe('Step 3: Teacher Login and Verify Access', async () => {
+        await test('should login as teacher (Pedro)', async () => {
             const response = await fetch(`${API_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -186,20 +186,19 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             assert.ok(teacherToken !== null && teacherToken !== '');
         });
 
-        test('should get teacher profile with role info', async () => {
+        await test('should get teacher profile with role info', async () => {
             const response = await fetch(`${API_URL}/api/auth/me`, {
-                headers: { 'Authorization': `Bearer ${teacherToken}` }
+                headers: { 'Authorization': `Bearer ${String(teacherToken)}` }
             });
 
             assert.strictEqual(response.status, 200);
             const data = await response.json() as { user: { email: string } };
-            assert.ok(data.user !== undefined);
             assert.strictEqual(data.user.email, TEACHER_EMAIL);
         });
     });
 
-    describe('Step 3.5: Teacher Dashboard - US2', () => {
-        test('teacher should get their assigned groups', async () => {
+    await describe('Step 3.5: Teacher Dashboard - US2', async () => {
+        await test('teacher should get their assigned groups', async () => {
             if (teacherToken === null) {
                 console.log('Skipping: No teacher token');
                 return;
@@ -209,15 +208,15 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 headers: { 'Authorization': `Bearer ${teacherToken}` }
             });
 
-            assert.ok([200, 401].includes(response.status) === true);
+            assert.ok([200, 401].includes(response.status));
 
             if (response.status === 200) {
                 const data = await response.json() as RequestsResponse;
-                console.log(`Teacher has access to ${data.groups?.length ?? 0} groups`);
+                console.log(`Teacher has access to ${String(data.groups?.length ?? 0)} groups`);
             }
         });
 
-        test('teacher should only see requests for their groups', async () => {
+        await test('teacher should only see requests for their groups', async () => {
             if (teacherToken === null) {
                 console.log('Skipping: No teacher token');
                 return;
@@ -227,21 +226,21 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 headers: { 'Authorization': `Bearer ${teacherToken}` }
             });
 
-            assert.ok([200, 401].includes(response.status) === true);
+            assert.ok([200, 401].includes(response.status));
 
             if (response.status === 200) {
                 const data = await response.json() as RequestsResponse;
-                assert.ok(data.success !== false);
+                assert.strictEqual(data.success, true);
 
                 if (data.requests !== undefined && data.requests.length > 0) {
-                    console.log(`Teacher sees ${data.requests.length} requests`);
+                    console.log(`Teacher sees ${String(data.requests.length)} requests`);
                 } else {
                     console.log('No pending requests for teacher groups');
                 }
             }
         });
 
-        test('teacher can filter requests by status', async () => {
+        await test('teacher can filter requests by status', async () => {
             if (teacherToken === null) {
                 console.log('Skipping: No teacher token');
                 return;
@@ -251,7 +250,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 headers: { 'Authorization': `Bearer ${teacherToken}` }
             });
 
-            assert.ok([200, 401].includes(response.status) === true);
+            assert.ok([200, 401].includes(response.status));
 
             if (response.status === 200) {
                 const data = await response.json() as RequestsResponse;
@@ -265,7 +264,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             }
         });
 
-        test('teacher cannot access admin-only endpoints', async () => {
+        await test('teacher cannot access admin-only endpoints', async () => {
             if (teacherToken === null) {
                 console.log('Skipping: No teacher token');
                 return;
@@ -279,15 +278,15 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
         });
     });
 
-    describe('Step 4: Request Approval Flow', () => {
+    await describe('Step 4: Request Approval Flow', async () => {
         let requestId: string | null = null;
 
-        test('should create a domain request', async () => {
+        await test('should create a domain request', async () => {
             const response = await fetch(`${API_URL}/api/requests`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    domain: `e2e-test-${Date.now()}.example.com`,
+                    domain: `e2e-test-${String(Date.now())}.example.com`,
                     reason: 'E2E test request',
                     requester_email: 'student@test.com'
                 })
@@ -299,48 +298,48 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             assert.ok(requestId !== null && requestId !== '');
         });
 
-        test('teacher should see pending requests', async () => {
+        await test('teacher should see pending requests', async () => {
             const response = await fetch(`${API_URL}/api/requests`, {
-                headers: { 'Authorization': `Bearer ${teacherToken}` }
+                headers: { 'Authorization': `Bearer ${String(teacherToken)}` }
             });
 
-            assert.ok([200, 401, 403].includes(response.status) === true);
+            assert.ok([200, 401, 403].includes(response.status));
         });
 
-        test('teacher should be able to approve request for assigned group', async () => {
-            const response = await fetch(`${API_URL}/api/requests/${requestId}/approve`, {
+        await test('teacher should be able to approve request for assigned group', async () => {
+            const response = await fetch(`${API_URL}/api/requests/${String(requestId)}/approve`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${teacherToken}`
+                    'Authorization': `Bearer ${String(teacherToken)}`
                 },
                 body: JSON.stringify({
                     group_id: TEACHER_GROUP
                 })
             });
 
-            assert.ok([200, 401, 403].includes(response.status) === true);
+            assert.ok([200, 401, 403].includes(response.status));
         });
     });
 
-    describe('Step 4.5: Blocked Domain Approval - US3', () => {
+    await describe('Step 4.5: Blocked Domain Approval - US3', async () => {
         let blockedRequestId: string | null = null;
 
-        test('should check which domains are blocked', async () => {
+        await test('should check which domains are blocked', async () => {
             const response = await fetch(`${API_URL}/api/requests/domains/blocked`, {
-                headers: { 'Authorization': `Bearer ${adminToken}` }
+                headers: { 'Authorization': `Bearer ${String(adminToken)}` }
             });
 
             assert.strictEqual(response.status, 200);
             const data = await response.json() as RequestsResponse;
             assert.ok(data.success === true);
-            assert.ok(Array.isArray(data.domains) === true);
-            console.log(`Found ${data.domains?.length ?? 0} blocked domains`);
+            assert.ok(Array.isArray(data.domains));
+            console.log(`Found ${String(data.domains.length)} blocked domains`);
         });
 
-        test('should create a request for a blocked domain (if any blocked)', async () => {
+        await test('should create a request for a blocked domain (if any blocked)', async () => {
             const blockedRes = await fetch(`${API_URL}/api/requests/domains/blocked`, {
-                headers: { 'Authorization': `Bearer ${adminToken}` }
+                headers: { 'Authorization': `Bearer ${String(adminToken)}` }
             });
             const blockedData = await blockedRes.json() as RequestsResponse;
 
@@ -350,7 +349,7 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             }
 
             const blockedDomain = blockedData.domains[0];
-            console.log(`Testing with blocked domain: ${blockedDomain}`);
+            console.log(`Testing with blocked domain: ${String(blockedDomain)}`);
 
             const response = await fetch(`${API_URL}/api/requests`, {
                 method: 'POST',
@@ -365,11 +364,11 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             if (response.status === 201) {
                 const data = await response.json() as RequestsResponse;
                 blockedRequestId = data.request_id ?? null;
-                console.log(`Created request ${blockedRequestId} for blocked domain`);
+                console.log(`Created request ${String(blockedRequestId)} for blocked domain`);
             }
         });
 
-        test('teacher should receive DOMAIN_BLOCKED error when approving blocked domain', async () => {
+        await test('teacher should receive DOMAIN_BLOCKED error when approving blocked domain', async () => {
             if (blockedRequestId === null || teacherToken === null) {
                 console.log('Skipping: No blocked request or teacher token available');
                 return;
@@ -393,10 +392,10 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             assert.ok(data.domain !== undefined && data.domain !== '', 'Response should include domain');
             assert.ok(data.hint !== undefined && data.hint !== '', 'Response should include hint for teacher');
 
-            console.log(`Correctly blocked: ${data.domain} (matched: ${data.matched_rule})`);
+            console.log(`Correctly blocked: ${data.domain} (matched: ${String(data.matched_rule)})`);
         });
 
-        test('teacher can check if a domain is blocked', async () => {
+        await test('teacher can check if a domain is blocked', async () => {
             if (teacherToken === null) {
                 console.log('Skipping: No teacher token available');
                 return;
@@ -416,10 +415,10 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
             assert.ok(data.success === true);
             assert.strictEqual(typeof data.blocked, 'boolean');
 
-            console.log(`facebook.com blocked: ${data.blocked}`);
+            console.log(`facebook.com blocked: ${String(data.blocked)}`);
         });
 
-        test('admin should be able to approve blocked domain (override)', async () => {
+        await test('admin should be able to approve blocked domain (override)', async () => {
             if (blockedRequestId === null) {
                 console.log('Skipping: No blocked request available');
                 return;
@@ -429,14 +428,14 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${adminToken}`
+                    'Authorization': `Bearer ${String(adminToken)}`
                 },
                 body: JSON.stringify({})
             });
 
             assert.ok(
-                [200, 400].includes(response.status) === true,
-                `Admin should be able to approve (or already approved), got ${response.status}`
+                [200, 400].includes(response.status),
+                `Admin should be able to approve (or already approved), got ${String(response.status)}`
             );
 
             if (response.status === 200) {
@@ -445,21 +444,21 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
         });
     });
 
-    describe('Step 5: Access Control - Teacher Cannot Access Admin Functions', () => {
-        test('teacher should not be able to list all users', async () => {
+    await describe('Step 5: Access Control - Teacher Cannot Access Admin Functions', async () => {
+        await test('teacher should not be able to list all users', async () => {
             const response = await fetch(`${API_URL}/api/users`, {
-                headers: { 'Authorization': `Bearer ${teacherToken}` }
+                headers: { 'Authorization': `Bearer ${String(teacherToken)}` }
             });
 
-            assert.ok([401, 403].includes(response.status) === true);
+            assert.ok([401, 403].includes(response.status));
         });
 
-        test('teacher should not be able to create users', async () => {
+        await test('teacher should not be able to create users', async () => {
             const response = await fetch(`${API_URL}/api/users`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${teacherToken}`
+                    'Authorization': `Bearer ${String(teacherToken)}`
                 },
                 body: JSON.stringify({
                     email: 'unauthorized@test.com',
@@ -468,15 +467,15 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 })
             });
 
-            assert.ok([401, 403].includes(response.status) === true);
+            assert.ok([401, 403].includes(response.status));
         });
 
-        test('teacher should not be able to assign roles', async () => {
+        await test('teacher should not be able to assign roles', async () => {
             const response = await fetch(`${API_URL}/api/users/some-id/roles`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${teacherToken}`
+                    'Authorization': `Bearer ${String(teacherToken)}`
                 },
                 body: JSON.stringify({
                     role: 'admin',
@@ -484,12 +483,12 @@ describe('E2E: Teacher Role Workflow', { timeout: 60000 }, () => {
                 })
             });
 
-            assert.ok([401, 403].includes(response.status) === true);
+            assert.ok([401, 403].includes(response.status));
         });
     });
 
-    describe('Cleanup', () => {
-        test('should logout teacher', async () => {
+    await describe('Cleanup', async () => {
+        await test('should logout teacher', async () => {
             if (teacherToken === null) return;
 
             const response = await fetch(`${API_URL}/api/auth/logout`, {
