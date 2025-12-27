@@ -4,6 +4,9 @@
 
 Este guión cubre casos límite, escenarios de error, y pruebas de seguridad. Es el guión más "adversario" - intenta romper el sistema de todas las formas posibles.
 
+> [!NOTE]
+> Este guión puede usar DevTools Console y llamadas `fetch(...)` para comprobar protecciones.
+
 ---
 
 ## SECCIÓN 1: Seguridad - Escalada de Privilegios
@@ -86,6 +89,59 @@ Este guión cubre casos límite, escenarios de error, y pruebas de seguridad. Es
 
 ---
 
+## SECCIÓN 1B: Seguridad - Bootstrap / Primer Admin
+
+### Test 1B.1: La pantalla de setup se bloquea tras configurar
+
+**Acciones**:
+1. Abre `https://balejosg.github.io/openpath/setup.html`
+2. Si el sistema ya está configurado, verifica que muestra "Sistema Configurado" y enlace a login
+
+**Verificaciones**:
+- [ ] No ofrece formulario de creación si ya existe admin
+
+### Test 1B.2: Intentar crear el primer admin por segunda vez (bloqueo)
+
+**Acciones** (DevTools Console en `https://openpath-api.duckdns.org` o desde cualquier origen con `fetch`):
+1. Ejecuta:
+    ```javascript
+    fetch('https://openpath-api.duckdns.org/api/setup/first-admin', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({ email: 'evil@school.edu', name: 'Evil', password: 'SecurePass123!' })
+    }).then(r => r.json().then(b => ({ status: r.status, body: b })));
+    ```
+
+**Verificaciones**:
+- [ ] Responde `403` (o equivalente) con mensaje tipo "Setup already completed"
+
+### Test 1B.3: Rate limiting del endpoint de setup
+
+**Acciones**:
+1. Ejecuta 4+ llamadas seguidas al endpoint anterior (cambiando email si hace falta)
+
+**Verificaciones**:
+- [ ] A partir de cierto número, responde `429` (rate limit) con mensaje apropiado
+
+### Test 1B.4: Validación del token de registro (errores)
+
+**Acciones**:
+1. Ejecuta:
+    ```javascript
+    fetch('https://openpath-api.duckdns.org/api/setup/validate-token', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({ token: 'invalid-token' })
+    }).then(r => r.json().then(b => ({ status: r.status, body: b })));
+    ```
+2. Ejecuta lo mismo sin `token` en el body
+
+**Verificaciones**:
+- [ ] Token incorrecto devuelve `valid:false`
+- [ ] Sin token devuelve `400` y `valid:false`
+
+---
+
 ## SECCIÓN 2: Seguridad - Ataques Comunes
 
 ### Test 2.1: Inyección XSS en motivo de solicitud
@@ -139,12 +195,18 @@ Este guión cubre casos límite, escenarios de error, y pruebas de seguridad. Es
 ### Test 2.4: CSRF en acciones críticas
 
 **Acciones**:
-1. Desde otra página, intentar hacer POST a `/api/requests/:id/approve`
-2. Verificar protección CSRF
+1. Abre DevTools (F12) > Console
+2. Intenta ejecutar:
+   ```javascript
+   fetch('/api/requests/1/approve', {method: 'POST'})
+   ```
+3. Verifica que requiera autenticación válida
+4. Opcionalmente, crea un archivo HTML local con un formulario que apunte a la API
 
 **Verificaciones**:
 - [ ] Requiere autenticación válida
 - [ ] No se puede aprobar desde sitio externo
+- [ ] Las cookies HttpOnly protegen el token
 
 ---
 
@@ -442,8 +504,16 @@ Este guión cubre casos límite, escenarios de error, y pruebas de seguridad. Es
 
 ### Test 6.3: Rate limiting de API
 
+> [!NOTE]
+> Esta prueba se realiza como **setup técnico previo** al UAT, no durante la prueba de usuario.
+
 **Acciones**:
-1. Hacer 200+ requests en 1 minuto
+1. Usar herramienta de carga (k6, artillery) o script de setup
+2. O desde DevTools > Console:
+   ```javascript
+   for(let i=0; i<200; i++) fetch('/api/health')
+   ```
+3. Observar comportamiento
 
 **Verificaciones**:
 - [ ] Rate limiting activo

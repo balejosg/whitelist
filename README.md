@@ -26,7 +26,44 @@ Unlike traditional firewalls that require manual rule updates and complex VPNs, 
 
 ## Installation
 
-### Linux (Debian/Ubuntu)
+### Central Server (Required for Classroom Deployment)
+
+For classroom or multi-PC deployments, you need a central server to manage users, schedules, and PC registration.
+
+#### 1. Deploy the API Server
+
+```bash
+# Clone the repository
+git clone https://github.com/balejosg/openpath.git
+cd openpath/api
+
+# Install dependencies
+npm install
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your settings (JWT_SECRET, PORT, etc.)
+
+# Build and start
+npm run build
+npm start
+```
+
+The server will start on port 3000 by default.
+
+#### 2. Create the First Admin
+
+Navigate to `http://your-server-ip:3000/setup.html` in your browser:
+
+1. Enter your administrator email and password
+2. Copy the **Registration Token** shown after creation
+3. Keep this token secure - you'll need it to register client PCs
+
+**Important:** The registration token is required for all client PC installations in classroom mode. You can retrieve or regenerate it later from the dashboard.
+
+### Client PC Installation
+
+#### Linux (Standalone Mode)
 
 One-line installation via APT. Sets up `dnsmasq`, `iptables` rules, and the update watchdog.
 
@@ -35,6 +72,24 @@ One-line installation via APT. Sets up `dnsmasq`, `iptables` rules, and the upda
 curl -fsSL https://balejosg.github.io/openpath/apt/apt-setup.sh | sudo bash
 sudo apt install openpath-dnsmasq
 ```
+
+#### Linux (Classroom Mode)
+
+Install with classroom registration:
+
+```bash
+# Download install script
+curl -O https://raw.githubusercontent.com/balejosg/openpath/main/linux/install.sh
+chmod +x install.sh
+
+# Install with registration token
+sudo ./install.sh \
+  --classroom "Aula-1" \
+  --api-url "http://your-server-ip:3000" \
+  --registration-token "your-64-character-token-here"
+```
+
+The PC will be registered in the central server and can be managed remotely.
 
 ### Windows
 
@@ -82,6 +137,38 @@ ads.domain.com
 # Browser-level blocking (advanced)
 facebook.com/gaming
 ```
+
+### Registration Token Management
+
+For classroom deployments, the registration token controls which PCs can register with the central server.
+
+**View Current Token:**
+
+After logging in to the dashboard, navigate to Settings to view the current registration token.
+
+**Via API (requires admin authentication):**
+
+```bash
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  http://your-server:3000/api/setup/registration-token
+```
+
+**Regenerate Token:**
+
+If your token is compromised, regenerate it via the dashboard or API:
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  http://your-server:3000/api/setup/regenerate-token
+```
+
+After regeneration, the old token becomes invalid. You'll need to use the new token for future PC installations.
+
+**Security Notes:**
+- Keep the registration token secure - anyone with it can register PCs to your server
+- Regenerate the token if you suspect it has been compromised
+- The token is stored server-side in `api/data/setup.json`
 
 ## Troubleshooting
 

@@ -14,7 +14,7 @@ Este guión cubre la instalación y operación del agente OpenPath en máquinas 
 - [ ] Acceso sudo/root
 - [ ] Conexión a internet
 - [ ] URL del servidor API conocida
-- [ ] Credenciales o API key para el servidor
+- [ ] Token de registro para instalaciones en modo aula (lo proporciona el Admin del servidor central)
 
 ---
 
@@ -90,6 +90,7 @@ sudo ./install.sh --help
   - `--whitelist-url`
   - `--classroom`
   - `--api-url`
+  - `--registration-token`
   - `--unattended`
 
 ---
@@ -118,12 +119,14 @@ sudo ./install.sh --unattended \
 sudo ./install.sh --unattended \
   --classroom "informatica-3" \
   --api-url "http://api.centro.edu:3000" \
+  --registration-token "<TOKEN_DEL_ADMIN>" \
   --health-api-secret "mi-secret-seguro"
 ```
 
 **Verificaciones**:
 - [ ] Se configura con el aula
 - [ ] Se guarda la URL del API
+- [ ] El instalador valida el token de registro y falla si es inválido
 - [ ] La máquina se registra en el aula
 
 ---
@@ -698,4 +701,4 @@ openpath status
 | 12.3 | URL inválida | Manejo errores | ⬜ |
 | 12.4 | Emergency | Desactivación remota | ⬜ |
 
-**Total: 41 tests de sistema**
+### Total: 41 tests de sistema**

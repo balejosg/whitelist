@@ -30,7 +30,7 @@ set -e
 
 # ========== CONFIGURE THESE VALUES ==========
 WHITELIST_URL="https://raw.githubusercontent.com/LasEncinasIT/Whitelist-por-aula/main/Informatica%203.txt"
-HEALTH_API_URL="https://your-api-host.duckdns.org"
+HEALTH_API_URL="https://openpath-api.duckdns.org"
 HEALTH_API_SECRET="your-shared-secret-here"
 # =============================================
 

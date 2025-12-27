@@ -5,7 +5,15 @@
 Estos guiones están diseñados para que un **LLM con capacidad de control de navegador** pruebe exhaustivamente la aplicación OpenPath desde la perspectiva de usuarios reales. Cada guión cubre un rol específico y verifica toda la funcionalidad correspondiente.
 
 > [!IMPORTANT]
-> Los tests se realizan a través de **interfaces web** (SPA, extensión Firefox) como lo haría un usuario real  , nunca llamadas directas a API.
+> Los tests se realizan a través de **interfaces web** (SPA, extensión Firefox) como lo haría un usuario real, nunca llamadas directas a API.
+
+**Nota:** Para tests de seguridad o stress se pueden usar excepciones específicas:
+
+> [!NOTE]
+> **Excepciones permitidas:**
+> - **Tests de seguridad**: Pueden usar DevTools Console para verificar protecciones
+> - **Setup previo**: Preparación inicial (crear primer admin / token de registro) antes del UAT
+> - **Tests de stress**: Requieren herramientas automatizadas (k6, artillery)
 
 ---
 
@@ -16,7 +24,7 @@ OpenPath está desplegado y listo para usar. **No necesitas instalar servidores*
 | Componente | URL | Descripción |
 |------------|-----|-------------|
 | **SPA (Dashboard)** | `https://balejosg.github.io/openpath` | Interfaz web para Admin/Profesor |
-| **API** | `https://openpath.duckdns.org` | Servidor de API (ya desplegado) |
+| **API** | `https://openpath-api.duckdns.org` | Servidor de API (ya desplegado) |
 | **Whitelist** | `https://raw.githubusercontent.com/balejosg/openpath/main/whitelist.txt` | Archivo de whitelist |
 
 > [!IMPORTANT]
@@ -36,12 +44,15 @@ Para ejecutar las pruebas necesitas:
 
 ### Credenciales de Prueba
 
-Crea usuarios con estos datos (o usa existentes si ya hay):
+Crea usuarios con estos datos (o usa existentes si ya hay). Nota: el **primer admin** se crea desde la pantalla de setup.
 
 ```
 # Admin TIC
 ADMIN_EMAIL=maria@tucentro.edu
 ADMIN_PASS=<crear contraseña segura>
+
+# Token de registro (se obtiene en /setup.html tras crear el primer admin)
+REGISTRATION_TOKEN=<copiar token>
 
 # Profesor
 TEACHER_EMAIL=pedro@tucentro.edu
@@ -65,7 +76,8 @@ sudo apt install openpath-dnsmasq
 git clone https://github.com/balejosg/openpath.git
 cd openpath/linux
 sudo ./install.sh --classroom "informatica-1" \
-  --api-url "https://openpath.duckdns.org" \
+  --api-url "https://openpath-api.duckdns.org" \
+  --registration-token "$REGISTRATION_TOKEN" \
   --whitelist-url "https://raw.githubusercontent.com/balejosg/openpath/main/whitelist.txt"
 ```
 

@@ -6,7 +6,7 @@
  * Provides consistent log format across the application
  */
 
-const winston = require('winston');
+import winston from 'winston';
 
 const isProduction = process.env.NODE_ENV === 'production';
 const logLevel = process.env.LOG_LEVEL || (isProduction ? 'info' : 'debug');
@@ -57,7 +57,7 @@ if (isProduction) {
 }
 
 // Helper to create child logger with request context
-logger.child = (meta) => {
+const createChildLogger = (meta) => {
     return {
         info: (msg, extra = {}) => logger.info(msg, { ...meta, ...extra }),
         warn: (msg, extra = {}) => logger.warn(msg, { ...meta, ...extra }),
@@ -70,7 +70,7 @@ logger.child = (meta) => {
 const SLOW_REQUEST_THRESHOLD_MS = parseInt(process.env.SLOW_REQUEST_THRESHOLD_MS || '1000', 10);
 
 // Express middleware for request logging with slow request detection
-logger.requestMiddleware = (req, res, next) => {
+const requestMiddleware = (req, res, next) => {
     const start = Date.now();
 
     res.on('finish', () => {
@@ -107,4 +107,8 @@ logger.requestMiddleware = (req, res, next) => {
     next();
 };
 
-module.exports = logger;
+// Add properties to logger object
+logger.child = createChildLogger;
+logger.requestMiddleware = requestMiddleware;
+
+export default logger;

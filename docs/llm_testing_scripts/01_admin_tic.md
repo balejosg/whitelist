@@ -47,24 +47,26 @@ Usarás el navegador para interactuar con la aplicación. Para cada test:
 
 ---
 
-### Test 1.2: Registrar cuenta de administrador (primera vez)
+### Test 1.2: Configuración inicial: crear el primer administrador (primera vez)
 
 **Acciones**:
-1. Si hay enlace de "Registrarse", haz clic en él
-2. Completa el formulario con:
+1. Abre la URL de setup: `https://balejosg.github.io/openpath/setup.html`
+2. Si aparece mensaje "Sistema Configurado", anota que este test no aplica (ya hay admin) y continúa con el Test 1.3
+3. Si aparece el formulario de "Configuración Inicial", completa:
    - **Email**: `maria@centro.edu`
    - **Nombre**: `María García`
    - **Contraseña**: `SecurePass123!`
    - **Confirmar contraseña**: `SecurePass123!`
-3. Haz clic en el botón de registro
+4. Haz clic en "Crear Administrador"
 
 **Verificaciones**:
 - [ ] El formulario valida que todos los campos están completos
 - [ ] La contraseña requiere mínimo 8 caracteres
 - [ ] Tras el registro exitoso, muestra mensaje de confirmación
-- [ ] Redirige al dashboard o pide hacer login
+- [ ] Muestra un **Token de Registro para PCs Cliente** y permite copiarlo
+- [ ] Hay un botón/enlace para ir al login
 
-**Captura**: Screenshot del formulario y del mensaje de éxito
+**Captura**: Screenshot del formulario y del mensaje de éxito (incluyendo token)
 
 ---
 
@@ -803,7 +805,7 @@ Usarás el navegador para interactuar con la aplicación. Para cada test:
 | 10.1 | Vista tablet | Responsive | ⬜ |
 | 10.2 | Accesibilidad | Teclado | ⬜ |
 
-**Total: 44 tests de UI**
+### Total: 44 tests de UI**
 
 ---
 

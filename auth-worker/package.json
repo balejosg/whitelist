@@ -2,11 +2,18 @@
     "name": "auth-worker",
     "version": "1.0.0",
     "private": true,
+    "type": "module",
     "scripts": {
+        "build": "tsc",
+        "typecheck": "tsc --noEmit",
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
         "dev": "wrangler dev",
         "deploy": "wrangler deploy"
     },
     "devDependencies": {
+        "@cloudflare/workers-types": "^4.20241218.0",
+        "typescript": "^5.7.2",
         "wrangler": "^4.56.0"
     }
 }

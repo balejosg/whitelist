@@ -5,10 +5,10 @@
  * error categorization, and consistent error responses.
  */
 
-const { v4: uuidv4 } = require('uuid');
+import { v4 as uuidv4 } from 'uuid';
 
 // Error categories for easier filtering/alerting
-const ErrorCategory = {
+export const ErrorCategory = {
     VALIDATION: 'VALIDATION',
     AUTH: 'AUTH',
     NOT_FOUND: 'NOT_FOUND',
@@ -32,7 +32,7 @@ function categorizeError(err, statusCode) {
 /**
  * Middleware to add request ID to all requests
  */
-function requestIdMiddleware(req, res, next) {
+export function requestIdMiddleware(req, res, next) {
     req.id = req.headers['x-request-id'] || uuidv4();
     res.setHeader('X-Request-ID', req.id);
     next();
@@ -41,7 +41,7 @@ function requestIdMiddleware(req, res, next) {
 /**
  * Structured logger for errors
  */
-function logError(err, req, category) {
+export function logError(err, req, category) {
     const logEntry = {
         timestamp: new Date().toISOString(),
         requestId: req.id || 'unknown',
@@ -71,7 +71,7 @@ function logError(err, req, category) {
 /**
  * Error tracking middleware - catches and logs all errors
  */
-function errorTrackingMiddleware(err, req, res, next) {
+export function errorTrackingMiddleware(err, req, res, next) {
     // Determine status code
     const statusCode = err.statusCode || err.status || 500;
 
@@ -95,7 +95,7 @@ function errorTrackingMiddleware(err, req, res, next) {
 /**
  * Create a trackable error with status code
  */
-function createError(message, statusCode = 500, code = null) {
+export function createError(message, statusCode = 500, code = null) {
     const error = new Error(message);
     error.statusCode = statusCode;
     error.code = code;
@@ -106,7 +106,7 @@ function createError(message, statusCode = 500, code = null) {
  * Async handler wrapper - catches async errors and passes to error middleware
  * Usage: router.get('/path', asyncHandler(async (req, res) => { ... }))
  */
-function asyncHandler(fn) {
+export function asyncHandler(fn) {
     return (req, res, next) => {
         Promise.resolve(fn(req, res, next)).catch(next);
     };
@@ -115,7 +115,7 @@ function asyncHandler(fn) {
 /**
  * Standardized API response helpers
  */
-const apiResponse = {
+export const apiResponse = {
     success: (res, data, statusCode = 200) => {
         res.status(statusCode).json({
             success: true,
@@ -166,14 +166,4 @@ const apiResponse = {
         if (details) response.details = details;
         res.status(400).json(response);
     }
-};
-
-module.exports = {
-    ErrorCategory,
-    requestIdMiddleware,
-    errorTrackingMiddleware,
-    logError,
-    createError,
-    asyncHandler,
-    apiResponse
 };

@@ -2,28 +2,17 @@
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
-/**
  * Simple JSON file storage for domain requests
  * Stores requests in data/requests.json
  */
 
-const fs = require('fs');
-const path = require('path');
-const { v4: uuidv4 } = require('uuid');
+import fs from 'fs';
+import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const REQUESTS_FILE = path.join(DATA_DIR, 'requests.json');
@@ -65,7 +54,7 @@ function saveData(data) {
  * @param {string|null} status - 'pending', 'approved', 'rejected', or null for all
  * @returns {Array}
  */
-function getAllRequests(status = null) {
+export function getAllRequests(status = null) {
     const data = loadData();
     if (status) {
         return data.requests.filter(r => r.status === status);
@@ -78,7 +67,7 @@ function getAllRequests(status = null) {
  * @param {string} id 
  * @returns {Object|null}
  */
-function getRequestById(id) {
+export function getRequestById(id) {
     const data = loadData();
     return data.requests.find(r => r.id === id) || null;
 }
@@ -88,7 +77,7 @@ function getRequestById(id) {
  * @param {string} domain 
  * @returns {boolean}
  */
-function hasPendingRequest(domain) {
+export function hasPendingRequest(domain) {
     const data = loadData();
     return data.requests.some(
         r => r.domain.toLowerCase() === domain.toLowerCase() && r.status === 'pending'
@@ -100,7 +89,7 @@ function hasPendingRequest(domain) {
  * @param {Object} requestData - { domain, reason, requesterEmail, groupId, priority }
  * @returns {Object} - The created request
  */
-function createRequest(requestData) {
+export function createRequest(requestData) {
     const data = loadData();
 
     const newRequest = {
@@ -131,7 +120,7 @@ function createRequest(requestData) {
  * @param {string} note - Optional note
  * @returns {Object|null}
  */
-function updateRequestStatus(id, status, resolvedBy = 'admin', note = null) {
+export function updateRequestStatus(id, status, resolvedBy = 'admin', note = null) {
     const data = loadData();
     const index = data.requests.findIndex(r => r.id === id);
 
@@ -157,7 +146,7 @@ function updateRequestStatus(id, status, resolvedBy = 'admin', note = null) {
  * @param {string} id 
  * @returns {boolean}
  */
-function deleteRequest(id) {
+export function deleteRequest(id) {
     const data = loadData();
     const initialLength = data.requests.length;
     data.requests = data.requests.filter(r => r.id !== id);
@@ -173,7 +162,7 @@ function deleteRequest(id) {
  * Get statistics
  * @returns {Object}
  */
-function getStats() {
+export function getStats() {
     const data = loadData();
     return {
         total: data.requests.length,
@@ -182,13 +171,3 @@ function getStats() {
         rejected: data.requests.filter(r => r.status === 'rejected').length
     };
 }
-
-module.exports = {
-    getAllRequests,
-    getRequestById,
-    hasPendingRequest,
-    createRequest,
-    updateRequestStatus,
-    deleteRequest,
-    getStats
-};

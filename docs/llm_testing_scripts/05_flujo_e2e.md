@@ -29,6 +29,26 @@ Este guión simula un **día completo de uso** del sistema OpenPath en un centro
 
 ---
 
+## FASE 0: Setup inicial (solo primera instalación en un centro)
+
+> [!NOTE]
+> Si el centro ya está configurado (ya existe un admin), esta fase no aplica.
+
+### 0.1: Crear primer administrador y obtener token de registro
+
+**Acciones**:
+1. Abre `https://balejosg.github.io/openpath/setup.html`
+2. Si ves "Sistema Configurado", anota que no aplica y continúa con Fase 1
+3. Si ves "Configuración Inicial", crea el primer admin (María) y copia el **Token de Registro para PCs Cliente**
+
+**Verificaciones**:
+- [ ] El sistema permite crear el primer admin solo una vez
+- [ ] El token de registro se muestra y se puede copiar
+
+**Captura**: Screenshot del token de registro
+
+---
+
 ## FASE 1: Inicio del Día (8:00 - 8:30)
 
 ### 1.1: María prepara el centro

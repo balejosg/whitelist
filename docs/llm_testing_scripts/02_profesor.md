@@ -350,10 +350,10 @@ Probarás la aplicación desde la perspectiva de un profesor que usa principalme
 
 **Acciones**:
 1. Activa notificaciones
-2. Crea una nueva solicitud (desde otra pestaña o terminal):
-   ```
-   POST /api/requests con groupId = ciencias-3eso
-   ```
+2. **En una segunda ventana del navegador** (modo incógnito):
+   - Inicia sesión como alumno (`alumna@centro.edu`)
+   - Navega a "Solicitudes" o usa la extensión Firefox
+   - Crea una nueva solicitud de desbloqueo para un dominio
 3. Observa si llega notificación
 
 **Verificaciones**:
@@ -706,7 +706,7 @@ Probarás la aplicación desde la perspectiva de un profesor que usa principalme
 | 9.1 | Flujo YouTube | Escenario real | ⬜ |
 | 9.2 | Preparar clase | Pre-aprobación | ⬜ |
 
-**Total: 39 tests de UI**
+### Total: 39 tests de UI**
 
 ---
 

@@ -1,4 +1,69 @@
 {
-    "extends": "../.eslintrc.json",
-    "rules": {}
+    "env": {
+        "node": true,
+        "es2022": true
+    },
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+        "ecmaVersion": 2022,
+        "sourceType": "module",
+        "project": "./tsconfig.json"
+    },
+    "plugins": [
+        "@typescript-eslint"
+    ],
+    "extends": [
+        "eslint:recommended",
+        "plugin:@typescript-eslint/recommended",
+        "plugin:@typescript-eslint/strict-type-checked",
+        "plugin:@typescript-eslint/stylistic-type-checked"
+    ],
+    "rules": {
+        "no-unused-vars": "off",
+        "@typescript-eslint/no-unused-vars": [
+            "warn",
+            {
+                "argsIgnorePattern": "^_"
+            }
+        ],
+        "no-console": "off",
+        "semi": [
+            "error",
+            "always"
+        ],
+        "quotes": [
+            "warn",
+            "single",
+            {
+                "avoidEscape": true
+            }
+        ],
+        "@typescript-eslint/explicit-function-return-type": "warn",
+        "@typescript-eslint/no-explicit-any": "warn",
+        "@typescript-eslint/strict-boolean-expressions": "error"
+    },
+    "overrides": [
+        {
+            "files": [
+                "tests/**/*.ts"
+            ],
+            "parserOptions": {
+                "project": "./tsconfig.tests.json"
+            },
+            "rules": {
+                "@typescript-eslint/no-explicit-any": "warn",
+                "@typescript-eslint/no-unused-vars": "warn",
+                "@typescript-eslint/restrict-template-expressions": "warn",
+                "@typescript-eslint/restrict-plus-operands": "warn"
+            }
+        }
+    ],
+    "ignorePatterns": [
+        "node_modules/",
+        "coverage/",
+        "build/",
+        "dist/",
+        "**/tests/load/",
+        "*.js"
+    ]
 }
