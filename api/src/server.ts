@@ -51,6 +51,7 @@ import pushRouter from './routes/push.js';
 import classroomsRouter from './routes/classrooms.js';
 import schedulesRouter from './routes/schedules.js';
 import healthcheckRouter from './routes/healthcheck.js';
+import setupRouter from './routes/setup.js';
 
 // Error tracking and request ID middleware
 import { requestIdMiddleware, errorTrackingMiddleware } from './lib/error-tracking.js';
@@ -179,6 +180,11 @@ app.get('/api', (_req: Request, res: Response) => {
             'GET /api/requests': 'List all requests (admin/teacher)',
             'POST /api/requests/:id/approve': 'Approve request (admin/teacher)',
             'POST /api/requests/:id/reject': 'Reject request (admin/teacher)',
+            'GET /api/setup/status': 'Check if setup is needed (public)',
+            'POST /api/setup/first-admin': 'Create first admin (public, only if no admins)',
+            'POST /api/setup/validate-token': 'Validate registration token (public)',
+            'GET /api/setup/registration-token': 'Get registration token (admin)',
+            'POST /api/setup/regenerate-token': 'Regenerate registration token (admin)',
             'GET /api/push/vapid-key': 'Get VAPID public key (public)',
             'POST /api/push/subscribe': 'Register push subscription',
             'POST /api/health-reports': 'Submit health report (shared secret)',
@@ -193,6 +199,9 @@ app.get('/api', (_req: Request, res: Response) => {
 
 // Authentication routes
 app.use('/api/auth', authRouter);
+
+// Setup routes (must be before user routes, allows public first-admin creation)
+app.use('/api/setup', setupRouter);
 
 // User management routes
 app.use('/api/users', usersRouter);

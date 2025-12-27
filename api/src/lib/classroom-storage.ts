@@ -8,6 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { v4 as uuidv4 } from 'uuid';
 import type { Classroom, MachineStatus } from '../types/index.js';
 import type { IClassroomStorage, CreateClassroomData, UpdateClassroomData } from '../types/storage.js';
@@ -349,7 +350,7 @@ export function getWhitelistUrlForMachine(hostname: string): WhitelistUrlResult 
     if (groupId === null || groupId === undefined) {
         try {
             // Dynamic import would be better but keeping consistent with original
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const require = createRequire(import.meta.url);
             const scheduleStorage = require('./schedule-storage.js');
             const currentSchedule = scheduleStorage.getCurrentSchedule(classroom.id);
             if (currentSchedule !== null && currentSchedule !== undefined) {

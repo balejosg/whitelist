@@ -13,6 +13,74 @@
 </head>
 
 <body>
+    <!-- Setup Screen (First-time admin setup) -->
+    <div id="setup-screen" class="screen hidden">
+        <div class="login-container">
+            <div class="login-header">
+                <div class="logo">🛡️</div>
+                <h1>OpenPath</h1>
+                <p>Configuración inicial del servidor</p>
+            </div>
+
+            <!-- Setup Form (shown when needs setup) -->
+            <div id="setup-form-container" class="login-form">
+                <p class="setup-info">
+                    ¡Bienvenido! Crea la cuenta de administrador para comenzar.
+                </p>
+                <form id="setup-form">
+                    <div class="form-group">
+                        <label for="setup-email">Email</label>
+                        <input type="email" id="setup-email" required placeholder="admin@colegio.es">
+                    </div>
+                    <div class="form-group">
+                        <label for="setup-name">Nombre</label>
+                        <input type="text" id="setup-name" required placeholder="Administrador">
+                    </div>
+                    <div class="form-group">
+                        <label for="setup-password">Contraseña</label>
+                        <input type="password" id="setup-password" required minlength="8" placeholder="Mínimo 8 caracteres">
+                    </div>
+                    <div class="form-group">
+                        <label for="setup-password-confirm">Confirmar contraseña</label>
+                        <input type="password" id="setup-password-confirm" required minlength="8" placeholder="Repetir contraseña">
+                    </div>
+                    <button type="submit" id="setup-submit-btn" class="btn btn-primary btn-block">
+                        Crear administrador
+                    </button>
+                </form>
+                <div id="setup-error" class="error-message"></div>
+            </div>
+
+            <!-- Setup Complete (shown after creating admin) -->
+            <div id="setup-complete-container" class="login-form hidden">
+                <div class="setup-success">
+                    <span class="success-icon">✅</span>
+                    <h3>¡Configuración completada!</h3>
+                    <p>Se ha creado la cuenta de administrador.</p>
+                </div>
+                <div class="registration-token-box">
+                    <label>Token de registro para PCs cliente:</label>
+                    <div class="token-display">
+                        <code id="setup-registration-token"></code>
+                        <button type="button" id="copy-registration-token-btn" class="btn btn-ghost" title="Copiar token">📋</button>
+                    </div>
+                    <small>Guarda este token. Lo necesitarás para instalar OpenPath en las máquinas del aula.</small>
+                </div>
+                <button type="button" id="goto-login-btn" class="btn btn-primary btn-block">
+                    Ir al Login
+                </button>
+            </div>
+
+            <!-- Already Setup (redirect to login) -->
+            <div id="setup-already-container" class="login-form hidden">
+                <p class="setup-info">
+                    El sistema ya está configurado. Usa el login para acceder.
+                </p>
+                <a href="#" id="setup-goto-login" class="btn btn-primary btn-block">Ir al Login</a>
+            </div>
+        </div>
+    </div>
+
     <!-- Login Screen -->
     <div id="login-screen" class="screen">
         <div class="login-container">
@@ -533,6 +601,7 @@ wikipedia.org"></textarea>
     <script src="js/github-api.js"></script>
     <script src="js/openpath-parser.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/setup.js"></script>
     <script src="js/users-api.js"></script>
     <script src="js/requests-api.js"></script>
     <script src="js/classrooms-api.js"></script>

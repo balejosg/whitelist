@@ -4,6 +4,22 @@ import { loadDashboard } from './groups.js';
 import { loadUsers } from './users.js';
 
 export async function init() {
+    // 0. Check if setup is needed (first-time admin)
+    const apiUrl = localStorage.getItem('requests_api_url') || '';
+    if (apiUrl) {
+        try {
+            const setupStatus = await Setup.checkStatus();
+            if (setupStatus.needsSetup) {
+                showScreen('setup-screen');
+                Setup.initSetupPage();
+                return;
+            }
+        } catch (e) {
+            console.warn('Setup check failed:', e);
+            // Continue to normal login flow
+        }
+    }
+
     // 1. Check for OAuth callback first
     const callbackResult = OAuth.handleCallback();
     if (callbackResult?.error) {

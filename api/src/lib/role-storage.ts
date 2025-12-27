@@ -139,6 +139,13 @@ export function getAllAdmins(): StoredRole[] {
 }
 
 /**
+ * Check if there are any admin users
+ */
+export function hasAnyAdmins(): boolean {
+    return getAllAdmins().length > 0;
+}
+
+/**
  * Check if user has a specific role
  */
 export function hasRole(userId: string, role: UserRole): boolean {
