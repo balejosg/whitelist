@@ -63,7 +63,7 @@ export function renderClassroomsList(): void {
             <div class="classroom-group">
                 <label>Active group:</label>
                 <select class="active-group-select" onchange="window.changeClassroomGroup('${c.id}', this.value)">
-                    <option value="">-- Default: ${escapeHtml(c.default_group_id || 'none')} --</option>
+                    <option value="">-- Default: ${escapeHtml(c.default_group_id ?? 'none')} --</option>
                     ${state.allGroups.map(g => `
                         <option value="${g.name}" ${c.active_group_id === g.name ? 'selected' : ''}>${g.name}</option>
                     `).join('')}
@@ -83,10 +83,11 @@ export async function changeClassroomGroup(classroomId: string, groupId: string)
     try {
         await ClassroomsAPI.setActiveGroup(classroomId, groupId || null);
         showToast(groupId ? `Active group: ${groupId}` : 'Using default group');
+        await loadClassrooms();
     } catch (error) {
         if (error instanceof Error) {
             showToast('Error: ' + error.message, 'error');
-            loadClassrooms(); // Reload to reset select
+            void loadClassrooms(); // Reload to reset select
         }
     }
 }
@@ -116,10 +117,12 @@ export function initClassroomListeners(): void {
     // The renderClassroomsList uses window.openNewClassroomModal
 
     // New Classroom Form
-    document.getElementById('new-classroom-form')?.addEventListener('submit', async (e) => {
+    document.getElementById('new-classroom-form')?.addEventListener('submit', (e) => void (async () => {
         e.preventDefault();
-        const nameInput = document.getElementById('new-classroom-name') as HTMLInputElement;
-        const groupInput = document.getElementById('new-classroom-default-group') as HTMLSelectElement;
+        const nameInput = document.getElementById('new-classroom-name') as HTMLInputElement | null;
+        const groupInput = document.getElementById('new-classroom-default-group') as HTMLSelectElement | null;
+
+        if (!nameInput || !groupInput) return;
 
         const name = nameInput.value;
         const defaultGroupId = groupInput.value;
@@ -131,7 +134,7 @@ export function initClassroomListeners(): void {
                 default_group_id: defaultGroupId || undefined
             });
             closeModal('modal-new-classroom');
-            (document.getElementById('new-classroom-form') as HTMLFormElement).reset();
+            (document.getElementById('new-classroom-form') as HTMLFormElement | null)?.reset();
             showToast('Classroom created');
             await loadClassrooms();
         } catch (error) {
@@ -139,7 +142,7 @@ export function initClassroomListeners(): void {
                 showToast('Error: ' + error.message, 'error');
             }
         }
-    });
+    })());
 }
 
 

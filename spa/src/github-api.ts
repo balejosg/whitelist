@@ -34,8 +34,8 @@ export class GitHubAPI implements GitHubAPIInstance {
         const response = await fetch(url, { ...options, headers });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({}));
-            const message = error.message || `Error ${response.status}`;
+            const error = (await response.json().catch(() => ({}))) as { message?: string };
+            const message = error.message ?? `Error ${String(response.status)}`;
             throw new Error(message);
         }
 
@@ -81,7 +81,12 @@ export class GitHubAPI implements GitHubAPIInstance {
         // Base64 encode content (UTF-8 safe)
         // Note: btoa only handles ASCII. Used "unescape(encodeURIComponent(str))" trick in JS.
         // In TS/modern environments, explicit encoding is better, but browser support matters.
-        const encodedContent = btoa(unescape(encodeURIComponent(content)));
+        // Use TextEncoder/Decoder for UTF-8 safety instead of deprecated unescape
+        // but for browser compatibility with raw strings:
+        const binaryString = Array.from(new TextEncoder().encode(content))
+            .map(byte => String.fromCharCode(byte))
+            .join('');
+        const encodedContent = btoa(binaryString);
 
         const body = {
             message,

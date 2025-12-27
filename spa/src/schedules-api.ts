@@ -11,7 +11,7 @@ export const SchedulesAPI = {
      * Get API base URL
      */
     getApiUrl(): string {
-        return RequestsAPI?.apiUrl ?? localStorage.getItem('openpath_api_url') ?? '';
+        return RequestsAPI.apiUrl || localStorage.getItem('openpath_api_url') || '';
     },
 
     /**

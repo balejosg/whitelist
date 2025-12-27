@@ -22,6 +22,11 @@ interface BlockedDomainData {
     timestamp: number;
 }
 
+interface NativeResponse {
+    success: boolean;
+    [key: string]: unknown;
+}
+
 interface BlockedDomainsMap {
     [tabId: number]: Map<string, BlockedDomainData>;
 }
@@ -251,7 +256,14 @@ async function checkDomainsWithNative(domains: string[]): Promise<CheckResult> {
 async function isNativeHostAvailable(): Promise<boolean> {
     try {
         const response = await sendNativeMessage({ action: 'ping' });
-        return response && (response as any).success === true;
+        interface NativeResponse {
+            success: boolean;
+            [key: string]: unknown;
+        }
+
+        // ... in isNativeHostAvailable ...
+        const response = await sendNativeMessage({ action: 'ping' }) as NativeResponse;
+        return response && response.success === true;
     } catch {
         return false;
     }

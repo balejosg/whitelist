@@ -14,7 +14,7 @@ import { WhitelistParser } from './openpath-parser.js';
 import type { GroupData } from './types/index.js';
 
 // Initialize application
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => void (async () => {
     console.log('OpenPath SPA initializing...');
 
     // Initialize UI listeners
@@ -32,13 +32,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) {
         console.warn('Push init failed:', e);
     }
-});
+})());
 
 function initMainListeners() {
     // ============== Login Listeners ==============
 
     // Email Login
-    document.getElementById('email-login-form')?.addEventListener('submit', async (e) => {
+    document.getElementById('email-login-form')?.addEventListener('submit', (e) => void (async () => {
         e.preventDefault();
         const emailInput = document.getElementById('login-email') as HTMLInputElement;
         const passwordInput = document.getElementById('login-password') as HTMLInputElement;
@@ -60,7 +60,7 @@ function initMainListeners() {
             btn.disabled = false;
             btn.textContent = 'Access Dashboard';
         }
-    });
+    })());
 
     // GitHub login button
     document.getElementById('github-login-btn')?.addEventListener('click', () => {
@@ -68,7 +68,7 @@ function initMainListeners() {
     });
 
     // Notifications button
-    document.getElementById('notifications-btn')?.addEventListener('click', async () => {
+    document.getElementById('notifications-btn')?.addEventListener('click', () => void (async () => {
         if (!PushManager.isSupported()) {
             showToast('Your browser does not support push notifications', 'error');
             return;
@@ -97,18 +97,22 @@ function initMainListeners() {
                 icon.textContent = '🔔';
                 showToast('Notifications enabled! You will receive alerts when a student requests access.');
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Push notification error:', err);
             icon.textContent = '🔕';
-            if (err.message.includes('denied')) {
-                showToast('Notification permission denied. Enable it in browser settings.', 'error');
+            if (err instanceof Error) {
+                if (err.message.includes('denied')) {
+                    showToast('Notification permission denied. Enable it in browser settings.', 'error');
+                } else {
+                    showToast('Error setting up notifications: ' + err.message, 'error');
+                }
             } else {
-                showToast('Error setting up notifications: ' + err.message, 'error');
+                showToast('Error setting up notifications: Unknown error', 'error');
             }
         } finally {
             btn.disabled = false;
         }
-    });
+    })());
 
     // Logout
     document.getElementById('logout-btn')?.addEventListener('click', () => {
@@ -120,7 +124,7 @@ function initMainListeners() {
     });
 
     // Repo config form
-    document.getElementById('repo-config-form')?.addEventListener('submit', async (e) => {
+    document.getElementById('repo-config-form')?.addEventListener('submit', (e) => void (async () => {
         e.preventDefault();
         const errorEl = document.getElementById('config-error');
         if (errorEl) errorEl.textContent = '';
@@ -164,7 +168,7 @@ function initMainListeners() {
                 }
             }
         }
-    });
+    })());
 
     // Navigation for Admins
     document.getElementById('admin-users-btn')?.addEventListener('click', () => {
@@ -197,12 +201,12 @@ function initMainListeners() {
     });
 
     // Save group config (enable/disable)
-    document.getElementById('save-config-btn')?.addEventListener('click', async () => {
+    document.getElementById('save-config-btn')?.addEventListener('click', () => void (async () => {
         if (!state.canEdit || !state.currentGroupData) return;
         const enabledSelect = document.getElementById('group-enabled') as HTMLSelectElement;
         state.currentGroupData.enabled = enabledSelect.value === '1';
         await saveCurrentGroup('Update group status');
-    });
+    })());
 
     // Delete group
     document.getElementById('delete-group-btn')?.addEventListener('click', () => {
@@ -225,7 +229,7 @@ function initMainListeners() {
     });
 
     // Add Rule Form
-    document.getElementById('add-rule-form')?.addEventListener('submit', async (e) => {
+    document.getElementById('add-rule-form')?.addEventListener('submit', (e) => void (async () => {
         e.preventDefault();
         if (!state.canEdit || !state.currentGroupData) return;
 
@@ -250,7 +254,7 @@ function initMainListeners() {
 
         closeModal('modal-add-rule');
         (document.getElementById('add-rule-form') as HTMLFormElement).reset();
-    });
+    })());
 
     // Bulk Add Modal Trigger
     document.getElementById('bulk-add-btn')?.addEventListener('click', () => {
@@ -259,7 +263,7 @@ function initMainListeners() {
     });
 
     // Bulk Add Form
-    document.getElementById('bulk-add-form')?.addEventListener('submit', async (e) => {
+    document.getElementById('bulk-add-form')?.addEventListener('submit', (e) => void (async () => {
         e.preventDefault();
         if (!state.canEdit || !state.currentGroupData) return;
 
@@ -292,10 +296,10 @@ function initMainListeners() {
         closeModal('modal-bulk-add');
         (document.getElementById('bulk-add-form') as HTMLFormElement).reset();
         showToast(`${added} rules added`);
-    });
+    })());
 
     // New Group Form
-    document.getElementById('new-group-form')?.addEventListener('submit', async (e) => {
+    document.getElementById('new-group-form')?.addEventListener('submit', (e) => void (async () => {
         e.preventDefault();
         if (!state.canEdit || !state.github) return;
 
@@ -328,7 +332,7 @@ function initMainListeners() {
         } catch (err: unknown) {
             if (err instanceof Error) showToast(err.message, 'error');
         }
-    });
+    })());
 
     // New Group Button
     document.getElementById('new-group-btn')?.addEventListener('click', () => {

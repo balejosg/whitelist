@@ -158,18 +158,12 @@ export async function openGroup(name: string): Promise<void> {
         updateRuleCounts();
         renderRules();
 
-        // Disable editing if no write access
         if (enabledSelect) enabledSelect.disabled = !state.canEdit;
-
-        renderRules();
-        updateRuleCounts();
 
         document.querySelectorAll('.tab').forEach((t) => {
             const el = t as HTMLElement;
             el.classList.toggle('active', el.dataset.type === 'whitelist');
         });
-
-        showScreen('editor-screen');
     } catch (err) {
         if (err instanceof Error) {
             showToast('Error abriendo grupo: ' + err.message, 'error');

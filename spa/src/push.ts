@@ -1,6 +1,12 @@
 import { Auth } from './auth.js';
 import { RequestsAPI } from './requests-api.js';
 
+declare global {
+    interface Window {
+        highlightRequest?: (requestId: string) => void;
+    }
+}
+
 interface VapidKeyResponse {
     success: boolean;
     publicKey?: string;
@@ -88,7 +94,7 @@ export const PushManager = {
         const data = await response.json() as VapidKeyResponse;
 
         if (!data.success || !data.publicKey) {
-            throw new Error(data.error || 'Failed to get VAPID key');
+            throw new Error(data.error ?? 'Failed to get VAPID key');
         }
 
         return data.publicKey;
@@ -132,7 +138,7 @@ export const PushManager = {
         // Subscribe
         const subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: applicationServerKey
+            applicationServerKey: applicationServerKey as unknown as BufferSource
         });
 
         // eslint-disable-next-line no-console
@@ -148,7 +154,7 @@ export const PushManager = {
 
         const data = await response.json() as SubscribeResponse;
         if (!data.success) {
-            throw new Error(data.error || 'Failed to register subscription');
+            throw new Error(data.error ?? 'Failed to register subscription');
         }
 
         // eslint-disable-next-line no-console
@@ -219,12 +225,8 @@ export const PushManager = {
             if (data && typeof data === 'object' && data.type === 'NAVIGATE') {
                 // Handle navigation request from SW
                 const requestId = data.requestId as string | undefined;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const win = window as any;
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                if (requestId && typeof win.highlightRequest === 'function') {
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-                    win.highlightRequest(requestId);
+                if (requestId && typeof window.highlightRequest === 'function') {
+                    window.highlightRequest(requestId);
                 }
             }
         });

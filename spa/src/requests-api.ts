@@ -14,7 +14,7 @@ export const RequestsAPI = {
     },
 
     init(url: string, token?: string): void {
-        this.apiUrl = url?.replace(/\/$/, '') ?? '';
+        this.apiUrl = url.replace(/\/$/, '');
         this._config.adminToken = token ?? '';
     },
 

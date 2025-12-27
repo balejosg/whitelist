@@ -40,7 +40,7 @@ export async function init(): Promise<void> {
             try {
                 await Auth.getMe();
                 user = Auth.getUser();
-            } catch (e) { }
+            } catch { }
             if (user) setCurrentUser(user);
         }
     } catch (err) {
@@ -55,8 +55,8 @@ export async function init(): Promise<void> {
     }
 
     // 4. Setup Whitelist Requests API (Home Server)
-    const savedUrl = localStorage.getItem('requests_api_url') || '';
-    const savedToken = localStorage.getItem('requests_api_token') || '';
+    const savedUrl = localStorage.getItem('requests_api_url') ?? '';
+    const savedToken = localStorage.getItem('requests_api_token') ?? '';
     if (savedUrl) {
         RequestsAPI.init(savedUrl, savedToken);
     }
@@ -100,7 +100,7 @@ export async function init(): Promise<void> {
 
     updateEditUI();
     showScreen('dashboard-screen');
-    loadDashboard();
+    await loadDashboard();
 }
 
 export function showConfigScreen(): void {
@@ -129,7 +129,7 @@ export function updateEditUI(): void {
         usersSection.classList.toggle('hidden', !Auth.isAdmin());
         const adminBtn = document.getElementById('admin-users-btn');
         if (Auth.isAdmin()) {
-            loadUsers();
+            void loadUsers();
             if (adminBtn) adminBtn.classList.remove('hidden');
         } else {
             if (adminBtn) adminBtn.classList.add('hidden');
@@ -192,7 +192,7 @@ async function initScheduleSection(): Promise<void> {
         const response = await fetch(`${RequestsAPI.apiUrl || ''}/api/classrooms`, {
             headers: Auth.getAuthHeaders()
         });
-        const data = await response.json();
+        const data = (await response.json()) as { success: boolean, classrooms?: Classroom[] };
 
         if (data.success && data.classrooms) {
             select.innerHTML = '<option value="">Select classroom...</option>';
@@ -208,7 +208,7 @@ async function initScheduleSection(): Promise<void> {
     }
 
     // Handle classroom selection
-    select.addEventListener('change', async () => {
+    select.addEventListener('change', () => void (async () => {
         const classroomId = select.value;
         if (classroomId && SchedulesModule) {
             await SchedulesModule.init(classroomId);
@@ -216,14 +216,14 @@ async function initScheduleSection(): Promise<void> {
             const container = document.getElementById('schedule-grid-container');
             if (container) container.innerHTML = '<p class="empty-message">Select a classroom to view its schedule</p>';
         }
-    });
+    })());
 
     // Refresh button
-    document.getElementById('schedule-refresh-btn')?.addEventListener('click', async () => {
+    document.getElementById('schedule-refresh-btn')?.addEventListener('click', () => void (async () => {
         const classroomId = select.value;
         if (classroomId && SchedulesModule) {
             await SchedulesModule.loadSchedules();
             SchedulesModule.render();
         }
-    });
+    })());
 }

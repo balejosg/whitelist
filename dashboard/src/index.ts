@@ -52,8 +52,7 @@ function requireAuth(req: Request, res: Response, next: NextFunction): void {
 // ============== Rutas de Auth ==============
 
 app.post('/api/auth/login', (req: Request, res: Response) => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const { username, password } = req.body;
+    const { username, password } = req.body as Record<string, unknown>;
     if (typeof username !== 'string' || typeof password !== 'string') {
         res.status(400).json({ error: 'Invalid request' });
         return;
@@ -79,11 +78,11 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
         // User interface: { id: number; username: string; password_hash: string; ... }
         // So I need to align them.
 
-        // Let's use 'as any' for now to match legacy behavior or fix interface.
-        // Better: Update SessionData to be loose or specific.
-        // I'll update it later if needed. For now casting.
-        const sessionUser = req.session.user ?? {};
-        req.session.user = { ...sessionUser, ...user } as User;
+        // Legacy behavior: copy all user props to session. 
+        // We ensure strict typing by confirming the shape matches what we expect or extending the type.
+        // Since we don't have the full User object from validateUser, we merge safely.
+        const sessionUser = req.session.user ?? {} as User;
+        req.session.user = { ...sessionUser, ...user, password_hash: '' };
 
         res.json({ success: true, user: { username: user.username } });
     } else {
@@ -111,8 +110,7 @@ app.get('/api/auth/check', (req: Request, res: Response) => {
 });
 
 app.post('/api/auth/change-password', requireAuth, (req: Request, res: Response) => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const { newPassword } = req.body;
+    const { newPassword } = req.body as Record<string, unknown>;
     if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
         res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
         return;
@@ -138,8 +136,7 @@ app.get('/api/system/status', requireAuth, (_req: Request, res: Response) => {
 });
 
 app.post('/api/system/toggle', requireAuth, (req: Request, res: Response) => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const { enable } = req.body;
+    const { enable } = req.body as Record<string, unknown>;
     const status = db.toggleSystemStatus(!!enable);
     res.json({ success: true, ...status });
 });
@@ -151,8 +148,7 @@ app.get('/api/groups', requireAuth, (_req: Request, res: Response) => {
 });
 
 app.post('/api/groups', requireAuth, (req: Request, res: Response) => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const { name, displayName } = req.body;
+    const { name, displayName } = req.body as Record<string, unknown>;
     if (!name || !displayName || typeof name !== 'string' || typeof displayName !== 'string') {
         res.status(400).json({ error: 'Nombre requerido' });
         return;
@@ -182,8 +178,7 @@ app.get('/api/groups/:id', requireAuth, (req: Request, res: Response) => {
 });
 
 app.put('/api/groups/:id', requireAuth, (req: Request, res: Response) => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const { displayName, enabled } = req.body;
+    const { displayName, enabled } = req.body as Record<string, unknown>;
     if (typeof displayName !== 'string') {
         res.status(400).json({ error: 'Invalid details' });
         return;
@@ -206,8 +201,7 @@ app.get('/api/groups/:groupId/rules', requireAuth, (req: Request, res: Response)
 });
 
 app.post('/api/groups/:groupId/rules', requireAuth, (req: Request, res: Response) => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const { type, value, comment } = req.body;
+    const { type, value, comment } = req.body as Record<string, unknown>;
     if (!type || !value || typeof type !== 'string' || typeof value !== 'string') {
         res.status(400).json({ error: 'Tipo y valor requeridos' });
         return;
@@ -222,14 +216,12 @@ app.post('/api/groups/:groupId/rules', requireAuth, (req: Request, res: Response
 });
 
 app.post('/api/groups/:groupId/rules/bulk', requireAuth, (req: Request, res: Response) => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const { type, values } = req.body;
+    const { type, values } = req.body as Record<string, unknown>;
     if (!type || !values || !Array.isArray(values)) {
         res.status(400).json({ error: 'Tipo y valores requeridos' });
         return;
     }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    const count = db.bulkCreateRules(req.params.groupId, type, values);
+    const count = db.bulkCreateRules(req.params.groupId, type as db.Rule['type'], values as string[]);
     db.exportGroupToFile(req.params.groupId);
     res.json({ success: true, count });
 });

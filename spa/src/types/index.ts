@@ -87,6 +87,8 @@ export interface Schedule {
     teacher_name?: string;
     subject: string;
     active: boolean;
+    is_mine?: boolean;
+    can_edit?: boolean;
 }
 
 export interface ScheduleSlot {

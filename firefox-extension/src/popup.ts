@@ -481,7 +481,16 @@ interface AutoIncludeResponse {
  */
 async function submitDomainRequest(): Promise<void> {
     const domain = requestDomainSelectEl.value;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // reason is only used for validation check, not passed to auto logic directly here? 
+    // Wait, the logic uses 'reason' in validation: if (!domain || reason.length < 3).
+    // So it IS used. Why did eslint complain?
+    // Ah, line 484 has eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // The variable `reason` is defined: const reason = requestReasonEl.value.trim();
+    // And used: if (!domain || reason.length < 3)
+    // Maybe it was marked unused because I filtered previous grep?
+    // Let's look closer at line 484.
+    // The grep showed: // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // If it is used, I can just remove the comment.
     const reason = requestReasonEl.value.trim();
     const selectedOption = requestDomainSelectEl.selectedOptions[0];
     const origin = selectedOption ? selectedOption.dataset.origin : '';

@@ -72,7 +72,7 @@ export const Auth: AuthAPI = {
     },
 
     isAuthenticated(): boolean {
-        return !!(this.getAccessToken() || localStorage.getItem('requests_api_token'));
+        return !!(this.getAccessToken() ?? localStorage.getItem('requests_api_token'));
     },
 
     hasRole(role: UserRole): boolean {
@@ -260,9 +260,10 @@ export const Auth: AuthAPI = {
     },
 
     async fetch(url: string, options: RequestInit = {}): Promise<Response> {
+        const authHeaders = this.getAuthHeaders();
         options.headers = {
-            ...options.headers,
-            ...this.getAuthHeaders()
+            ...(options.headers || {}),
+            ...authHeaders
         };
 
         let response = await fetch(url, options);

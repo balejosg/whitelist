@@ -26,9 +26,9 @@ export function relativeTime(dateString: string): string {
     const diffDay = Math.floor(diffHour / 24);
 
     if (diffSec < 60) return 'just now';
-    if (diffMin < 60) return `${diffMin} min ago`;
-    if (diffHour < 24) return `${diffHour}h ago`;
-    if (diffDay < 7) return `${diffDay} days ago`;
+    if (diffMin < 60) return `${String(diffMin)} min ago`;
+    if (diffHour < 24) return `${String(diffHour)}h ago`;
+    if (diffDay < 7) return `${String(diffDay)} days ago`;
     return date.toLocaleDateString();
 }
 

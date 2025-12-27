@@ -22,7 +22,7 @@ export const WhitelistParser = {
             blocked_paths: []
         };
 
-        if (!content?.trim()) {
+        if (!content.trim()) {
             return result;
         }
 
@@ -114,9 +114,9 @@ export const WhitelistParser = {
      */
     getStats(data: GroupData): { whitelist: number; blocked_subdomains: number; blocked_paths: number } {
         return {
-            whitelist: data.whitelist?.length || 0,
-            blocked_subdomains: data.blocked_subdomains?.length || 0,
-            blocked_paths: data.blocked_paths?.length || 0
+            whitelist: data.whitelist?.length ?? 0,
+            blocked_subdomains: data.blocked_subdomains?.length ?? 0,
+            blocked_paths: data.blocked_paths?.length ?? 0
         };
     }
 };

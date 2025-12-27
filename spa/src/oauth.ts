@@ -80,7 +80,7 @@ export const OAuth = {
                 throw new Error('Failed to get user');
             }
 
-            return response.json() as Promise<User>;
+            return await response.json() as User;
         } catch (error) {
             console.error('Error getting user:', error);
             throw error;

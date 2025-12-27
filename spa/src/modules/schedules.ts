@@ -40,8 +40,8 @@ export const SchedulesModule = {
             const response = await fetch(`${apiUrl}/api/requests/groups/list`, {
                 headers: Auth.getAuthHeaders()
             });
-            const data = await response.json();
-            this.groups = data.success ? data.groups : [];
+            const data = (await response.json()) as { success: boolean, groups?: ScheduleGroup[] };
+            this.groups = data.success && data.groups ? data.groups : [];
         } catch (e) {
             console.warn('Failed to load groups:', e);
             this.groups = [];
@@ -122,17 +122,16 @@ export const SchedulesModule = {
             // Assuming Schedule type has can_edit and is_mine properties (from API)
             // If they are not in the Interface yet, we might need to add them or cast.
             // Interface: "active: boolean" only.
-            // The API likely returns more. We'll use 'as any' for now or update Type later.
-            const s = schedule as any;
-            const canEdit = s.can_edit || s.is_mine;
+            // Interface updated to include is_mine and can_edit
+            const canEdit = schedule.can_edit || schedule.is_mine;
 
             return `
-                <div class="schedule-cell schedule-cell-occupied ${s.is_mine ? 'is-mine' : 'is-other'}"
+                <div class="schedule-cell schedule-cell-occupied ${schedule.is_mine ? 'is-mine' : 'is-other'}"
                      data-schedule-id="${schedule.id}"
-                     data-day="${dayOfWeek}"
+                     data-day="${String(dayOfWeek)}"
                      data-start="${slot.start}"
                      data-end="${slot.end}"
-                     title="${s.is_mine ? 'Mi reserva' : 'Ocupado'}">
+                     title="${schedule.is_mine ? 'Mi reserva' : 'Ocupado'}">
                     <span class="schedule-group-name">${groupName}</span>
                     ${canEdit ? '<button class="schedule-delete-btn" title="Eliminar">×</button>' : ''}
                 </div>
@@ -142,7 +141,7 @@ export const SchedulesModule = {
         // Empty cell - clickable for creating schedule
         return `
             <div class="schedule-cell schedule-cell-empty"
-                 data-day="${dayOfWeek}"
+                 data-day="${String(dayOfWeek)}"
                  data-start="${slot.start}"
                  data-end="${slot.end}"
                  title="Clic para reservar">
@@ -214,7 +213,7 @@ export const SchedulesModule = {
      */
     async handleCellClick(e: Event): Promise<void> {
         const cell = e.currentTarget as HTMLElement;
-        const dayOfWeek = parseInt(cell.dataset.day || '0');
+        const dayOfWeek = parseInt(cell.dataset.day ?? '0');
         const startTime = cell.dataset.start || '';
         const endTime = cell.dataset.end || '';
 
@@ -290,7 +289,7 @@ export const SchedulesModule = {
             modal.innerHTML = `
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h3>Reservar ${dayName} ${startTime}-${endTime}</h3>
+                        <h3>Reservar ${dayName ?? ''} ${startTime}-${endTime}</h3>
                         <button class="modal-close">×</button>
                     </div>
                     <form id="schedule-group-form">
