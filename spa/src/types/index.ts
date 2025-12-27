@@ -12,6 +12,15 @@ export type RequestPriority = 'low' | 'normal' | 'high';
 export type UserRole = 'admin' | 'teacher' | 'student';
 export type MachineStatus = 'online' | 'offline' | 'unknown';
 
+export interface ClassroomStats {
+    total_classrooms: number;
+    total_machines: number;
+    online_machines: number;
+    offline_machines: number;
+    unknown_machines: number;
+}
+
+
 /**
  * Domain unlock request
  */
@@ -80,6 +89,12 @@ export interface Schedule {
     active: boolean;
 }
 
+export interface ScheduleSlot {
+    start: string;
+    end: string;
+}
+
+
 // =============================================================================
 // Auth Types
 // =============================================================================
@@ -120,6 +135,30 @@ export interface OAuthCallbackResult {
 /**
  * GitHub API instance interface
  */
+export interface SPAConfig {
+    owner: string;
+    repo: string;
+    branch: string;
+    whitelistPath: string;
+    token?: string;
+    gruposDir?: string; // Add optional for legacy support
+}
+
+// ...
+
+export interface Classroom {
+    id: string;
+    name: string;
+    display_name: string;
+    machines: Machine[];
+    created_at: string;
+    updated_at: string;
+    active_group_id?: string | null;
+    default_group_id?: string | null; // Add property
+}
+
+// ...
+
 export interface GitHubAPIInstance {
     token: string;
     owner: string;
@@ -128,6 +167,9 @@ export interface GitHubAPIInstance {
     getFile(path: string): Promise<GitHubFile | null>;
     updateFile(path: string, content: string, message: string, sha: string): Promise<boolean>;
     listDirectory(path: string): Promise<string[]>;
+    listFiles(path: string): Promise<{ name: string, path: string, sha: string }[]>;
+    getRawUrl(path: string): string;
+    deleteFile(path: string, message: string, sha: string): Promise<boolean>;
 }
 
 /**
@@ -143,11 +185,16 @@ export interface GitHubFile {
 /**
  * Group data (whitelist content)
  */
+/**
+ * Group data (whitelist content)
+ */
 export interface GroupData {
-    domains: string[];
-    rules?: WhitelistRule[];
-    config?: Record<string, unknown>;
+    enabled: boolean;
+    whitelist: string[];
+    blocked_subdomains: string[];
+    blocked_paths: string[];
 }
+
 
 /**
  * Whitelist rule entry
@@ -162,15 +209,54 @@ export interface WhitelistRule {
 /**
  * Application state
  */
+// ... (Group interface)
+export interface Group {
+    name: string;
+    path: string;
+    sha: string;
+    stats?: { whitelist: number; blocked_subdomains: number; blocked_paths: number };
+    enabled?: boolean;
+}
+
+/**
+ * Application state
+ */
 export interface AppState {
     github: GitHubAPIInstance | null;
     currentGroup: string | null;
     currentGroupData: GroupData | null;
     currentGroupSha: string | null;
-    currentRuleType: 'whitelist' | 'blacklist';
-    allGroups: string[];
+    currentRuleType: 'whitelist' | 'blocked_subdomains' | 'blocked_paths';
+    allGroups: Group[];
     currentUser: User | null;
     canEdit: boolean;
+}
+
+// ...
+
+/**
+ * Auth API interface
+ */
+export interface AuthAPI {
+    // ...
+    getToken(): string | null;
+    // ...
+}
+
+/**
+ * Requests API instance interface
+ */
+export interface RequestsAPIInstance {
+    apiUrl: string;
+    init(url: string, token?: string): void;
+    isConfigured(): boolean;
+    healthCheck(): Promise<boolean>;
+    getPendingRequests(): Promise<RequestsResponse>;
+    getRequests(status?: RequestStatus): Promise<RequestsResponse>;
+    createRequest(data: { domain: string; reason?: string }): Promise<APIResponse<DomainRequest>>;
+    approveRequest(id: string, groupId?: string, token?: string): Promise<APIResponse<DomainRequest>>;
+    rejectRequest(id: string, reason?: string, token?: string): Promise<APIResponse<DomainRequest>>;
+    deleteRequest(id: string): Promise<APIResponse<void>>;
 }
 
 // =============================================================================
@@ -238,6 +324,7 @@ export interface SPAConfig {
     repo: string;
     branch: string;
     whitelistPath: string;
+    token?: string;
 }
 
 /**
@@ -326,7 +413,7 @@ declare global {
         RequestsAPI: RequestsAPIInstance;
         Config: ConfigAPI;
         GitHubAPI: new (token: string, owner: string, repo: string, branch: string) => GitHubAPIInstance;
-        SchedulesModule?: SchedulesModule;
+        SchedulesModule: typeof import('../modules/schedules.js').SchedulesModule;
     }
 }
 
@@ -339,6 +426,7 @@ export interface AuthAPI {
     USER_KEY: string;
     getApiUrl(): string;
     getAccessToken(): string | null;
+    getToken(): string | null;
     getRefreshToken(): string | null;
     getAuthHeaders(): Record<string, string>;
     storeTokens(tokens: AuthTokens): void;
@@ -379,10 +467,13 @@ export interface OAuthAPI {
 export interface RequestsAPIInstance {
     apiUrl: string;
     init(url: string, token?: string): void;
+    isConfigured(): boolean;
+    healthCheck(): Promise<boolean>;
     getRequests(status?: RequestStatus): Promise<RequestsResponse>;
+    getPendingRequests(): Promise<RequestsResponse>;
     createRequest(data: { domain: string; reason?: string }): Promise<APIResponse<DomainRequest>>;
-    approveRequest(id: string, note?: string): Promise<APIResponse<DomainRequest>>;
-    rejectRequest(id: string, note?: string): Promise<APIResponse<DomainRequest>>;
+    approveRequest(id: string, groupId?: string, token?: string): Promise<APIResponse<DomainRequest>>;
+    rejectRequest(id: string, reason?: string, token?: string): Promise<APIResponse<DomainRequest>>;
     deleteRequest(id: string): Promise<APIResponse<void>>;
 }
 
