@@ -1,9 +1,12 @@
 import { state } from './state.js';
 import { Auth } from '../auth.js';
-import { UsersAPI } from '../users-api.js';
+import { trpc } from '../trpc.js';
 import { showToast, escapeHtml } from '../utils.js';
 import { openModal, closeModal } from './ui.js';
-// import type { User, UserRole } from '../types/index.js';
+import { UserRole } from '../../../shared/src/index.js';
+import { z } from 'zod';
+
+type UserRoleType = z.infer<typeof UserRole>;
 
 export async function loadUsers(): Promise<void> {
     if (!Auth.isAdmin()) return;
@@ -14,10 +17,7 @@ export async function loadUsers(): Promise<void> {
     listEl.innerHTML = '<div class="loading">Loading users...</div>';
 
     try {
-        const response = await UsersAPI.list();
-        if (!response.success || !response.data) throw new Error(response.error);
-
-        const users = response.data.users;
+        const users = await trpc.users.list.query();
 
         listEl.innerHTML = `
             <table class="users-table">
@@ -40,19 +40,13 @@ export async function loadUsers(): Promise<void> {
                             <td>${escapeHtml(u.email)}</td>
                             <td>
                                 <div class="roles-list">
-                                    ${u.roles && u.roles.length > 0
+                                    ${u.roles.length > 0
                 ? u.roles.map(r => `
-                                            <span class="role-badge role-${r}">
-                                                ${r}
-                                                <button onclick="window.revokeRole('${u.id}', 'TODO:RoleID?')" title="Revoke role">×</button>
+                                            <span class="role-badge role-${r.role}">
+                                                ${r.role}
+                                                <button onclick="window.revokeRole('${u.id}', '${r.id}')" title="Revoke role">×</button>
                                             </span>
-                                        `).join('') // Note: Original JS assumed roles were objects with IDs. Types/index says UserRole[] (strings).
-                // We need to clarify if roles are strings or objects.
-                // UsersAPI.getRoles returns { roles: UserRole[] }.
-                // But users list might return expanded objects?
-                // If `u.roles` is `UserRole[]` (strings), we can't get RoleID. 
-                // The API likely expects (userId, roleName) or (userId, roleId).
-                // Let's assume (userId, roleName) if roles are simple strings.
+                                        `).join('')
                 : '<span class="no-roles">No roles</span>'
             }
                                     <button class="btn-icon-small" onclick="window.openAssignRoleModal('${u.id}', '${escapeHtml(u.name)}')" title="Assign role">+</button>
@@ -75,11 +69,10 @@ export async function loadUsers(): Promise<void> {
         const countEl = document.getElementById('stat-users-count');
         if (countEl) countEl.textContent = users.length.toString();
 
-    } catch (err) {
+    } catch (err: unknown) {
         console.error('Error loading users:', err);
-        if (err instanceof Error) {
-            listEl.innerHTML = `<p class="error-message">Error loading users: ${err.message}</p>`;
-        }
+        const message = err instanceof Error ? err.message : String(err);
+        listEl.innerHTML = `<p class="error-message">Error loading users: ${message}</p>`;
     }
 }
 
@@ -95,29 +88,27 @@ declare global {
 }
 
 window.revokeRole = async (userId: string, roleArg: string) => {
-    // roleArg might be ID or name depending on API.
+    // roleArg is roleId here
     if (!confirm('Revoke this role?')) return;
     try {
-        await UsersAPI.revokeRole(userId, roleArg);
+        await trpc.users.revokeRole.mutate({ userId, roleId: roleArg });
         showToast('Role revoked');
         void loadUsers();
-    } catch (err) {
-        if (err instanceof Error) {
-            showToast('Error revoking role: ' + err.message, 'error');
-        }
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        showToast('Error revoking role: ' + message, 'error');
     }
 };
 
 window.deleteUser = async (userId: string) => {
     if (!confirm('Delete user? This action cannot be undone.')) return;
     try {
-        await UsersAPI.delete(userId);
+        await trpc.users.delete.mutate({ id: userId });
         showToast('User deleted');
         void loadUsers();
-    } catch (err) {
-        if (err instanceof Error) {
-            showToast('Error deleting user: ' + err.message, 'error');
-        }
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        showToast('Error deleting user: ' + message, 'error');
     }
 };
 
@@ -154,10 +145,8 @@ window.openAssignRoleModal = (userId: string, userName: string) => {
 
 window.editUser = async (userId: string) => {
     try {
-        const response = await UsersAPI.get(userId);
-        if (!response.success || !response.data) throw new Error(response.error);
+        const user = await trpc.users.get.query({ id: userId });
 
-        const user = response.data.user;
         const idInput = document.getElementById('edit-user-id') as HTMLInputElement;
         const nameInput = document.getElementById('edit-user-name') as HTMLInputElement;
         const emailInput = document.getElementById('edit-user-email') as HTMLInputElement;
@@ -169,10 +158,9 @@ window.editUser = async (userId: string) => {
         // user.isActive check? interface User doesn't have isActive.
 
         openModal('modal-edit-user');
-    } catch (err) {
-        if (err instanceof Error) {
-            showToast('Error loading user: ' + err.message, 'error');
-        }
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        showToast('Error loading user: ' + message, 'error');
     }
 };
 
@@ -196,14 +184,13 @@ export function initUsersListeners(): void {
             };
 
             try {
-                await UsersAPI.create(data);
+                await trpc.users.create.mutate(data);
                 closeModal('modal-new-user');
                 showToast('User created');
                 await loadUsers();
-            } catch (err) {
-                if (err instanceof Error) {
-                    showToast('Error creating user: ' + err.message, 'error');
-                }
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : String(err);
+                showToast('Error creating user: ' + message, 'error');
             }
         })();
     });
@@ -213,21 +200,20 @@ export function initUsersListeners(): void {
         void (async () => {
             e.preventDefault();
             const userId = (document.getElementById('assign-role-user-id') as HTMLInputElement).value;
-            const role = (document.getElementById('assign-role-select') as HTMLSelectElement).value;
+            const role = (document.getElementById('assign-role-select') as HTMLSelectElement).value as UserRoleType;
 
             // Get selected groups
             const select = document.getElementById('assign-role-groups') as HTMLSelectElement;
             const groupIds = Array.from(select.selectedOptions).map(opt => opt.value);
 
             try {
-                await UsersAPI.assignRole(userId, role, groupIds);
+                await trpc.users.assignRole.mutate({ userId, role, groupIds });
                 closeModal('modal-assign-role');
                 showToast('Role assigned');
                 await loadUsers();
-            } catch (err) {
-                if (err instanceof Error) {
-                    showToast('Error assigning role: ' + err.message, 'error');
-                }
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : String(err);
+                showToast('Error assigning role: ' + message, 'error');
             }
         })();
     });
@@ -247,14 +233,13 @@ export function initUsersListeners(): void {
             if (password) updates.password = password;
 
             try {
-                await UsersAPI.update(userId, updates);
+                await trpc.users.update.mutate({ id: userId, ...updates });
                 closeModal('modal-edit-user');
                 showToast('User updated');
                 await loadUsers();
-            } catch (err) {
-                if (err instanceof Error) {
-                    showToast('Error updating user: ' + err.message, 'error');
-                }
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : String(err);
+                showToast('Error updating user: ' + message, 'error');
             }
         })();
     });

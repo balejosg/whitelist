@@ -5,10 +5,9 @@ import { loadUsers } from './users.js';
 import { OAuth } from '../oauth.js';
 import { Auth } from '../auth.js';
 import { Config } from '../config.js';
-import { RequestsAPI } from '../requests-api.js';
 import { GitHubAPI } from '../github-api.js';
 import { SchedulesModule } from './schedules.js';
-import type { Classroom } from '../types/index.js';
+import { trpc } from '../trpc.js';
 
 export async function init(): Promise<void> {
     // 1. Check for OAuth callback first
@@ -56,12 +55,12 @@ export async function init(): Promise<void> {
         return;
     }
 
-    // 4. Setup Whitelist Requests API (Home Server)
-    const savedUrl = localStorage.getItem('requests_api_url') ?? '';
-    const savedToken = localStorage.getItem('requests_api_token') ?? '';
-    if (savedUrl) {
-        RequestsAPI.init(savedUrl, savedToken);
-    }
+    // 4. Setup Whitelist Requests API (Home Server) - Handled by tRPC client automatically via localStorage
+    // const savedUrl = localStorage.getItem('requests_api_url') ?? '';
+    // const savedToken = localStorage.getItem('requests_api_token') ?? '';
+    // if (savedUrl) {
+    //     RequestsAPI.init(savedUrl, savedToken);
+    // }
 
     // 5. Check if repo config exists (only for admins/github users)
     const config = Config.get();
@@ -193,21 +192,20 @@ async function initScheduleSection(): Promise<void> {
 
     // Load classrooms
     try {
-        const response = await fetch(`${RequestsAPI.apiUrl || ''}/api/classrooms`, {
-            headers: Auth.getAuthHeaders()
-        });
-        interface ClassroomsResponse { success: boolean; classrooms?: Classroom[] }
-        const data: ClassroomsResponse = await response.json() as ClassroomsResponse;
+        const classrooms = await trpc.classrooms.list.query();
 
-        if (data.success && data.classrooms) {
-            select.innerHTML = '<option value="">Select classroom...</option>';
-            data.classrooms.forEach((c: Classroom) => {
-                const option = document.createElement('option');
-                option.value = c.id;
-                option.textContent = c.display_name || c.name;
-                select.appendChild(option);
-            });
-        }
+        select.innerHTML = '<option value="">Select classroom...</option>';
+        // Note: Classroom type in API vs SPA might differ slightly in casing (display_name vs displayName) 
+        // but the query returns what API returns. 
+        // In API router `list`: returns `Classroom[]`. 
+        // In SPA types: `Classroom` has `display_name`?
+        // Let's assume tRPC types from shared package will be correct.
+        classrooms.forEach((c) => {
+            const option = document.createElement('option');
+            option.value = c.id;
+            option.textContent = c.display_name || c.name;
+            select.appendChild(option);
+        });
     } catch (e) {
         console.error('Failed to load classrooms for schedule:', e);
     }

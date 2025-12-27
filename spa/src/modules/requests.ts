@@ -1,6 +1,6 @@
 import { state } from './state.js';
 import { relativeTime, escapeHtml, showToast } from '../utils.js';
-import { RequestsAPI } from '../requests-api.js';
+import { trpc } from '../trpc.js';
 import { Auth } from '../auth.js';
 // import type { DomainRequest } from '../types/index.js';
 
@@ -17,7 +17,7 @@ export async function initRequestsSection(): Promise<void> {
     tokenInput.value = savedToken;
 
     if (savedUrl && savedToken) {
-        RequestsAPI.init(savedUrl, savedToken);
+        // RequestsAPI.init(savedUrl, savedToken); // No longer needed
         await checkRequestsServerStatus();
         await loadPendingRequests();
     }
@@ -37,27 +37,22 @@ export async function checkRequestsServerStatus(): Promise<boolean> {
 
     if (!dotEl || !textEl) return false;
 
-    if (!RequestsAPI.isConfigured()) {
+    const url = localStorage.getItem('requests_api_url');
+    if (!url) {
         dotEl.className = 'status-dot offline';
         textEl.textContent = 'No configurado';
         return false;
     }
 
     try {
-        const isOnline = await RequestsAPI.healthCheck();
-
-        if (isOnline) {
-            dotEl.className = 'status-dot online';
-            textEl.textContent = 'Conectado';
-            return true;
-        } else {
-            dotEl.className = 'status-dot offline';
-            textEl.textContent = 'Disconnected';
-            return false;
-        }
+        await trpc.healthcheck.live.query();
+        // If it succeeds, it's online
+        dotEl.className = 'status-dot online';
+        textEl.textContent = 'Conectado';
+        return true;
     } catch {
         dotEl.className = 'status-dot offline';
-        textEl.textContent = 'Error';
+        textEl.textContent = 'Disconnected';
         return false;
     }
 }
@@ -68,15 +63,15 @@ export async function loadPendingRequests(): Promise<void> {
     const statEl = document.getElementById('stat-pending-requests');
     if (!listEl || !statEl) return;
 
-    if (!RequestsAPI.isConfigured() && !Auth.isAuthenticated()) {
+    const url = localStorage.getItem('requests_api_url');
+    if (!url && !Auth.isAuthenticated()) {
         listEl.innerHTML = '<p class="empty-message">Configure the server URL or log in to see requests</p>';
         statEl.textContent = '—';
         return;
     }
 
     try {
-        const response = await RequestsAPI.getPendingRequests();
-        const requests = response.requests;
+        const requests = await trpc.requests.list.query({ status: 'pending' });
 
         // Update stat card
         statEl.textContent = requests.length.toString();
@@ -133,11 +128,10 @@ export async function loadPendingRequests(): Promise<void> {
             `;
         }).join('');
 
-    } catch (err) {
+    } catch (err: unknown) {
         console.error('Error loading requests:', err);
-        if (err instanceof Error) {
-            listEl.innerHTML = `<p class="error-message">Error cargando solicitudes: ${err.message}</p>`;
-        }
+        const message = err instanceof Error ? err.message : String(err);
+        listEl.innerHTML = `<p class="error-message">Error cargando solicitudes: ${message}</p>`;
     }
 }
 
@@ -163,14 +157,13 @@ window.approveRequest = async (id: string, btn: HTMLElement) => {
     }
 
     try {
-        await RequestsAPI.approveRequest(id, groupId, Auth.getToken() ?? undefined);
+        await trpc.requests.approve.mutate({ id, group_id: groupId });
         showToast('Solicitud aprobada');
         item.remove();
         void loadPendingRequests(); // Refresh count
-    } catch (err) {
-        if (err instanceof Error) {
-            showToast('Error aprobando: ' + err.message, 'error');
-        }
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        showToast('Error aprobando: ' + message, 'error');
     }
 };
 
@@ -179,14 +172,13 @@ window.rejectRequest = async (id: string) => {
     if (reason === null) return; // Cancelled
 
     try {
-        await RequestsAPI.rejectRequest(id, reason || '', Auth.getToken() ?? undefined);
+        await trpc.requests.reject.mutate({ id, reason: reason || undefined });
         showToast('Solicitud rechazada');
         const itemEl = document.querySelector(`.request-item[data-id="${id}"]`);
         if (itemEl) itemEl.remove();
         void loadPendingRequests(); // Refresh count
-    } catch (err) {
-        if (err instanceof Error) {
-            showToast('Error rechazando: ' + err.message, 'error');
-        }
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        showToast('Error rechazando: ' + message, 'error');
     }
 };

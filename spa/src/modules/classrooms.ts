@@ -1,11 +1,6 @@
-/**
- * Classroom Management Module
- * Handles CRUD operations for classrooms and their group assignments
- */
-
 import { state } from './state.js';
 import { Auth } from '../auth.js';
-import { ClassroomsAPI } from '../classrooms-api.js';
+import { trpc } from '../trpc.js';
 import { showToast, escapeHtml } from '../utils.js';
 import { openModal, closeModal } from './ui.js';
 import type { Classroom } from '../types/index.js';
@@ -28,11 +23,12 @@ export async function loadClassrooms(): Promise<void> {
     section?.classList.remove('hidden');
 
     try {
-        allClassrooms = await ClassroomsAPI.listClassrooms();
+        allClassrooms = await trpc.classrooms.list.query();
         renderClassroomsList();
-    } catch (error) {
-        if (listEl && error instanceof Error) {
-            listEl.innerHTML = `<p class="empty-message error">Error: ${escapeHtml(error.message)}</p>`;
+    } catch (error: unknown) {
+        if (listEl) {
+            const message = error instanceof Error ? error.message : String(error);
+            listEl.innerHTML = `<p class="empty-message error">Error: ${escapeHtml(message)}</p>`;
         }
     }
 }
@@ -81,14 +77,13 @@ export function renderClassroomsList(): void {
  */
 export async function changeClassroomGroup(classroomId: string, groupId: string): Promise<void> {
     try {
-        await ClassroomsAPI.setActiveGroup(classroomId, groupId || null);
+        await trpc.classrooms.setActiveGroup.mutate({ id: classroomId, group_id: groupId || null });
         showToast(groupId ? `Active group: ${groupId}` : 'Using default group');
         await loadClassrooms();
-    } catch (error) {
-        if (error instanceof Error) {
-            showToast('Error: ' + error.message, 'error');
-            void loadClassrooms(); // Reload to reset select
-        }
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        showToast('Error: ' + message, 'error');
+        void loadClassrooms(); // Reload to reset select
     }
 }
 
@@ -98,13 +93,12 @@ export async function changeClassroomGroup(classroomId: string, groupId: string)
 export async function deleteClassroom(classroomId: string): Promise<void> {
     if (!confirm('Delete this classroom and unlink all its machines?')) return;
     try {
-        await ClassroomsAPI.deleteClassroom(classroomId);
+        await trpc.classrooms.delete.mutate({ id: classroomId });
         showToast('Classroom deleted');
         await loadClassrooms();
-    } catch (error) {
-        if (error instanceof Error) {
-            showToast('Error: ' + error.message, 'error');
-        }
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        showToast('Error: ' + message, 'error');
     }
 }
 
@@ -112,10 +106,6 @@ export async function deleteClassroom(classroomId: string): Promise<void> {
  * Initialize classroom management event listeners
  */
 export function initClassroomListeners(): void {
-    // New Classroom button (handled via window function now for modal consistency or listener)
-    // Actually the button in HTML might trigger this. 
-    // The renderClassroomsList uses window.openNewClassroomModal
-
     // New Classroom Form
     document.getElementById('new-classroom-form')?.addEventListener('submit', (e) => {
         void (async () => {
@@ -129,7 +119,7 @@ export function initClassroomListeners(): void {
             const defaultGroupId = groupInput.value;
 
             try {
-                await ClassroomsAPI.createClassroom({
+                await trpc.classrooms.create.mutate({
                     name,
                     display_name: name,
                     default_group_id: defaultGroupId || undefined
@@ -138,10 +128,9 @@ export function initClassroomListeners(): void {
                 (document.getElementById('new-classroom-form') as HTMLFormElement | null)?.reset();
                 showToast('Classroom created');
                 await loadClassrooms();
-            } catch (error) {
-                if (error instanceof Error) {
-                    showToast('Error: ' + error.message, 'error');
-                }
+            } catch (error: unknown) {
+                const message = error instanceof Error ? error.message : String(error);
+                showToast('Error: ' + message, 'error');
             }
         })();
     });

@@ -12,6 +12,17 @@ export type RequestPriority = 'low' | 'normal' | 'high';
 export type UserRole = 'admin' | 'teacher' | 'student';
 export type MachineStatus = 'online' | 'offline' | 'unknown';
 
+export interface UserRoleInfo {
+    id: string;
+    userId: string;
+    role: UserRole;
+    createdBy: string;
+    revokedAt: string | null;
+    groupIds: string[];
+    createdAt: string;
+    updatedAt: string;
+}
+
 export interface ClassroomStats {
     total_classrooms: number;
     total_machines: number;
@@ -48,7 +59,7 @@ export interface User {
     name: string;
     login?: string; // GitHub login
     avatar_url?: string;
-    roles?: UserRole[];
+    roles?: UserRoleInfo[];
     groups?: string[];
 }
 
@@ -59,9 +70,11 @@ export interface Classroom {
     id: string;
     name: string;
     display_name: string;
-    machines: Machine[];
+    machines?: Machine[];
     created_at: string;
     updated_at: string;
+    active_group_id?: string | null;
+    default_group_id?: string | null;
 }
 
 /**
@@ -85,8 +98,8 @@ export interface Schedule {
     group_id: string;
     teacher_id: string;
     teacher_name?: string;
-    subject: string;
-    active: boolean;
+    subject?: string;
+    active?: boolean;
     is_mine?: boolean;
     can_edit?: boolean;
 }
@@ -107,7 +120,8 @@ export interface ScheduleSlot {
 export interface AuthTokens {
     accessToken: string;
     refreshToken: string;
-    expiresIn: number;
+    expiresIn: string | number;
+    tokenType?: string;
 }
 
 /**
@@ -117,7 +131,7 @@ export interface StoredUser {
     id: string;
     email: string;
     name: string;
-    roles: UserRole[];
+    roles: UserRoleInfo[];
     groups: string[];
 }
 
@@ -147,17 +161,6 @@ export interface SPAConfig {
 }
 
 // ...
-
-export interface Classroom {
-    id: string;
-    name: string;
-    display_name: string;
-    machines: Machine[];
-    created_at: string;
-    updated_at: string;
-    active_group_id?: string | null;
-    default_group_id?: string | null; // Add property
-}
 
 // ...
 

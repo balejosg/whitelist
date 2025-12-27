@@ -15,7 +15,7 @@
     },
     "devDependencies": {
         "@playwright/test": "^1.40.0",
-        "@openpath/shared": "*",
+        "@openpath/shared": "file:../shared",
         "@types/bcryptjs": "^2.4.6",
         "@types/cookie-parser": "^1.4.10",
         "@types/express": "^5.0.6",

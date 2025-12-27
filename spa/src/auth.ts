@@ -1,4 +1,5 @@
 import type { AuthAPI, AuthTokens, StoredUser, User, UserRole, APIResponse } from './types/index.js';
+import { trpc } from './trpc.js';
 
 /**
  * Authentication API Client
@@ -150,137 +151,75 @@ export const Auth: AuthAPI = {
     // API Methods
     // ==========================================================================
 
+    // ==========================================================================
+    // API Methods
+    // ==========================================================================
+
     async login(email: string, password: string): Promise<APIResponse<{ user: User }>> {
-        const apiUrl = this.getApiUrl();
-        if (!apiUrl) {
-            throw new Error('API URL not configured');
+        try {
+            const data = await trpc.auth.login.mutate({ email, password });
+            this.storeTokens(data);
+            this.storeUser(data.user);
+            return { success: true, data: { user: data.user } };
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            throw new Error(message);
         }
-
-        const response = await fetch(`${apiUrl}/api/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
-
-        const data = await response.json() as AuthTokens & { user: User; error?: string };
-
-        if (!response.ok) {
-            throw new Error(data.error ?? 'Login failed');
-        }
-
-        // Store tokens and user
-        this.storeTokens(data);
-        this.storeUser(data.user);
-
-        return { success: true, data: { user: data.user } };
     },
 
     async register(email: string, name: string, password: string): Promise<APIResponse<{ user: User }>> {
-        const apiUrl = this.getApiUrl();
-        if (!apiUrl) {
-            throw new Error('API URL not configured');
+        try {
+            const data = await trpc.auth.register.mutate({ email, name, password });
+            return { success: true, data: { user: data.user } };
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            throw new Error(message);
         }
-
-        const response = await fetch(`${apiUrl}/api/auth/register`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, name, password })
-        });
-
-        const data = await response.json() as { user: User; error?: string };
-
-        if (!response.ok) {
-            throw new Error(data.error ?? 'Registration failed');
-        }
-
-        return { success: true, data: { user: data.user } };
     },
 
     async refresh(): Promise<APIResponse<AuthTokens>> {
-        const apiUrl = this.getApiUrl();
         const refreshToken = this.getRefreshToken();
-
-        if (!apiUrl || !refreshToken) {
-            throw new Error('Cannot refresh: missing API URL or refresh token');
+        if (!refreshToken) {
+            throw new Error('Cannot refresh: missing refresh token');
         }
 
-        const response = await fetch(`${apiUrl}/api/auth/refresh`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refreshToken })
-        });
-
-        const data = await response.json() as AuthTokens & { error?: string };
-
-        if (!response.ok) {
+        try {
+            const data = await trpc.auth.refresh.mutate({ refreshToken });
+            this.storeTokens(data);
+            return { success: true, data };
+        } catch (error: unknown) {
             this.clearAuth();
-            throw new Error(data.error ?? 'Token refresh failed');
+            const message = error instanceof Error ? error.message : 'Token refresh failed';
+            throw new Error(message);
         }
-
-        this.storeTokens(data);
-        return { success: true, data };
     },
 
     async logout(): Promise<void> {
-        const apiUrl = this.getApiUrl();
-
-        if (apiUrl && this.getAccessToken()) {
-            try {
-                await fetch(`${apiUrl}/api/auth/logout`, {
-                    method: 'POST',
-                    headers: this.getAuthHeaders(),
-                    body: JSON.stringify({ refreshToken: this.getRefreshToken() })
-                });
-            } catch (e) {
-                console.warn('Logout API call failed:', e);
-            }
+        try {
+            const refreshToken = this.getRefreshToken();
+            await trpc.auth.logout.mutate({ refreshToken: refreshToken ?? undefined });
+        } catch (e) {
+            console.warn('Logout API call failed:', e);
         }
-
         this.clearAuth();
     },
 
     async getMe(): Promise<APIResponse<{ user: User }>> {
-        const apiUrl = this.getApiUrl();
-        if (!apiUrl) {
-            throw new Error('API URL not configured');
+        try {
+            const data = await trpc.auth.me.query();
+            this.storeUser(data.user);
+            return { success: true, data: { user: data.user } };
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            throw new Error(message);
         }
-
-        const response = await fetch(`${apiUrl}/api/auth/me`, {
-            headers: this.getAuthHeaders()
-        });
-
-        const data = await response.json() as { user: User; error?: string };
-
-        if (!response.ok) {
-            throw new Error(data.error ?? 'Failed to get user info');
-        }
-
-        this.storeUser(data.user);
-        return { success: true, data: { user: data.user } };
     },
 
     async fetch(url: string, options: RequestInit = {}): Promise<Response> {
-        const authHeaders = this.getAuthHeaders();
-        // Merge existing headers with auth headers
-        const mergedHeaders: Record<string, string> = { ...authHeaders };
-        if (options.headers) {
-            Object.assign(mergedHeaders, options.headers);
-        }
-        options.headers = mergedHeaders;
-
-        let response = await fetch(url, options);
-
-        if (response.status === 401 && this.getRefreshToken()) {
-            try {
-                await this.refresh();
-                options.headers = { ...mergedHeaders, ...this.getAuthHeaders() };
-                response = await fetch(url, options);
-            } catch (e) {
-                console.warn('Token refresh failed:', e);
-                this.clearAuth();
-            }
-        }
-
-        return response;
+        const headers = {
+            ...this.getAuthHeaders(),
+            ...(options.headers as Record<string, string>)
+        };
+        return window.fetch(url, { ...options, headers });
     }
 };

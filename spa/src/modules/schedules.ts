@@ -4,8 +4,8 @@
  */
 
 import { Auth } from '../auth.js';
-import { RequestsAPI } from '../requests-api.js';
-import { SchedulesAPI } from '../schedules-api.js';
+import { trpc } from '../trpc.js';
+import { showToast } from '../utils.js';
 import type { Schedule, ScheduleSlot, ScheduleGroup } from '../types/index.js';
 
 export const SchedulesModule = {
@@ -17,6 +17,7 @@ export const SchedulesModule = {
     START_HOUR: '08:00',
     END_HOUR: '15:00',
     SLOT_MINUTES: 60,
+    DAY_NAMES: ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'],
 
     /**
      * Initialize the schedules module
@@ -32,16 +33,10 @@ export const SchedulesModule = {
      * Load available groups for the teacher
      */
     async loadGroups(): Promise<void> {
-        // Get groups from global state (already loaded by app) if available
-        // In TS migration, we might not have global App.groups.
-        // We can fetch them.
         try {
-            const apiUrl = RequestsAPI.apiUrl || '';
-            const response = await fetch(`${apiUrl}/api/requests/groups/list`, {
-                headers: Auth.getAuthHeaders()
-            });
-            const data = (await response.json()) as { success: boolean, groups?: ScheduleGroup[] };
-            this.groups = data.success && data.groups ? data.groups : [];
+            const rawGroups = await trpc.requests.listGroups.query();
+            // Map tRPC result { name, path, sha } to ScheduleGroup { id, name }
+            this.groups = rawGroups.map(g => ({ id: g.name, name: g.name }));
         } catch (e) {
             console.warn('Failed to load groups:', e);
             this.groups = [];
@@ -57,11 +52,11 @@ export const SchedulesModule = {
             return;
         }
 
-        const result = await SchedulesAPI.getClassroomSchedules(this.currentClassroomId);
-        if (result.success) {
+        try {
+            const result = await trpc.schedules.getByClassroom.query({ classroomId: this.currentClassroomId });
             this.schedules = result.schedules;
-        } else {
-            console.error('Failed to load schedules'); // Error handling simplified
+        } catch (e) {
+            console.error('Failed to load schedules', e);
             this.schedules = [];
         }
     },
@@ -73,7 +68,7 @@ export const SchedulesModule = {
         const container = document.getElementById('schedule-grid-container');
         if (!container) return;
 
-        const timeSlots = SchedulesAPI.generateTimeSlots(
+        const timeSlots = this.generateTimeSlots(
             this.START_HOUR,
             this.END_HOUR,
             this.SLOT_MINUTES
@@ -84,7 +79,7 @@ export const SchedulesModule = {
             <div class="schedule-grid">
                 <div class="schedule-header">
                     <div class="schedule-time-header">Hora</div>
-                    ${SchedulesAPI.DAY_NAMES.slice(1).map((day: string) =>
+                    ${this.DAY_NAMES.slice(1).map((day: string) =>
             `<div class="schedule-day-header">${day}</div>`
         ).join('')}
                 </div>
@@ -222,27 +217,22 @@ export const SchedulesModule = {
         if (!groupId) return;
 
         // Create schedule
-        const result = await SchedulesAPI.createSchedule({
-            classroom_id: this.currentClassroomId ?? '',
-            group_id: groupId,
-            day_of_week: dayOfWeek,
-            start_time: startTime,
-            end_time: endTime
-        });
-
-        if (result.success) {
-            // Check if global showToast exists (from utils) or import it?
-            // We should import it.
-            // showToast('Reserva creada', 'success');
-            // But handleCellClick is async and might be called from event.
-            // We can import showToast from utils.
-        } else {
-            // showToast(result.error || 'Error', 'error');
+        try {
+            await trpc.schedules.create.mutate({
+                classroom_id: this.currentClassroomId ?? '',
+                group_id: groupId,
+                day_of_week: dayOfWeek,
+                start_time: startTime,
+                end_time: endTime
+            });
+            showToast('Reserva creada', 'success');
+            // Reload
+            await this.loadSchedules();
+            this.render();
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            showToast(message, 'error');
         }
-
-        // Reload
-        await this.loadSchedules();
-        this.render();
     },
 
     /**
@@ -257,11 +247,13 @@ export const SchedulesModule = {
 
         if (!scheduleId || !confirm('Delete this reservation?')) return;
 
-        const result = await SchedulesAPI.deleteSchedule(scheduleId);
-
-        if (result.success) {
+        try {
+            await trpc.schedules.delete.mutate({ id: scheduleId });
             await this.loadSchedules();
             this.render();
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            showToast('Error: ' + message, 'error');
         }
     },
 
@@ -270,7 +262,7 @@ export const SchedulesModule = {
      */
     showGroupSelectionModal(dayOfWeek: number, startTime: string, endTime: string): Promise<string | null> {
         return new Promise((resolve) => {
-            const dayName = SchedulesAPI.DAY_NAMES[dayOfWeek];
+            const dayName = this.DAY_NAMES[dayOfWeek];
             const myGroups = Auth.isAdmin()
                 ? this.groups
                 : this.groups.filter(g => {
@@ -279,7 +271,7 @@ export const SchedulesModule = {
                 });
 
             if (myGroups.length === 0) {
-                // showToast...
+                showToast('No tienes grupos disponibles para reservar', 'error');
                 resolve(null);
                 return;
             }
@@ -332,6 +324,30 @@ export const SchedulesModule = {
                 resolve(groupId);
             });
         });
+    },
+
+    generateTimeSlots(startHour = '08:00', endHour = '15:00', intervalMinutes = 60): ScheduleSlot[] {
+        const slots: ScheduleSlot[] = [];
+        const startParts = startHour.split(':').map(Number);
+        let h = startParts[0] ?? 0;
+        let m = startParts[1] ?? 0;
+
+        const endParts = endHour.split(':').map(Number);
+        const endH = endParts[0] ?? 0;
+        const endM = endParts[1] ?? 0;
+
+        while (h < endH || (h === endH && m < endM)) {
+            const start = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+            m += intervalMinutes;
+            if (m >= 60) {
+                h += Math.floor(m / 60);
+                m = m % 60;
+            }
+            const end = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+            slots.push({ start, end });
+        }
+
+        return slots;
     }
 };
 

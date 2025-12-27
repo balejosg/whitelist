@@ -1,16 +1,9 @@
-import { Auth } from './auth.js';
-import { RequestsAPI } from './requests-api.js';
+import { trpc } from './trpc.js';
 
 declare global {
     interface Window {
         highlightRequest?: (requestId: string) => void;
     }
-}
-
-interface VapidKeyResponse {
-    success: boolean;
-    publicKey?: string;
-    error?: string;
 }
 
 interface SubscribeResponse {
@@ -87,15 +80,11 @@ export const PushManager = {
      * Get VAPID public key from server
      */
     async getVapidKey(): Promise<string> {
-        const baseUrl = RequestsAPI.apiUrl;
-        const response = await fetch(`${baseUrl}/api/push/vapid-key`);
-        const data = await response.json() as VapidKeyResponse;
-
-        if (!data.success || !data.publicKey) {
-            throw new Error(data.error ?? 'Failed to get VAPID key');
+        const result = await trpc.push.getVapidKey.query();
+        if (!result.publicKey) {
+            throw new Error('Failed to get VAPID key');
         }
-
-        return data.publicKey;
+        return result.publicKey;
     },
 
     /**
@@ -142,20 +131,28 @@ export const PushManager = {
         console.warn('[Push] Subscribed:', subscription.endpoint);
 
         // Send subscription to server
-        const baseUrl = RequestsAPI.apiUrl;
-        const response = await Auth.fetch(`${baseUrl}/api/push/subscribe`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ subscription })
-        });
+        // Convert PushSubscription to plain object for tRPC
+        const subJSON = subscription.toJSON();
 
-        const data = await response.json() as SubscribeResponse;
-        if (!data.success) {
-            throw new Error(data.error ?? 'Failed to register subscription');
+        // Ensure keys are present (toJSON returns PushSubscriptionJSON which has optional keys)
+        const { endpoint, keys } = subJSON;
+        if (!endpoint || !keys.p256dh || !keys.auth) {
+            throw new Error('Invalid subscription object generated');
         }
 
+        await trpc.push.subscribe.mutate({
+            subscription: {
+                endpoint,
+                expirationTime: subJSON.expirationTime ?? null,
+                keys: {
+                    p256dh: keys.p256dh,
+                    auth: keys.auth
+                }
+            }
+        });
+
         console.warn('[Push] Subscription registered on server');
-        return data;
+        return { success: true };
     },
 
     /**
@@ -185,13 +182,8 @@ export const PushManager = {
         await subscription.unsubscribe();
 
         // Remove from server
-        const baseUrl = RequestsAPI.apiUrl;
         try {
-            await Auth.fetch(`${baseUrl}/api/push/subscribe`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ endpoint: subscription.endpoint })
-            });
+            await trpc.push.unsubscribe.mutate({ endpoint: subscription.endpoint });
         } catch (error) {
             console.warn('[Push] Server unsubscribe failed:', error);
         }
