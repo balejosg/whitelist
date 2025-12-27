@@ -2,7 +2,7 @@
  * UI Management (Screens, Modals, Tabs)
  */
 export function showScreen(screenId) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+    document.querySelectorAll('.screen').forEach(s => { s.classList.add('hidden'); });
     document.getElementById(screenId)?.classList.remove('hidden');
 }
 export function openModal(id) {

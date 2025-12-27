@@ -54,8 +54,8 @@ function initMainListeners() {
         try {
             await Auth.login(emailInput.value, passwordInput.value);
             await init(); // Re-initialize the app
-        } catch (err: any) {
-            if (errorEl) errorEl.textContent = 'Error: ' + err.message;
+        } catch (err: unknown) {
+            if (errorEl && err instanceof Error) errorEl.textContent = 'Error: ' + err.message;
         } finally {
             btn.disabled = false;
             btn.textContent = 'Access Dashboard';
@@ -155,8 +155,8 @@ function initMainListeners() {
             updateEditUI();
             showScreen('dashboard-screen');
             loadDashboard();
-        } catch (err: any) {
-            if (errorEl) {
+        } catch (err: unknown) {
+            if (errorEl && err instanceof Error) {
                 if (err.message.includes('Not Found')) {
                     errorEl.textContent = `Directory "${gruposDir}" not found in ${owner}/${repo}`;
                 } else {
@@ -181,14 +181,14 @@ function initMainListeners() {
             else if (rawType === 'blocked_path') type = 'blocked_paths';
 
             state.currentRuleType = type;
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => { t.classList.remove('active'); });
             tab.classList.add('active');
             renderRules();
         });
     });
 
     // Search rules
-    document.getElementById('search-rules')?.addEventListener('input', () => renderRules());
+    document.getElementById('search-rules')?.addEventListener('input', () => { renderRules(); });
 
     // Back button
     document.getElementById('back-btn')?.addEventListener('click', () => {
@@ -325,8 +325,8 @@ function initMainListeners() {
             (document.getElementById('new-group-form') as HTMLFormElement).reset();
             showToast('Group created');
             loadDashboard();
-        } catch (err: any) {
-            showToast(err.message, 'error');
+        } catch (err: unknown) {
+            if (err instanceof Error) showToast(err.message, 'error');
         }
     });
 

@@ -6,12 +6,7 @@
 import { Auth } from '../auth.js';
 import { RequestsAPI } from '../requests-api.js';
 import { SchedulesAPI } from '../schedules-api.js';
-import type { Schedule, ScheduleSlot } from '../types/index.js';
-
-interface ScheduleGroup {
-    id: string;
-    name: string;
-}
+import type { Schedule, ScheduleSlot, ScheduleGroup } from '../types/index.js';
 
 export const SchedulesModule = {
     currentClassroomId: null as string | null,
@@ -97,7 +92,7 @@ export const SchedulesModule = {
         `;
 
         for (const slot of timeSlots) {
-            html += `<div class="schedule-row">`;
+            html += '<div class="schedule-row">';
             html += `<div class="schedule-time">${slot.start} - ${slot.end}</div>`;
 
             for (let day = 1; day <= 5; day++) {
@@ -105,10 +100,10 @@ export const SchedulesModule = {
                 html += this.renderCell(day, slot, schedule);
             }
 
-            html += `</div>`;
+            html += '</div>';
         }
 
-        html += `</div></div>`;
+        html += '</div></div>';
 
         // Groups legend
         html += this.renderGroupsLegend();

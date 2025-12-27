@@ -8,7 +8,7 @@ import { Config } from '../config.js';
 import { RequestsAPI } from '../requests-api.js';
 import { GitHubAPI } from '../github-api.js';
 import { SchedulesModule } from './schedules.js';
-// import type { User } from '../types/index.js';
+import type { Classroom } from '../types/index.js';
 
 export async function init(): Promise<void> {
     // 1. Check for OAuth callback first
@@ -196,7 +196,7 @@ async function initScheduleSection(): Promise<void> {
 
         if (data.success && data.classrooms) {
             select.innerHTML = '<option value="">Select classroom...</option>';
-            data.classrooms.forEach((c: any) => {
+            data.classrooms.forEach((c: Classroom) => {
                 const option = document.createElement('option');
                 option.value = c.id;
                 option.textContent = c.display_name || c.name;

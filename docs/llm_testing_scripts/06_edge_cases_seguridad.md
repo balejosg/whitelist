@@ -4,6 +4,9 @@
 
 Este guión cubre casos límite, escenarios de error, y pruebas de seguridad. Es el guión más "adversario" - intenta romper el sistema de todas las formas posibles.
 
+> [!NOTE]
+> Este guión puede usar DevTools Console y llamadas `fetch(...)` para comprobar protecciones.
+
 ---
 
 ## SECCIÓN 1: Seguridad - Escalada de Privilegios
@@ -83,6 +86,59 @@ Este guión cubre casos límite, escenarios de error, y pruebas de seguridad. Es
 **Verificaciones**:
 - [ ] Token rechazado (firma inválida)
 - [ ] No se puede escalar privilegios via JWT
+
+---
+
+## SECCIÓN 1B: Seguridad - Bootstrap / Primer Admin
+
+### Test 1B.1: La pantalla de setup se bloquea tras configurar
+
+**Acciones**:
+1. Abre `https://balejosg.github.io/openpath/setup.html`
+2. Si el sistema ya está configurado, verifica que muestra "Sistema Configurado" y enlace a login
+
+**Verificaciones**:
+- [ ] No ofrece formulario de creación si ya existe admin
+
+### Test 1B.2: Intentar crear el primer admin por segunda vez (bloqueo)
+
+**Acciones** (DevTools Console en `https://openpath-api.duckdns.org` o desde cualquier origen con `fetch`):
+1. Ejecuta:
+    ```javascript
+    fetch('https://openpath-api.duckdns.org/api/setup/first-admin', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({ email: 'evil@school.edu', name: 'Evil', password: 'SecurePass123!' })
+    }).then(r => r.json().then(b => ({ status: r.status, body: b })));
+    ```
+
+**Verificaciones**:
+- [ ] Responde `403` (o equivalente) con mensaje tipo "Setup already completed"
+
+### Test 1B.3: Rate limiting del endpoint de setup
+
+**Acciones**:
+1. Ejecuta 4+ llamadas seguidas al endpoint anterior (cambiando email si hace falta)
+
+**Verificaciones**:
+- [ ] A partir de cierto número, responde `429` (rate limit) con mensaje apropiado
+
+### Test 1B.4: Validación del token de registro (errores)
+
+**Acciones**:
+1. Ejecuta:
+    ```javascript
+    fetch('https://openpath-api.duckdns.org/api/setup/validate-token', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({ token: 'invalid-token' })
+    }).then(r => r.json().then(b => ({ status: r.status, body: b })));
+    ```
+2. Ejecuta lo mismo sin `token` en el body
+
+**Verificaciones**:
+- [ ] Token incorrecto devuelve `valid:false`
+- [ ] Sin token devuelve `400` y `valid:false`
 
 ---
 

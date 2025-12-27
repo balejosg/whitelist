@@ -8,7 +8,6 @@ import { Config } from '../config.js';
 import { RequestsAPI } from '../requests-api.js';
 import { GitHubAPI } from '../github-api.js';
 import { SchedulesModule } from './schedules.js';
-// import type { User } from '../types/index.js';
 export async function init() {
     // 1. Check for OAuth callback first
     const callbackResult = OAuth.handleCallback();

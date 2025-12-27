@@ -121,7 +121,7 @@ export const PushManager = {
         // Subscribe
         const subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: applicationServerKey as any // Type mismatch fix
+            applicationServerKey: applicationServerKey as unknown as string // Lib dom vs implementation mismatch
         });
 
         console.log('[Push] Subscribed:', subscription.endpoint);

@@ -150,7 +150,7 @@ declare global {
 }
 
 window.approveRequest = async (id: string, btn: HTMLElement) => {
-    const item = btn.closest('.request-item');
+    const item = btn.closest('.request-item') as HTMLElement;
     if (!item) return;
 
     const select = item.querySelector('.request-group-select') as HTMLSelectElement;

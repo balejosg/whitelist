@@ -49,7 +49,7 @@ function initMainListeners() {
             await init(); // Re-initialize the app
         }
         catch (err) {
-            if (errorEl)
+            if (errorEl && err instanceof Error)
                 errorEl.textContent = 'Error: ' + err.message;
         }
         finally {
@@ -146,7 +146,7 @@ function initMainListeners() {
             loadDashboard();
         }
         catch (err) {
-            if (errorEl) {
+            if (errorEl && err instanceof Error) {
                 if (err.message.includes('Not Found')) {
                     errorEl.textContent = `Directory "${gruposDir}" not found in ${owner}/${repo}`;
                 }
@@ -171,13 +171,13 @@ function initMainListeners() {
             else if (rawType === 'blocked_path')
                 type = 'blocked_paths';
             state.currentRuleType = type;
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => { t.classList.remove('active'); });
             tab.classList.add('active');
             renderRules();
         });
     });
     // Search rules
-    document.getElementById('search-rules')?.addEventListener('input', () => renderRules());
+    document.getElementById('search-rules')?.addEventListener('input', () => { renderRules(); });
     // Back button
     document.getElementById('back-btn')?.addEventListener('click', () => {
         showScreen('dashboard-screen');
@@ -297,7 +297,8 @@ function initMainListeners() {
             loadDashboard();
         }
         catch (err) {
-            showToast(err.message, 'error');
+            if (err instanceof Error)
+                showToast(err.message, 'error');
         }
     });
     // New Group Button

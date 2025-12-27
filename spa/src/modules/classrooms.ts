@@ -99,7 +99,7 @@ export async function deleteClassroom(classroomId: string): Promise<void> {
     try {
         await ClassroomsAPI.deleteClassroom(classroomId);
         showToast('Classroom deleted');
-        loadClassrooms();
+        await loadClassrooms();
     } catch (error) {
         if (error instanceof Error) {
             showToast('Error: ' + error.message, 'error');
@@ -133,7 +133,7 @@ export function initClassroomListeners(): void {
             closeModal('modal-new-classroom');
             (document.getElementById('new-classroom-form') as HTMLFormElement).reset();
             showToast('Classroom created');
-            loadClassrooms();
+            await loadClassrooms();
         } catch (error) {
             if (error instanceof Error) {
                 showToast('Error: ' + error.message, 'error');

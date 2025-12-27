@@ -18,7 +18,7 @@ export const WhitelistParser = {
             blocked_subdomains: [],
             blocked_paths: []
         };
-        if (!content || !content.trim()) {
+        if (!content?.trim()) {
             return result;
         }
         const lines = content.split('\n');

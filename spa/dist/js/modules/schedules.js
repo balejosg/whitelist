@@ -77,15 +77,15 @@ export const SchedulesModule = {
                 <div class="schedule-body">
         `;
         for (const slot of timeSlots) {
-            html += `<div class="schedule-row">`;
+            html += '<div class="schedule-row">';
             html += `<div class="schedule-time">${slot.start} - ${slot.end}</div>`;
             for (let day = 1; day <= 5; day++) {
                 const schedule = this.findScheduleForSlot(day, slot.start, slot.end);
                 html += this.renderCell(day, slot, schedule);
             }
-            html += `</div>`;
+            html += '</div>';
         }
-        html += `</div></div>`;
+        html += '</div></div>';
         // Groups legend
         html += this.renderGroupsLegend();
         container.innerHTML = html;

@@ -22,7 +22,7 @@ export const WhitelistParser = {
             blocked_paths: []
         };
 
-        if (!content || !content.trim()) {
+        if (!content?.trim()) {
             return result;
         }
 

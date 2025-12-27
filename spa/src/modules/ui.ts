@@ -3,7 +3,7 @@
  */
 
 export function showScreen(screenId: string): void {
-    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+    document.querySelectorAll('.screen').forEach(s => { s.classList.add('hidden'); });
     document.getElementById(screenId)?.classList.remove('hidden');
 }
 

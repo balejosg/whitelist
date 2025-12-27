@@ -487,12 +487,27 @@ export interface ConfigAPI {
 }
 
 /**
+/**
+ * Schedules module interface
+ */
+export interface ScheduleGroup {
+    id: string;
+    name: string;
+}
+
+/**
  * Schedules module interface
  */
 export interface SchedulesModule {
     init(classroomId: string): Promise<void>;
     loadSchedules(): Promise<void>;
     render(): void;
+    currentClassroomId: string | null;
+    schedules: Schedule[];
+    groups: ScheduleGroup[];
+    START_HOUR: string;
+    END_HOUR: string;
+    SLOT_MINUTES: number;
+    showGroupSelectionModal(dayOfWeek: number, startTime: string, endTime: string): Promise<void>;
 }
-
 export { };

@@ -63,14 +63,18 @@ export const Auth = {
     },
     hasRole(role) {
         const user = this.getUser();
-        if (!user || !user.roles) {
+        if (!user?.roles) {
             // Legacy admin token is always admin
             if (localStorage.getItem('requests_api_token')) {
                 return role === 'admin';
             }
             return false;
         }
-        return user.roles.some(r => r === role || (typeof r === 'object' && r.role === role));
+        return user.roles.some((r) => {
+            if (typeof r === 'string')
+                return r === role;
+            return r.role === role;
+        });
     },
     isAdmin() {
         return this.hasRole('admin');
@@ -86,7 +90,7 @@ export const Auth = {
             return 'all';
         }
         const user = this.getUser();
-        if (!user || !user.roles)
+        if (!user?.roles)
             return [];
         const groups = new Set();
         // Check actual role structure (string or object?)
@@ -105,8 +109,10 @@ export const Auth = {
         // Use `any` cast for safety or update types?
         // I'll update types later if needed. For now I handle both.
         user.roles.forEach((r) => {
-            if (r === 'teacher' || r.role === 'teacher') {
-                (r.groupIds || []).forEach((g) => groups.add(g));
+            const roleName = typeof r === 'string' ? r : r.role;
+            if (roleName === 'teacher') {
+                const groupIds = typeof r === 'object' && r.groupIds ? r.groupIds : [];
+                groupIds.forEach((g) => groups.add(g));
             }
         });
         return Array.from(groups);

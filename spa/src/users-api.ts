@@ -85,7 +85,7 @@ export const UsersAPI = {
         });
     },
 
-    async updateRole(userId: string, roleId: string, updates: any): Promise<APIResponse<void>> {
+    async updateRole(userId: string, roleId: string, updates: Partial<User>): Promise<APIResponse<void>> {
         return this.request(`/api/users/${userId}/roles/${roleId}`, {
             method: 'PATCH',
             body: JSON.stringify(updates)

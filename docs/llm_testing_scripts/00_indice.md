@@ -12,7 +12,7 @@ Estos guiones están diseñados para que un **LLM con capacidad de control de na
 > [!NOTE]
 > **Excepciones permitidas:**
 > - **Tests de seguridad**: Pueden usar DevTools Console para verificar protecciones
-> - **Setup previo**: Preparación de datos antes del UAT (no forma parte del test)
+> - **Setup previo**: Preparación inicial (crear primer admin / token de registro) antes del UAT
 > - **Tests de stress**: Requieren herramientas automatizadas (k6, artillery)
 
 ---
@@ -44,12 +44,15 @@ Para ejecutar las pruebas necesitas:
 
 ### Credenciales de Prueba
 
-Crea usuarios con estos datos (o usa existentes si ya hay):
+Crea usuarios con estos datos (o usa existentes si ya hay). Nota: el **primer admin** se crea desde la pantalla de setup.
 
 ```
 # Admin TIC
 ADMIN_EMAIL=maria@tucentro.edu
 ADMIN_PASS=<crear contraseña segura>
+
+# Token de registro (se obtiene en /setup.html tras crear el primer admin)
+REGISTRATION_TOKEN=<copiar token>
 
 # Profesor
 TEACHER_EMAIL=pedro@tucentro.edu
@@ -74,6 +77,7 @@ git clone https://github.com/balejosg/openpath.git
 cd openpath/linux
 sudo ./install.sh --classroom "informatica-1" \
   --api-url "https://openpath-api.duckdns.org" \
+  --registration-token "$REGISTRATION_TOKEN" \
   --whitelist-url "https://raw.githubusercontent.com/balejosg/openpath/main/whitelist.txt"
 ```
 

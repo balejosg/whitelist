@@ -9,7 +9,7 @@ export function showToast(message, type = 'success') {
     toast.className = `toast ${type}`;
     toast.textContent = message;
     container.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+    setTimeout(() => { toast.remove(); }, 3000);
 }
 export function relativeTime(dateString) {
     const date = new Date(dateString);
@@ -22,11 +22,11 @@ export function relativeTime(dateString) {
     if (diffSec < 60)
         return 'just now';
     if (diffMin < 60)
-        return `${diffMin} min ago`;
+        return `${diffMin.toString()} min ago`;
     if (diffHour < 24)
-        return `${diffHour}h ago`;
+        return `${diffHour.toString()}h ago`;
     if (diffDay < 7)
-        return `${diffDay} days ago`;
+        return `${diffDay.toString()} days ago`;
     return date.toLocaleDateString();
 }
 export function escapeHtml(text) {

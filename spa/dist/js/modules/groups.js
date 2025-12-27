@@ -8,7 +8,7 @@ import { WhitelistParser } from '../openpath-parser.js';
 // import type { GroupData } from '../types/index.js';
 export async function loadDashboard() {
     const config = Config.get();
-    const gruposDir = config.gruposDir || 'grupos';
+    const gruposDir = config.gruposDir ?? 'grupos';
     try {
         const files = await state.github?.listFiles(gruposDir);
         if (!files)
@@ -218,15 +218,6 @@ export async function deleteRule(value, event) {
 }
 export async function saveCurrentGroup(message) {
     const config = Config.get();
-    // Config interface in config.ts has optional whitelistPath, but groups logic uses 'gruposDir'.
-    // Need to standardize. JS used 'gruposDir'.
-    // Config.get() returns SPAConfig.
-    // Let's assume Config module handles it or we use 'whitelistPath' as 'gruposDir' alias?
-    // In index.ts, SPAConfig has whitelistPath, no gruposDir.
-    // In config.js (legacy), it had gruposDir.
-    // I should cast or update SPAConfig.
-    // I'll update SPAConfig in index.ts to have groupsDir as optional or alias?
-    // Or just use 'grupos' literal for now if missing.
     const gruposDir = config.gruposDir || 'grupos';
     const path = `${gruposDir}/${state.currentGroup}.txt`;
     if (!state.currentGroupData)

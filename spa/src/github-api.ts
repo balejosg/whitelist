@@ -11,7 +11,7 @@ export class GitHubAPI implements GitHubAPIInstance {
     branch: string;
     baseUrl: string;
 
-    constructor(token: string, owner: string, repo: string, branch: string = 'main') {
+    constructor(token: string, owner: string, repo: string, branch = 'main') {
         this.token = token;
         this.owner = owner;
         this.repo = repo;
@@ -110,7 +110,7 @@ export class GitHubAPI implements GitHubAPIInstance {
      */
     async listFiles(path: string): Promise<{ name: string; path: string; sha: string }[]> {
         try {
-            const data = await this.request<Array<{ type: string; name: string; path: string; sha: string }>>(
+            const data = await this.request<{ type: string; name: string; path: string; sha: string }[]>(
                 `/repos/${this.owner}/${this.repo}/contents/${path}?ref=${this.branch}`
             );
 

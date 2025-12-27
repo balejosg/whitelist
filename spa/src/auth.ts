@@ -77,14 +77,17 @@ export const Auth: AuthAPI = {
 
     hasRole(role: UserRole): boolean {
         const user = this.getUser();
-        if (!user || !user.roles) {
+        if (!user?.roles) {
             // Legacy admin token is always admin
             if (localStorage.getItem('requests_api_token')) {
                 return role === 'admin';
             }
             return false;
         }
-        return user.roles.some(r => r === role || (typeof r === 'object' && (r as any).role === role));
+        return user.roles.some((r: UserRole | { role: UserRole }) => {
+            if (typeof r === 'string') return r === role;
+            return (r as { role: UserRole }).role === role;
+        });
     },
 
     isAdmin(): boolean {
@@ -104,7 +107,7 @@ export const Auth: AuthAPI = {
             return 'all';
         }
         const user = this.getUser();
-        if (!user || !user.roles) return [];
+        if (!user?.roles) return [];
 
         const groups = new Set<string>();
         // Check actual role structure (string or object?)
@@ -123,9 +126,11 @@ export const Auth: AuthAPI = {
         // Use `any` cast for safety or update types?
         // I'll update types later if needed. For now I handle both.
 
-        user.roles.forEach((r: any) => {
-            if (r === 'teacher' || r.role === 'teacher') {
-                (r.groupIds || []).forEach((g: string) => groups.add(g));
+        user.roles.forEach((r: UserRole | { role: UserRole, groupIds?: string[] }) => {
+            const roleName = typeof r === 'string' ? r : r.role;
+            if (roleName === 'teacher') {
+                const groupIds = typeof r === 'object' && r.groupIds ? r.groupIds : [];
+                groupIds.forEach((g: string) => groups.add(g));
             }
         });
 

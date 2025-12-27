@@ -91,7 +91,7 @@ export async function deleteClassroom(classroomId) {
     try {
         await ClassroomsAPI.deleteClassroom(classroomId);
         showToast('Classroom deleted');
-        loadClassrooms();
+        await loadClassrooms();
     }
     catch (error) {
         if (error instanceof Error) {
@@ -122,7 +122,7 @@ export function initClassroomListeners() {
             closeModal('modal-new-classroom');
             document.getElementById('new-classroom-form').reset();
             showToast('Classroom created');
-            loadClassrooms();
+            await loadClassrooms();
         }
         catch (error) {
             if (error instanceof Error) {

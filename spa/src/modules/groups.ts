@@ -9,7 +9,7 @@ import { WhitelistParser } from '../openpath-parser.js';
 
 export async function loadDashboard(): Promise<void> {
     const config = Config.get();
-    const gruposDir = config.gruposDir || 'grupos';
+    const gruposDir = config.gruposDir ?? 'grupos';
 
     try {
         const files = await state.github?.listFiles(gruposDir);
@@ -41,17 +41,17 @@ export async function loadDashboard(): Promise<void> {
                     if (result) {
                         const data = WhitelistParser.parse(result.content);
                         // Enhance group object with stats
-                        (group as any).stats = {
+                        group.stats = {
                             whitelist: data.whitelist.length,
                             blocked_subdomains: data.blocked_subdomains.length,
                             blocked_paths: data.blocked_paths.length
                         };
-                        (group as any).enabled = data.enabled;
+                        group.enabled = data.enabled;
 
                         // Only count stats for visible groups
                         if (!assignedGroups || assignedGroups.includes(group.name)) {
-                            totalWhitelist += (group as any).stats.whitelist;
-                            totalBlocked += (group as any).stats.blocked_subdomains + (group as any).stats.blocked_paths;
+                            totalWhitelist += group.stats.whitelist;
+                            totalBlocked += group.stats.blocked_subdomains + group.stats.blocked_paths;
                         }
                     }
                 }
@@ -243,16 +243,7 @@ export async function deleteRule(value: string, event: Event): Promise<void> {
 
 export async function saveCurrentGroup(message: string): Promise<void> {
     const config = Config.get();
-    // Config interface in config.ts has optional whitelistPath, but groups logic uses 'gruposDir'.
-    // Need to standardize. JS used 'gruposDir'.
-    // Config.get() returns SPAConfig.
-    // Let's assume Config module handles it or we use 'whitelistPath' as 'gruposDir' alias?
-    // In index.ts, SPAConfig has whitelistPath, no gruposDir.
-    // In config.js (legacy), it had gruposDir.
-    // I should cast or update SPAConfig.
-    // I'll update SPAConfig in index.ts to have groupsDir as optional or alias?
-    // Or just use 'grupos' literal for now if missing.
-    const gruposDir = (config as any).gruposDir || 'grupos';
+    const gruposDir = config.gruposDir || 'grupos';
     const path = `${gruposDir}/${state.currentGroup}.txt`;
     if (!state.currentGroupData) return;
     const content = WhitelistParser.serialize(state.currentGroupData);

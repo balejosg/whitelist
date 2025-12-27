@@ -87,7 +87,7 @@ export const SchedulesAPI = {
     DAY_NAMES: ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'],
     DAY_NAMES_SHORT: ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie'],
 
-    generateTimeSlots(startHour: string = '08:00', endHour: string = '15:00', intervalMinutes: number = 60): Array<ScheduleSlot> {
+    generateTimeSlots(startHour = '08:00', endHour = '15:00', intervalMinutes = 60): ScheduleSlot[] {
         const slots: ScheduleSlot[] = [];
         const startParts = startHour.split(':').map(Number);
         let h = startParts[0] || 0;

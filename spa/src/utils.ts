@@ -2,7 +2,7 @@
  * Utility functions
  */
 
-export function showToast(message: string, type: string = 'success'): void {
+export function showToast(message: string, type = 'success'): void {
     const container = document.getElementById('toast-container');
     if (!container) return;
 
@@ -10,7 +10,7 @@ export function showToast(message: string, type: string = 'success'): void {
     toast.className = `toast ${type}`;
     toast.textContent = message;
     container.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+    setTimeout(() => { toast.remove(); }, 3000);
 }
 
 export function relativeTime(dateString: string): string {
@@ -23,9 +23,9 @@ export function relativeTime(dateString: string): string {
     const diffDay = Math.floor(diffHour / 24);
 
     if (diffSec < 60) return 'just now';
-    if (diffMin < 60) return `${diffMin} min ago`;
-    if (diffHour < 24) return `${diffHour}h ago`;
-    if (diffDay < 7) return `${diffDay} days ago`;
+    if (diffMin < 60) return `${diffMin.toString()} min ago`;
+    if (diffHour < 24) return `${diffHour.toString()}h ago`;
+    if (diffDay < 7) return `${diffDay.toString()} days ago`;
     return date.toLocaleDateString();
 }
 

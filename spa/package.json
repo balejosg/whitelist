@@ -10,11 +10,15 @@
         "test": "node --test tests/",
         "test:e2e": "npx playwright test",
         "test:e2e:headed": "npx playwright test --headed",
-        "test:e2e:ui": "npx playwright test --ui"
+        "test:e2e:ui": "npx playwright test --ui",
+        "lint": "ESLINT_USE_FLAT_CONFIG=false eslint src/ --ext .ts"
     },
     "devDependencies": {
         "@playwright/test": "^1.40.0",
         "@types/node": "^22.10.2",
+        "@typescript-eslint/eslint-plugin": "^8.50.1",
+        "@typescript-eslint/parser": "^8.50.1",
+        "eslint": "^9.39.2",
         "typescript": "^5.7.2"
     },
     "engines": {
