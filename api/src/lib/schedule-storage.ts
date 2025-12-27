@@ -54,10 +54,10 @@ interface CreateScheduleInput {
 }
 
 interface UpdateScheduleInput {
-    day_of_week?: number;
-    start_time?: string;
-    end_time?: string;
-    group_id?: string;
+    day_of_week?: number | undefined;
+    start_time?: string | undefined;
+    end_time?: string | undefined;
+    group_id?: string | undefined;
 }
 
 // =============================================================================

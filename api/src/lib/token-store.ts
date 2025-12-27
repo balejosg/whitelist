@@ -114,7 +114,11 @@ export class RedisTokenStore implements TokenStore {
     private async _connect(): Promise<void> {
         try {
             // Dynamic import for optional redis dependency
-            const redis = await import('redis');
+            // redis is an optional dependency
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+            // @ts-ignore - redis is an optional dependency
+            const redis: any = await import('redis');
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
             this.client = redis.createClient({ url: this.redisUrl }) as RedisClient;
 
             this.client.on('error', (err: unknown) => {

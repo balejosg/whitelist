@@ -34,7 +34,7 @@ import type { Server } from 'node:http';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = 3002;
-const API_URL = `http://localhost:${PORT}`;
+const API_URL = `http://localhost:${String(PORT)}`;
 
 // Data files to clean up
 const DATA_DIR = path.join(__dirname, '..', 'data');
@@ -73,12 +73,6 @@ interface FirstAdminResponse {
 interface ValidateTokenResponse {
     success: boolean;
     valid: boolean;
-}
-
-interface RegistrationTokenResponse {
-    success: boolean;
-    registrationToken?: string;
-    error?: string;
 }
 
 function backupDataFiles(): void {
@@ -121,7 +115,7 @@ function clearDataFiles(): void {
     }
 }
 
-describe('Setup API Tests', { timeout: 30000 }, () => {
+void describe('Setup API Tests', { timeout: 30000 }, async () => {
     before(async () => {
         // Backup existing data
         backupDataFiles();
@@ -130,7 +124,7 @@ describe('Setup API Tests', { timeout: 30000 }, () => {
         const { app } = await import('../src/server.js');
 
         server = app.listen(PORT, () => {
-            console.log(`Setup test server started on port ${PORT}`);
+            console.log(`Setup test server started on port ${String(PORT)}`);
         });
 
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -156,12 +150,12 @@ describe('Setup API Tests', { timeout: 30000 }, () => {
     // ============================================
     // Setup Status Tests
     // ============================================
-    describe('GET /api/setup/status', () => {
+    await describe('GET /api/setup/status', async () => {
         beforeEach(() => {
             clearDataFiles();
         });
 
-        test('should return needsSetup: true when no admins exist', async () => {
+        await test('should return needsSetup: true when no admins exist', async () => {
             const response = await fetch(`${API_URL}/api/setup/status`);
             assert.strictEqual(response.status, 200);
 
@@ -175,14 +169,14 @@ describe('Setup API Tests', { timeout: 30000 }, () => {
     // ============================================
     // First Admin Creation Tests
     // ============================================
-    describe('POST /api/setup/first-admin', () => {
+    await describe('POST /api/setup/first-admin', async () => {
         beforeEach(() => {
             clearDataFiles();
         });
 
-        test('should create first admin and return registration token', async () => {
+        await test('should create first admin and return registration token', async () => {
             const adminData = {
-                email: `setup-admin-${Date.now()}@example.com`,
+                email: `setup-admin-${String(Date.now())}@example.com`,
                 name: 'First Admin',
                 password: 'SecurePassword123!'
             };
@@ -197,16 +191,16 @@ describe('Setup API Tests', { timeout: 30000 }, () => {
 
             const data = await response.json() as FirstAdminResponse;
             assert.strictEqual(data.success, true);
-            assert.ok(data.registrationToken !== undefined && data.registrationToken.length === 64);
+            assert.ok(data.registrationToken?.length === 64);
             assert.strictEqual(data.redirectTo, '/login');
             assert.ok(data.user !== undefined);
-            assert.strictEqual(data.user?.email, adminData.email.toLowerCase());
+            assert.strictEqual(data.user.email, adminData.email.toLowerCase());
         });
 
-        test('should return needsSetup: false after creating admin', async () => {
+        await test('should return needsSetup: false after creating admin', async () => {
             // First create an admin
             const adminData = {
-                email: `setup-admin-${Date.now()}@example.com`,
+                email: `setup-admin-${String(Date.now())}@example.com`,
                 name: 'First Admin',
                 password: 'SecurePassword123!'
             };
@@ -225,10 +219,10 @@ describe('Setup API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(statusData.hasAdmin, true);
         });
 
-        test('should reject second admin creation with 403', async () => {
+        await test('should reject second admin creation with 403', async () => {
             // First create an admin
             const firstAdmin = {
-                email: `first-admin-${Date.now()}@example.com`,
+                email: `first-admin-${String(Date.now())}@example.com`,
                 name: 'First Admin',
                 password: 'SecurePassword123!'
             };
@@ -241,7 +235,7 @@ describe('Setup API Tests', { timeout: 30000 }, () => {
 
             // Try to create a second admin
             const secondAdmin = {
-                email: `second-admin-${Date.now()}@example.com`,
+                email: `second-admin-${String(Date.now())}@example.com`,
                 name: 'Second Admin',
                 password: 'AnotherPassword123!'
             };
@@ -259,7 +253,7 @@ describe('Setup API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(data.error, 'Setup already completed');
         });
 
-        test('should validate required fields', async () => {
+        await test('should validate required fields', async () => {
             // Missing email
             const response1 = await fetch(`${API_URL}/api/setup/first-admin`, {
                 method: 'POST',
@@ -289,7 +283,7 @@ describe('Setup API Tests', { timeout: 30000 }, () => {
     // ============================================
     // Token Validation Tests
     // ============================================
-    describe('POST /api/setup/validate-token', () => {
+    await describe('POST /api/setup/validate-token', async () => {
         let validToken: string;
 
         before(async () => {
@@ -297,7 +291,7 @@ describe('Setup API Tests', { timeout: 30000 }, () => {
 
             // Create first admin to get a valid token
             const adminData = {
-                email: `token-test-admin-${Date.now()}@example.com`,
+                email: `token-test-admin-${String(Date.now())}@example.com`,
                 name: 'Token Test Admin',
                 password: 'SecurePassword123!'
             };
@@ -312,7 +306,7 @@ describe('Setup API Tests', { timeout: 30000 }, () => {
             validToken = data.registrationToken ?? '';
         });
 
-        test('should validate correct token', async () => {
+        await test('should validate correct token', async () => {
             const response = await fetch(`${API_URL}/api/setup/validate-token`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -326,7 +320,7 @@ describe('Setup API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(data.valid, true);
         });
 
-        test('should reject incorrect token', async () => {
+        await test('should reject incorrect token', async () => {
             const response = await fetch(`${API_URL}/api/setup/validate-token`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -340,7 +334,7 @@ describe('Setup API Tests', { timeout: 30000 }, () => {
             assert.strictEqual(data.valid, false);
         });
 
-        test('should require token in request body', async () => {
+        await test('should require token in request body', async () => {
             const response = await fetch(`${API_URL}/api/setup/validate-token`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -354,13 +348,13 @@ describe('Setup API Tests', { timeout: 30000 }, () => {
     // ============================================
     // Admin Token Management Tests
     // ============================================
-    describe('GET /api/setup/registration-token', () => {
-        test('should require admin authentication', async () => {
+    await describe('GET /api/setup/registration-token', async () => {
+        await test('should require admin authentication', async () => {
             const response = await fetch(`${API_URL}/api/setup/registration-token`);
             assert.strictEqual(response.status, 401);
         });
 
-        test('should reject non-admin token', async () => {
+        await test('should reject non-admin token', async () => {
             const response = await fetch(`${API_URL}/api/setup/registration-token`, {
                 headers: { 'Authorization': 'Bearer invalid-token' }
             });
@@ -368,15 +362,15 @@ describe('Setup API Tests', { timeout: 30000 }, () => {
         });
     });
 
-    describe('POST /api/setup/regenerate-token', () => {
-        test('should require admin authentication', async () => {
+    await describe('POST /api/setup/regenerate-token', async () => {
+        await test('should require admin authentication', async () => {
             const response = await fetch(`${API_URL}/api/setup/regenerate-token`, {
                 method: 'POST'
             });
             assert.strictEqual(response.status, 401);
         });
 
-        test('should reject non-admin token', async () => {
+        await test('should reject non-admin token', async () => {
             const response = await fetch(`${API_URL}/api/setup/regenerate-token`, {
                 method: 'POST',
                 headers: { 'Authorization': 'Bearer invalid-token' }

@@ -76,15 +76,15 @@ interface ClassroomStats {
 // Initialization
 // =============================================================================
 
-if (fs.existsSync(DATA_DIR) === false) {
+if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-if (fs.existsSync(CLASSROOMS_FILE) === false) {
+if (!fs.existsSync(CLASSROOMS_FILE)) {
     fs.writeFileSync(CLASSROOMS_FILE, JSON.stringify({ classrooms: [] }, null, 2));
 }
 
-if (fs.existsSync(MACHINES_FILE) === false) {
+if (!fs.existsSync(MACHINES_FILE)) {
     fs.writeFileSync(MACHINES_FILE, JSON.stringify({ machines: [] }, null, 2));
 }
 
@@ -347,13 +347,16 @@ export function getWhitelistUrlForMachine(hostname: string): WhitelistUrlResult 
     let groupId = classroom.active_group_id;
     let source: 'manual' | 'schedule' | 'default' = 'manual';
 
-    if (groupId === null || groupId === undefined) {
+    if (groupId === null) {
         try {
             // Dynamic import would be better but keeping consistent with original
             const require = createRequire(import.meta.url);
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-call
             const scheduleStorage = require('./schedule-storage.js');
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
             const currentSchedule = scheduleStorage.getCurrentSchedule(classroom.id);
             if (currentSchedule !== null && currentSchedule !== undefined) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
                 groupId = currentSchedule.group_id;
                 source = 'schedule';
             }
@@ -362,12 +365,12 @@ export function getWhitelistUrlForMachine(hostname: string): WhitelistUrlResult 
         }
     }
 
-    if (groupId === null || groupId === undefined) {
+    if (groupId === null) {
         groupId = classroom.default_group_id;
         source = 'default';
     }
 
-    if (groupId === null || groupId === undefined) return null;
+    if (groupId === null) return null;
 
     const owner = process.env.GITHUB_OWNER ?? 'LasEncinasIT';
     const repo = process.env.GITHUB_REPO ?? 'Whitelist-por-aula';
@@ -390,7 +393,7 @@ export function getStats(): ClassroomStats {
     return {
         classrooms: classrooms.classrooms.length,
         machines: machines.machines.length,
-        classroomsWithActiveGroup: classrooms.classrooms.filter((c) => c.active_group_id !== null && c.active_group_id !== undefined).length
+        classroomsWithActiveGroup: classrooms.classrooms.filter((c) => c.active_group_id !== null).length
     };
 }
 
@@ -438,7 +441,7 @@ export const classroomStorage: IClassroomStorage = {
     },
     removeMachine: (classroomId: string, hostname: string) => {
         const machine = getMachineByHostname(hostname);
-        if (machine === null || machine === undefined || machine.classroom_id !== classroomId) return false;
+        if (machine?.classroom_id !== classroomId) return false;
         return deleteMachine(hostname);
     },
     getMachineByHostname: (hostname: string) => {

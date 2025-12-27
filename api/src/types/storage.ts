@@ -28,10 +28,10 @@ import type {
  */
 export interface CreateRequestData {
     domain: string;
-    reason?: string;
-    requesterEmail?: string;
-    groupId?: string;
-    priority?: RequestPriority;
+    reason?: string | undefined;
+    requesterEmail?: string | undefined;
+    groupId?: string | undefined;
+    priority?: RequestPriority | undefined;
 }
 
 /**
@@ -80,10 +80,10 @@ export interface CreateUserData {
  * Data for updating a user
  */
 export interface UpdateUserData {
-    email?: string;
-    name?: string;
-    password?: string;
-    active?: boolean;
+    email?: string | undefined;
+    name?: string | undefined;
+    password?: string | undefined;
+    active?: boolean | undefined;
 }
 
 /**
@@ -142,8 +142,8 @@ export interface CreateClassroomData {
  * Data for updating a classroom
  */
 export interface UpdateClassroomData {
-    name?: string;
-    displayName?: string;
+    name?: string | undefined;
+    displayName?: string | undefined;
 }
 
 /**

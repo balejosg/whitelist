@@ -151,7 +151,7 @@ function requireAuth(req: RequestWithUser, res: Response, next: NextFunction): v
     void (async (): Promise<void> => {
         const authHeader = req.headers.authorization;
 
-        if (!(authHeader?.startsWith('Bearer ') ?? false)) {
+        if (authHeader?.startsWith('Bearer ') !== true) {
             res.status(401).json({
                 success: false,
                 error: 'Authorization header required'
@@ -480,7 +480,7 @@ router.get('/groups/list', adminLimiter, requireAuth, filterByUserGroups, (req: 
 /**
  * GET /api/requests/domains/blocked
  */
-router.get('/domains/blocked', adminLimiter, requireAuth, requireAdmin, (req: Request, res: Response, next: NextFunction): void => {
+router.get('/domains/blocked', adminLimiter, requireAuth, requireAdmin, (_req: Request, res: Response, _next: NextFunction): void => {
     void (async (): Promise<void> => {
         try {
             const file = await github.getFileContent('blocked-subdomains.txt');
@@ -503,7 +503,7 @@ router.get('/domains/blocked', adminLimiter, requireAuth, requireAdmin, (req: Re
                 note: 'No blocked-subdomains.txt file found'
             });
         }
-    })().catch(next);
+    })().catch((err: unknown) => { _next(err); });
 });
 
 /**

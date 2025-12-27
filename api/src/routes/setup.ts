@@ -6,7 +6,7 @@
  */
 
 import { Router } from 'express';
-import type { Request, Response } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
 import * as userStorage from '../lib/user-storage.js';
 import * as roleStorage from '../lib/role-storage.js';
@@ -81,7 +81,7 @@ function isValidEmail(email: string): boolean {
 }
 
 function isValidPassword(password: string): boolean {
-    return password !== undefined && password !== '' && password.length >= 8;
+    return password !== '' && password.length >= 8;
 }
 
 // =============================================================================
@@ -108,96 +108,105 @@ router.get('/status', statusLimiter, (_req: Request, res: Response) => {
  * POST /api/setup/first-admin
  * Create the first admin user (public, only works if no admins exist)
  */
-router.post('/first-admin', firstAdminLimiter, async (req: Request<object, unknown, FirstAdminBody>, res: Response) => {
-    const { email, name, password } = req.body;
+router.post('/first-admin', firstAdminLimiter, (req: Request<object, unknown, Partial<FirstAdminBody>>, res: Response, next: NextFunction): void => {
+    void (async (): Promise<void> => {
+        const { email, name, password } = req.body;
 
-    // Check if setup has already been completed
-    if (roleStorage.hasAnyAdmins()) {
-        return res.status(403).json({
-            success: false,
-            error: 'Setup already completed',
-            code: 'SETUP_COMPLETE'
-        });
-    }
+        // Check if setup has already been completed
+        if (roleStorage.hasAnyAdmins()) {
+            res.status(403).json({
+                success: false,
+                error: 'Setup already completed',
+                code: 'SETUP_COMPLETE'
+            });
+            return;
+        }
 
-    // Validate required fields
-    if (email === undefined || email === '' || name === undefined || name === '' || password === undefined || password === '') {
-        return res.status(400).json({
-            success: false,
-            error: 'Email, name, and password are required',
-            code: 'MISSING_FIELDS'
-        });
-    }
+        // Validate required fields
+        if (email === undefined || email === '' || name === undefined || name === '' || password === undefined || password === '') {
+            res.status(400).json({
+                success: false,
+                error: 'Email, name, and password are required',
+                code: 'MISSING_FIELDS'
+            });
+            return;
+        }
 
-    // Validate email format
-    if (!isValidEmail(email)) {
-        return res.status(400).json({
-            success: false,
-            error: 'Invalid email format',
-            code: 'INVALID_EMAIL'
-        });
-    }
+        // Validate email format
+        if (!isValidEmail(email)) {
+            res.status(400).json({
+                success: false,
+                error: 'Invalid email format',
+                code: 'INVALID_EMAIL'
+            });
+            return;
+        }
 
-    // Validate password strength
-    if (!isValidPassword(password)) {
-        return res.status(400).json({
-            success: false,
-            error: 'Password must be at least 8 characters',
-            code: 'WEAK_PASSWORD'
-        });
-    }
+        // Validate password strength
+        if (!isValidPassword(password)) {
+            res.status(400).json({
+                success: false,
+                error: 'Password must be at least 8 characters',
+                code: 'WEAK_PASSWORD'
+            });
+            return;
+        }
 
-    // Check if email already exists
-    if (userStorage.emailExists(email)) {
-        return res.status(409).json({
-            success: false,
-            error: 'Email already registered',
-            code: 'EMAIL_EXISTS'
-        });
-    }
+        // Check if email already exists
+        if (userStorage.emailExists(email)) {
+            res.status(409).json({
+                success: false,
+                error: 'Email already registered',
+                code: 'EMAIL_EXISTS'
+            });
+            return;
+        }
 
-    try {
-        // Create user
-        const user = await userStorage.createUser({ email, name, password });
+        try {
+            // Create user
+            const user = await userStorage.createUser({ email, name, password });
 
-        // Assign admin role
-        roleStorage.assignRole({
-            userId: user.id,
-            role: 'admin',
-            groups: [],
-            createdBy: user.id
-        });
+            // Assign admin role
+            roleStorage.assignRole({
+                userId: user.id,
+                role: 'admin',
+                groups: [],
+                createdBy: user.id
+            });
 
-        // Generate registration token for client machines
-        const registrationToken = setupStorage.generateRegistrationToken();
+            // Generate registration token for client machines
+            const registrationToken = setupStorage.generateRegistrationToken();
 
-        // Save setup data
-        setupStorage.saveSetupData({
-            registrationToken,
-            setupCompletedAt: new Date().toISOString(),
-            setupByUserId: user.id
-        });
+            // Save setup data
+            setupStorage.saveSetupData({
+                registrationToken,
+                setupCompletedAt: new Date().toISOString(),
+                setupByUserId: user.id
+            });
 
-        logger.info('First admin created', { userId: user.id, email });
+            logger.info('First admin created', { userId: user.id, email });
 
-        return res.status(201).json({
-            success: true,
-            registrationToken,
-            redirectTo: '/login',
-            user: {
-                id: user.id,
-                email: user.email,
-                name: user.name
-            }
-        });
-    } catch (error) {
-        logger.error('Error creating first admin', { error: error instanceof Error ? error.message : String(error) });
-        return res.status(500).json({
-            success: false,
-            error: 'Failed to create admin user',
-            code: 'SERVER_ERROR'
-        });
-    }
+            res.status(201).json({
+                success: true,
+                registrationToken,
+                redirectTo: '/login',
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    name: user.name
+                }
+            });
+            return;
+        } catch (error) {
+            logger.error('Error creating first admin', { error: error instanceof Error ? error.message : String(error) });
+            res.status(500).json({
+                success: false,
+                error: 'Failed to create admin user',
+                code: 'SERVER_ERROR'
+            });
+            return;
+        }
+    })().catch(next);
 });
 
 /**
@@ -207,7 +216,7 @@ router.post('/first-admin', firstAdminLimiter, async (req: Request<object, unkno
 router.post('/validate-token', validateTokenLimiter, (req: Request<object, unknown, ValidateTokenBody>, res: Response) => {
     const { token } = req.body;
 
-    if (token === undefined || token === '') {
+    if (token === '') {
         return res.status(400).json({
             success: false,
             error: 'Token is required',
@@ -227,106 +236,122 @@ router.post('/validate-token', validateTokenLimiter, (req: Request<object, unkno
  * GET /api/setup/registration-token
  * Get the current registration token (requires admin auth)
  */
-router.get('/registration-token', async (req: Request, res: Response) => {
-    // Verify admin authentication
-    const authHeader = req.headers.authorization;
+router.get('/registration-token', (req: Request, res: Response, next: NextFunction): void => {
+    void (async (): Promise<void> => {
+        // Verify admin authentication
+        const authHeader = req.headers.authorization;
 
-    if (authHeader === undefined || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({
-            success: false,
-            error: 'Authorization header required',
-            code: 'MISSING_TOKEN'
+
+        if (authHeader?.startsWith('Bearer ') !== true) {
+            res.status(401).json({
+                success: false,
+                error: 'Authorization header required',
+                code: 'MISSING_TOKEN'
+            });
+            return;
+        }
+
+        const token = authHeader.slice(7);
+        const decoded = await auth.verifyAccessToken(token);
+
+        if (!decoded) {
+            res.status(401).json({
+                success: false,
+                error: 'Invalid or expired token',
+                code: 'INVALID_TOKEN'
+            });
+            return;
+        }
+
+        // Check if user is admin
+        if (!auth.isAdminToken(decoded)) {
+            res.status(403).json({
+                success: false,
+                error: 'Admin access required',
+                code: 'FORBIDDEN'
+            });
+            return;
+        }
+
+        const registrationToken = setupStorage.getRegistrationToken();
+
+        if (registrationToken === null) {
+            res.status(404).json({
+                success: false,
+                error: 'Setup not completed',
+                code: 'SETUP_NOT_COMPLETE'
+            });
+            return;
+        }
+
+        res.json({
+            success: true,
+            registrationToken
         });
-    }
-
-    const token = authHeader.slice(7);
-    const decoded = await auth.verifyAccessToken(token);
-
-    if (!decoded) {
-        return res.status(401).json({
-            success: false,
-            error: 'Invalid or expired token',
-            code: 'INVALID_TOKEN'
-        });
-    }
-
-    // Check if user is admin
-    if (!auth.isAdminToken(decoded)) {
-        return res.status(403).json({
-            success: false,
-            error: 'Admin access required',
-            code: 'FORBIDDEN'
-        });
-    }
-
-    const registrationToken = setupStorage.getRegistrationToken();
-
-    if (registrationToken === null) {
-        return res.status(404).json({
-            success: false,
-            error: 'Setup not completed',
-            code: 'SETUP_NOT_COMPLETE'
-        });
-    }
-
-    return res.json({
-        success: true,
-        registrationToken
-    });
+        return;
+    })().catch(next);
 });
 
 /**
  * POST /api/setup/regenerate-token
  * Regenerate the registration token (requires admin auth)
  */
-router.post('/regenerate-token', async (req: Request, res: Response) => {
-    // Verify admin authentication
-    const authHeader = req.headers.authorization;
+router.post('/regenerate-token', (req: Request, res: Response, next: NextFunction): void => {
+    void (async (): Promise<void> => {
+        // Verify admin authentication
+        const authHeader = req.headers.authorization;
 
-    if (authHeader === undefined || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({
-            success: false,
-            error: 'Authorization header required',
-            code: 'MISSING_TOKEN'
+
+        if (authHeader?.startsWith('Bearer ') !== true) {
+            res.status(401).json({
+                success: false,
+                error: 'Authorization header required',
+                code: 'MISSING_TOKEN'
+            });
+            return;
+        }
+
+        const token = authHeader.slice(7);
+        const decoded = await auth.verifyAccessToken(token);
+
+        if (!decoded) {
+            res.status(401).json({
+                success: false,
+                error: 'Invalid or expired token',
+                code: 'INVALID_TOKEN'
+            });
+            return;
+        }
+
+        // Check if user is admin
+        if (!auth.isAdminToken(decoded)) {
+            res.status(403).json({
+                success: false,
+                error: 'Admin access required',
+                code: 'FORBIDDEN'
+            });
+            return;
+        }
+
+        const newToken = setupStorage.regenerateRegistrationToken();
+
+        if (newToken === null) {
+            res.status(404).json({
+                success: false,
+                error: 'Setup not completed',
+                code: 'SETUP_NOT_COMPLETE'
+            });
+            return;
+        }
+
+        logger.info('Registration token regenerated', { userId: decoded.sub });
+
+        res.json({
+            success: true,
+            registrationToken: newToken
         });
-    }
-
-    const token = authHeader.slice(7);
-    const decoded = await auth.verifyAccessToken(token);
-
-    if (!decoded) {
-        return res.status(401).json({
-            success: false,
-            error: 'Invalid or expired token',
-            code: 'INVALID_TOKEN'
-        });
-    }
-
-    // Check if user is admin
-    if (!auth.isAdminToken(decoded)) {
-        return res.status(403).json({
-            success: false,
-            error: 'Admin access required',
-            code: 'FORBIDDEN'
-        });
-    }
-
-    const newToken = setupStorage.regenerateRegistrationToken();
-
-    if (newToken === null) {
-        return res.status(404).json({
-            success: false,
-            error: 'Setup not completed',
-            code: 'SETUP_NOT_COMPLETE'
-        });
-    }
-
-    logger.info('Registration token regenerated', { userId: decoded.sub });
-
-    return res.json({
-        success: true,
-        registrationToken: newToken
-    });
+        return;
+    })().catch(next);
 });
 
 export default router;

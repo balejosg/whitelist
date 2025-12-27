@@ -39,5 +39,10 @@
     "education",
     "content-filter"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "workspaces": [
+    "api",
+    "spa",
+    "shared"
+  ]
 }

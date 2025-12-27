@@ -565,11 +565,11 @@ router.post('/:id/roles', adminLimiter, requireAuth, requireAdmin, (req: Request
  */
 router.patch('/:id/roles/:roleId', adminLimiter, requireAuth, requireAdmin, (req: Request, res: Response) => {
     const { groupIds, addGroups, removeGroups } = req.body as UpdateRoleBody;
-    const id = req.params.id;
-    const roleId = req.params.roleId;
+    const id = req.params.id ?? '';
+    const roleId = req.params.roleId ?? '';
 
     const role = roleStorage.getRoleById(roleId);
-    if (role === null || role.userId !== id) {
+    if (role?.userId !== id) {
         res.status(404).json({
             success: false,
             error: 'Role not found',
@@ -614,12 +614,12 @@ router.patch('/:id/roles/:roleId', adminLimiter, requireAuth, requireAdmin, (req
  * DELETE /api/users/:id/roles/:roleId
  */
 router.delete('/:id/roles/:roleId', adminLimiter, requireAuth, requireAdmin, (req: RequestWithUser, res: Response) => {
-    const id = req.params.id;
-    const roleId = req.params.roleId;
+    const id = req.params.id ?? '';
+    const roleId = req.params.roleId ?? '';
 
     const role = roleStorage.getRoleById(roleId);
 
-    if (role === null || role.userId !== id) {
+    if (role?.userId !== id) {
         res.status(404).json({
             success: false,
             error: 'Role not found',

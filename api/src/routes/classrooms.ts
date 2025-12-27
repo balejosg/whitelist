@@ -182,7 +182,8 @@ router.post('/', requireAuth, requireAdmin, (req: Request<object, unknown, Creat
  * GET /api/classrooms/:id
  */
 router.get('/:id', requireAuth, requireAdmin, (req: Request, res: Response) => {
-    const classroom = classroomStorage.getClassroomById(req.params.id);
+    const id = req.params.id ?? '';
+    const classroom = classroomStorage.getClassroomById(id);
 
     if (classroom === null) {
         return res.status(404).json({
@@ -191,8 +192,8 @@ router.get('/:id', requireAuth, requireAdmin, (req: Request, res: Response) => {
         });
     }
 
-    const machines = classroomStorage.getMachinesByClassroom(req.params.id);
-    const currentGroupId = classroomStorage.getCurrentGroupId(req.params.id);
+    const machines = classroomStorage.getMachinesByClassroom(id);
+    const currentGroupId = classroomStorage.getCurrentGroupId(id);
 
     return res.json({
         success: true,
@@ -261,7 +262,8 @@ router.put('/:id/active-group', requireAuth, requireAdmin, (req: Request<{ id: s
  * DELETE /api/classrooms/:id
  */
 router.delete('/:id', requireAuth, requireAdmin, (req: Request, res: Response) => {
-    const deleted = classroomStorage.deleteClassroom(req.params.id);
+    const id = req.params.id ?? '';
+    const deleted = classroomStorage.deleteClassroom(id);
 
     if (!deleted) {
         return res.status(404).json({
@@ -342,7 +344,7 @@ router.post('/machines/register', requireSharedSecret, (req: Request<object, unk
  * GET /api/classrooms/machines/:hostname/whitelist-url
  */
 router.get('/machines/:hostname/whitelist-url', requireSharedSecret, (req: Request, res: Response) => {
-    const hostname = req.params.hostname;
+    const hostname = req.params.hostname ?? '';
 
     classroomStorage.updateMachineLastSeen(hostname);
 
@@ -366,7 +368,8 @@ router.get('/machines/:hostname/whitelist-url', requireSharedSecret, (req: Reque
  * DELETE /api/classrooms/machines/:hostname
  */
 router.delete('/machines/:hostname', requireAuth, requireAdmin, (req: Request, res: Response) => {
-    const deleted = classroomStorage.deleteMachine(req.params.hostname);
+    const hostname = req.params.hostname ?? '';
+    const deleted = classroomStorage.deleteMachine(hostname);
 
     if (!deleted) {
         return res.status(404).json({

@@ -1,0 +1,148 @@
+import { z } from 'zod';
+import { router, publicProcedure, protectedProcedure, teacherProcedure, adminProcedure } from '../trpc.js';
+import { RequestStatus, RequestPriority } from '@openpath/shared';
+import { TRPCError } from '@trpc/server';
+import { CreateRequestData } from '../../types/storage.js';
+import * as storage from '../../lib/storage.js';
+import * as github from '../../lib/github.js';
+import * as push from '../../lib/push.js';
+import * as auth from '../../lib/auth.js';
+import { stripUndefined } from '../../lib/utils.js';
+
+export const requestsRouter = router({
+    // Public: Create request
+    create: publicProcedure
+        .input(z.object({
+            domain: z.string().regex(/^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/),
+            reason: z.string().optional(),
+            requester_email: z.string().email().optional(),
+            group_id: z.string().optional(),
+            priority: RequestPriority.optional(),
+        }))
+        .mutation(({ input }) => {
+            if (storage.hasPendingRequest(input.domain)) {
+                throw new TRPCError({ code: 'CONFLICT', message: 'Pending request exists' });
+            }
+
+            const createData = stripUndefined({
+                domain: input.domain.toLowerCase(),
+                reason: input.reason ?? 'No reason provided',
+                requesterEmail: input.requester_email,
+                groupId: input.group_id,
+                priority: input.priority,
+            }) as CreateRequestData;
+
+            const request = storage.createRequest(createData);
+            void push.notifyTeachersOfNewRequest(request).catch(console.error);
+            return request;
+        }),
+
+    // Public: Get status
+    getStatus: publicProcedure
+        .input(z.object({ id: z.string() }))
+        .query(({ input }) => {
+            const request = storage.getRequestById(input.id);
+            if (!request) throw new TRPCError({ code: 'NOT_FOUND' });
+            return { id: request.id, domain: request.domain, status: request.status };
+        }),
+
+    // Protected: List requests (filtered by user's groups)
+    list: protectedProcedure
+        .input(z.object({ status: RequestStatus.optional() }))
+        .query(({ input, ctx }) => {
+            let requests = storage.getAllRequests(input.status ?? null);
+            const groups = auth.getApprovalGroups(ctx.user);
+            if (groups !== 'all') {
+                requests = requests.filter(r => groups.includes(r.group_id));
+            }
+            return requests;
+        }),
+
+    // Protected: Get request details
+    get: protectedProcedure
+        .input(z.object({ id: z.string() }))
+        .query(({ input, ctx }) => {
+            const request = storage.getRequestById(input.id);
+            if (!request) throw new TRPCError({ code: 'NOT_FOUND' });
+
+            const groups = auth.getApprovalGroups(ctx.user);
+            if (groups !== 'all' && !groups.includes(request.group_id)) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'No access to this request' });
+            }
+
+            return request;
+        }),
+
+    // Teacher+: Approve
+    approve: teacherProcedure
+        .input(z.object({ id: z.string(), group_id: z.string().optional() }))
+        .mutation(async ({ input, ctx }) => {
+            const request = storage.getRequestById(input.id);
+            if (!request) throw new TRPCError({ code: 'NOT_FOUND' });
+            if (request.status !== 'pending') {
+                throw new TRPCError({ code: 'BAD_REQUEST', message: `Already ${request.status}` });
+            }
+
+            const targetGroup = input.group_id ?? request.group_id;
+            if (!auth.canApproveGroup(ctx.user, targetGroup)) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot approve for this group' });
+            }
+
+            // Check blocked domains for non-admins
+            if (!auth.isAdminToken(ctx.user)) {
+                const blocked = await github.isDomainBlocked(request.domain);
+                if (blocked.blocked) {
+                    throw new TRPCError({ code: 'FORBIDDEN', message: 'Domain is blocked' });
+                }
+            }
+
+            await github.addDomainToWhitelist(request.domain, targetGroup);
+            return storage.updateRequestStatus(request.id, 'approved', ctx.user.name ?? ctx.user.email, `Added to ${targetGroup}`);
+        }),
+
+    // Teacher+: Reject
+    reject: teacherProcedure
+        .input(z.object({ id: z.string(), reason: z.string().optional() }))
+        .mutation(({ input, ctx }) => {
+            const request = storage.getRequestById(input.id);
+            if (!request) throw new TRPCError({ code: 'NOT_FOUND' });
+            if (request.status !== 'pending') {
+                throw new TRPCError({ code: 'BAD_REQUEST', message: `Already ${request.status}` });
+            }
+            return storage.updateRequestStatus(request.id, 'rejected', ctx.user.name ?? ctx.user.email, input.reason);
+        }),
+
+    // Admin: Delete
+    delete: adminProcedure
+        .input(z.object({ id: z.string() }))
+        .mutation(({ input }) => {
+            if (!storage.deleteRequest(input.id)) throw new TRPCError({ code: 'NOT_FOUND' });
+            return { success: true };
+        }),
+
+    // Protected: List groups
+    listGroups: protectedProcedure.query(async ({ ctx }) => {
+        const allGroups = await github.listWhitelistFiles();
+        const userGroups = auth.getApprovalGroups(ctx.user);
+        if (userGroups === 'all') return allGroups;
+        return allGroups.filter(g => userGroups.includes(g.name));
+    }),
+
+    // Admin: List blocked domains
+    listBlocked: adminProcedure.query(async () => {
+        try {
+            const file = await github.getFileContent('blocked-subdomains.txt');
+            const lines = file.content.split('\n');
+            return lines.map(l => l.trim()).filter(l => l !== '' && !l.startsWith('#'));
+        } catch {
+            return [];
+        }
+    }),
+
+    // Protected: Check domain
+    check: protectedProcedure
+        .input(z.object({ domain: z.string() }))
+        .mutation(async ({ input }) => {
+            return await github.isDomainBlocked(input.domain);
+        }),
+});
