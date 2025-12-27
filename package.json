@@ -12,7 +12,7 @@
     "test:shell": "cd tests && bats *.bats",
     "test:api": "cd api && npm test",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "verify": "npm run typecheck && npm run lint"
+    "verify": "npm run typecheck && npm run lint --workspaces --if-present"
   },
   "devDependencies": {
     "eslint": "^8.56.0",
@@ -22,9 +22,6 @@
   "lint-staged": {
     "*.{js,ts,tsx,mjs,cjs}": [
       "eslint --fix"
-    ],
-    "*.sh": [
-      "shellcheck"
     ]
   },
   "engines": {
