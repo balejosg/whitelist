@@ -30,7 +30,13 @@
         "ts-jest": "^29.4.6",
         "tsx": "^4.21.0",
         "typescript": "^5.9.3",
-        "typescript-eslint": "^8.50.1"
+        "typescript-eslint": "^8.50.1",
+        "bcrypt": "^5.1.1",
+        "jsonwebtoken": "^9.0.2",
+        "web-push": "^3.6.7",
+        "@types/bcrypt": "^5.0.2",
+        "@types/jsonwebtoken": "^9.0.7",
+        "@types/web-push": "^3.6.4"
     },
     "engines": {
         "node": ">=18.0.0"
