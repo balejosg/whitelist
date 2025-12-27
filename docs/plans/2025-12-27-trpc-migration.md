@@ -17,7 +17,7 @@ Complete migration from Express REST API to type-safe tRPC procedures. No compro
 
 > [!IMPORTANT]
 > This is a significant refactor affecting ~4,000 lines of API code and ~1,500 lines of SPA client code. Please confirm before proceeding.
-
+>
 > [!WARNING]
 > **Breaking Changes**: The REST API endpoints will be replaced with tRPC procedures. Any external clients (mobile apps, scripts) will need migration.
 
@@ -596,7 +596,7 @@ export const trpc = createTRPCClient<AppRouter>({
 
 ### Migration Example: UsersAPI → trpc.users
 
-#### Before (fetch-based):
+#### Before (fetch-based)
 
 ```typescript
 // spa/src/users-api.ts
@@ -605,7 +605,7 @@ async list(): Promise<APIResponse<{ users: User[] }>> {
 }
 ```
 
-#### After (tRPC):
+#### After (tRPC)
 
 ```typescript
 // spa/src/modules/users.ts
@@ -671,4 +671,4 @@ gantt
     Cleanup + Testing       :p4, after p3, 2d
 ```
 
-**Estimated Total: 14 working days**
+### Estimated Total: 14 working days
