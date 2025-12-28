@@ -200,11 +200,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: './package-lock.json'
       
-      - name: Build shared package
-        run: npm run build --workspace=@openpath/shared
-      
       - name: Install dependencies (Root)
         run: npm ci || npm install
+      
+      - name: Build shared package
+        run: npm run build --workspace=@openpath/shared
       
       - name: Run linting
         run: npm run lint --workspace=openpath-spa
