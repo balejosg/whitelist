@@ -21,6 +21,7 @@
         "uuid": "^11.0.3"
     },
     "devDependencies": {
+        "@eslint/js": "^9.39.2",
         "@types/bcryptjs": "^2.4.6",
         "@types/cookie-parser": "^1.4.8",
         "@types/express": "^5.0.0",
@@ -36,7 +37,8 @@
         "supertest": "^7.0.0",
         "ts-jest": "^29.2.5",
         "tsx": "^4.19.2",
-        "typescript": "^5.7.2"
+        "typescript": "^5.7.2",
+        "typescript-eslint": "^8.50.1"
     },
     "jest": {
         "testEnvironment": "node",
