@@ -2,24 +2,13 @@
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
  *
- * Role Storage - JSON file-based role management
- * Stores user roles in data/user_roles.json
+ * Role Storage - PostgreSQL-based role management
  */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { v4 as uuidv4 } from 'uuid';
+import { query } from './db.js';
 import type { Role, UserRole } from '../types/index.js';
 import type { IRoleStorage, AssignRoleData } from '../types/storage.js';
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = process.env.DATA_DIR ?? path.join(__dirname, '..', '..', 'data');
-const ROLES_FILE = path.join(DATA_DIR, 'user_roles.json');
 
 export const VALID_ROLES: readonly UserRole[] = ['admin', 'teacher', 'student'] as const;
 
@@ -27,20 +16,14 @@ export const VALID_ROLES: readonly UserRole[] = ['admin', 'teacher', 'student'] 
 // Types
 // =============================================================================
 
-interface StoredRole {
+interface DBRole {
     id: string;
-    userId: string;
+    user_id: string;
     role: UserRole;
-    groupIds: string[];
-    createdBy: string;
-    createdAt: string;
-    updatedAt: string;
-    revokedAt: string | null;
-    revokedBy?: string;
-}
-
-interface RolesData {
-    roles: StoredRole[];
+    groups: string[];
+    created_by: string;
+    created_at: string;
+    updated_at: string;
 }
 
 interface RoleStats {
@@ -59,42 +42,16 @@ interface TeacherInfo {
 }
 
 // =============================================================================
-// Initialization
+// Helper Functions
 // =============================================================================
 
-if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-
-if (!fs.existsSync(ROLES_FILE)) {
-    fs.writeFileSync(ROLES_FILE, JSON.stringify({ roles: [] }, null, 2));
-}
-
-// =============================================================================
-// Internal Functions
-// =============================================================================
-
-function loadData(): RolesData {
-    try {
-        const data = fs.readFileSync(ROLES_FILE, 'utf-8');
-        return JSON.parse(data) as RolesData;
-    } catch (error) {
-        console.error('Error loading roles:', error);
-        return { roles: [] };
-    }
-}
-
-function saveData(data: RolesData): void {
-    fs.writeFileSync(ROLES_FILE, JSON.stringify(data, null, 2));
-}
-
-function toRoleType(stored: StoredRole): Role {
+function toRoleType(db: DBRole): Role {
     return {
-        id: stored.id,
-        user_id: stored.userId,
-        role: stored.role,
-        groups: stored.groupIds,
-        created_at: stored.createdAt,
+        id: db.id,
+        user_id: db.user_id,
+        role: db.role,
+        groups: db.groups ?? [],
+        created_at: db.created_at,
         expires_at: null
     };
 }
@@ -103,303 +60,234 @@ function toRoleType(stored: StoredRole): Role {
 // Public API
 // =============================================================================
 
-/**
- * Get all active roles for a user
- */
-export function getUserRoles(userId: string): StoredRole[] {
-    const data = loadData();
-    return data.roles.filter((r) => r.userId === userId && r.revokedAt === null);
+export async function getUserRoles(userId: string): Promise<DBRole[]> {
+    const result = await query<DBRole>(
+        'SELECT * FROM roles WHERE user_id = $1',
+        [userId]
+    );
+    return result.rows;
 }
 
-/**
- * Get all users with a specific role
- */
-export function getUsersByRole(role: UserRole): StoredRole[] {
-    const data = loadData();
-    return data.roles.filter((r) => r.role === role && r.revokedAt === null);
+export async function getUsersByRole(role: UserRole): Promise<DBRole[]> {
+    const result = await query<DBRole>(
+        'SELECT * FROM roles WHERE role = $1',
+        [role]
+    );
+    return result.rows;
 }
 
-/**
- * Get all teachers with their assigned groups
- */
-export function getAllTeachers(): TeacherInfo[] {
-    return getUsersByRole('teacher').map((r) => ({
-        userId: r.userId,
-        groupIds: r.groupIds,
-        createdAt: r.createdAt,
-        createdBy: r.createdBy
+export async function getAllTeachers(): Promise<TeacherInfo[]> {
+    const teachers = await getUsersByRole('teacher');
+    return teachers.map((r) => ({
+        userId: r.user_id,
+        groupIds: r.groups ?? [],
+        createdAt: r.created_at,
+        createdBy: r.created_by
     }));
 }
 
-/**
- * Get all admins
- */
-export function getAllAdmins(): StoredRole[] {
+export async function getAllAdmins(): Promise<DBRole[]> {
     return getUsersByRole('admin');
 }
 
-/**
- * Check if there are any admin users
- */
-export function hasAnyAdmins(): boolean {
-    return getAllAdmins().length > 0;
+export async function hasAnyAdmins(): Promise<boolean> {
+    const result = await query<{ exists: boolean }>(
+        'SELECT EXISTS(SELECT 1 FROM roles WHERE role = $1) as exists',
+        ['admin']
+    );
+    return result.rows[0]?.exists ?? false;
 }
 
-/**
- * Check if user has a specific role
- */
-export function hasRole(userId: string, role: UserRole): boolean {
-    const roles = getUserRoles(userId);
-    return roles.some((r) => r.role === role);
+export async function hasRole(userId: string, role: UserRole): Promise<boolean> {
+    const result = await query<{ exists: boolean }>(
+        'SELECT EXISTS(SELECT 1 FROM roles WHERE user_id = $1 AND role = $2) as exists',
+        [userId, role]
+    );
+    return result.rows[0]?.exists ?? false;
 }
 
-/**
- * Check if user is admin
- */
-export function isAdmin(userId: string): boolean {
+export async function isAdmin(userId: string): Promise<boolean> {
     return hasRole(userId, 'admin');
 }
 
-/**
- * Check if user can approve for a specific group
- */
-export function canApproveForGroup(userId: string, groupId: string): boolean {
-    const roles = getUserRoles(userId);
-
+export async function canApproveForGroup(userId: string, groupId: string): Promise<boolean> {
     // Admin can approve any group
-    if (roles.some((r) => r.role === 'admin')) {
+    const isAdminUser = await isAdmin(userId);
+    if (isAdminUser) {
         return true;
     }
 
     // Teacher can approve their assigned groups
-    return roles.some(
-        (r) => r.role === 'teacher' && r.groupIds.includes(groupId)
+    const result = await query<{ exists: boolean }>(
+        `SELECT EXISTS(
+            SELECT 1 FROM roles 
+            WHERE user_id = $1 
+            AND role = 'teacher' 
+            AND $2 = ANY(groups)
+        ) as exists`,
+        [userId, groupId]
     );
+    return result.rows[0]?.exists ?? false;
 }
 
-/**
- * Get groups user can approve for
- */
-export function getApprovalGroups(userId: string): string[] | 'all' {
-    const roles = getUserRoles(userId);
-
-    if (roles.some((r) => r.role === 'admin')) {
+export async function getApprovalGroups(userId: string): Promise<string[] | 'all'> {
+    const isAdminUser = await isAdmin(userId);
+    if (isAdminUser) {
         return 'all';
     }
 
-    const groups = new Set<string>();
-    roles
-        .filter((r) => r.role === 'teacher')
-        .forEach((r) => {
-            r.groupIds.forEach((g) => groups.add(g));
-        });
+    const result = await query<{ groups: string[] }>(
+        `SELECT groups FROM roles WHERE user_id = $1 AND role = 'teacher'`,
+        [userId]
+    );
 
-    return Array.from(groups);
+    const allGroups = new Set<string>();
+    result.rows.forEach((row) => {
+        (row.groups ?? []).forEach((g) => allGroups.add(g));
+    });
+
+    return Array.from(allGroups);
 }
 
-/**
- * Assign a role to a user
- */
-export function assignRole(roleData: AssignRoleData & { createdBy?: string }): StoredRole {
+export async function assignRole(roleData: AssignRoleData & { createdBy?: string }): Promise<DBRole> {
     const { userId, role, groups, createdBy = 'system' } = roleData;
 
     if (!VALID_ROLES.includes(role)) {
         throw new Error(`Invalid role: ${role}. Must be one of: ${VALID_ROLES.join(', ')}`);
     }
 
-    const data = loadData();
-    const existingRole = data.roles.find(
-        (r) => r.userId === userId && r.role === role && r.revokedAt === null
+    // Check if role already exists
+    const existing = await query<DBRole>(
+        'SELECT * FROM roles WHERE user_id = $1 AND role = $2',
+        [userId, role]
     );
 
-    if (existingRole !== undefined) {
-        const uniqueGroups = [...new Set([...existingRole.groupIds, ...groups])];
-        existingRole.groupIds = uniqueGroups;
-        existingRole.updatedAt = new Date().toISOString();
-        saveData(data);
-        return existingRole;
+    if (existing.rows[0]) {
+        // Update existing role's groups
+        const uniqueGroups = [...new Set([...(existing.rows[0].groups ?? []), ...groups])];
+        const result = await query<DBRole>(
+            'UPDATE roles SET groups = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+            [uniqueGroups, existing.rows[0].id]
+        );
+        return result.rows[0]!;
     }
 
-    const newRole: StoredRole = {
-        id: `role_${uuidv4().slice(0, 8)}`,
-        userId,
-        role,
-        groupIds: role === 'teacher' ? groups : [],
-        createdBy,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        revokedAt: null
-    };
+    // Create new role
+    const id = `role_${uuidv4().slice(0, 8)}`;
+    const groupsToStore = role === 'teacher' ? groups : [];
 
-    data.roles.push(newRole);
-    saveData(data);
+    const result = await query<DBRole>(
+        `INSERT INTO roles (id, user_id, role, groups, created_by)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING *`,
+        [id, userId, role, groupsToStore, createdBy]
+    );
 
-    return newRole;
+    return result.rows[0]!;
 }
 
-/**
- * Update groups for a teacher role
- */
-export function updateRoleGroups(roleId: string, groupIds: string[]): StoredRole | null {
-    const data = loadData();
-    const index = data.roles.findIndex((r) => r.id === roleId);
-
-    if (index === -1) return null;
-    const role = data.roles[index];
-    if (role?.revokedAt !== null) return null;
-
-    role.groupIds = groupIds;
-    role.updatedAt = new Date().toISOString();
-    saveData(data);
-
-    return role;
+export async function updateRoleGroups(roleId: string, groupIds: string[]): Promise<DBRole | null> {
+    const result = await query<DBRole>(
+        'UPDATE roles SET groups = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+        [groupIds, roleId]
+    );
+    return result.rows[0] ?? null;
 }
 
-/**
- * Add groups to a teacher role
- */
-export function addGroupsToRole(roleId: string, groupIds: string[]): StoredRole | null {
-    const data = loadData();
-    const index = data.roles.findIndex((r) => r.id === roleId);
+export async function addGroupsToRole(roleId: string, groupIds: string[]): Promise<DBRole | null> {
+    const role = await getRoleById(roleId);
+    if (!role) return null;
 
-    if (index === -1) return null;
-    const role = data.roles[index];
-    if (role?.revokedAt !== null) return null;
-
-    role.groupIds = [...new Set([...role.groupIds, ...groupIds])];
-    role.updatedAt = new Date().toISOString();
-    saveData(data);
-
-    return role;
+    const uniqueGroups = [...new Set([...(role.groups ?? []), ...groupIds])];
+    return updateRoleGroups(roleId, uniqueGroups);
 }
 
-/**
- * Remove groups from a teacher role
- */
-export function removeGroupsFromRole(roleId: string, groupIds: string[]): StoredRole | null {
-    const data = loadData();
-    const index = data.roles.findIndex((r) => r.id === roleId);
+export async function removeGroupsFromRole(roleId: string, groupIds: string[]): Promise<DBRole | null> {
+    const role = await getRoleById(roleId);
+    if (!role) return null;
 
-    if (index === -1) return null;
-    const role = data.roles[index];
-    if (role?.revokedAt !== null) return null;
-
-    role.groupIds = role.groupIds.filter((g) => !groupIds.includes(g));
-    role.updatedAt = new Date().toISOString();
-    saveData(data);
-
-    return role;
+    const filteredGroups = (role.groups ?? []).filter((g) => !groupIds.includes(g));
+    return updateRoleGroups(roleId, filteredGroups);
 }
 
-/**
- * Revoke a role (soft delete)
- */
-export function revokeRole(roleId: string, revokedBy?: string): StoredRole | null {
-    const data = loadData();
-    const index = data.roles.findIndex((r) => r.id === roleId);
-
-    if (index === -1) return null;
-    const role = data.roles[index];
-    if (role?.revokedAt !== null) return null;
-
-    role.revokedAt = new Date().toISOString();
-    role.revokedBy = revokedBy ?? 'system';
-    role.updatedAt = new Date().toISOString();
-    saveData(data);
-
-    return role;
+export async function revokeRole(roleId: string, revokedBy?: string): Promise<boolean> {
+    const result = await query(
+        'DELETE FROM roles WHERE id = $1',
+        [roleId]
+    );
+    return (result.rowCount ?? 0) > 0;
 }
 
-/**
- * Revoke all roles for a user
- */
-export function revokeAllUserRoles(userId: string, revokedBy?: string): number {
-    const data = loadData();
-    let count = 0;
-
-    data.roles.forEach((r) => {
-        if (r.userId === userId && r.revokedAt === null) {
-            r.revokedAt = new Date().toISOString();
-            r.revokedBy = revokedBy ?? 'system';
-            r.updatedAt = new Date().toISOString();
-            count++;
-        }
-    });
-
-    saveData(data);
-    return count;
+export async function revokeAllUserRoles(userId: string, revokedBy?: string): Promise<number> {
+    const result = await query(
+        'DELETE FROM roles WHERE user_id = $1',
+        [userId]
+    );
+    return result.rowCount ?? 0;
 }
 
-/**
- * Remove all roles for a specific group
- */
-export function removeGroupFromAllRoles(groupId: string): number {
-    const data = loadData();
-    let count = 0;
-
-    data.roles.forEach((r) => {
-        if (r.groupIds.includes(groupId)) {
-            r.groupIds = r.groupIds.filter((g) => g !== groupId);
-            r.updatedAt = new Date().toISOString();
-            count++;
-        }
-    });
-
-    saveData(data);
-    return count;
+export async function removeGroupFromAllRoles(groupId: string): Promise<number> {
+    const result = await query(
+        `UPDATE roles 
+         SET groups = array_remove(groups, $1), 
+             updated_at = NOW()
+         WHERE $1 = ANY(groups)`,
+        [groupId]
+    );
+    return result.rowCount ?? 0;
 }
 
-/**
- * Get role by ID
- */
-export function getRoleById(roleId: string): StoredRole | null {
-    const data = loadData();
-    return data.roles.find((r) => r.id === roleId) ?? null;
+export async function getRoleById(roleId: string): Promise<DBRole | null> {
+    const result = await query<DBRole>(
+        'SELECT * FROM roles WHERE id = $1',
+        [roleId]
+    );
+    return result.rows[0] ?? null;
 }
 
-/**
- * Get roles by user ID (for IRoleStorage interface)
- */
-export function getRolesByUser(userId: string): Role[] {
-    return getUserRoles(userId).map(toRoleType);
+export async function getRolesByUser(userId: string): Promise<Role[]> {
+    const roles = await getUserRoles(userId);
+    return roles.map(toRoleType);
 }
 
-/**
- * Get users with a specific role (user IDs only)
- */
-export function getUsersWithRole(role: UserRole): string[] {
-    return getUsersByRole(role).map((r) => r.userId);
+export async function getUsersWithRole(role: UserRole): Promise<string[]> {
+    const roles = await getUsersByRole(role);
+    return roles.map((r) => r.user_id);
 }
 
-/**
- * Update role
- */
-export function updateRole(roleId: string, data: Partial<Role>): Role | null {
-    const stored = getRoleById(roleId);
-    if (!stored) return null;
-
+export async function updateRole(roleId: string, data: Partial<Role>): Promise<Role | null> {
     if (data.groups) {
-        const updated = updateRoleGroups(roleId, data.groups);
+        const updated = await updateRoleGroups(roleId, data.groups);
         return updated ? toRoleType(updated) : null;
     }
 
-    return toRoleType(stored);
+    const role = await getRoleById(roleId);
+    return role ? toRoleType(role) : null;
 }
 
-/**
- * Get role statistics
- */
-export function getStats(): RoleStats {
-    const data = loadData();
-    const active = data.roles.filter((r) => r.revokedAt === null);
+export async function getStats(): Promise<RoleStats> {
+    const result = await query<{ role: UserRole; count: string }>(
+        'SELECT role, COUNT(*) as count FROM roles GROUP BY role'
+    );
 
-    return {
-        total: data.roles.length,
-        active: active.length,
-        admins: active.filter((r) => r.role === 'admin').length,
-        teachers: active.filter((r) => r.role === 'teacher').length,
-        students: active.filter((r) => r.role === 'student').length
+    const stats = {
+        total: 0,
+        active: 0,
+        admins: 0,
+        teachers: 0,
+        students: 0
     };
+
+    result.rows.forEach((row) => {
+        const count = parseInt(row.count, 10);
+        stats.total += count;
+        stats.active += count;
+        if (row.role === 'admin') stats.admins = count;
+        if (row.role === 'teacher') stats.teachers = count;
+        if (row.role === 'student') stats.students = count;
+    });
+
+    return stats;
 }
 
 // =============================================================================
@@ -408,15 +296,15 @@ export function getStats(): RoleStats {
 
 export const roleStorage: IRoleStorage = {
     getRolesByUser,
-    getRoleById: (roleId: string) => {
-        const stored = getRoleById(roleId);
-        return stored ? toRoleType(stored) : null;
+    getRoleById: async (roleId: string) => {
+        const role = await getRoleById(roleId);
+        return role ? toRoleType(role) : null;
     },
     getUsersWithRole,
-    assignRole: (data: AssignRoleData) => toRoleType(assignRole(data)),
+    assignRole: async (data: AssignRoleData) => toRoleType(await assignRole(data)),
     updateRole,
-    revokeRole: (roleId: string) => revokeRole(roleId) !== null,
-    revokeAllUserRoles: (userId: string) => revokeAllUserRoles(userId)
+    revokeRole,
+    revokeAllUserRoles
 };
 
 export default roleStorage;

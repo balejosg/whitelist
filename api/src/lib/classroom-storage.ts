@@ -2,31 +2,19 @@
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
  *
- * Classroom Storage - JSON file-based classroom and machine management
+ * Classroom Storage - PostgreSQL-based classroom and machine management
  */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
 import { v4 as uuidv4 } from 'uuid';
+import { query } from './db.js';
 import type { Classroom, MachineStatus } from '../types/index.js';
 import type { IClassroomStorage, CreateClassroomData, UpdateClassroomData } from '../types/storage.js';
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = process.env.DATA_DIR ?? path.join(__dirname, '..', '..', 'data');
-const CLASSROOMS_FILE = path.join(DATA_DIR, 'classrooms.json');
-const MACHINES_FILE = path.join(DATA_DIR, 'machines.json');
 
 // =============================================================================
 // Types
 // =============================================================================
 
-interface StoredClassroom {
+interface DBClassroom {
     id: string;
     name: string;
     display_name: string;
@@ -36,7 +24,7 @@ interface StoredClassroom {
     updated_at: string;
 }
 
-interface StoredMachine {
+interface DBMachine {
     id: string;
     hostname: string;
     classroom_id: string;
@@ -46,15 +34,7 @@ interface StoredMachine {
     updated_at: string;
 }
 
-interface ClassroomsData {
-    classrooms: StoredClassroom[];
-}
-
-interface MachinesData {
-    machines: StoredMachine[];
-}
-
-interface ClassroomWithCount extends StoredClassroom {
+interface ClassroomWithCount extends DBClassroom {
     machine_count: number;
 }
 
@@ -73,65 +53,21 @@ interface ClassroomStats {
 }
 
 // =============================================================================
-// Initialization
+// Helper Functions
 // =============================================================================
 
-if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-
-if (!fs.existsSync(CLASSROOMS_FILE)) {
-    fs.writeFileSync(CLASSROOMS_FILE, JSON.stringify({ classrooms: [] }, null, 2));
-}
-
-if (!fs.existsSync(MACHINES_FILE)) {
-    fs.writeFileSync(MACHINES_FILE, JSON.stringify({ machines: [] }, null, 2));
-}
-
-// =============================================================================
-// Data Access
-// =============================================================================
-
-function loadClassrooms(): ClassroomsData {
-    try {
-        const data = fs.readFileSync(CLASSROOMS_FILE, 'utf-8');
-        return JSON.parse(data) as ClassroomsData;
-    } catch (error) {
-        console.error('Error loading classrooms:', error);
-        return { classrooms: [] };
-    }
-}
-
-function saveClassrooms(data: ClassroomsData): void {
-    fs.writeFileSync(CLASSROOMS_FILE, JSON.stringify(data, null, 2));
-}
-
-function loadMachines(): MachinesData {
-    try {
-        const data = fs.readFileSync(MACHINES_FILE, 'utf-8');
-        return JSON.parse(data) as MachinesData;
-    } catch (error) {
-        console.error('Error loading machines:', error);
-        return { machines: [] };
-    }
-}
-
-function saveMachines(data: MachinesData): void {
-    fs.writeFileSync(MACHINES_FILE, JSON.stringify(data, null, 2));
-}
-
-function toClassroomType(stored: StoredClassroom, machines: StoredMachine[] = []): Classroom {
+function toClassroomType(classroom: DBClassroom, machines: DBMachine[] = []): Classroom {
     return {
-        id: stored.id,
-        name: stored.name,
-        display_name: stored.display_name,
+        id: classroom.id,
+        name: classroom.name,
+        display_name: classroom.display_name,
         machines: machines.map((m) => ({
             hostname: m.hostname,
             last_seen: m.last_seen,
             status: 'unknown' as MachineStatus
         })),
-        created_at: stored.created_at,
-        updated_at: stored.updated_at
+        created_at: classroom.created_at,
+        updated_at: classroom.updated_at
     };
 }
 
@@ -139,221 +75,212 @@ function toClassroomType(stored: StoredClassroom, machines: StoredMachine[] = []
 // Classroom CRUD
 // =============================================================================
 
-export function getAllClassrooms(): ClassroomWithCount[] {
-    const data = loadClassrooms();
-    const machinesData = loadMachines();
-
-    return data.classrooms.map((c) => ({
-        ...c,
-        machine_count: machinesData.machines.filter((m) => m.classroom_id === c.id).length
-    }));
+export async function getAllClassrooms(): Promise<ClassroomWithCount[]> {
+    const result = await query<ClassroomWithCount>(
+        `SELECT c.*, COUNT(m.id)::int as machine_count
+         FROM classrooms c
+         LEFT JOIN machines m ON m.classroom_id = c.id
+         GROUP BY c.id
+         ORDER BY c.created_at DESC`
+    );
+    return result.rows;
 }
 
-export function getClassroomById(id: string): StoredClassroom | null {
-    const data = loadClassrooms();
-    return data.classrooms.find((c) => c.id === id) ?? null;
+export async function getClassroomById(id: string): Promise<DBClassroom | null> {
+    const result = await query<DBClassroom>(
+        'SELECT * FROM classrooms WHERE id = $1',
+        [id]
+    );
+    return result.rows[0] ?? null;
 }
 
-export function getClassroomByName(name: string): StoredClassroom | null {
-    const data = loadClassrooms();
-    return data.classrooms.find((c) => c.name === name.toLowerCase()) ?? null;
+export async function getClassroomByName(name: string): Promise<DBClassroom | null> {
+    const result = await query<DBClassroom>(
+        'SELECT * FROM classrooms WHERE LOWER(name) = LOWER($1)',
+        [name]
+    );
+    return result.rows[0] ?? null;
 }
 
-export function createClassroom(classroomData: CreateClassroomData & { defaultGroupId?: string }): StoredClassroom {
-    const data = loadClassrooms();
+export async function createClassroom(
+    classroomData: CreateClassroomData & { defaultGroupId?: string }
+): Promise<DBClassroom> {
     const { name, displayName, defaultGroupId } = classroomData;
-
     const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 
-    if (data.classrooms.find((c) => c.name === slug)) {
+    // Check if exists
+    const existing = await getClassroomByName(slug);
+    if (existing) {
         throw new Error(`Classroom with name "${slug}" already exists`);
     }
 
-    const classroom: StoredClassroom = {
-        id: `room_${uuidv4().slice(0, 8)}`,
-        name: slug,
-        display_name: displayName ?? name,
-        default_group_id: defaultGroupId ?? null,
-        active_group_id: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-    };
+    const id = `room_${uuidv4().slice(0, 8)}`;
 
-    data.classrooms.push(classroom);
-    saveClassrooms(data);
+    const result = await query<DBClassroom>(
+        `INSERT INTO classrooms (id, name, display_name, default_group_id)
+         VALUES ($1, $2, $3, $4)
+         RETURNING *`,
+        [id, slug, displayName ?? name, defaultGroupId ?? null]
+    );
 
-    return classroom;
+    return result.rows[0]!;
 }
 
-export function updateClassroom(id: string, updates: UpdateClassroomData & { defaultGroupId?: string }): StoredClassroom | null {
-    const data = loadClassrooms();
-    const index = data.classrooms.findIndex((c) => c.id === id);
-
-    if (index === -1) return null;
-    const classroom = data.classrooms[index];
-    if (classroom === undefined) return null;
+export async function updateClassroom(
+    id: string,
+    updates: UpdateClassroomData & { defaultGroupId?: string }
+): Promise<DBClassroom | null> {
+    const setClauses: string[] = [];
+    const values: unknown[] = [];
+    let paramIndex = 1;
 
     if (updates.displayName !== undefined) {
-        classroom.display_name = updates.displayName;
+        setClauses.push(`display_name = $${paramIndex++}`);
+        values.push(updates.displayName);
     }
     if (updates.defaultGroupId !== undefined) {
-        classroom.default_group_id = updates.defaultGroupId;
+        setClauses.push(`default_group_id = $${paramIndex++}`);
+        values.push(updates.defaultGroupId);
     }
 
-    classroom.updated_at = new Date().toISOString();
-    saveClassrooms(data);
+    if (setClauses.length === 0) {
+        return getClassroomById(id);
+    }
 
-    return classroom;
+    values.push(id);
+    const result = await query<DBClassroom>(
+        `UPDATE classrooms SET ${setClauses.join(', ')}
+         WHERE id = $${paramIndex}
+         RETURNING *`,
+        values
+    );
+
+    return result.rows[0] ?? null;
 }
 
-export function setActiveGroup(id: string, groupId: string | null): StoredClassroom | null {
-    const data = loadClassrooms();
-    const index = data.classrooms.findIndex((c) => c.id === id);
-
-    if (index === -1) return null;
-    const classroom = data.classrooms[index];
-    if (classroom === undefined) return null;
-
-    classroom.active_group_id = groupId;
-    classroom.updated_at = new Date().toISOString();
-    saveClassrooms(data);
-
-    return classroom;
+export async function setActiveGroup(id: string, groupId: string | null): Promise<DBClassroom | null> {
+    const result = await query<DBClassroom>(
+        'UPDATE classrooms SET active_group_id = $1 WHERE id = $2 RETURNING *',
+        [groupId, id]
+    );
+    return result.rows[0] ?? null;
 }
 
-export function getCurrentGroupId(id: string): string | null {
-    const classroom = getClassroomById(id);
-    if (classroom === null) return null;
+export async function getCurrentGroupId(id: string): Promise<string | null> {
+    const classroom = await getClassroomById(id);
+    if (!classroom) return null;
     return classroom.active_group_id ?? classroom.default_group_id;
 }
 
-export function deleteClassroom(id: string): boolean {
-    const data = loadClassrooms();
-    const initialLength = data.classrooms.length;
-    data.classrooms = data.classrooms.filter((c) => c.id !== id);
-
-    if (data.classrooms.length < initialLength) {
-        saveClassrooms(data);
-        removeMachinesByClassroom(id);
-        return true;
-    }
-    return false;
+export async function deleteClassroom(id: string): Promise<boolean> {
+    const result = await query(
+        'DELETE FROM classrooms WHERE id = $1',
+        [id]
+    );
+    return (result.rowCount ?? 0) > 0;
 }
 
 // =============================================================================
 // Machine CRUD
 // =============================================================================
 
-export function getAllMachines(): StoredMachine[] {
-    const data = loadMachines();
-    return data.machines;
+export async function getAllMachines(): Promise<DBMachine[]> {
+    const result = await query<DBMachine>(
+        'SELECT * FROM machines ORDER BY created_at DESC'
+    );
+    return result.rows;
 }
 
-export function getMachinesByClassroom(classroomId: string): StoredMachine[] {
-    const data = loadMachines();
-    return data.machines.filter((m) => m.classroom_id === classroomId);
+export async function getMachinesByClassroom(classroomId: string): Promise<DBMachine[]> {
+    const result = await query<DBMachine>(
+        'SELECT * FROM machines WHERE classroom_id = $1',
+        [classroomId]
+    );
+    return result.rows;
 }
 
-export function getMachineByHostname(hostname: string): StoredMachine | null {
-    const data = loadMachines();
-    return data.machines.find((m) => m.hostname.toLowerCase() === hostname.toLowerCase()) ?? null;
+export async function getMachineByHostname(hostname: string): Promise<DBMachine | null> {
+    const result = await query<DBMachine>(
+        'SELECT * FROM machines WHERE LOWER(hostname) = LOWER($1)',
+        [hostname]
+    );
+    return result.rows[0] ?? null;
 }
 
-export function registerMachine(machineData: { hostname: string; classroomId: string; version?: string }): StoredMachine {
-    const data = loadMachines();
+export async function registerMachine(machineData: {
+    hostname: string;
+    classroomId: string;
+    version?: string;
+}): Promise<DBMachine> {
     const { hostname, classroomId, version } = machineData;
     const normalizedHostname = hostname.toLowerCase();
 
-    const existingIndex = data.machines.findIndex(
-        (m) => m.hostname.toLowerCase() === normalizedHostname
-    );
-
-    if (existingIndex !== -1) {
-        const existing = data.machines[existingIndex];
-        if (existing !== undefined) {
-            existing.classroom_id = classroomId;
-            existing.version = version ?? existing.version;
-            existing.last_seen = new Date().toISOString();
-            existing.updated_at = new Date().toISOString();
-            saveMachines(data);
-            return existing;
-        }
+    // Check if machine already exists
+    const existing = await getMachineByHostname(normalizedHostname);
+    if (existing) {
+        // Update existing machine
+        const result = await query<DBMachine>(
+            `UPDATE machines 
+             SET classroom_id = $1, version = $2, last_seen = NOW()
+             WHERE id = $3
+             RETURNING *`,
+            [classroomId, version ?? existing.version, existing.id]
+        );
+        return result.rows[0]!;
     }
 
-    const machine: StoredMachine = {
-        id: `machine_${uuidv4().slice(0, 8)}`,
-        hostname: normalizedHostname,
-        classroom_id: classroomId,
-        version: version ?? 'unknown',
-        last_seen: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-    };
-
-    data.machines.push(machine);
-    saveMachines(data);
-
-    return machine;
-}
-
-export function updateMachineLastSeen(hostname: string): StoredMachine | null {
-    const data = loadMachines();
-    const index = data.machines.findIndex(
-        (m) => m.hostname.toLowerCase() === hostname.toLowerCase()
+    // Create new machine
+    const id = `machine_${uuidv4().slice(0, 8)}`;
+    const result = await query<DBMachine>(
+        `INSERT INTO machines (id, hostname, classroom_id, version)
+         VALUES ($1, $2, $3, $4)
+         RETURNING *`,
+        [id, normalizedHostname, classroomId, version ?? 'unknown']
     );
 
-    if (index === -1) return null;
-    const machine = data.machines[index];
-    if (machine === undefined) return null;
-
-    machine.last_seen = new Date().toISOString();
-    saveMachines(data);
-
-    return machine;
+    return result.rows[0]!;
 }
 
-export function deleteMachine(hostname: string): boolean {
-    const data = loadMachines();
-    const initialLength = data.machines.length;
-    data.machines = data.machines.filter(
-        (m) => m.hostname.toLowerCase() !== hostname.toLowerCase()
+export async function updateMachineLastSeen(hostname: string): Promise<DBMachine | null> {
+    const result = await query<DBMachine>(
+        'UPDATE machines SET last_seen = NOW() WHERE LOWER(hostname) = LOWER($1) RETURNING *',
+        [hostname]
     );
-
-    if (data.machines.length < initialLength) {
-        saveMachines(data);
-        return true;
-    }
-    return false;
+    return result.rows[0] ?? null;
 }
 
-export function removeMachinesByClassroom(classroomId: string): number {
-    const data = loadMachines();
-    const initialLength = data.machines.length;
-    data.machines = data.machines.filter((m) => m.classroom_id !== classroomId);
-
-    if (data.machines.length < initialLength) {
-        saveMachines(data);
-    }
-    return initialLength - data.machines.length;
+export async function deleteMachine(hostname: string): Promise<boolean> {
+    const result = await query(
+        'DELETE FROM machines WHERE LOWER(hostname) = LOWER($1)',
+        [hostname]
+    );
+    return (result.rowCount ?? 0) > 0;
 }
 
-export function getWhitelistUrlForMachine(hostname: string): WhitelistUrlResult | null {
-    const machine = getMachineByHostname(hostname);
-    if (machine === null) return null;
+export async function removeMachinesByClassroom(classroomId: string): Promise<number> {
+    const result = await query(
+        'DELETE FROM machines WHERE classroom_id = $1',
+        [classroomId]
+    );
+    return result.rowCount ?? 0;
+}
 
-    const classroom = getClassroomById(machine.classroom_id);
-    if (classroom === null) return null;
+export async function getWhitelistUrlForMachine(hostname: string): Promise<WhitelistUrlResult | null> {
+    const machine = await getMachineByHostname(hostname);
+    if (!machine) return null;
+
+    const classroom = await getClassroomById(machine.classroom_id);
+    if (!classroom) return null;
 
     let groupId = classroom.active_group_id;
     let source: 'manual' | 'schedule' | 'default' = 'manual';
 
     if (groupId === null) {
+        // Try to get from schedule
         try {
-            // Dynamic import would be better but keeping consistent with original
-            const require = createRequire(import.meta.url);
-            const scheduleStorage = require('./schedule-storage.js') as { getCurrentSchedule: (id: string) => { group_id: string } | null | undefined };
-            const currentSchedule = scheduleStorage.getCurrentSchedule(classroom.id);
-            if (currentSchedule !== null && currentSchedule !== undefined) {
+            const { getCurrentSchedule } = await import('./schedule-storage.js');
+            const currentSchedule = await getCurrentSchedule(classroom.id);
+            if (currentSchedule) {
                 groupId = currentSchedule.group_id;
                 source = 'schedule';
             }
@@ -383,14 +310,22 @@ export function getWhitelistUrlForMachine(hostname: string): WhitelistUrlResult 
     };
 }
 
-export function getStats(): ClassroomStats {
-    const classrooms = loadClassrooms();
-    const machines = loadMachines();
+export async function getStats(): Promise<ClassroomStats> {
+    const classroomResult = await query<{ total: string; active: string }>(
+        `SELECT 
+            COUNT(*)::text as total,
+            COUNT(*) FILTER (WHERE active_group_id IS NOT NULL)::text as active
+         FROM classrooms`
+    );
+
+    const machineResult = await query<{ total: string }>(
+        'SELECT COUNT(*)::text as total FROM machines'
+    );
 
     return {
-        classrooms: classrooms.classrooms.length,
-        machines: machines.machines.length,
-        classroomsWithActiveGroup: classrooms.classrooms.filter((c) => c.active_group_id !== null).length
+        classrooms: parseInt(classroomResult.rows[0]?.total ?? '0', 10),
+        machines: parseInt(machineResult.rows[0]?.total ?? '0', 10),
+        classroomsWithActiveGroup: parseInt(classroomResult.rows[0]?.active ?? '0', 10)
     };
 }
 
@@ -399,53 +334,58 @@ export function getStats(): ClassroomStats {
 // =============================================================================
 
 export const classroomStorage: IClassroomStorage = {
-    getAllClassrooms: () => {
-        const machinesData = loadMachines();
-        return loadClassrooms().classrooms.map((c) =>
-            toClassroomType(c, machinesData.machines.filter((m) => m.classroom_id === c.id))
-        );
+    getAllClassrooms: async () => {
+        const classrooms = await getAllClassrooms();
+        const result: Classroom[] = [];
+
+        for (const c of classrooms) {
+            const machines = await getMachinesByClassroom(c.id);
+            result.push(toClassroomType(c, machines));
+        }
+
+        return result;
     },
-    getClassroomById: (id: string) => {
-        const stored = getClassroomById(id);
-        if (!stored) return null;
-        const machines = getMachinesByClassroom(id);
-        return toClassroomType(stored, machines);
+    getClassroomById: async (id: string) => {
+        const classroom = await getClassroomById(id);
+        if (!classroom) return null;
+        const machines = await getMachinesByClassroom(id);
+        return toClassroomType(classroom, machines);
     },
-    getClassroomByName: (name: string) => {
-        const stored = getClassroomByName(name);
-        if (!stored) return null;
-        const machines = getMachinesByClassroom(stored.id);
-        return toClassroomType(stored, machines);
+    getClassroomByName: async (name: string) => {
+        const classroom = await getClassroomByName(name);
+        if (!classroom) return null;
+        const machines = await getMachinesByClassroom(classroom.id);
+        return toClassroomType(classroom, machines);
     },
-    createClassroom: (data: CreateClassroomData) => {
-        const stored = createClassroom(data);
-        return toClassroomType(stored);
+    createClassroom: async (data: CreateClassroomData) => {
+        const classroom = await createClassroom(data);
+        return toClassroomType(classroom);
     },
-    updateClassroom: (id: string, data: UpdateClassroomData) => {
-        const stored = updateClassroom(id, data);
-        if (!stored) return null;
-        const machines = getMachinesByClassroom(id);
-        return toClassroomType(stored, machines);
+    updateClassroom: async (id: string, data: UpdateClassroomData) => {
+        const classroom = await updateClassroom(id, data);
+        if (!classroom) return null;
+        const machines = await getMachinesByClassroom(id);
+        return toClassroomType(classroom, machines);
     },
     deleteClassroom,
-    addMachine: (classroomId: string, hostname: string) => {
-        const machine = registerMachine({ hostname, classroomId });
+    addMachine: async (classroomId: string, hostname: string) => {
+        const machine = await registerMachine({ hostname, classroomId });
         return {
             hostname: machine.hostname,
             last_seen: machine.last_seen,
             status: 'unknown' as MachineStatus
         };
     },
-    removeMachine: (classroomId: string, hostname: string) => {
-        const machine = getMachineByHostname(hostname);
+    removeMachine: async (classroomId: string, hostname: string) => {
+        const machine = await getMachineByHostname(hostname);
         if (machine?.classroom_id !== classroomId) return false;
         return deleteMachine(hostname);
     },
-    getMachineByHostname: (hostname: string) => {
-        const machine = getMachineByHostname(hostname);
-        if (machine === null) return null;
-        const classroom = getClassroomById(machine.classroom_id);
-        if (classroom === null) return null;
+    getMachineByHostname: async (hostname: string) => {
+        const machine = await getMachineByHostname(hostname);
+        if (!machine) return null;
+        const classroom = await getClassroomById(machine.classroom_id);
+        if (!classroom) return null;
         return {
             classroom: toClassroomType(classroom),
             machine: {
@@ -455,8 +395,8 @@ export const classroomStorage: IClassroomStorage = {
             }
         };
     },
-    updateMachineStatus: (hostname: string, _status: 'online' | 'offline') => {
-        const machine = updateMachineLastSeen(hostname);
+    updateMachineStatus: async (hostname: string, _status: 'online' | 'offline') => {
+        const machine = await updateMachineLastSeen(hostname);
         return machine !== null;
     }
 };

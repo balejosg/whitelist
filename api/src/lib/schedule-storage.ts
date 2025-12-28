@@ -2,28 +2,17 @@
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
  *
- * Schedule Storage Module
- * Manages classroom schedules (recurring reservations by teachers)
+ * Schedule Storage - PostgreSQL-based schedule management
  */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = process.env.DATA_DIR ?? path.join(__dirname, '..', '..', 'data');
-const SCHEDULES_FILE = path.join(DATA_DIR, 'schedules.json');
+import { query } from './db.js';
 
 // =============================================================================
 // Types
 // =============================================================================
 
-interface StoredSchedule {
+interface DBSchedule {
     id: string;
     classroom_id: string;
     teacher_id: string;
@@ -36,12 +25,8 @@ interface StoredSchedule {
     updated_at: string;
 }
 
-interface SchedulesData {
-    schedules: StoredSchedule[];
-}
-
 interface ScheduleConflictError extends Error {
-    conflict?: StoredSchedule;
+    conflict?: DBSchedule;
 }
 
 interface CreateScheduleInput {
@@ -59,37 +44,6 @@ interface UpdateScheduleInput {
     end_time?: string | undefined;
     group_id?: string | undefined;
 }
-
-// =============================================================================
-// Initialization
-// =============================================================================
-
-if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-
-if (!fs.existsSync(SCHEDULES_FILE)) {
-    fs.writeFileSync(SCHEDULES_FILE, JSON.stringify({ schedules: [] }, null, 2));
-}
-
-// =============================================================================
-// Data Access
-// =============================================================================
-
-function loadSchedules(): SchedulesData {
-    try {
-        const data = fs.readFileSync(SCHEDULES_FILE, 'utf-8');
-        return JSON.parse(data) as SchedulesData;
-    } catch {
-        return { schedules: [] };
-    }
-}
-
-function saveSchedules(data: SchedulesData): void {
-    fs.writeFileSync(SCHEDULES_FILE, JSON.stringify(data, null, 2));
-}
-
-
 
 // =============================================================================
 // Time Utilities
@@ -120,40 +74,57 @@ export function timesOverlap(
 // Schedule CRUD
 // =============================================================================
 
-export function getSchedulesByClassroom(classroomId: string): StoredSchedule[] {
-    const data = loadSchedules();
-    return data.schedules.filter((s) => s.classroom_id === classroomId);
+export async function getSchedulesByClassroom(classroomId: string): Promise<DBSchedule[]> {
+    const result = await query<DBSchedule>(
+        'SELECT * FROM schedules WHERE classroom_id = $1 ORDER BY day_of_week, start_time',
+        [classroomId]
+    );
+    return result.rows;
 }
 
-export function getSchedulesByTeacher(teacherId: string): StoredSchedule[] {
-    const data = loadSchedules();
-    return data.schedules.filter((s) => s.teacher_id === teacherId);
+export async function getSchedulesByTeacher(teacherId: string): Promise<DBSchedule[]> {
+    const result = await query<DBSchedule>(
+        'SELECT * FROM schedules WHERE teacher_id = $1 ORDER BY day_of_week, start_time',
+        [teacherId]
+    );
+    return result.rows;
 }
 
-export function getScheduleById(id: string): StoredSchedule | null {
-    const data = loadSchedules();
-    return data.schedules.find((s) => s.id === id) ?? null;
+export async function getScheduleById(id: string): Promise<DBSchedule | null> {
+    const result = await query<DBSchedule>(
+        'SELECT * FROM schedules WHERE id = $1::uuid',
+        [id]
+    );
+    return result.rows[0] ?? null;
 }
 
-export function findConflict(
+export async function findConflict(
     classroomId: string,
     dayOfWeek: number,
     startTime: string,
     endTime: string,
     excludeId: string | null = null
-): StoredSchedule | null {
-    const data = loadSchedules();
+): Promise<DBSchedule | null> {
+    let sql = `
+        SELECT * FROM schedules
+        WHERE classroom_id = $1
+        AND day_of_week = $2
+        AND ($3::time, $4::time) OVERLAPS (start_time, end_time)
+    `;
+    const params: unknown[] = [classroomId, dayOfWeek, startTime, endTime];
 
-    return data.schedules.find(
-        (s) =>
-            s.classroom_id === classroomId &&
-            s.day_of_week === dayOfWeek &&
-            s.id !== excludeId &&
-            timesOverlap(s.start_time, s.end_time, startTime, endTime)
-    ) ?? null;
+    if (excludeId !== null) {
+        sql += ' AND id != $5::uuid';
+        params.push(excludeId);
+    }
+
+    sql += ' LIMIT 1';
+
+    const result = await query<DBSchedule>(sql, params);
+    return result.rows[0] ?? null;
 }
 
-export function createSchedule(scheduleData: CreateScheduleInput): StoredSchedule {
+export async function createSchedule(scheduleData: CreateScheduleInput): Promise<DBSchedule> {
     const { classroom_id, teacher_id, group_id, day_of_week, start_time, end_time } = scheduleData;
 
     if (day_of_week < 1 || day_of_week > 5) {
@@ -169,76 +140,87 @@ export function createSchedule(scheduleData: CreateScheduleInput): StoredSchedul
         throw new Error('start_time must be before end_time');
     }
 
-    const conflict = findConflict(classroom_id, day_of_week, start_time, end_time);
+    const conflict = await findConflict(classroom_id, day_of_week, start_time, end_time);
     if (conflict !== null) {
         const error: ScheduleConflictError = new Error('Schedule conflict');
         error.conflict = conflict;
         throw error;
     }
 
-    const data = loadSchedules();
+    const id = crypto.randomUUID();
 
-    const schedule: StoredSchedule = {
-        id: crypto.randomUUID(),
-        classroom_id,
-        teacher_id,
-        group_id,
-        day_of_week,
-        start_time,
-        end_time,
-        recurrence: 'weekly',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-    };
+    const result = await query<DBSchedule>(
+        `INSERT INTO schedules (
+            id, classroom_id, teacher_id, group_id, 
+            day_of_week, start_time, end_time, recurrence
+        ) VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, 'weekly')
+        RETURNING *`,
+        [id, classroom_id, teacher_id, group_id, day_of_week, start_time, end_time]
+    );
 
-    data.schedules.push(schedule);
-    saveSchedules(data);
-
-    return schedule;
+    return result.rows[0]!;
 }
 
-export function updateSchedule(id: string, updates: UpdateScheduleInput): StoredSchedule | null {
-    const data = loadSchedules();
-    const index = data.schedules.findIndex((s) => s.id === id);
-
-    if (index === -1) return null;
-    const schedule = data.schedules[index];
-    if (schedule === undefined) return null;
+export async function updateSchedule(id: string, updates: UpdateScheduleInput): Promise<DBSchedule | null> {
+    const schedule = await getScheduleById(id);
+    if (!schedule) return null;
 
     const newDayOfWeek = updates.day_of_week ?? schedule.day_of_week;
     const newStartTime = updates.start_time ?? schedule.start_time;
     const newEndTime = updates.end_time ?? schedule.end_time;
 
-    const conflict = findConflict(schedule.classroom_id, newDayOfWeek, newStartTime, newEndTime, id);
+    const conflict = await findConflict(schedule.classroom_id, newDayOfWeek, newStartTime, newEndTime, id);
     if (conflict !== null) {
         const error: ScheduleConflictError = new Error('Schedule conflict');
         error.conflict = conflict;
         throw error;
     }
 
-    if (updates.day_of_week !== undefined) schedule.day_of_week = updates.day_of_week;
-    if (updates.start_time !== undefined) schedule.start_time = updates.start_time;
-    if (updates.end_time !== undefined) schedule.end_time = updates.end_time;
-    if (updates.group_id !== undefined) schedule.group_id = updates.group_id;
-    schedule.updated_at = new Date().toISOString();
+    const setClauses: string[] = [];
+    const values: unknown[] = [];
+    let paramIndex = 1;
 
-    saveSchedules(data);
-    return schedule;
-}
-
-export function deleteSchedule(id: string): boolean {
-    const data = loadSchedules();
-    const initialLength = data.schedules.length;
-    data.schedules = data.schedules.filter((s) => s.id !== id);
-
-    if (data.schedules.length < initialLength) {
-        saveSchedules(data);
-        return true;
+    if (updates.day_of_week !== undefined) {
+        setClauses.push(`day_of_week = $${paramIndex++}`);
+        values.push(updates.day_of_week);
     }
-    return false;
+    if (updates.start_time !== undefined) {
+        setClauses.push(`start_time = $${paramIndex++}`);
+        values.push(updates.start_time);
+    }
+    if (updates.end_time !== undefined) {
+        setClauses.push(`end_time = $${paramIndex++}`);
+        values.push(updates.end_time);
+    }
+    if (updates.group_id !== undefined) {
+        setClauses.push(`group_id = $${paramIndex++}`);
+        values.push(updates.group_id);
+    }
+
+    if (setClauses.length === 0) {
+        return schedule;
+    }
+
+    values.push(id);
+    const result = await query<DBSchedule>(
+        `UPDATE schedules SET ${setClauses.join(', ')}
+         WHERE id = $${paramIndex}::uuid
+         RETURNING *`,
+        values
+    );
+
+    return result.rows[0] ?? null;
 }
 
-export function getCurrentSchedule(classroomId: string, date: Date = new Date()): StoredSchedule | null {
+export async function deleteSchedule(id: string): Promise<boolean> {
+    const result = await query(
+        'DELETE FROM schedules WHERE id = $1::uuid',
+        [id]
+    );
+    return (result.rowCount ?? 0) > 0;
+}
+
+export async function getCurrentSchedule(classroomId: string, date: Date = new Date()): Promise<DBSchedule | null> {
     const dayOfWeek = date.getDay();
 
     if (dayOfWeek === 0 || dayOfWeek === 6) {
@@ -246,25 +228,26 @@ export function getCurrentSchedule(classroomId: string, date: Date = new Date())
     }
 
     const currentTime = date.toTimeString().slice(0, 5);
-    const currentMinutes = timeToMinutes(currentTime);
 
-    const data = loadSchedules();
+    const result = await query<DBSchedule>(
+        `SELECT * FROM schedules
+         WHERE classroom_id = $1
+         AND day_of_week = $2
+         AND start_time <= $3::time
+         AND end_time > $3::time
+         LIMIT 1`,
+        [classroomId, dayOfWeek, currentTime]
+    );
 
-    return data.schedules.find(
-        (s) =>
-            s.classroom_id === classroomId &&
-            s.day_of_week === dayOfWeek &&
-            timeToMinutes(s.start_time) <= currentMinutes &&
-            timeToMinutes(s.end_time) > currentMinutes
-    ) ?? null;
+    return result.rows[0] ?? null;
 }
 
-export function deleteSchedulesByClassroom(classroomId: string): number {
-    const data = loadSchedules();
-    const initialLength = data.schedules.length;
-    data.schedules = data.schedules.filter((s) => s.classroom_id !== classroomId);
-    saveSchedules(data);
-    return initialLength - data.schedules.length;
+export async function deleteSchedulesByClassroom(classroomId: string): Promise<number> {
+    const result = await query(
+        'DELETE FROM schedules WHERE classroom_id = $1',
+        [classroomId]
+    );
+    return result.rowCount ?? 0;
 }
 
 export default {

@@ -6,17 +6,20 @@ import * as userStorage from '../../lib/user-storage.js';
 import * as roleStorage from '../../lib/role-storage.js';
 
 export const usersRouter = router({
-    list: adminProcedure.query(() => {
-        const users = userStorage.getAllUsers();
-        return users.map(u => ({ ...u, roles: roleStorage.getUserRoles(u.id) }));
+    list: adminProcedure.query(async () => {
+        const users = await userStorage.getAllUsers();
+        return Promise.all(users.map(async (u: SafeUser) => {
+            const roles = await roleStorage.getUserRoles(u.id);
+            return { ...u, roles };
+        }));
     }),
 
     get: adminProcedure
         .input(z.object({ id: z.string() }))
-        .query(({ input }) => {
-            const user = userStorage.getUserById(input.id);
+        .query(async ({ input }) => {
+            const user = await userStorage.getUserById(input.id);
             if (!user) throw new TRPCError({ code: 'NOT_FOUND' });
-            return { ...user, roles: roleStorage.getUserRoles(user.id) };
+            return { ...user, roles: await roleStorage.getUserRoles(user.id) };
         }),
 
     create: adminProcedure
@@ -28,19 +31,19 @@ export const usersRouter = router({
             groupIds: z.array(z.string()).optional(),
         }))
         .mutation(async ({ input, ctx }) => {
-            if (userStorage.emailExists(input.email)) {
+            if (await userStorage.emailExists(input.email)) {
                 throw new TRPCError({ code: 'CONFLICT', message: 'Email exists' });
             }
             const user = await userStorage.createUser(input);
             if (input.role) {
-                roleStorage.assignRole({
+                await roleStorage.assignRole({
                     userId: user.id,
                     role: input.role,
                     groups: input.groupIds ?? [],
                     createdBy: ctx.user.sub,
                 });
             }
-            return { ...user, roles: roleStorage.getUserRoles(user.id) };
+            return { ...user, roles: await roleStorage.getUserRoles(user.id) };
         }),
 
     update: adminProcedure
@@ -55,17 +58,17 @@ export const usersRouter = router({
             const { id, ...updates } = input;
             const updated = await userStorage.updateUser(id, updates);
             if (!updated) throw new TRPCError({ code: 'NOT_FOUND' });
-            return { ...updated, roles: roleStorage.getUserRoles(id) };
+            return { ...updated, roles: await roleStorage.getUserRoles(id) };
         }),
 
     delete: adminProcedure
         .input(z.object({ id: z.string() }))
-        .mutation(({ input, ctx }) => {
+        .mutation(async ({ input, ctx }) => {
             if (ctx.user.sub === input.id) {
                 throw new TRPCError({ code: 'BAD_REQUEST', message: 'Cannot delete yourself' });
             }
-            roleStorage.revokeAllUserRoles(input.id, ctx.user.sub);
-            userStorage.deleteUser(input.id);
+            await roleStorage.revokeAllUserRoles(input.id, ctx.user.sub);
+            await userStorage.deleteUser(input.id);
             return { success: true };
         }),
 
@@ -76,8 +79,8 @@ export const usersRouter = router({
             role: UserRole,
             groupIds: z.array(z.string()).default([]),
         }))
-        .mutation(({ input, ctx }) => {
-            return roleStorage.assignRole({
+        .mutation(async ({ input, ctx }) => {
+            return await roleStorage.assignRole({
                 userId: input.userId,
                 role: input.role,
                 groups: input.groupIds,
@@ -87,10 +90,10 @@ export const usersRouter = router({
 
     revokeRole: adminProcedure
         .input(z.object({ userId: z.string(), roleId: z.string() }))
-        .mutation(({ input, ctx }) => {
-            roleStorage.revokeRole(input.roleId, ctx.user.sub);
+        .mutation(async ({ input, ctx }) => {
+            await roleStorage.revokeRole(input.roleId, ctx.user.sub);
             return { success: true };
         }),
 
-    listTeachers: adminProcedure.query(() => roleStorage.getAllTeachers()),
+    listTeachers: adminProcedure.query(async () => await roleStorage.getAllTeachers()),
 });

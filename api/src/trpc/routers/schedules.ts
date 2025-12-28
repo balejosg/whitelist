@@ -9,11 +9,11 @@ import { stripUndefined } from '../../lib/utils.js';
 export const schedulesRouter = router({
     getByClassroom: protectedProcedure
         .input(z.object({ classroomId: z.string() }))
-        .query(({ input, ctx }) => {
-            const classroom = classroomStorage.getClassroomById(input.classroomId);
+        .query(async ({ input, ctx }) => {
+            const classroom = await classroomStorage.getClassroomById(input.classroomId);
             if (!classroom) throw new TRPCError({ code: 'NOT_FOUND', message: 'Classroom not found' });
 
-            const schedules = scheduleStorage.getSchedulesByClassroom(input.classroomId);
+            const schedules = await scheduleStorage.getSchedulesByClassroom(input.classroomId);
             const userId = ctx.user.sub;
             const isAdmin = auth.isAdminToken(ctx.user);
 
@@ -31,8 +31,8 @@ export const schedulesRouter = router({
             };
         }),
 
-    getMine: protectedProcedure.query(({ ctx }) => {
-        return scheduleStorage.getSchedulesByTeacher(ctx.user.sub);
+    getMine: protectedProcedure.query(async ({ ctx }) => {
+        return await scheduleStorage.getSchedulesByTeacher(ctx.user.sub);
     }),
 
     create: protectedProcedure
@@ -43,8 +43,8 @@ export const schedulesRouter = router({
             start_time: z.string().regex(/^\d{2}:\d{2}$/),
             end_time: z.string().regex(/^\d{2}:\d{2}$/),
         }))
-        .mutation(({ input, ctx }) => {
-            const classroom = classroomStorage.getClassroomById(input.classroom_id);
+        .mutation(async ({ input, ctx }) => {
+            const classroom = await classroomStorage.getClassroomById(input.classroom_id);
             if (!classroom) throw new TRPCError({ code: 'NOT_FOUND', message: 'Classroom not found' });
 
             const isAdmin = auth.isAdminToken(ctx.user);
@@ -53,7 +53,7 @@ export const schedulesRouter = router({
             }
 
             try {
-                const schedule = scheduleStorage.createSchedule({
+                const schedule = await scheduleStorage.createSchedule({
                     classroom_id: input.classroom_id,
                     teacher_id: ctx.user.sub,
                     group_id: input.group_id,
@@ -83,8 +83,8 @@ export const schedulesRouter = router({
             end_time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
             group_id: z.string().optional(),
         }))
-        .mutation(({ input, ctx }) => {
-            const schedule = scheduleStorage.getScheduleById(input.id);
+        .mutation(async ({ input, ctx }) => {
+            const schedule = await scheduleStorage.getScheduleById(input.id);
             if (!schedule) throw new TRPCError({ code: 'NOT_FOUND' });
 
             const isAdmin = auth.isAdminToken(ctx.user);
@@ -108,7 +108,7 @@ export const schedulesRouter = router({
                     group_id: input.group_id,
                 });
 
-                const updated = scheduleStorage.updateSchedule(input.id, updateData);
+                const updated = await scheduleStorage.updateSchedule(input.id, updateData);
                 if (!updated) throw new TRPCError({ code: 'NOT_FOUND' });
                 return updated;
             } catch (error: unknown) {
@@ -126,8 +126,8 @@ export const schedulesRouter = router({
 
     delete: protectedProcedure
         .input(z.object({ id: z.string() }))
-        .mutation(({ input, ctx }) => {
-            const schedule = scheduleStorage.getScheduleById(input.id);
+        .mutation(async ({ input, ctx }) => {
+            const schedule = await scheduleStorage.getScheduleById(input.id);
             if (!schedule) throw new TRPCError({ code: 'NOT_FOUND' });
 
             const isAdmin = auth.isAdminToken(ctx.user);
@@ -137,17 +137,17 @@ export const schedulesRouter = router({
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You can only manage your own schedules' });
             }
 
-            scheduleStorage.deleteSchedule(input.id);
+            await scheduleStorage.deleteSchedule(input.id);
             return { success: true };
         }),
 
     getCurrentForClassroom: protectedProcedure
         .input(z.object({ classroomId: z.string() }))
-        .query(({ input }) => {
-            const classroom = classroomStorage.getClassroomById(input.classroomId);
+        .query(async ({ input }) => {
+            const classroom = await classroomStorage.getClassroomById(input.classroomId);
             if (!classroom) throw new TRPCError({ code: 'NOT_FOUND', message: 'Classroom not found' });
 
-            const currentSchedule = scheduleStorage.getCurrentSchedule(input.classroomId);
+            const currentSchedule = await scheduleStorage.getCurrentSchedule(input.classroomId);
 
             return {
                 classroom_id: input.classroomId,

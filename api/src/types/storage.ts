@@ -48,19 +48,19 @@ export interface RequestStats {
  * Request storage interface
  */
 export interface IRequestStorage {
-    getAllRequests(status?: RequestStatus | null): DomainRequest[];
-    getRequestById(id: string): DomainRequest | null;
-    getRequestsByGroup(groupId: string): DomainRequest[];
-    hasPendingRequest(domain: string): boolean;
-    createRequest(data: CreateRequestData): DomainRequest;
+    getAllRequests(status?: RequestStatus | null): Promise<DomainRequest[]>;
+    getRequestById(id: string): Promise<DomainRequest | null>;
+    getRequestsByGroup(groupId: string): Promise<DomainRequest[]>;
+    hasPendingRequest(domain: string): Promise<boolean>;
+    createRequest(data: CreateRequestData): Promise<DomainRequest>;
     updateRequestStatus(
         id: string,
         status: 'approved' | 'rejected',
         resolvedBy?: string,
         note?: string | null
-    ): DomainRequest | null;
-    deleteRequest(id: string): boolean;
-    getStats(): RequestStats;
+    ): Promise<DomainRequest | null>;
+    deleteRequest(id: string): Promise<boolean>;
+    getStats(): Promise<RequestStats>;
 }
 
 // =============================================================================
@@ -90,12 +90,12 @@ export interface UpdateUserData {
  * User storage interface
  */
 export interface IUserStorage {
-    getAllUsers(): SafeUser[];
-    getUserById(id: string): User | null;
-    getUserByEmail(email: string): User | null;
+    getAllUsers(): Promise<SafeUser[]>;
+    getUserById(id: string): Promise<User | null>;
+    getUserByEmail(email: string): Promise<User | null>;
     createUser(data: CreateUserData): Promise<SafeUser>;
     updateUser(id: string, data: UpdateUserData): Promise<SafeUser | null>;
-    deleteUser(id: string): boolean;
+    deleteUser(id: string): Promise<boolean>;
     verifyPassword(user: User, password: string): Promise<boolean>;
 }
 
@@ -117,13 +117,13 @@ export interface AssignRoleData {
  * Role storage interface
  */
 export interface IRoleStorage {
-    getRolesByUser(userId: string): Role[];
-    getRoleById(roleId: string): Role | null;
-    getUsersWithRole(role: UserRole): string[];
-    assignRole(data: AssignRoleData): Role;
-    updateRole(roleId: string, data: Partial<Role>): Role | null;
-    revokeRole(roleId: string): boolean;
-    revokeAllUserRoles(userId: string): number;
+    getRolesByUser(userId: string): Promise<Role[]>;
+    getRoleById(roleId: string): Promise<Role | null>;
+    getUsersWithRole(role: UserRole): Promise<string[]>;
+    assignRole(data: AssignRoleData): Promise<Role>;
+    updateRole(roleId: string, data: Partial<Role>): Promise<Role | null>;
+    revokeRole(roleId: string): Promise<boolean>;
+    revokeAllUserRoles(userId: string): Promise<number>;
 }
 
 // =============================================================================
@@ -150,16 +150,16 @@ export interface UpdateClassroomData {
  * Classroom storage interface
  */
 export interface IClassroomStorage {
-    getAllClassrooms(): Classroom[];
-    getClassroomById(id: string): Classroom | null;
-    getClassroomByName(name: string): Classroom | null;
-    createClassroom(data: CreateClassroomData): Classroom;
-    updateClassroom(id: string, data: UpdateClassroomData): Classroom | null;
-    deleteClassroom(id: string): boolean;
-    addMachine(classroomId: string, hostname: string): Machine | null;
-    removeMachine(classroomId: string, hostname: string): boolean;
-    getMachineByHostname(hostname: string): { classroom: Classroom; machine: Machine } | null;
-    updateMachineStatus(hostname: string, status: 'online' | 'offline'): boolean;
+    getAllClassrooms(): Promise<Classroom[]>;
+    getClassroomById(id: string): Promise<Classroom | null>;
+    getClassroomByName(name: string): Promise<Classroom | null>;
+    createClassroom(data: CreateClassroomData): Promise<Classroom>;
+    updateClassroom(id: string, data: UpdateClassroomData): Promise<Classroom | null>;
+    deleteClassroom(id: string): Promise<boolean>;
+    addMachine(classroomId: string, hostname: string): Promise<Machine | null>;
+    removeMachine(classroomId: string, hostname: string): Promise<boolean>;
+    getMachineByHostname(hostname: string): Promise<{ classroom: Classroom; machine: Machine } | null>;
+    updateMachineStatus(hostname: string, status: 'online' | 'offline'): Promise<boolean>;
 }
 
 // =============================================================================
@@ -203,21 +203,21 @@ export interface ScheduleConflict {
  * Schedule storage interface
  */
 export interface IScheduleStorage {
-    getAllSchedules(): Schedule[];
-    getScheduleById(id: string): Schedule | null;
-    getSchedulesByClassroom(classroomId: string): Schedule[];
-    getSchedulesByTeacher(teacherId: string): Schedule[];
-    createSchedule(data: CreateScheduleData): Schedule;
-    updateSchedule(id: string, data: UpdateScheduleData): Schedule | null;
-    deleteSchedule(id: string): boolean;
-    getCurrentSchedule(classroomId: string): Schedule | null;
+    getAllSchedules(): Promise<Schedule[]>;
+    getScheduleById(id: string): Promise<Schedule | null>;
+    getSchedulesByClassroom(classroomId: string): Promise<Schedule[]>;
+    getSchedulesByTeacher(teacherId: string): Promise<Schedule[]>;
+    createSchedule(data: CreateScheduleData): Promise<Schedule>;
+    updateSchedule(id: string, data: UpdateScheduleData): Promise<Schedule | null>;
+    deleteSchedule(id: string): Promise<boolean>;
+    getCurrentSchedule(classroomId: string): Promise<Schedule | null>;
     checkConflict(
         classroomId: string,
         dayOfWeek: number,
         startTime: string,
         endTime: string,
         excludeId?: string
-    ): ScheduleConflict | null;
+    ): Promise<ScheduleConflict | null>;
 }
 
 // =============================================================================

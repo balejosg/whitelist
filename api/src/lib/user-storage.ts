@@ -2,25 +2,14 @@
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
  *
- * User Storage - JSON file-based user management
- * Stores users in data/users.json
+ * User Storage - PostgreSQL-based user management
  */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
+import { query } from './db.js';
 import type { User, SafeUser } from '../types/index.js';
 import type { IUserStorage, CreateUserData, UpdateUserData } from '../types/storage.js';
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = process.env.DATA_DIR ?? path.join(__dirname, '..', '..', 'data');
-const USERS_FILE = path.join(DATA_DIR, 'users.json');
 
 const BCRYPT_ROUNDS = 12;
 
@@ -28,20 +17,13 @@ const BCRYPT_ROUNDS = 12;
 // Types
 // =============================================================================
 
-interface StoredUser {
+interface DBUser {
     id: string;
     email: string;
     name: string;
-    passwordHash: string;
-    emailVerified: boolean;
-    isActive: boolean;
-    createdAt: string;
-    updatedAt: string;
-    lastLoginAt: string | null;
-}
-
-interface UsersData {
-    users: StoredUser[];
+    password_hash: string;
+    created_at: string;
+    updated_at: string;
 }
 
 interface UserStats {
@@ -50,70 +32,36 @@ interface UserStats {
     verified: number;
 }
 
-// =============================================================================
-// Initialization
-// =============================================================================
-
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-
-// Initialize empty users file if not exists
-if (!fs.existsSync(USERS_FILE)) {
-    fs.writeFileSync(USERS_FILE, JSON.stringify({ users: [] }, null, 2));
+// Extended user type for routes
+interface StoredUserResult extends User {
+    isActive: boolean;
+    emailVerified: boolean;
 }
 
 // =============================================================================
-// Internal Functions
+// Helper Functions
 // =============================================================================
 
-/**
- * Load all users from file
- */
-function loadData(): UsersData {
-    try {
-        const data = fs.readFileSync(USERS_FILE, 'utf-8');
-        return JSON.parse(data) as UsersData;
-    } catch (error) {
-        console.error('Error loading users:', error);
-        return { users: [] };
-    }
-}
-
-/**
- * Save data to file
- */
-function saveData(data: UsersData): void {
-    fs.writeFileSync(USERS_FILE, JSON.stringify(data, null, 2));
-}
-
-/**
- * Remove sensitive fields from user object
- */
-function sanitizeUser(user: StoredUser): SafeUser {
+function sanitizeUser(user: DBUser): SafeUser {
     return {
         id: user.id,
         email: user.email,
         name: user.name,
-        active: user.isActive,
-        created_at: user.createdAt,
-        updated_at: user.updatedAt
+        active: true,
+        created_at: user.created_at,
+        updated_at: user.updated_at
     };
 }
 
-/**
- * Convert StoredUser to User type (includes password_hash)
- */
-function toUserType(user: StoredUser): User {
+function toUserType(user: DBUser): User {
     return {
         id: user.id,
         email: user.email,
         name: user.name,
-        password_hash: user.passwordHash,
-        active: user.isActive,
-        created_at: user.createdAt,
-        updated_at: user.updatedAt
+        password_hash: user.password_hash,
+        active: true,
+        created_at: user.created_at,
+        updated_at: user.updated_at
     };
 }
 
@@ -121,171 +69,121 @@ function toUserType(user: StoredUser): User {
 // Public API
 // =============================================================================
 
-/**
- * Get all users (without password hashes)
- */
-export function getAllUsers(): SafeUser[] {
-    const data = loadData();
-    return data.users.map(sanitizeUser);
-}
-
-/**
- * Get user by ID
- */
-export function getUserById(id: string): User | null {
-    const data = loadData();
-    const user = data.users.find((u) => u.id === id);
-    return user ? toUserType(user) : null;
-}
-
-/**
- * Get user by email (for authentication, includes password hash)
- */
-export function getUserByEmail(email: string): User | null {
-    const data = loadData();
-    const user = data.users.find(
-        (u) => u.email.toLowerCase() === email.toLowerCase()
+export async function getAllUsers(): Promise<SafeUser[]> {
+    const result = await query<DBUser>(
+        'SELECT id, email, name, created_at, updated_at FROM users ORDER BY created_at DESC'
     );
-    return user ? toUserType(user) : null;
+    return result.rows.map(sanitizeUser);
 }
 
-/**
- * Check if email already exists
- */
-export function emailExists(email: string): boolean {
-    const data = loadData();
-    return data.users.some(
-        (u) => u.email.toLowerCase() === email.toLowerCase()
+export async function getUserById(id: string): Promise<User | null> {
+    const result = await query<DBUser>(
+        'SELECT * FROM users WHERE id = $1',
+        [id]
     );
+    return result.rows[0] ? toUserType(result.rows[0]) : null;
 }
 
-/**
- * Create a new user
- */
+export async function getUserByEmail(email: string): Promise<User | null> {
+    const result = await query<DBUser>(
+        'SELECT * FROM users WHERE LOWER(email) = LOWER($1)',
+        [email]
+    );
+    return result.rows[0] ? toUserType(result.rows[0]) : null;
+}
+
+export async function emailExists(email: string): Promise<boolean> {
+    const result = await query<{ exists: boolean }>(
+        'SELECT EXISTS(SELECT 1 FROM users WHERE LOWER(email) = LOWER($1)) as exists',
+        [email]
+    );
+    return result.rows[0]?.exists ?? false;
+}
+
 export async function createUser(userData: CreateUserData): Promise<SafeUser> {
-    const data = loadData();
-
-    // Hash password
     const passwordHash = await bcrypt.hash(userData.password, BCRYPT_ROUNDS);
+    const id = `user_${uuidv4().slice(0, 8)}`;
 
-    const newUser: StoredUser = {
-        id: `user_${uuidv4().slice(0, 8)}`,
-        email: userData.email.toLowerCase().trim(),
-        name: userData.name.trim(),
-        passwordHash,
-        emailVerified: false,
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        lastLoginAt: null
-    };
+    const result = await query<DBUser>(
+        `INSERT INTO users (id, email, name, password_hash)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, email, name, created_at, updated_at`,
+        [id, userData.email.toLowerCase().trim(), userData.name.trim(), passwordHash]
+    );
 
-    data.users.push(newUser);
-    saveData(data);
+    const user = result.rows[0];
+    if (!user) {
+        throw new Error('Failed to create user');
+    }
 
-    return sanitizeUser(newUser);
+    return sanitizeUser(user);
 }
 
-/**
- * Update a user
- */
 export async function updateUser(
     id: string,
     updates: UpdateUserData
 ): Promise<SafeUser | null> {
-    const data = loadData();
-    const index = data.users.findIndex((u) => u.id === id);
+    const setClauses: string[] = [];
+    const values: unknown[] = [];
+    let paramIndex = 1;
 
-    if (index === -1) {
-        return null;
-    }
-
-    const existingUser = data.users[index];
-    if (!existingUser) {
-        return null;
-    }
-
-    // Build updated user
-    const updatedUser: StoredUser = {
-        ...existingUser,
-        updatedAt: new Date().toISOString()
-    };
-
-    // Apply updates
     if (updates.email !== undefined) {
-        updatedUser.email = updates.email.toLowerCase().trim();
+        setClauses.push(`email = $${paramIndex++}`);
+        values.push(updates.email.toLowerCase().trim());
     }
     if (updates.name !== undefined) {
-        updatedUser.name = updates.name.trim();
+        setClauses.push(`name = $${paramIndex++}`);
+        values.push(updates.name.trim());
     }
     if (updates.password !== undefined) {
-        updatedUser.passwordHash = await bcrypt.hash(updates.password, BCRYPT_ROUNDS);
-    }
-    if (updates.active !== undefined) {
-        updatedUser.isActive = updates.active;
+        const passwordHash = await bcrypt.hash(updates.password, BCRYPT_ROUNDS);
+        setClauses.push(`password_hash = $${paramIndex++}`);
+        values.push(passwordHash);
     }
 
-    data.users[index] = updatedUser;
-    saveData(data);
+    if (setClauses.length === 0) {
+        // No updates, just return existing user
+        const result = await query<DBUser>(
+            'SELECT id, email, name, created_at, updated_at FROM users WHERE id = $1',
+            [id]
+        );
+        return result.rows[0] ? sanitizeUser(result.rows[0]) : null;
+    }
 
-    return sanitizeUser(updatedUser);
+    values.push(id);
+    const result = await query<DBUser>(
+        `UPDATE users SET ${setClauses.join(', ')}
+         WHERE id = $${paramIndex}
+         RETURNING id, email, name, created_at, updated_at`,
+        values
+    );
+
+    return result.rows[0] ? sanitizeUser(result.rows[0]) : null;
 }
 
-/**
- * Update last login timestamp
- */
-export function updateLastLogin(id: string): void {
-    const data = loadData();
-    const index = data.users.findIndex((u) => u.id === id);
-
-    if (index !== -1) {
-        const user = data.users[index];
-        if (user !== undefined) {
-            user.lastLoginAt = new Date().toISOString();
-            saveData(data);
-        }
-    }
+export async function updateLastLogin(id: string): Promise<void> {
+    await query(
+        'UPDATE users SET updated_at = NOW() WHERE id = $1',
+        [id]
+    );
 }
 
-/**
- * Delete a user
- */
-export function deleteUser(id: string): boolean {
-    const data = loadData();
-    const initialLength = data.users.length;
-    data.users = data.users.filter((u) => u.id !== id);
-
-    if (data.users.length < initialLength) {
-        saveData(data);
-        return true;
-    }
-    return false;
+export async function deleteUser(id: string): Promise<boolean> {
+    const result = await query(
+        'DELETE FROM users WHERE id = $1',
+        [id]
+    );
+    return (result.rowCount ?? 0) > 0;
 }
 
-/**
- * Verify email
- */
-export function verifyEmail(id: string): boolean {
-    const data = loadData();
-    const index = data.users.findIndex((u) => u.id === id);
-
-    if (index === -1) {
-        return false;
-    }
-
-    const user = data.users[index];
-    if (user !== undefined) {
-        user.emailVerified = true;
-        user.updatedAt = new Date().toISOString();
-        saveData(data);
-        return true;
-    }
-    return false;
+export async function verifyEmail(id: string): Promise<boolean> {
+    const result = await query(
+        'UPDATE users SET updated_at = NOW() WHERE id = $1',
+        [id]
+    );
+    return (result.rowCount ?? 0) > 0;
 }
 
-/**
- * Verify password for a user
- */
 export async function verifyPassword(
     user: User,
     password: string
@@ -293,57 +191,48 @@ export async function verifyPassword(
     return bcrypt.compare(password, user.password_hash);
 }
 
-/**
- * Verify password by email - gets user and verifies password
- * Returns user with extra fields for route compatibility, or null if invalid
- */
 export async function verifyPasswordByEmail(
     email: string,
     password: string
 ): Promise<StoredUserResult | null> {
-    const data = loadData();
-    const storedUser = data.users.find(
-        (u) => u.email.toLowerCase() === email.toLowerCase()
+    const result = await query<DBUser>(
+        'SELECT * FROM users WHERE LOWER(email) = LOWER($1)',
+        [email]
     );
 
-    if (!storedUser) {
+    const user = result.rows[0];
+    if (!user) {
         return null;
     }
 
-    const isValid = await bcrypt.compare(password, storedUser.passwordHash);
+    const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) {
         return null;
     }
 
-    // Return user with all fields needed by routes
     return {
-        id: storedUser.id,
-        email: storedUser.email,
-        name: storedUser.name,
-        password_hash: storedUser.passwordHash,
-        active: storedUser.isActive,
-        isActive: storedUser.isActive,
-        emailVerified: storedUser.emailVerified,
-        created_at: storedUser.createdAt,
-        updated_at: storedUser.updatedAt
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        password_hash: user.password_hash,
+        active: true,
+        isActive: true,
+        emailVerified: false,
+        created_at: user.created_at,
+        updated_at: user.updated_at
     };
 }
 
-// Extended user type for routes
-interface StoredUserResult extends User {
-    isActive: boolean;
-    emailVerified: boolean;
-}
+export async function getStats(): Promise<UserStats> {
+    const result = await query<{ total: string }>(
+        'SELECT COUNT(*) as total FROM users'
+    );
+    const total = parseInt(result.rows[0]?.total ?? '0', 10);
 
-/**
- * Get user statistics
- */
-export function getStats(): UserStats {
-    const data = loadData();
     return {
-        total: data.users.length,
-        active: data.users.filter((u) => u.isActive).length,
-        verified: data.users.filter((u) => u.emailVerified).length
+        total,
+        active: total,
+        verified: 0
     };
 }
 

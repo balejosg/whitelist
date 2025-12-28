@@ -148,7 +148,7 @@ export function generateTokens(user: User, roles: RoleInfo[] = []): TokensResult
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
     try {
         // Check blacklist (async for Redis support)
-        const isBlacklistedToken = await tokenStore.has(token);
+        const isBlacklistedToken = await tokenStore.isBlacklisted(token);
         if (isBlacklistedToken) {
             return null;
         }
@@ -200,7 +200,9 @@ export async function verifyRefreshToken(token: string): Promise<JWTPayload | nu
  * Blacklist a token (logout)
  */
 export async function blacklistToken(token: string): Promise<boolean> {
-    await tokenStore.add(token);
+    const decoded = await verifyToken(token);
+    const expiresAt = decoded?.exp ? new Date(decoded.exp * 1000) : new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await tokenStore.blacklist(token, expiresAt);
     return true;
 }
 
@@ -208,14 +210,14 @@ export async function blacklistToken(token: string): Promise<boolean> {
  * Remove expired tokens from blacklist
  */
 export async function cleanupBlacklist(): Promise<void> {
-    await tokenStore.cleanup(JWT_SECRET);
+    await tokenStore.cleanup();
 }
 
 /**
  * Check if token is blacklisted
  */
 export async function isBlacklisted(token: string): Promise<boolean> {
-    return tokenStore.has(token);
+    return tokenStore.isBlacklisted(token);
 }
 
 // =============================================================================

@@ -6,18 +6,18 @@ import * as classroomStorage from '../../lib/classroom-storage.js';
 import { stripUndefined } from '../../lib/utils.js';
 
 export const classroomsRouter = router({
-    list: adminProcedure.query(() => {
-        return classroomStorage.getAllClassrooms();
+    list: adminProcedure.query(async () => {
+        return await classroomStorage.getAllClassrooms();
     }),
 
     get: adminProcedure
         .input(z.object({ id: z.string() }))
-        .query(({ input }) => {
-            const classroom = classroomStorage.getClassroomById(input.id);
+        .query(async ({ input }) => {
+            const classroom = await classroomStorage.getClassroomById(input.id);
             if (!classroom) throw new TRPCError({ code: 'NOT_FOUND' });
 
-            const machines = classroomStorage.getMachinesByClassroom(input.id);
-            const currentGroupId = classroomStorage.getCurrentGroupId(input.id);
+            const machines = await classroomStorage.getMachinesByClassroom(input.id);
+            const currentGroupId = await classroomStorage.getCurrentGroupId(input.id);
 
             return {
                 ...classroom,
@@ -33,14 +33,14 @@ export const classroomsRouter = router({
             display_name: z.string().optional(),
             default_group_id: z.string().optional(),
         }))
-        .mutation(({ input }) => {
+        .mutation(async ({ input }) => {
             try {
                 const createData = stripUndefined({
                     name: input.name,
                     displayName: input.display_name,
                     defaultGroupId: input.default_group_id,
                 });
-                return classroomStorage.createClassroom(createData as CreateClassroomData & { defaultGroupId?: string });
+                return await classroomStorage.createClassroom(createData as CreateClassroomData & { defaultGroupId?: string });
             } catch (error) {
                 if (error instanceof Error && error.message.includes('already exists')) {
                     throw new TRPCError({ code: 'CONFLICT', message: error.message });
@@ -55,12 +55,12 @@ export const classroomsRouter = router({
             display_name: z.string().optional(),
             default_group_id: z.string().optional(),
         }))
-        .mutation(({ input }) => {
+        .mutation(async ({ input }) => {
             const updateData = stripUndefined({
                 displayName: input.display_name,
                 defaultGroupId: input.default_group_id,
             });
-            const updated = classroomStorage.updateClassroom(input.id, updateData as UpdateClassroomData & { defaultGroupId?: string });
+            const updated = await classroomStorage.updateClassroom(input.id, updateData as UpdateClassroomData & { defaultGroupId?: string });
             if (!updated) throw new TRPCError({ code: 'NOT_FOUND' });
             return updated;
         }),
@@ -70,11 +70,11 @@ export const classroomsRouter = router({
             id: z.string(),
             group_id: z.string().nullable(),
         }))
-        .mutation(({ input }) => {
-            const updated = classroomStorage.setActiveGroup(input.id, input.group_id);
+        .mutation(async ({ input }) => {
+            const updated = await classroomStorage.setActiveGroup(input.id, input.group_id);
             if (!updated) throw new TRPCError({ code: 'NOT_FOUND' });
 
-            const currentGroupId = classroomStorage.getCurrentGroupId(input.id);
+            const currentGroupId = await classroomStorage.getCurrentGroupId(input.id);
             return {
                 classroom: updated,
                 current_group_id: currentGroupId,
@@ -83,15 +83,15 @@ export const classroomsRouter = router({
 
     delete: adminProcedure
         .input(z.object({ id: z.string() }))
-        .mutation(({ input }) => {
-            if (!classroomStorage.deleteClassroom(input.id)) {
+        .mutation(async ({ input }) => {
+            if (!(await classroomStorage.deleteClassroom(input.id))) {
                 throw new TRPCError({ code: 'NOT_FOUND' });
             }
             return { success: true };
         }),
 
-    stats: adminProcedure.query(() => {
-        return classroomStorage.getStats();
+    stats: adminProcedure.query(async () => {
+        return await classroomStorage.getStats();
     }),
 
     // Shared Secret endpoints
@@ -102,11 +102,11 @@ export const classroomsRouter = router({
             classroom_name: z.string().optional(),
             version: z.string().optional(),
         }))
-        .mutation(({ input }) => {
+        .mutation(async ({ input }) => {
             let classroomId = input.classroom_id;
 
             if ((classroomId === undefined || classroomId === '') && (input.classroom_name !== undefined && input.classroom_name !== '')) {
-                const classroom = classroomStorage.getClassroomByName(input.classroom_name);
+                const classroom = await classroomStorage.getClassroomByName(input.classroom_name);
                 if (classroom) classroomId = classroom.id;
             }
 
@@ -114,10 +114,10 @@ export const classroomsRouter = router({
                 throw new TRPCError({ code: 'BAD_REQUEST', message: 'Valid classroom_id or classroom_name is required' });
             }
 
-            const classroom = classroomStorage.getClassroomById(classroomId);
+            const classroom = await classroomStorage.getClassroomById(classroomId);
             if (!classroom) throw new TRPCError({ code: 'NOT_FOUND', message: 'Classroom not found' });
 
-            const machine = classroomStorage.registerMachine(stripUndefined({
+            const machine = await classroomStorage.registerMachine(stripUndefined({
                 hostname: input.hostname,
                 classroomId,
                 version: input.version,
@@ -135,9 +135,9 @@ export const classroomsRouter = router({
 
     getWhitelistUrl: sharedSecretProcedure
         .input(z.object({ hostname: z.string() }))
-        .query(({ input }) => {
-            classroomStorage.updateMachineLastSeen(input.hostname);
-            const result = classroomStorage.getWhitelistUrlForMachine(input.hostname);
+        .query(async ({ input }) => {
+            await classroomStorage.updateMachineLastSeen(input.hostname);
+            const result = await classroomStorage.getWhitelistUrlForMachine(input.hostname);
 
             if (!result) {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'Machine not found or no group configured' });
@@ -147,8 +147,8 @@ export const classroomsRouter = router({
 
     deleteMachine: adminProcedure
         .input(z.object({ hostname: z.string() }))
-        .mutation(({ input }) => {
-            if (!classroomStorage.deleteMachine(input.hostname)) {
+        .mutation(async ({ input }) => {
+            if (!(await classroomStorage.deleteMachine(input.hostname))) {
                 throw new TRPCError({ code: 'NOT_FOUND' });
             }
             return { success: true };

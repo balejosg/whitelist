@@ -6,10 +6,11 @@ import * as userStorage from '../../lib/user-storage.js';
 import * as setupStorage from '../../lib/setup-storage.js';
 
 export const setupRouter = router({
-    status: publicProcedure.query(() => {
+    status: publicProcedure.query(async () => {
+        const hasAdmins = await roleStorage.hasAnyAdmins();
         return {
-            needsSetup: !roleStorage.hasAnyAdmins(),
-            hasAdmin: roleStorage.hasAnyAdmins(),
+            needsSetup: !hasAdmins,
+            hasAdmin: hasAdmins,
         };
     }),
 
@@ -20,25 +21,25 @@ export const setupRouter = router({
             password: z.string().min(8),
         }))
         .mutation(async ({ input }) => {
-            if (roleStorage.hasAnyAdmins()) {
+            if (await roleStorage.hasAnyAdmins()) {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'Setup already completed' });
             }
 
-            if (userStorage.emailExists(input.email)) {
+            if (await userStorage.emailExists(input.email)) {
                 throw new TRPCError({ code: 'CONFLICT', message: 'Email already registered' });
             }
 
             const user = await userStorage.createUser(input);
 
-            roleStorage.assignRole({
+            await roleStorage.assignRole({
                 userId: user.id,
                 role: 'admin',
                 groups: [],
                 createdBy: user.id,
             });
 
-            const registrationToken = setupStorage.generateRegistrationToken();
-            setupStorage.saveSetupData({
+            const registrationToken = await setupStorage.generateRegistrationToken();
+            await setupStorage.saveSetupData({
                 registrationToken,
                 setupCompletedAt: new Date().toISOString(),
                 setupByUserId: user.id,
@@ -53,18 +54,18 @@ export const setupRouter = router({
 
     validateToken: publicProcedure
         .input(z.object({ token: z.string() }))
-        .mutation(({ input }) => {
-            return { valid: setupStorage.validateRegistrationToken(input.token) };
+        .mutation(async ({ input }) => {
+            return { valid: await setupStorage.validateRegistrationToken(input.token) };
         }),
 
-    getRegistrationToken: adminProcedure.query(() => {
-        const token = setupStorage.getRegistrationToken();
+    getRegistrationToken: adminProcedure.query(async () => {
+        const token = await setupStorage.getRegistrationToken();
         if (token === null || token === '') throw new TRPCError({ code: 'NOT_FOUND', message: 'Setup not completed' });
         return { registrationToken: token };
     }),
 
-    regenerateToken: adminProcedure.mutation(() => {
-        const newToken = setupStorage.regenerateRegistrationToken();
+    regenerateToken: adminProcedure.mutation(async () => {
+        const newToken = await setupStorage.regenerateRegistrationToken();
         if (newToken === null || newToken === '') throw new TRPCError({ code: 'NOT_FOUND', message: 'Setup not completed' });
         return { registrationToken: newToken };
     }),

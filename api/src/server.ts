@@ -188,17 +188,17 @@ function asyncRoute(
 }
 
 // Setup REST API (used by setup.html and existing clients)
-app.get('/api/setup/status', (_req: Request, res: Response) => {
-    const hasAdmin = roleStorage.hasAnyAdmins();
+app.get('/api/setup/status', asyncRoute(async (_req: Request, res: Response) => {
+    const hasAdmin = await roleStorage.hasAnyAdmins();
     res.status(200).json({
         success: true,
         needsSetup: !hasAdmin,
         hasAdmin,
     });
-});
+}));
 
 app.post('/api/setup/first-admin', asyncRoute(async (req: Request, res: Response) => {
-    if (roleStorage.hasAnyAdmins()) {
+    if (await roleStorage.hasAnyAdmins()) {
         res.status(403).json({ success: false, error: 'Setup already completed' });
         return;
     }
@@ -215,21 +215,21 @@ app.post('/api/setup/first-admin', asyncRoute(async (req: Request, res: Response
         return;
     }
 
-    if (userStorage.emailExists(email)) {
+    if (await userStorage.emailExists(email)) {
         res.status(409).json({ success: false, error: 'Email already registered' });
         return;
     }
 
     const user = await userStorage.createUser({ email, name, password });
-    roleStorage.assignRole({
+    await roleStorage.assignRole({
         userId: user.id,
         role: 'admin',
         groups: [],
         createdBy: user.id,
     });
 
-    const registrationToken = setupStorage.generateRegistrationToken();
-    setupStorage.saveSetupData({
+    const registrationToken = await setupStorage.generateRegistrationToken();
+    await setupStorage.saveSetupData({
         registrationToken,
         setupCompletedAt: new Date().toISOString(),
         setupByUserId: user.id,
@@ -243,20 +243,20 @@ app.post('/api/setup/first-admin', asyncRoute(async (req: Request, res: Response
     });
 }));
 
-app.post('/api/setup/validate-token', (req: Request, res: Response) => {
+app.post('/api/setup/validate-token', asyncRoute(async (req: Request, res: Response) => {
     const { token } = (req.body ?? {}) as { token?: unknown };
     if (typeof token !== 'string' || token.trim() === '') {
         res.status(400).json({ success: false, error: 'Token required' });
         return;
     }
-    res.status(200).json({ success: true, valid: setupStorage.validateRegistrationToken(token) });
-});
+    res.status(200).json({ success: true, valid: await setupStorage.validateRegistrationToken(token) });
+}));
 
 app.get('/api/setup/registration-token', asyncRoute(async (req: Request, res: Response) => {
     const decoded = await requireAdmin(req, res);
     if (!decoded) return;
 
-    const token = setupStorage.getRegistrationToken();
+    const token = await setupStorage.getRegistrationToken();
     if (!token) {
         res.status(404).json({ success: false, error: 'Setup not completed' });
         return;
@@ -268,7 +268,7 @@ app.post('/api/setup/regenerate-token', asyncRoute(async (req: Request, res: Res
     const decoded = await requireAdmin(req, res);
     if (!decoded) return;
 
-    const token = setupStorage.regenerateRegistrationToken();
+    const token = await setupStorage.regenerateRegistrationToken();
     if (!token) {
         res.status(404).json({ success: false, error: 'Setup not completed' });
         return;

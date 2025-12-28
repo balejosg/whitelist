@@ -19,8 +19,8 @@ export const requestsRouter = router({
             group_id: z.string().optional(),
             priority: RequestPriority.optional(),
         }))
-        .mutation(({ input }) => {
-            if (storage.hasPendingRequest(input.domain)) {
+        .mutation(async ({ input }) => {
+            if (await storage.hasPendingRequest(input.domain)) {
                 throw new TRPCError({ code: 'CONFLICT', message: 'Pending request exists' });
             }
 
@@ -32,7 +32,7 @@ export const requestsRouter = router({
                 priority: input.priority,
             }) as CreateRequestData;
 
-            const request = storage.createRequest(createData);
+            const request = await storage.createRequest(createData);
             void push.notifyTeachersOfNewRequest(request).catch(console.error);
             return request;
         }),
@@ -40,8 +40,8 @@ export const requestsRouter = router({
     // Public: Get status
     getStatus: publicProcedure
         .input(z.object({ id: z.string() }))
-        .query(({ input }) => {
-            const request = storage.getRequestById(input.id);
+        .query(async ({ input }) => {
+            const request = await storage.getRequestById(input.id);
             if (!request) throw new TRPCError({ code: 'NOT_FOUND' });
             return { id: request.id, domain: request.domain, status: request.status };
         }),
@@ -49,8 +49,8 @@ export const requestsRouter = router({
     // Protected: List requests (filtered by user's groups)
     list: protectedProcedure
         .input(z.object({ status: RequestStatus.optional() }))
-        .query(({ input, ctx }) => {
-            let requests = storage.getAllRequests(input.status ?? null);
+        .query(async ({ input, ctx }) => {
+            let requests = await storage.getAllRequests(input.status ?? null);
             const groups = auth.getApprovalGroups(ctx.user);
             if (groups !== 'all') {
                 requests = requests.filter(r => groups.includes(r.group_id));
@@ -61,8 +61,8 @@ export const requestsRouter = router({
     // Protected: Get request details
     get: protectedProcedure
         .input(z.object({ id: z.string() }))
-        .query(({ input, ctx }) => {
-            const request = storage.getRequestById(input.id);
+        .query(async ({ input, ctx }) => {
+            const request = await storage.getRequestById(input.id);
             if (!request) throw new TRPCError({ code: 'NOT_FOUND' });
 
             const groups = auth.getApprovalGroups(ctx.user);
@@ -77,7 +77,7 @@ export const requestsRouter = router({
     approve: teacherProcedure
         .input(z.object({ id: z.string(), group_id: z.string().optional() }))
         .mutation(async ({ input, ctx }) => {
-            const request = storage.getRequestById(input.id);
+            const request = await storage.getRequestById(input.id);
             if (!request) throw new TRPCError({ code: 'NOT_FOUND' });
             if (request.status !== 'pending') {
                 throw new TRPCError({ code: 'BAD_REQUEST', message: `Already ${request.status}` });
@@ -97,26 +97,26 @@ export const requestsRouter = router({
             }
 
             await github.addDomainToWhitelist(request.domain, targetGroup);
-            return storage.updateRequestStatus(request.id, 'approved', ctx.user.name ?? ctx.user.email, `Added to ${targetGroup}`);
+            return await storage.updateRequestStatus(request.id, 'approved', ctx.user.name ?? ctx.user.email, `Added to ${targetGroup}`);
         }),
 
     // Teacher+: Reject
     reject: teacherProcedure
         .input(z.object({ id: z.string(), reason: z.string().optional() }))
-        .mutation(({ input, ctx }) => {
-            const request = storage.getRequestById(input.id);
+        .mutation(async ({ input, ctx }) => {
+            const request = await storage.getRequestById(input.id);
             if (!request) throw new TRPCError({ code: 'NOT_FOUND' });
             if (request.status !== 'pending') {
                 throw new TRPCError({ code: 'BAD_REQUEST', message: `Already ${request.status}` });
             }
-            return storage.updateRequestStatus(request.id, 'rejected', ctx.user.name ?? ctx.user.email, input.reason);
+            return await storage.updateRequestStatus(request.id, 'rejected', ctx.user.name ?? ctx.user.email, input.reason);
         }),
 
     // Admin: Delete
     delete: adminProcedure
         .input(z.object({ id: z.string() }))
-        .mutation(({ input }) => {
-            if (!storage.deleteRequest(input.id)) throw new TRPCError({ code: 'NOT_FOUND' });
+        .mutation(async ({ input }) => {
+            if (!(await storage.deleteRequest(input.id))) throw new TRPCError({ code: 'NOT_FOUND' });
             return { success: true };
         }),
 
