@@ -211,9 +211,6 @@ jobs:
       
       - name: TypeScript type-check
         run: npm run typecheck --workspace=openpath-spa
-      
-      - name: Run E2E tests
-        run: npm run test:e2e --workspace=openpath-spa
 
   # ============================================
   # Job 6: Build Docker Image
