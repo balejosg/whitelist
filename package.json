@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "DNS-based URL whitelist enforcement system for educational environments",
   "private": true,
+  "type": "module",
   "scripts": {
     "prepare": "husky || true",
     "lint": "eslint . --max-warnings=0",
