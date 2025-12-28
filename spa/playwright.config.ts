@@ -56,7 +56,7 @@ export default defineConfig({
     // Run local server before tests (skip in CI where workflow starts it)
     webServer: process.env.CI ? undefined : {
         command: 'cd ../api && npm start',
-        url: 'http://localhost:3001/api',
+        url: 'http://localhost:3001/health',
         reuseExistingServer: true,
         timeout: 120 * 1000,
     },

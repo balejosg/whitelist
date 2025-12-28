@@ -47,9 +47,7 @@ jobs:
       - name: Start API server
         run: |
           cd api && npm start &
-          sleep 5
-          curl -f http://localhost:3001/api || echo "API server starting..."
-          sleep 3
+          npx wait-on -t 30000 http://localhost:3001/health
         env:
           PORT: 3001
           ADMIN_TOKEN: test-admin-token
