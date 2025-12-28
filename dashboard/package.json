@@ -2,6 +2,7 @@
     "name": "dashboard",
     "version": "1.0.0",
     "description": "Portal web para gestión de OpenPath DNS",
+    "license": "AGPL-3.0-or-later",
     "type": "module",
     "main": "dist/index.js",
     "scripts": {

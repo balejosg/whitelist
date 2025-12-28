@@ -4,14 +4,14 @@ Home server REST API for handling domain whitelist requests.
 
 ## Overview
 
-This is a lightweight Express.js server designed to run on your home network (Raspberry Pi, old PC, NAS with Docker, or Alpine container). It handles domain requests from the Firefox extension and provides an admin API to approve/reject requests.
+This is a **Node.js (TypeScript)** server designed to run on your home network. It handles domain requests and provides an admin API using **Express.js** and **tRPC** for type-safe communication.
 
 ## Architecture
 
 ```
-Firefox Extension → Home Server (this API) → GitHub Repository
+Firefox Extension → Home Server (API/tRPC) → GitHub Repository
                          ↓
-                    Admin Dashboard
+                    Admin Dashboard (SPA)
 ```
 
 ## Quick Start
@@ -43,6 +43,7 @@ Required settings:
 npm run dev
 
 # Production
+npm run build
 npm start
 ```
 
@@ -77,6 +78,13 @@ Features:
 - Download OpenAPI spec at `/api-docs.json`
 
 ## API Endpoints
+
+## API Interfaces
+
+The server exposes two types of interfaces:
+
+1.  **REST API**: For standard HTTP requests, webhooks, and legacy clients.
+2.  **tRPC API**: For type-safe communication with the SPA dashboard.
 
 ### Setup Endpoints (First-time Configuration)
 
@@ -284,17 +292,18 @@ For HTTPS, use Caddy or nginx with Let's Encrypt.
 
 ```
 api/
-├── server.js           # Main entry point
-├── package.json        # Dependencies
-├── .env.example        # Environment template
-├── .env                # Your configuration (git-ignored)
-├── routes/
-│   └── requests.js     # API endpoints
-├── lib/
-│   ├── storage.js      # JSON file persistence
-│   └── github.js       # GitHub API client
-└── data/
-    └── requests.json   # Stored requests
+├── src/                # TypeScript Source Code
+│   ├── server.ts       # Main entry point
+│   ├── trpc/           # tRPC Router definitions
+│   │   ├── router.ts   # Main AppRouter
+│   │   └── context.ts  # Request context
+│   ├── routes/         # REST API endpoints
+│   └── lib/
+│       ├── storage.ts  # JSON file persistence
+│       └── github.ts   # GitHub API client
+├── dist/               # Compiled JavaScript (Production)
+├── tests/              # Test suite
+└── package.json
 ```
 
 ## Security Notes

@@ -223,24 +223,31 @@ const gracefulShutdown = (signal: string): void => {
 
     logger.info(`Received ${signal}, starting graceful shutdown...`);
 
-    if (server !== undefined) {
-        server.close((err) => {
-            if (err) {
-                logger.error('Error during server close', { error: err.message });
-                process.exit(1);
-            }
-            logger.info('Server closed, no longer accepting connections');
-        });
-    }
-
     const forceShutdownTimeout = setTimeout(() => {
         logger.error('Graceful shutdown timeout exceeded, forcing exit');
         process.exit(1);
     }, SHUTDOWN_TIMEOUT_MS);
 
-    logger.info('Graceful shutdown completed successfully');
-    clearTimeout(forceShutdownTimeout);
-    process.exit(0);
+    const finish = (exitCode: number): void => {
+        clearTimeout(forceShutdownTimeout);
+        process.exit(exitCode);
+    };
+
+    if (server === undefined) {
+        logger.info('No active server instance to close');
+        finish(0);
+        return;
+    }
+
+    server.close((err) => {
+        if (err) {
+            logger.error('Error during server close', { error: err.message });
+            finish(1);
+            return;
+        }
+        logger.info('Server closed, no longer accepting connections');
+        finish(0);
+    });
 };
 
 // Start server when run directly

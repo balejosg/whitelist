@@ -19,6 +19,40 @@ interface GitHubTokenResponse {
     error?: string;
 }
 
+function getCookie(request: Request, name: string): string | undefined {
+    const cookieHeader = request.headers.get('Cookie');
+    if (!cookieHeader) return undefined;
+    const cookies = cookieHeader.split(';');
+    for (const cookie of cookies) {
+        const [rawKey, ...rawValue] = cookie.trim().split('=');
+        if (!rawKey) continue;
+        const key = rawKey.trim();
+        if (key !== name) continue;
+        return decodeURIComponent(rawValue.join('='));
+    }
+    return undefined;
+}
+
+function serializeCookie(
+    name: string,
+    value: string,
+    options: {
+        path?: string;
+        httpOnly?: boolean;
+        secure?: boolean;
+        sameSite?: 'Lax' | 'Strict' | 'None';
+        maxAge?: number;
+    } = {}
+): string {
+    const parts: string[] = [`${name}=${encodeURIComponent(value)}`];
+    if (options.maxAge !== undefined) parts.push(`Max-Age=${String(options.maxAge)}`);
+    parts.push(`Path=${options.path ?? '/'}`);
+    if (options.httpOnly !== false) parts.push('HttpOnly');
+    if (options.secure !== false) parts.push('Secure');
+    parts.push(`SameSite=${options.sameSite ?? 'Lax'}`);
+    return parts.join('; ');
+}
+
 function corsHeaders(origin: string): HeadersInit {
     return {
         'Access-Control-Allow-Origin': origin || '*',
@@ -27,40 +61,76 @@ function corsHeaders(origin: string): HeadersInit {
     };
 }
 
-function redirectToFrontend(frontendUrl: string, params: Record<string, string>): Response {
+function redirectToFrontend(frontendUrl: string, params: Record<string, string>, headers?: HeadersInit): Response {
     const url = new URL(frontendUrl);
     url.hash = new URLSearchParams(params).toString();
-    return Response.redirect(url.toString(), 302);
+
+    const responseHeaders = new Headers(headers);
+    responseHeaders.set('Location', url.toString());
+
+    return new Response(null, {
+        status: 302,
+        headers: responseHeaders
+    });
 }
 
 /**
  * Redirect user to GitHub authorization page
  */
 function handleLogin(env: Env): Response {
+    const state = crypto.randomUUID();
     const params = new URLSearchParams({
         client_id: env.GITHUB_CLIENT_ID,
         redirect_uri: `${env.WORKER_URL}/auth/callback`,
         scope: 'repo read:user',
-        state: crypto.randomUUID()
+        state
     });
 
-    return Response.redirect(`${GITHUB_AUTHORIZE_URL}?${params.toString()}`, 302);
+    const setCookie = serializeCookie('openpath_oauth_state', state, {
+        path: '/auth',
+        maxAge: 10 * 60,
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Lax'
+    });
+
+    return new Response(null, {
+        status: 302,
+        headers: {
+            Location: `${GITHUB_AUTHORIZE_URL}?${params.toString()}`,
+            'Set-Cookie': setCookie
+        }
+    });
 }
 
 /**
  * Handle OAuth callback from GitHub
  * Exchange code for access token and redirect to frontend
  */
-async function handleCallback(url: URL, env: Env): Promise<Response> {
+async function handleCallback(request: Request, url: URL, env: Env): Promise<Response> {
     const code = url.searchParams.get('code');
     const error = url.searchParams.get('error');
 
+    const returnedState = url.searchParams.get('state');
+    const expectedState = getCookie(request, 'openpath_oauth_state');
+    const clearStateCookie = serializeCookie('openpath_oauth_state', '', {
+        path: '/auth',
+        maxAge: 0,
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Lax'
+    });
+
     if (error) {
-        return redirectToFrontend(env.FRONTEND_URL, { error });
+        return redirectToFrontend(env.FRONTEND_URL, { error }, { 'Set-Cookie': clearStateCookie });
     }
 
     if (!code) {
-        return redirectToFrontend(env.FRONTEND_URL, { error: 'no_code' });
+        return redirectToFrontend(env.FRONTEND_URL, { error: 'no_code' }, { 'Set-Cookie': clearStateCookie });
+    }
+
+    if (!returnedState || !expectedState || returnedState !== expectedState) {
+        return redirectToFrontend(env.FRONTEND_URL, { error: 'invalid_state' }, { 'Set-Cookie': clearStateCookie });
     }
 
     try {
@@ -81,7 +151,7 @@ async function handleCallback(url: URL, env: Env): Promise<Response> {
         const tokenData: GitHubTokenResponse = await tokenResponse.json();
 
         if (tokenData.error) {
-            return redirectToFrontend(env.FRONTEND_URL, { error: tokenData.error });
+            return redirectToFrontend(env.FRONTEND_URL, { error: tokenData.error }, { 'Set-Cookie': clearStateCookie });
         }
 
         // Redirect to frontend with token
@@ -89,13 +159,13 @@ async function handleCallback(url: URL, env: Env): Promise<Response> {
             return redirectToFrontend(env.FRONTEND_URL, {
                 access_token: tokenData.access_token,
                 token_type: tokenData.token_type
-            });
+            }, { 'Set-Cookie': clearStateCookie });
         }
 
-        return redirectToFrontend(env.FRONTEND_URL, { error: 'invalid_token_response' });
+        return redirectToFrontend(env.FRONTEND_URL, { error: 'invalid_token_response' }, { 'Set-Cookie': clearStateCookie });
 
     } catch {
-        return redirectToFrontend(env.FRONTEND_URL, { error: 'token_exchange_failed' });
+        return redirectToFrontend(env.FRONTEND_URL, { error: 'token_exchange_failed' }, { 'Set-Cookie': clearStateCookie });
     }
 }
 
@@ -116,7 +186,7 @@ export default {
             }
 
             if (url.pathname === '/auth/callback') {
-                return await handleCallback(url, env);
+                return await handleCallback(request, url, env);
             }
 
             if (url.pathname === '/health') {

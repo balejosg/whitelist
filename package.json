@@ -39,7 +39,7 @@
     "education",
     "content-filter"
   ],
-  "license": "MIT",
+  "license": "AGPL-3.0-or-later",
   "workspaces": [
     "api",
     "spa",

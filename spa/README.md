@@ -24,40 +24,34 @@ python -m http.server 8080
 
 ## Architecture
 
-The SPA uses vanilla JavaScript with ES6 modules. No build step required.
+## Architecture
+
+The SPA is built with **TypeScript**, compiled to ES Module JavaScript for the browser.
 
 ### Module Structure
 
 ```
-spa/js/
-├── app.js              # Standalone version (legacy)
-└── modules/            # Modular ES6 version
-    ├── app-core.js     # Init, auth, UI setup
-    ├── classrooms.js   # Classroom CRUD operations
-    ├── groups.js       # Group management
-    ├── main.js         # Event listeners, entry point
-    ├── requests.js     # Domain request handling
-    ├── schedules.js    # Reservation scheduling
-    ├── state.js        # Global application state
-    ├── ui.js           # Screen, modal, tabs
-    ├── users.js        # User management (admin)
-    └── utils.js        # Toast, escapeHtml, helpers
+spa/src/
+├── main.ts             # Application entry point
+├── modules/
+│   ├── app-core.ts     # Core logic
+│   ├── ui.ts           # UI Management
+│   ├── schedules.ts    # Schedule management
+│   └── ...
+├── trpc.ts             # tRPC Client definition
+└── types/              # Shared types
 ```
 
 ### External API Clients
 
+The application uses **tRPC** (via `@trpc/client`) for most server communication, providing end-to-end type safety.
+
 ```
-spa/js/
-├── auth.js            # JWT authentication
-├── classrooms-api.js  # Classrooms REST client
-├── config.js          # Local storage config
-├── github-api.js      # GitHub API client
-├── oauth.js           # GitHub OAuth flow
-├── push.js            # Push notifications
-├── requests-api.js    # Domain requests client
-├── schedules-api.js   # Schedules REST client
-├── users-api.js       # Users REST client
-└── whitelist-parser.js # Whitelist file parser
+spa/src/
+├── trpc.ts            # tRPC Client instance
+├── auth.ts            # Authentication logic
+├── github-api.ts      # GitHub API client (direct)
+└── ...
 ```
 
 ## Initial Configuration

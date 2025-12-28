@@ -48,17 +48,16 @@ Invoke-Pester -Output Detailed
 
 ## Code Style
 
-### JavaScript (API)
+### TypeScript (API & SPA)
 
-- Use ESLint configuration in `.eslintrc.json`
-- Prefer `const` over `let`, avoid `var`
-- Use JSDoc comments for all public functions
-- Use async/await over callbacks
+-   **Strict Typing**: simple `any` is forbidden. Use `unknown` or specific types.
+-   **tRPC**: Use tRPC routers for new endpoints instead of REST when possible.
+-   **Linting**: We use a strict ESLint configuration. Zero warnings allowed.
 
 ```bash
 cd api
 npm run lint
-npm run lint:fix
+npm run typecheck
 ```
 
 ### Shell Scripts (Linux)

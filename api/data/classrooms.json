@@ -1,3 +1,31 @@
 {
-  "classrooms": []
+  "classrooms": [
+    {
+      "id": "room_ae3feaa2",
+      "name": "aula-test",
+      "display_name": "Aula Test",
+      "default_group_id": "default-group",
+      "active_group_id": null,
+      "created_at": "2025-12-28T12:46:34.288Z",
+      "updated_at": "2025-12-28T12:46:34.288Z"
+    },
+    {
+      "id": "room_e3695e75",
+      "name": "aula-override",
+      "display_name": "Aula Override",
+      "default_group_id": "default-group",
+      "active_group_id": "manual-group",
+      "created_at": "2025-12-28T12:46:34.289Z",
+      "updated_at": "2025-12-28T12:46:34.290Z"
+    },
+    {
+      "id": "room_555224bf",
+      "name": "aula-default",
+      "display_name": "Aula Default",
+      "default_group_id": "fallback-group",
+      "active_group_id": null,
+      "created_at": "2025-12-28T12:46:34.293Z",
+      "updated_at": "2025-12-28T12:46:34.293Z"
+    }
+  ]
 }

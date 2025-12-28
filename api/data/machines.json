@@ -1,3 +1,31 @@
 {
-  "machines": []
+  "machines": [
+    {
+      "id": "machine_a1c69db2",
+      "hostname": "pc-test-01",
+      "classroom_id": "room_ae3feaa2",
+      "version": "unknown",
+      "last_seen": "2025-12-28T12:46:34.288Z",
+      "created_at": "2025-12-28T12:46:34.288Z",
+      "updated_at": "2025-12-28T12:46:34.288Z"
+    },
+    {
+      "id": "machine_7cd0cd7d",
+      "hostname": "pc-override-01",
+      "classroom_id": "room_e3695e75",
+      "version": "unknown",
+      "last_seen": "2025-12-28T12:46:34.290Z",
+      "created_at": "2025-12-28T12:46:34.290Z",
+      "updated_at": "2025-12-28T12:46:34.290Z"
+    },
+    {
+      "id": "machine_55e82600",
+      "hostname": "pc-default-01",
+      "classroom_id": "room_555224bf",
+      "version": "unknown",
+      "last_seen": "2025-12-28T12:46:34.294Z",
+      "created_at": "2025-12-28T12:46:34.294Z",
+      "updated_at": "2025-12-28T12:46:34.294Z"
+    }
+  ]
 }
