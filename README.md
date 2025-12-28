@@ -101,10 +101,10 @@ PowerShell-based installation using Acrylic DNS Proxy.
 
 ## Technologies
 
--   **Backend**: Node.js, TypeScript, Express.js, tRPC, Zod
--   **Frontend**: TypeScript, Vanilla CSS, HTML (No framework, ES Modules)
--   **Infrastructure**: Linux, Docker, Systemd, Git
--   **Testing**: Playwright (E2E), Node.js Test Runner, BATS (Bash)
+- **Backend**: Node.js, TypeScript, Express.js, tRPC, Zod
+- **Frontend**: TypeScript, Vanilla CSS, HTML (No framework, ES Modules)
+- **Infrastructure**: Linux, Docker, Systemd, Git
+- **Testing**: Playwright (E2E), Node.js Test Runner, BATS (Bash)
 
 ## System Architecture
 

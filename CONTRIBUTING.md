@@ -50,9 +50,9 @@ Invoke-Pester -Output Detailed
 
 ### TypeScript (API & SPA)
 
--   **Strict Typing**: simple `any` is forbidden. Use `unknown` or specific types.
--   **tRPC**: Use tRPC routers for new endpoints instead of REST when possible.
--   **Linting**: We use a strict ESLint configuration. Zero warnings allowed.
+- **Strict Typing**: simple `any` is forbidden. Use `unknown` or specific types.
+- **tRPC**: Use tRPC routers for new endpoints instead of REST when possible.
+- **Linting**: We use a strict ESLint configuration. Zero warnings allowed.
 
 ```bash
 cd api

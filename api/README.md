@@ -83,8 +83,8 @@ Features:
 
 The server exposes two types of interfaces:
 
-1.  **REST API**: For standard HTTP requests, webhooks, and legacy clients.
-2.  **tRPC API**: For type-safe communication with the SPA dashboard.
+1. **REST API**: For standard HTTP requests, webhooks, and legacy clients.
+2. **tRPC API**: For type-safe communication with the SPA dashboard.
 
 ### Setup Endpoints (First-time Configuration)
 

@@ -184,9 +184,10 @@ jobs:
     name: SPA Lint & Type Check
     runs-on: ubuntu-latest
     
-    defaults:
-      run:
-        working-directory: spa
+    # Remove defaults to allow root-level commands
+    # defaults:
+    #   run:
+    #     working-directory: spa
     
     steps:
       - name: Checkout code
@@ -200,19 +201,19 @@ jobs:
           cache-dependency-path: './package-lock.json'
       
       - name: Build shared package
-        run: cd ../shared && npm install && npm run build
+        run: npm run build --workspace=@openpath/shared
       
       - name: Install dependencies (Root)
         run: npm ci || npm install
-      
-      - name: Build shared package
-        run: npm run build --workspace=@openpath/shared
       
       - name: Run linting
         run: npm run lint --workspace=openpath-spa
       
       - name: TypeScript type-check
         run: npm run typecheck --workspace=openpath-spa
+      
+      - name: Run E2E tests
+        run: npm run test:e2e --workspace=openpath-spa
 
   # ============================================
   # Job 6: Build Docker Image
