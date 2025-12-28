@@ -2,7 +2,7 @@ import { init, updateEditUI } from './modules/app-core.js';
 import { PushManager } from './push.js';
 import { initUsersListeners } from './modules/users.js';
 import { initClassroomListeners } from './modules/classrooms.js';
-import { initModals, showScreen, openModal, closeModal } from './modules/ui.js';
+import { initModals, showScreen, openModal, closeModal, initTheme, toggleTheme } from './modules/ui.js';
 import { Auth } from './auth.js';
 import { OAuth } from './oauth.js';
 import { showToast } from './modules/utils.js';
@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => void (async () => {
     console.warn('OpenPath SPA initializing...');
 
     // Initialize UI listeners
+    initTheme();
     initModals();
     initUsersListeners();
     initClassroomListeners();
@@ -334,5 +335,10 @@ function initMainListeners() {
     document.getElementById('new-group-btn')?.addEventListener('click', () => {
         if (!state.canEdit) return;
         openModal('modal-new-group');
+    });
+
+    // Theme Toggle
+    document.getElementById('theme-toggle-btn')?.addEventListener('click', () => {
+        toggleTheme();
     });
 }

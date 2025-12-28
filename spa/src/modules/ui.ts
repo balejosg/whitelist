@@ -31,3 +31,26 @@ export function initModals(): void {
         });
     });
 }
+
+const THEME_KEY = 'openpath-theme';
+
+export function initTheme(): void {
+    const savedTheme = localStorage.getItem(THEME_KEY) ?? 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeIcon(savedTheme);
+}
+
+export function toggleTheme(): void {
+    const currentTheme = document.documentElement.getAttribute('data-theme') ?? 'dark';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem(THEME_KEY, newTheme);
+    updateThemeIcon(newTheme);
+}
+
+function updateThemeIcon(theme: string): void {
+    const icon = document.getElementById('theme-icon');
+    if (icon) {
+        icon.textContent = theme === 'dark' ? '🌙' : '☀️';
+    }
+}
