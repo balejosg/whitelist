@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: openpath-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-openpath}
+      POSTGRES_USER: ${DB_USER:-openpath}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-openpath_prod}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-openpath}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - openpath-network
+
+  # Request API
+  api:
+    image: ghcr.io/${GITHUB_REPOSITORY:-balejosg/openpath}/api:latest
+    container_name: openpath-api
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-openpath}
+      - DB_USER=${DB_USER:-openpath}
+      - DB_PASSWORD=${DB_PASSWORD:-openpath_prod}
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_TOKEN=${ADMIN_TOKEN}
+      - ALLOW_REGISTRATION=true
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
+      - VAPID_SUBJECT=${VAPID_SUBJECT}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - api-logs:/app/logs
+      # - api-data:/app/data # Not needed if using Postgres? But setup-storage etc might use it? Setup uses DB now.
+    networks:
+      - openpath-network
+
+  # Web Dashboard
+  web:
+    image: ghcr.io/${GITHUB_REPOSITORY:-balejosg/openpath}/dashboard:latest
+    container_name: openpath-web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - VITE_API_URL=${API_URL:-http://localhost:3000} 
+      # Note: VITE_API_URL is build-time for Vite, but dashboard is static?
+      # If dashboard is served by node server (dist/server.js usually), it might use runtime env?
+      # Checking dashboard/Dockerfile...
+      - API_URL=${API_URL:-http://localhost:3000}
+    depends_on:
+      - api
+    networks:
+      - openpath-network
+
+volumes:
+  postgres_data:
+  api-logs:
+  api-data:
+
+networks:
+  openpath-network:
+    name: openpath-network
