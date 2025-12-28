@@ -11,7 +11,7 @@
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "outDir": "./dist",
-        "rootDir": "./src",
+        "rootDir": "./",
         "declaration": false,
         "declarationMap": false,
         "sourceMap": true,
@@ -32,11 +32,11 @@
         "exactOptionalPropertyTypes": true
     },
     "include": [
-        "src/**/*"
+        "src/**/*",
+        "tests/**/*"
     ],
     "exclude": [
         "node_modules",
-        "dist",
-        "tests"
+        "dist"
     ]
 }

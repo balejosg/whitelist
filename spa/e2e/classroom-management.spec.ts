@@ -1,14 +1,12 @@
-// @ts-check
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
 
 /**
- * Classroom Management E2E Tests
+ * Classroom Management E2E Tests - US4
  * 
- * Tests the classroom management UI (admin only):
- * - View classrooms section
- * - Create new classroom
- * - Change active group
- * - Delete classroom
+ * Tests the classroom management UI elements:
+ * - Admin login flow
+ * - Classroom management section
+ * - New classroom modal
  */
 
 // Admin credentials (created by CI setup)
@@ -31,8 +29,8 @@ test.describe('Classroom Management', () => {
         // Check that the classrooms section is defined in HTML (hidden by default)
         const classroomsSection = page.locator('#classrooms-section');
 
-        // It exists in the DOM but may be hidden
-        await expect(classroomsSection).toBeDefined();
+        // It exists in the DOM
+        await expect(classroomsSection).toBeAttached();
     });
 
     test('new classroom modal should exist in HTML', async ({ page }) => {
@@ -40,7 +38,7 @@ test.describe('Classroom Management', () => {
         const modal = page.locator('#modal-new-classroom');
 
         // Modal exists in DOM
-        await expect(modal).toBeDefined();
+        await expect(modal).toBeAttached();
     });
 
     test('admin login attempt should handle response', async ({ page }) => {
@@ -71,11 +69,11 @@ test.describe('Classroom Management', () => {
 
         // New classroom button should exist
         const newClassroomBtn = page.locator('#btn-new-classroom');
-        await expect(newClassroomBtn).toBeDefined();
+        await expect(newClassroomBtn).toBeAttached();
 
         // Classrooms list container should exist
         const classroomsList = page.locator('#classrooms-list');
-        await expect(classroomsList).toBeDefined();
+        await expect(classroomsList).toBeAttached();
     });
 
     test('new classroom form should have required fields', async ({ page }) => {
@@ -83,8 +81,8 @@ test.describe('Classroom Management', () => {
         const nameInput = page.locator('#new-classroom-name');
         const groupSelect = page.locator('#new-classroom-group');
 
-        await expect(nameInput).toBeDefined();
-        await expect(groupSelect).toBeDefined();
+        await expect(nameInput).toBeAttached();
+        await expect(groupSelect).toBeAttached();
     });
 
     test('page should be responsive for classroom management', async ({ page }) => {
@@ -95,8 +93,8 @@ test.describe('Classroom Management', () => {
         await expect(page.locator('#email-login-form')).toBeVisible({ timeout: 10000 });
 
         // No horizontal overflow
-        const scrollWidth = await page.evaluate(() => document.body.scrollWidth);
-        const viewWidth = await page.evaluate(() => window.innerWidth);
-        expect(scrollWidth).toBeLessThanOrEqual(viewWidth + 20);
+        const scrollWidthByValue = await page.evaluate(() => document.body.scrollWidth);
+        const viewWidthByValue = await page.evaluate(() => window.innerWidth);
+        expect(scrollWidthByValue).toBeLessThanOrEqual(viewWidthByValue + 20);
     });
 });

@@ -106,10 +106,10 @@ export async function parseTRPC(response: Response): Promise<{
     code?: string;
 }> {
     const json = await response.json() as TRPCResponse;
-    if (json.result) {
+    if (json.result !== undefined) {
         return { data: json.result.data };
     }
-    if (json.error) {
+    if (json.error !== undefined) {
         return {
             error: json.error.message,
             code: json.error.data?.code ?? json.error.code

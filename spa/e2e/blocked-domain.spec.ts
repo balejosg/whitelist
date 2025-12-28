@@ -1,5 +1,4 @@
-// @ts-check
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
 
 /**
  * Blocked Domain E2E Tests - US3
@@ -7,9 +6,6 @@ const { test, expect } = require('@playwright/test');
  * Tests the blocked domain UI elements:
  * - BlockedDomainAlert modal exists in DOM
  * - Modal has required structure
- * 
- * Note: Full integration tests for the approval flow
- * are in api/tests/blocked-domains.test.js
  */
 
 test.describe('Blocked Domain UI - US3', () => {
@@ -34,6 +30,12 @@ test.describe('Blocked Domain UI - US3', () => {
         await page.waitForLoadState('networkidle');
 
         const blockedModal = page.locator('#modal-blocked-domain');
+
+        // Click Add Classroom button
+        const addBtn = page.locator('button:has-text("Add Classroom")');
+        if (await addBtn.count() > 0) {
+            await addBtn.click();
+        }
 
         // Check modal exists
         const exists = await blockedModal.count() > 0;
@@ -60,8 +62,8 @@ test.describe('Blocked Domain UI - US3', () => {
         await expect(page.locator('#email-login-form')).toBeVisible({ timeout: 10000 });
 
         // No JavaScript errors
-        const errors = [];
-        page.on('pageerror', error => errors.push(error.message));
+        const errors: string[] = [];
+        page.on('pageerror', (error) => { errors.push(error.message); });
 
         await page.waitForTimeout(1000);
 
@@ -77,4 +79,3 @@ test.describe('Blocked Domain UI - US3', () => {
         expect(hasModal).toBe(true);
     });
 });
-

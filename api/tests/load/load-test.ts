@@ -12,8 +12,11 @@
  *   K6_BASE_URL=http://api.example.com k6 run load-test.js
  */
 
+// @ts-ignore - k6 typing
 import http from 'k6/http';
+// @ts-ignore - k6 typing
 import { check, sleep } from 'k6';
+// @ts-ignore - k6 typing
 import { Rate, Trend } from 'k6/metrics';
 
 // Custom metrics
@@ -22,10 +25,13 @@ const healthLatency = new Trend('health_latency');
 const requestsLatency = new Trend('requests_latency');
 
 // Configuration
+// @ts-ignore - k6 typing
 const BASE_URL = __ENV.K6_BASE_URL || 'http://localhost:3000';
 
 export const options = {
+    // @ts-ignore - k6 typing
     vus: __ENV.K6_VUS ? parseInt(__ENV.K6_VUS) : 10,
+    // @ts-ignore - k6 typing
     duration: __ENV.K6_DURATION || '30s',
     thresholds: {
         http_req_duration: ['p(95)<500'], // 95% of requests under 500ms
@@ -37,7 +43,7 @@ export const options = {
 /**
  * Setup function - runs once before test
  */
-export function setup() {
+export function setup(): { baseUrl: string; timestamp: number } {
     // Verify API is reachable
     const healthRes = http.get(`${BASE_URL}/health`);
     if (healthRes.status !== 200) {
@@ -53,7 +59,7 @@ export function setup() {
 /**
  * Default test scenario
  */
-export default function (data) {
+export default function (data: { baseUrl: string }): void {
     // Scenario 1: Health check (40% of traffic)
     if (Math.random() < 0.4) {
         testHealthEndpoint(data);
@@ -73,16 +79,16 @@ export default function (data) {
 /**
  * Test /health endpoint
  */
-function testHealthEndpoint(data) {
+function testHealthEndpoint(data: { baseUrl: string }): void {
     const start = Date.now();
     const res = http.get(`${data.baseUrl}/health`);
     healthLatency.add(Date.now() - start);
 
     const success = check(res, {
-        'health: status is 200': (r) => r.status === 200,
-        'health: has status field': (r) => {
+        'health: status is 200': (r: any) => r.status === 200,
+        'health: has status field': (r: any) => {
             try {
-                const body = JSON.parse(r.body);
+                const body = JSON.parse(r.body as string);
                 return body.status !== undefined;
             } catch {
                 return false;
@@ -97,7 +103,7 @@ function testHealthEndpoint(data) {
 /**
  * Test GET /api/requests endpoint
  */
-function testListRequests(data) {
+function testListRequests(data: { baseUrl: string }): void {
     const start = Date.now();
     const res = http.get(`${data.baseUrl}/api/requests`, {
         headers: {
@@ -107,10 +113,10 @@ function testListRequests(data) {
     requestsLatency.add(Date.now() - start);
 
     const success = check(res, {
-        'list: status is 200 or 401': (r) => r.status === 200 || r.status === 401,
-        'list: response is JSON': (r) => {
+        'list: status is 200 or 401': (r: any) => r.status === 200 || r.status === 401,
+        'list: response is JSON': (r: any) => {
             try {
-                JSON.parse(r.body);
+                JSON.parse(r.body as string);
                 return true;
             } catch {
                 return false;
@@ -125,7 +131,7 @@ function testListRequests(data) {
 /**
  * Test POST /api/requests endpoint
  */
-function testCreateRequest(data) {
+function testCreateRequest(data: { baseUrl: string }): void {
     const domain = `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.example.com`;
 
     const payload = JSON.stringify({
@@ -142,8 +148,8 @@ function testCreateRequest(data) {
     requestsLatency.add(Date.now() - start);
 
     const success = check(res, {
-        'create: status is 200, 201, or 401': (r) => [200, 201, 401].includes(r.status),
-        'create: response time OK': (r) => r.timings.duration < 1000,
+        'create: status is 200, 201, or 401': (r: any) => [200, 201, 401].includes(r.status),
+        'create: response time OK': (r: any) => r.timings.duration < 1000,
     });
 
     errorRate.add(!success);
@@ -153,12 +159,12 @@ function testCreateRequest(data) {
 /**
  * Rate limiting test scenario
  */
-export function rateLimitTest(data) {
+export function rateLimitTest(data: { baseUrl: string }): void {
     // Burst of requests to test rate limiting
     for (let i = 0; i < 20; i++) {
         const res = http.get(`${data.baseUrl}/health`);
         check(res, {
-            'rate limit: not server error': (r) => r.status < 500,
+            'rate limit: not server error': (r: any) => r.status < 500,
         });
     }
     sleep(1);
@@ -167,6 +173,6 @@ export function rateLimitTest(data) {
 /**
  * Teardown function - runs once after test
  */
-export function teardown(data) {
+export function teardown(data: { timestamp: number }): void {
     console.log(`Test completed. Started at: ${new Date(data.timestamp).toISOString()}`);
 }

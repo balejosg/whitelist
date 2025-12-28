@@ -12,7 +12,12 @@ import * as db from './db.js';
 import { User } from './db.js';
 
 // Extend Express Session to include User
-import './types/express-session';
+import 'express-session';
+declare module 'express-session' {
+    interface SessionData {
+        user?: User;
+    }
+}
 
 const app = express();
 const PORT = process.env.PORT ?? 3000;
@@ -51,7 +56,7 @@ function requireAuth(req: Request, res: Response, next: NextFunction): void {
 
 // ============== Rutas de Auth ==============
 
-app.post('/api/auth/login', (req: Request, res: Response) => {
+app.post('/api/auth/login', (req: Request, res: Response): void => {
     const { username, password } = req.body as Record<string, unknown>;
     if (typeof username !== 'string' || typeof password !== 'string') {
         res.status(400).json({ error: 'Invalid request' });
@@ -81,8 +86,11 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
         // Legacy behavior: copy all user props to session. 
         // We ensure strict typing by confirming the shape matches what we expect or extending the type.
         // Since we don't have the full User object from validateUser, we merge safely.
-        const sessionUser = req.session.user ?? {} as User;
-        req.session.user = { ...sessionUser, ...user, password_hash: '' };
+        req.session.user = {
+            id: user.id,
+            username: user.username,
+            password_hash: ''
+        } as User;
 
         res.json({ success: true, user: { username: user.username } });
     } else {
@@ -90,7 +98,7 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
     }
 });
 
-app.post('/api/auth/logout', (req: Request, res: Response) => {
+app.post('/api/auth/logout', (req: Request, res: Response): void => {
     req.session.destroy((err) => {
         if (err) {
             console.error('Logout error:', err);
@@ -101,7 +109,7 @@ app.post('/api/auth/logout', (req: Request, res: Response) => {
     });
 });
 
-app.get('/api/auth/check', (req: Request, res: Response) => {
+app.get('/api/auth/check', (req: Request, res: Response): void => {
     if (req.session.user) {
         res.json({ authenticated: true, user: { username: req.session.user.username } });
     } else {
@@ -109,7 +117,7 @@ app.get('/api/auth/check', (req: Request, res: Response) => {
     }
 });
 
-app.post('/api/auth/change-password', requireAuth, (req: Request, res: Response) => {
+app.post('/api/auth/change-password', requireAuth, (req: Request, res: Response): void => {
     const { newPassword } = req.body as Record<string, unknown>;
     if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
         res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
@@ -125,17 +133,17 @@ app.post('/api/auth/change-password', requireAuth, (req: Request, res: Response)
 
 // ============== Rutas de Stats ==============
 
-app.get('/api/stats', requireAuth, (_req: Request, res: Response) => {
+app.get('/api/stats', requireAuth, (_req: Request, res: Response): void => {
     res.json(db.getStats());
 });
 
 // ============== Rutas de Sistema ==============
 
-app.get('/api/system/status', requireAuth, (_req: Request, res: Response) => {
+app.get('/api/system/status', requireAuth, (_req: Request, res: Response): void => {
     res.json(db.getSystemStatus());
 });
 
-app.post('/api/system/toggle', requireAuth, (req: Request, res: Response) => {
+app.post('/api/system/toggle', requireAuth, (req: Request, res: Response): void => {
     const { enable } = req.body as Record<string, unknown>;
     const status = db.toggleSystemStatus(!!enable);
     res.json({ success: true, ...status });
@@ -143,11 +151,11 @@ app.post('/api/system/toggle', requireAuth, (req: Request, res: Response) => {
 
 // ============== Rutas de Groups ==============
 
-app.get('/api/groups', requireAuth, (_req: Request, res: Response) => {
+app.get('/api/groups', requireAuth, (_req: Request, res: Response): void => {
     res.json(db.getAllGroups());
 });
 
-app.post('/api/groups', requireAuth, (req: Request, res: Response) => {
+app.post('/api/groups', requireAuth, (req: Request, res: Response): void => {
     const { name, displayName } = req.body as Record<string, unknown>;
     if (!name || !displayName || typeof name !== 'string' || typeof displayName !== 'string') {
         res.status(400).json({ error: 'Nombre requerido' });
@@ -168,7 +176,7 @@ app.post('/api/groups', requireAuth, (req: Request, res: Response) => {
     }
 });
 
-app.get('/api/groups/:id', requireAuth, (req: Request, res: Response) => {
+app.get('/api/groups/:id', requireAuth, (req: Request, res: Response): void => {
     const group = db.getGroupById(req.params.id);
     if (!group) {
         res.status(404).json({ error: 'Grupo no encontrado' });
@@ -177,7 +185,7 @@ app.get('/api/groups/:id', requireAuth, (req: Request, res: Response) => {
     res.json(group);
 });
 
-app.put('/api/groups/:id', requireAuth, (req: Request, res: Response) => {
+app.put('/api/groups/:id', requireAuth, (req: Request, res: Response): void => {
     const { displayName, enabled } = req.body as Record<string, unknown>;
     if (typeof displayName !== 'string') {
         res.status(400).json({ error: 'Invalid details' });
@@ -188,19 +196,19 @@ app.put('/api/groups/:id', requireAuth, (req: Request, res: Response) => {
     res.json({ success: true });
 });
 
-app.delete('/api/groups/:id', requireAuth, (req: Request, res: Response) => {
+app.delete('/api/groups/:id', requireAuth, (req: Request, res: Response): void => {
     db.deleteGroup(req.params.id);
     res.json({ success: true });
 });
 
 // ============== Rutas de Rules ==============
 
-app.get('/api/groups/:groupId/rules', requireAuth, (req: Request, res: Response) => {
+app.get('/api/groups/:groupId/rules', requireAuth, (req: Request, res: Response): void => {
     const { type } = req.query;
     res.json(db.getRulesByGroup(req.params.groupId, (type as db.Rule['type'] | undefined) ?? null));
 });
 
-app.post('/api/groups/:groupId/rules', requireAuth, (req: Request, res: Response) => {
+app.post('/api/groups/:groupId/rules', requireAuth, (req: Request, res: Response): void => {
     const { type, value, comment } = req.body as Record<string, unknown>;
     if (!type || !value || typeof type !== 'string' || typeof value !== 'string') {
         res.status(400).json({ error: 'Tipo y valor requeridos' });
@@ -215,7 +223,7 @@ app.post('/api/groups/:groupId/rules', requireAuth, (req: Request, res: Response
     }
 });
 
-app.post('/api/groups/:groupId/rules/bulk', requireAuth, (req: Request, res: Response) => {
+app.post('/api/groups/:groupId/rules/bulk', requireAuth, (req: Request, res: Response): void => {
     const { type, values } = req.body as Record<string, unknown>;
     if (!type || !values || !Array.isArray(values)) {
         res.status(400).json({ error: 'Tipo y valores requeridos' });
@@ -226,10 +234,10 @@ app.post('/api/groups/:groupId/rules/bulk', requireAuth, (req: Request, res: Res
     res.json({ success: true, count });
 });
 
-app.delete('/api/rules/:id', requireAuth, (req: Request, res: Response) => {
+app.delete('/api/rules/:id', requireAuth, (req: Request, res: Response): void => {
     // Obtener grupo antes de borrar para re-exportar
     const dbInstance = db.getDbInstance();
-    const rule = dbInstance.rules.find(r => r.id === parseInt(req.params.id));
+    const rule = dbInstance.rules.find(r => r.id === parseInt(req.params.id, 10));
 
     db.deleteRule(req.params.id);
 
@@ -241,7 +249,7 @@ app.delete('/api/rules/:id', requireAuth, (req: Request, res: Response) => {
 
 // ============== Export público (para clientes dnsmasq) ==============
 
-app.get('/export/:name.txt', (req: Request, res: Response) => {
+app.get('/export/:name.txt', (req: Request, res: Response): void => {
     const group = db.getGroupByName(req.params.name);
     if (!group) {
         res.status(404).send('Grupo no encontrado');
@@ -257,7 +265,7 @@ app.get('/export/:name.txt', (req: Request, res: Response) => {
 
 // ============== Fallback SPA ==============
 
-app.get('/{*splat}', (_req: Request, res: Response) => {
+app.get('*', (_req: Request, res: Response): void => {
     res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 

@@ -64,7 +64,6 @@ function loadDb(): DatabaseSchema {
     } catch (e) {
         console.error('Error loading db:', e);
     }
-    // Return a deep copy of defaultDb to avoid mutation issues if used as reference
     return JSON.parse(JSON.stringify(defaultDb)) as DatabaseSchema;
 }
 
@@ -93,7 +92,7 @@ export function getAllGroups(): Group[] {
 }
 
 export function getGroupById(id: string | number): Group | undefined {
-    return db.groups.find(g => g.id === (typeof id === 'string' ? parseInt(id) : id));
+    return db.groups.find(g => g.id === (typeof id === 'string' ? parseInt(id, 10) : id));
 }
 
 export function getGroupByName(name: string): Group | undefined {
@@ -127,7 +126,7 @@ export function updateGroup(id: string | number, displayName: string, enabled: b
 }
 
 export function deleteGroup(id: string | number): void {
-    const numericId = typeof id === 'string' ? parseInt(id) : id;
+    const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
     const idx = db.groups.findIndex(g => g.id === numericId);
     if (idx !== -1) {
         db.groups.splice(idx, 1);
@@ -141,14 +140,14 @@ export function deleteGroup(id: string | number): void {
 // ============================================================================
 
 export function getRulesByGroup(groupId: string | number, type: Rule['type'] | null = null): Rule[] {
-    const numericGroupId = typeof groupId === 'string' ? parseInt(groupId) : groupId;
+    const numericGroupId = typeof groupId === 'string' ? parseInt(groupId, 10) : groupId;
     let rules = db.rules.filter(r => r.group_id === numericGroupId);
     if (type) rules = rules.filter(r => r.type === type);
     return rules.sort((a, b) => a.value.localeCompare(b.value));
 }
 
 export function createRule(groupId: string | number, type: Rule['type'], value: string, comment: string | null = null): { success: boolean; id?: number; error?: string } {
-    const numericGroupId = typeof groupId === 'string' ? parseInt(groupId) : groupId;
+    const numericGroupId = typeof groupId === 'string' ? parseInt(groupId, 10) : groupId;
     const normalizedValue = value.toLowerCase().trim();
 
     const exists = db.rules.find(r =>
@@ -175,7 +174,7 @@ export function createRule(groupId: string | number, type: Rule['type'], value: 
 }
 
 export function deleteRule(id: string | number): void {
-    const numericId = typeof id === 'string' ? parseInt(id) : id;
+    const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
     const idx = db.rules.findIndex(r => r.id === numericId);
     if (idx !== -1) {
         db.rules.splice(idx, 1);
@@ -235,21 +234,21 @@ export function exportGroupToFile(groupId: string | number): string | null {
     const whitelist = rules.filter(r => r.type === 'whitelist');
     if (whitelist.length > 0) {
         content += '## WHITELIST\n';
-        whitelist.forEach(r => content += r.value + '\n');
+        whitelist.forEach(r => content += `${r.value}\n`);
         content += '\n';
     }
 
     const blockedSub = rules.filter(r => r.type === 'blocked_subdomain');
     if (blockedSub.length > 0) {
         content += '## BLOCKED-SUBDOMAINS\n';
-        blockedSub.forEach(r => content += r.value + '\n');
+        blockedSub.forEach(r => content += `${r.value}\n`);
         content += '\n';
     }
 
     const blockedPath = rules.filter(r => r.type === 'blocked_path');
     if (blockedPath.length > 0) {
         content += '## BLOCKED-PATHS\n';
-        blockedPath.forEach(r => content += r.value + '\n');
+        blockedPath.forEach(r => content += `${r.value}\n`);
         content += '\n';
     }
 

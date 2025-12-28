@@ -5,8 +5,11 @@
         "moduleResolution": "bundler",
         "lib": [
             "ES2022",
-            "DOM",
-            "DOM.Iterable"
+            "dom",
+            "dom.iterable",
+            "webworker",
+            "webworker.importscripts",
+            "scripthost"
         ],
         "strict": true,
         "esModuleInterop": true,
@@ -29,12 +32,13 @@
         "noUncheckedIndexedAccess": true
     },
     "include": [
-        "src/**/*"
+        "src/**/*",
+        "sw.ts",
+        "e2e/**/*",
+        "tests/**/*"
     ],
     "exclude": [
         "node_modules",
-        "dist",
-        "e2e",
-        "tests"
+        "dist"
     ]
 }

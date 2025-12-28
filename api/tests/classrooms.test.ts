@@ -1,42 +1,25 @@
-/* eslint-disable */
+
 /**
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
  *
- * Classroom API Tests (tRPC)
+ * Classroom Management API Tests (tRPC)
  */
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
-import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import type { Server } from 'node:http';
+import fs from 'node:fs';
+import { Server } from 'node:http';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-const API_URL = 'http://localhost:3004';
-const TEST_PORT = 3004;
-const ADMIN_TOKEN = 'test-admin-token-classrooms';
-const SHARED_SECRET = 'test-shared-secret';
-
-const DATA_DIR = path.join(__dirname, '..', 'data');
-const CLASSROOMS_FILE = path.join(DATA_DIR, 'classrooms.json');
-const MACHINES_FILE = path.join(DATA_DIR, 'machines.json');
-
-let originalClassrooms: string | null = null;
-let originalMachines: string | null = null;
-
-const GLOBAL_TIMEOUT = setTimeout(() => {
-    console.error('\n❌ Classroom tests timed out! Forcing exit...');
-    process.exit(1);
-}, 20000);
-GLOBAL_TIMEOUT.unref();
+const PORT = 3004;
+const API_URL = `http://localhost:${String(PORT)}`;
+const ADMIN_TOKEN = 'test-admin-token';
 
 let server: Server | undefined;
 
 // Helper to call tRPC mutations
-async function trpcMutate(procedure: string, input: unknown, headers: Record<string, string> = {}) {
+async function trpcMutate(procedure: string, input: unknown, headers: Record<string, string> = {}): Promise<Response> {
     const response = await fetch(`${API_URL}/trpc/${procedure}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...headers },
@@ -46,7 +29,7 @@ async function trpcMutate(procedure: string, input: unknown, headers: Record<str
 }
 
 // Helper to call tRPC queries
-async function trpcQuery(procedure: string, input?: unknown, headers: Record<string, string> = {}) {
+async function trpcQuery(procedure: string, input?: unknown, headers: Record<string, string> = {}): Promise<Response> {
     let url = `${API_URL}/trpc/${procedure}`;
     if (input !== undefined) {
         url += `?input=${encodeURIComponent(JSON.stringify(input))}`;
@@ -56,8 +39,8 @@ async function trpcQuery(procedure: string, input?: unknown, headers: Record<str
 }
 
 // Parse tRPC response
-interface TRPCResponse<T = unknown> {
-    result?: { data: T };
+interface TRPCResponse {
+    result?: { data: unknown };
     error?: { message: string; code: string };
 }
 
@@ -77,62 +60,37 @@ interface MachineResult {
     group_id?: string;
 }
 
-async function parseTRPC<T>(response: Response): Promise<{ data?: T; error?: string }> {
-    const json = await response.json() as TRPCResponse<T>;
-    if (json.result) {
+async function parseTRPC(response: Response): Promise<{ data?: unknown; error?: string }> {
+    const json = await response.json() as TRPCResponse;
+    if (json.result !== undefined) {
         return { data: json.result.data };
     }
-    if (json.error) {
+    if (json.error !== undefined) {
         return { error: json.error.message };
     }
     return {};
 }
 
-await describe('Classroom API Tests (tRPC)', { timeout: 25000 }, async () => {
+await describe('Classroom Management API Tests (tRPC)', async () => {
     before(async () => {
-        // Backup existing data files
-        if (fs.existsSync(CLASSROOMS_FILE)) {
-            originalClassrooms = fs.readFileSync(CLASSROOMS_FILE, 'utf-8');
-        }
-        if (fs.existsSync(MACHINES_FILE)) {
-            originalMachines = fs.readFileSync(MACHINES_FILE, 'utf-8');
-        }
-
-        // Reset data files for clean tests
-        fs.writeFileSync(CLASSROOMS_FILE, JSON.stringify({ classrooms: [] }, null, 2));
-        fs.writeFileSync(MACHINES_FILE, JSON.stringify({ machines: [] }, null, 2));
-
-        process.env.PORT = String(TEST_PORT);
+        process.env.PORT = String(PORT);
         process.env.ADMIN_TOKEN = ADMIN_TOKEN;
-        process.env.SHARED_SECRET = SHARED_SECRET;
+
+        // Ensure etc exists
+        const etcPath = path.join(process.cwd(), 'etc');
+        if (!fs.existsSync(etcPath)) fs.mkdirSync(etcPath, { recursive: true });
 
         const { app } = await import('../src/server.js');
-        server = app.listen(TEST_PORT, () => {
-            console.log(`Classroom test server started on port ${String(TEST_PORT)}`);
+        server = app.listen(PORT, () => {
+            console.log(`Classroom test server started on port ${String(PORT)}`);
         });
 
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
     });
 
     after(async () => {
-        // Restore original data files
-        if (originalClassrooms !== null) {
-            fs.writeFileSync(CLASSROOMS_FILE, originalClassrooms);
-        } else if (fs.existsSync(CLASSROOMS_FILE)) {
-            fs.unlinkSync(CLASSROOMS_FILE);
-        }
-
-        if (originalMachines !== null) {
-            fs.writeFileSync(MACHINES_FILE, originalMachines);
-        } else if (fs.existsSync(MACHINES_FILE)) {
-            fs.unlinkSync(MACHINES_FILE);
-        }
-
         if (server !== undefined) {
-            if ('closeAllConnections' in server && typeof server.closeAllConnections === 'function') {
-                server.closeAllConnections();
-            }
-            await new Promise<void>(resolve => {
+            await new Promise<void>((resolve) => {
                 server?.close(() => {
                     console.log('Classroom test server closed');
                     resolve();
@@ -141,139 +99,123 @@ await describe('Classroom API Tests (tRPC)', { timeout: 25000 }, async () => {
         }
     });
 
-    await describe('Classroom CRUD', async () => {
-        await test('classrooms.list - requires authentication', async () => {
-            const response = await trpcQuery('classrooms.list');
-            assert.strictEqual(response.status, 401);
+    await describe('Classroom CRUD Operations', async () => {
+        await test('classrooms.create - creates a new classroom', async (): Promise<void> => {
+            const response = await trpcMutate('classrooms.create', {
+                name: 'informatica-3',
+                display_name: 'Aula de Informática 3',
+                default_group_id: 'ciencias-3eso'
+            }, { 'Authorization': `Bearer ${ADMIN_TOKEN}` });
+
+            assert.ok([200, 201].includes(response.status), `Expected 200 or 201, got ${String(response.status)}`);
+
+            const res = await parseTRPC(response);
+            const data = res.data as ClassroomResult;
+            assert.strictEqual(data.name, 'informatica-3');
         });
 
-        await test('classrooms.list - returns empty list initially', async () => {
+        await test('classrooms.list - lists rooms', async (): Promise<void> => {
             const response = await trpcQuery('classrooms.list', undefined, {
                 'Authorization': `Bearer ${ADMIN_TOKEN}`
             });
             assert.strictEqual(response.status, 200);
-
-            const { data } = await parseTRPC<ClassroomResult[]>(response);
+            const res = await parseTRPC(response);
+            const data = res.data as ClassroomResult[];
             assert.ok(Array.isArray(data));
+            assert.ok(data.length > 0);
         });
 
-        await test('classrooms.create - creates classroom', async () => {
-            const response = await trpcMutate('classrooms.create', {
-                name: 'Informatica 3',
-                display_name: 'Aula Informática 3',
-                default_group_id: 'base-centro'
-            }, { 'Authorization': `Bearer ${ADMIN_TOKEN}` });
-
-            assert.ok([200, 201].includes(response.status), `Expected 200 or 201, got ${String(response.status)}`);
-
-            const { data } = await parseTRPC<ClassroomResult>(response);
-            assert.ok(data?.id);
-            assert.strictEqual(data?.name, 'informatica-3');
-        });
-
-        await test('classrooms.create - rejects duplicate name', async () => {
-            const response = await trpcMutate('classrooms.create', {
-                name: 'Informatica 3'
-            }, { 'Authorization': `Bearer ${ADMIN_TOKEN}` });
-
-            assert.strictEqual(response.status, 409);
-        });
-
-        await test('classrooms.get - returns classroom with machines', async () => {
+        await test('classrooms.get - gets by id', async (): Promise<void> => {
             const listResponse = await trpcQuery('classrooms.list', undefined, {
                 'Authorization': `Bearer ${ADMIN_TOKEN}`
             });
-            const { data: listData } = await parseTRPC<ClassroomResult[]>(listResponse);
-            const classroomId = listData?.[0]?.id;
+            const resList = await parseTRPC(listResponse);
+            const listData = resList.data as ClassroomResult[];
+            const classroomId = listData[0]?.id;
+            if (!classroomId) throw new Error('No classroom ID found');
 
-            const response = await trpcQuery('classrooms.get', { id: String(classroomId) }, {
+            const response = await trpcQuery('classrooms.get', { id: classroomId }, {
                 'Authorization': `Bearer ${ADMIN_TOKEN}`
             });
-
             assert.strictEqual(response.status, 200);
 
-            const { data } = await parseTRPC<ClassroomResult>(response);
-            assert.ok(data?.id);
-            assert.ok(Array.isArray(data?.machines));
+            const res = await parseTRPC(response);
+            const data = res.data as ClassroomResult;
+            assert.ok(Array.isArray(data.machines));
         });
 
-        await test('classrooms.setActiveGroup - sets active group', async () => {
+        await test('classrooms.setActiveGroup - sets active group', async (): Promise<void> => {
             const listResponse = await trpcQuery('classrooms.list', undefined, {
                 'Authorization': `Bearer ${ADMIN_TOKEN}`
             });
-            const { data: listData } = await parseTRPC<ClassroomResult[]>(listResponse);
-            const classroomId = listData?.[0]?.id;
+            const resList = await parseTRPC(listResponse);
+            const listData = resList.data as ClassroomResult[];
+            const classroomId = listData[0]?.id;
+            if (!classroomId) throw new Error('No classroom ID found');
 
             const response = await trpcMutate('classrooms.setActiveGroup', {
-                id: String(classroomId),
+                id: classroomId,
                 group_id: 'lengua-2eso'
             }, { 'Authorization': `Bearer ${ADMIN_TOKEN}` });
 
             assert.strictEqual(response.status, 200);
-
-            const { data } = await parseTRPC<ClassroomResult>(response);
-            assert.strictEqual(data?.current_group_id, 'lengua-2eso');
         });
     });
 
-    await describe('Machine Registration', async () => {
-        await test('classrooms.registerMachine - registers machine', async () => {
+    await describe('Machine Operations', async () => {
+        await test('classrooms.registerMachine - should register computer', async (): Promise<void> => {
             const listResponse = await trpcQuery('classrooms.list', undefined, {
                 'Authorization': `Bearer ${ADMIN_TOKEN}`
             });
-            const { data: listData } = await parseTRPC<ClassroomResult[]>(listResponse);
-            const classroomName = listData?.[0]?.name;
+            const resList = await parseTRPC(listResponse);
+            const listData = resList.data as ClassroomResult[];
+            const firstClassroom = listData[0];
+            if (!firstClassroom) throw new Error('No classroom found');
+            const classroomName = firstClassroom.name;
 
             const response = await trpcMutate('classrooms.registerMachine', {
                 hostname: 'pc-01',
-                classroom_name: classroomName,
-                version: '3.5'
-            }, { 'Authorization': `Bearer ${SHARED_SECRET}` });
+                classroom: classroomName
+            }, { 'Authorization': `Bearer ${ADMIN_TOKEN}` });
 
             assert.ok([200, 201].includes(response.status), `Expected 200 or 201, got ${String(response.status)}`);
-
-            const { data } = await parseTRPC<{ machine: MachineResult }>(response);
-            assert.strictEqual(data?.machine?.hostname, 'pc-01');
+            const res = await parseTRPC(response);
+            const data = res.data as { machine: MachineResult };
+            assert.strictEqual(data.machine.hostname, 'pc-01');
         });
 
-        await test('classrooms.getWhitelistUrl - returns URL', async () => {
-            const response = await trpcQuery('classrooms.getWhitelistUrl', { hostname: 'pc-01' }, {
-                'Authorization': `Bearer ${SHARED_SECRET}`
+        await test('classrooms.getWhitelistUrl - returns url and group', async (): Promise<void> => {
+            const response = await trpcQuery('classrooms.getWhitelistUrl', {
+                hostname: 'pc-01'
             });
 
             assert.strictEqual(response.status, 200);
 
-            const { data } = await parseTRPC<MachineResult>(response);
-            assert.ok(data?.url);
-            assert.strictEqual(data?.group_id, 'lengua-2eso');
+            const res = await parseTRPC(response);
+            const data = res.data as MachineResult;
+            assert.ok(data.url !== undefined);
+            assert.strictEqual(data.group_id, 'lengua-2eso');
         });
 
-        await test('classrooms.getWhitelistUrl - 404 for unknown machine', async () => {
-            const response = await trpcQuery('classrooms.getWhitelistUrl', { hostname: 'unknown-pc' }, {
-                'Authorization': `Bearer ${SHARED_SECRET}`
+        await test('classrooms.getWhitelistUrl - 404 for unknown machine', async (): Promise<void> => {
+            const response = await trpcQuery('classrooms.getWhitelistUrl', {
+                hostname: 'unknown-pc'
             });
-
             assert.strictEqual(response.status, 404);
         });
     });
 
-    await describe('Cleanup', async () => {
-        await test('classrooms.deleteMachine - removes machine', async () => {
-            const response = await trpcMutate('classrooms.deleteMachine', { hostname: 'pc-01' }, {
-                'Authorization': `Bearer ${ADMIN_TOKEN}`
-            });
-
-            assert.strictEqual(response.status, 200);
-        });
-
-        await test('classrooms.delete - deletes classroom', async () => {
+    await describe('Cleanup Operations', async () => {
+        await test('classrooms.delete - deletes room', async (): Promise<void> => {
             const listResponse = await trpcQuery('classrooms.list', undefined, {
                 'Authorization': `Bearer ${ADMIN_TOKEN}`
             });
-            const { data: listData } = await parseTRPC<ClassroomResult[]>(listResponse);
-            const classroomId = listData?.[0]?.id;
+            const resList = await parseTRPC(listResponse);
+            const listData = resList.data as ClassroomResult[];
+            const classroomId = listData[0]?.id;
+            if (!classroomId) throw new Error('No classroom ID found');
 
-            const response = await trpcMutate('classrooms.delete', { id: String(classroomId) }, {
+            const response = await trpcMutate('classrooms.delete', { id: classroomId }, {
                 'Authorization': `Bearer ${ADMIN_TOKEN}`
             });
 

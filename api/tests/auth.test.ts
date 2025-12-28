@@ -1,4 +1,4 @@
-/* eslint-disable */
+
 /**
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
@@ -118,7 +118,7 @@ await describe('Authentication & User Management API Tests (tRPC)', { timeout: 3
     // Registration Tests
     // ============================================
     await describe('tRPC auth.register - User Registration', async () => {
-        await test('should register a new user', async () => {
+        await test('should register a new user', async (): Promise<void> => {
             const input = {
                 email: `test-${String(Date.now())}@example.com`,
                 password: 'SecurePassword123!',
@@ -129,12 +129,12 @@ await describe('Authentication & User Management API Tests (tRPC)', { timeout: 3
             assert.strictEqual(response.status, 200);
 
             const { data } = await parseTRPC<AuthResult>(response);
-            if (!data) throw new Error('No data');
+            assert.ok(data, 'Data should exist');
             assert.ok(data.user !== undefined);
             assert.ok(data.user?.id !== undefined);
         });
 
-        await test('should reject registration without email', async () => {
+        await test('should reject registration without email', async (): Promise<void> => {
             const response = await trpcMutate('auth.register', {
                 password: 'SecurePassword123!',
                 name: 'Test User'
@@ -143,7 +143,7 @@ await describe('Authentication & User Management API Tests (tRPC)', { timeout: 3
             assert.strictEqual(response.status, 400);
         });
 
-        await test('should reject registration with short password', async () => {
+        await test('should reject registration with short password', async (): Promise<void> => {
             const response = await trpcMutate('auth.register', {
                 email: `short-pwd-${String(Date.now())}@example.com`,
                 password: '123',
@@ -153,7 +153,7 @@ await describe('Authentication & User Management API Tests (tRPC)', { timeout: 3
             assert.strictEqual(response.status, 400);
         });
 
-        await test('should reject duplicate email registration', async () => {
+        await test('should reject duplicate email registration', async (): Promise<void> => {
             const email = `duplicate-${String(Date.now())}@example.com`;
 
             await trpcMutate('auth.register', {
@@ -191,7 +191,7 @@ await describe('Authentication & User Management API Tests (tRPC)', { timeout: 3
             }
         });
 
-        await test('should login with valid credentials', async () => {
+        await test('should login with valid credentials', async (): Promise<void> => {
             const response = await trpcMutate('auth.login', {
                 email: testEmail,
                 password: testPassword
@@ -201,14 +201,14 @@ await describe('Authentication & User Management API Tests (tRPC)', { timeout: 3
 
             if (response.status === 200) {
                 const { data } = await parseTRPC<AuthResult>(response);
-                if (!data) throw new Error('No data');
+                assert.ok(data, 'Data must exist');
                 assert.ok(data.accessToken !== undefined && data.accessToken !== '');
                 assert.ok(data.refreshToken !== undefined && data.refreshToken !== '');
                 assert.ok(data.user !== undefined);
             }
         });
 
-        await test('should reject login with wrong password', async () => {
+        await test('should reject login with wrong password', async (): Promise<void> => {
             const response = await trpcMutate('auth.login', {
                 email: testEmail,
                 password: 'WrongPassword123!'
@@ -217,7 +217,7 @@ await describe('Authentication & User Management API Tests (tRPC)', { timeout: 3
             assert.strictEqual(response.status, 401);
         });
 
-        await test('should reject login with non-existent email', async () => {
+        await test('should reject login with non-existent email', async (): Promise<void> => {
             const response = await trpcMutate('auth.login', {
                 email: 'nonexistent@example.com',
                 password: 'SomePassword123!'
@@ -256,7 +256,7 @@ await describe('Authentication & User Management API Tests (tRPC)', { timeout: 3
             }
         });
 
-        await test('should refresh tokens with valid refresh token', async () => {
+        await test('should refresh tokens with valid refresh token', async (): Promise<void> => {
             if (refreshToken === null) {
                 console.log('Skipping: refreshToken not available');
                 return;
@@ -274,7 +274,7 @@ await describe('Authentication & User Management API Tests (tRPC)', { timeout: 3
             }
         });
 
-        await test('should reject invalid refresh token', async () => {
+        await test('should reject invalid refresh token', async (): Promise<void> => {
             const response = await trpcMutate('auth.refresh', { refreshToken: 'invalid-token' });
             assert.strictEqual(response.status, 401);
         });
@@ -284,12 +284,12 @@ await describe('Authentication & User Management API Tests (tRPC)', { timeout: 3
     // Current User Tests
     // ============================================
     await describe('tRPC auth.me - Get Current User', async () => {
-        await test('should reject request without token', async () => {
+        await test('should reject request without token', async (): Promise<void> => {
             const response = await trpcQuery('auth.me');
             assert.strictEqual(response.status, 401);
         });
 
-        await test('should reject request with invalid token', async () => {
+        await test('should reject request with invalid token', async (): Promise<void> => {
             const response = await trpcQuery('auth.me', undefined, { 'Authorization': 'Bearer invalid-token' });
             assert.strictEqual(response.status, 401);
         });
@@ -299,12 +299,12 @@ await describe('Authentication & User Management API Tests (tRPC)', { timeout: 3
     // User Management Tests (Admin Only)
     // ============================================
     await describe('tRPC users - Admin User Management Endpoints', async () => {
-        await test('users.list should require admin authentication', async () => {
+        await test('users.list should require admin authentication', async (): Promise<void> => {
             const response = await trpcQuery('users.list');
             assert.strictEqual(response.status, 401);
         });
 
-        await test('users.create should require admin authentication', async () => {
+        await test('users.create should require admin authentication', async (): Promise<void> => {
             const response = await trpcMutate('users.create', {
                 email: 'admin-create-test@example.com',
                 password: 'SecurePassword123!',
@@ -319,7 +319,7 @@ await describe('Authentication & User Management API Tests (tRPC)', { timeout: 3
     // Role Management Tests
     // ============================================
     await describe('tRPC users - Role Management Endpoints', async () => {
-        await test('users.assignRole should require admin authentication', async () => {
+        await test('users.assignRole should require admin authentication', async (): Promise<void> => {
             const response = await trpcMutate('users.assignRole', {
                 userId: 'some-user-id',
                 role: 'teacher',
@@ -329,7 +329,7 @@ await describe('Authentication & User Management API Tests (tRPC)', { timeout: 3
             assert.strictEqual(response.status, 401);
         });
 
-        await test('users.listTeachers should require admin authentication', async () => {
+        await test('users.listTeachers should require admin authentication', async (): Promise<void> => {
             const response = await trpcQuery('users.listTeachers');
             assert.strictEqual(response.status, 401);
         });

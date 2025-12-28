@@ -62,20 +62,20 @@ const DEFAULT_CONFIG: Config = {
 };
 
 // Runtime config (merged with stored settings)
-// eslint-disable-next-line
+
 let CONFIG: Config = { ...DEFAULT_CONFIG };
 
 /**
  * Load configuration from browser storage
  * @returns {Promise<Config>} Current configuration
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 async function loadConfig(): Promise<Config> {
     try {
-        if (typeof browser !== 'undefined' && browser.storage) {
+        if (typeof browser !== 'undefined') {
             const stored = await browser.storage.sync.get('config');
             if (stored.config) {
-                CONFIG = { ...DEFAULT_CONFIG, ...stored.config };
+                CONFIG = { ...DEFAULT_CONFIG, ...(stored.config as Partial<Config>) };
             }
         }
     } catch (error) {
@@ -88,11 +88,11 @@ async function loadConfig(): Promise<Config> {
  * Save configuration to browser storage
  * @param {Partial<Config>} newConfig - Configuration to save
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 async function saveConfig(newConfig: Partial<Config>): Promise<void> {
     try {
         CONFIG = { ...DEFAULT_CONFIG, ...newConfig };
-        if (typeof browser !== 'undefined' && browser.storage) {
+        if (typeof browser !== 'undefined') {
             await browser.storage.sync.set({ config: CONFIG });
         }
     } catch (error) {
@@ -121,8 +121,9 @@ function getAllApiUrls(): string[] {
 
 // Make config available globally
 if (typeof window !== 'undefined') {
-    (window as any).OPENPATH_CONFIG = CONFIG;
-    (window as any).loadOpenPathConfig = loadConfig;
-    (window as any).saveOpenPathConfig = saveConfig;
+    const win = window as unknown as { OPENPATH_CONFIG: Config; loadOpenPathConfig: () => Promise<Config>; saveOpenPathConfig: (c: Partial<Config>) => Promise<void> };
+    win.OPENPATH_CONFIG = CONFIG;
+    win.loadOpenPathConfig = loadConfig;
+    win.saveOpenPathConfig = saveConfig;
 }
 

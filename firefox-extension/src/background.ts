@@ -27,9 +27,7 @@ interface NativeResponse {
     [key: string]: unknown;
 }
 
-interface BlockedDomainsMap {
-    [tabId: number]: Map<string, BlockedDomainData>;
-}
+type BlockedDomainsMap = Record<number, Map<string, BlockedDomainData>>;
 
 // Almacenamiento en memoria: { tabId: Map<hostname, Set<errorTypes>> }
 const blockedDomains: BlockedDomainsMap = {};
@@ -64,7 +62,7 @@ function extractHostname(url: string): string | null {
     try {
         const urlObj = new URL(url);
         return urlObj.hostname;
-    } catch (e) {
+    } catch {
         return null;
     }
 }
@@ -74,9 +72,7 @@ function extractHostname(url: string): string | null {
  * @param tabId - ID de la pestaña
  */
 function ensureTabStorage(tabId: number): void {
-    if (!blockedDomains[tabId]) {
-        blockedDomains[tabId] = new Map();
-    }
+    blockedDomains[tabId] ??= new Map();
 }
 
 /**
@@ -194,7 +190,7 @@ async function connectNativeHost(): Promise<boolean> {
  * @param message - Mensaje a enviar
  * @returns Respuesta del host
  */
-async function sendNativeMessage(message: any): Promise<any> {
+async function sendNativeMessage(message: unknown): Promise<unknown> {
     return new Promise((resolve, reject) => {
         const attempt = async (): Promise<void> => {
             try {
@@ -210,13 +206,13 @@ async function sendNativeMessage(message: any): Promise<any> {
                 // Usar sendNativeMessage para comunicación simple
                 const response = await browser.runtime.sendNativeMessage(
                     NATIVE_HOST_NAME,
-                    message
+                    message as object
                 );
 
                 resolve(response);
             } catch (error) {
                 console.error('[Monitor] Error en Native Messaging:', error);
-                reject(error);
+                reject(error instanceof Error ? error : new Error(String(error)));
             }
         };
         void attempt();
@@ -226,7 +222,7 @@ async function sendNativeMessage(message: any): Promise<any> {
 interface CheckResult {
     success: boolean;
     error?: string;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 /**
@@ -256,7 +252,7 @@ async function checkDomainsWithNative(domains: string[]): Promise<CheckResult> {
 async function isNativeHostAvailable(): Promise<boolean> {
     try {
         const response = await sendNativeMessage({ action: 'ping' }) as NativeResponse;
-        return response.success === true;
+        return response.success;
     } catch {
         return false;
     }
@@ -294,7 +290,7 @@ browser.webRequest.onErrorOccurred.addListener(
         }
 
         console.log(`[Monitor] Bloqueado: ${hostname} (${details.error})`);
-        addBlockedDomain(details.tabId, hostname, details.error, details.originUrl || details.documentUrl);
+        addBlockedDomain(details.tabId, hostname, details.error, details.originUrl ?? details.documentUrl);
     },
     { urls: ['<all_urls>'] }
 );
@@ -307,7 +303,7 @@ browser.webNavigation.onBeforeNavigate.addListener(
     (details: WebNavigation.OnBeforeNavigateDetailsType) => {
         // Solo limpiar para navegación principal (no iframes)
         if (details.frameId === 0) {
-            console.log(`[Monitor] Limpiando bloqueos para tab ${details.tabId}`);
+            console.log(`[Monitor] Limpiando bloqueos para tab ${details.tabId.toString()}`);
             clearBlockedDomains(details.tabId);
         }
     }
@@ -320,8 +316,9 @@ browser.webNavigation.onBeforeNavigate.addListener(
 browser.tabs.onRemoved.addListener(
     (tabId: number) => {
         if (blockedDomains[tabId]) {
+            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
             delete blockedDomains[tabId];
-            console.log(`[Monitor] Tab ${tabId} cerrada, datos eliminados`);
+            console.log(`[Monitor] Tab ${tabId.toString()} cerrada, datos eliminados`);
         }
     }
 );
@@ -331,22 +328,24 @@ browser.tabs.onRemoved.addListener(
  * Responde a solicitudes de datos del popup
  */
 browser.runtime.onMessage.addListener(
-    (message: any, _sender: Runtime.MessageSender) => {
-        const handleMessage = async (): Promise<any> => {
-            switch (message.action) {
+    (message: unknown, _sender: Runtime.MessageSender) => {
+        const handleMessage = async (): Promise<unknown> => {
+            const msg = message as { action: string; tabId: number; domains?: string[] };
+            switch (msg.action) {
                 case 'getBlockedDomains':
                     return {
-                        domains: getBlockedDomainsForTab(message.tabId)
+                        domains: getBlockedDomainsForTab(msg.tabId)
                     };
 
                 case 'clearBlockedDomains':
-                    clearBlockedDomains(message.tabId);
+                    clearBlockedDomains(msg.tabId);
                     return { success: true };
 
                 case 'checkWithNative':
                     // Verificar dominios con Native Messaging (async)
                     try {
-                        return await checkDomainsWithNative(message.domains);
+                        const domainsToCheck = (message as { domains: string[] }).domains;
+                        return await checkDomainsWithNative(domainsToCheck);
                     } catch (error) {
                         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
                         return {
@@ -386,7 +385,8 @@ browser.runtime.onMessage.addListener(
             }
         };
 
-        return handleMessage(); // Return promise for async response
+        void handleMessage(); // Return promise for async response
+        return true; // Indicates async response
     }
 );
 

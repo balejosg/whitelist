@@ -34,12 +34,10 @@ declare const browser: Browser;
 
 interface BlockedDomainInfo {
     errors: string[];
-    origin: string;
+    origin?: string;
 }
 
-interface BlockedDomainsData {
-    [hostname: string]: BlockedDomainInfo;
-}
+type BlockedDomainsData = Record<string, BlockedDomainInfo>;
 
 interface VerifyResult {
     domain: string;
@@ -60,37 +58,41 @@ interface RequestResponse {
     error?: string;
 }
 
-interface NativeAvailableResponse {
-    available: boolean;
-}
 
-interface HostnameResponse {
-    success: boolean;
-    hostname: string;
-    error?: string;
-}
 
+
+/**
+ * Helper to get DOM elements safely
+ * @param id Element ID
+ * @returns The element
+ * @throws Error if element not found
+ */
+function getElement(id: string): HTMLElement {
+    const el = document.getElementById(id);
+    if (!el) throw new Error(`Required element #${id} not found`);
+    return el;
+}
 
 // DOM Elements
-const tabDomainEl = document.getElementById('tab-domain') as HTMLElement;
-const countEl = document.getElementById('count') as HTMLElement;
-const domainsListEl = document.getElementById('domains-list') as HTMLElement;
-const emptyMessageEl = document.getElementById('empty-message') as HTMLElement;
-const btnCopy = document.getElementById('btn-copy') as HTMLButtonElement;
-const btnVerify = document.getElementById('btn-verify') as HTMLButtonElement;
-const btnClear = document.getElementById('btn-clear') as HTMLButtonElement;
-const btnRequest = document.getElementById('btn-request') as HTMLButtonElement;
-const toastEl = document.getElementById('toast') as HTMLElement;
-const nativeStatusEl = document.getElementById('native-status') as HTMLElement;
-const verifyResultsEl = document.getElementById('verify-results') as HTMLElement;
-const verifyListEl = document.getElementById('verify-list') as HTMLElement;
+const tabDomainEl = getElement('tab-domain');
+const countEl = getElement('count');
+const domainsListEl = getElement('domains-list');
+const emptyMessageEl = getElement('empty-message');
+const btnCopy = getElement('btn-copy') as HTMLButtonElement;
+const btnVerify = getElement('btn-verify') as HTMLButtonElement;
+const btnClear = getElement('btn-clear') as HTMLButtonElement;
+const btnRequest = getElement('btn-request') as HTMLButtonElement;
+const toastEl = getElement('toast');
+const nativeStatusEl = getElement('native-status');
+const verifyResultsEl = getElement('verify-results');
+const verifyListEl = getElement('verify-list');
 
 // Request form elements
-const requestSectionEl = document.getElementById('request-section') as HTMLElement;
-const requestDomainSelectEl = document.getElementById('request-domain-select') as HTMLSelectElement;
-const requestReasonEl = document.getElementById('request-reason') as HTMLTextAreaElement;
-const btnSubmitRequest = document.getElementById('btn-submit-request') as HTMLButtonElement;
-const requestStatusEl = document.getElementById('request-status') as HTMLElement;
+const requestSectionEl = getElement('request-section');
+const requestDomainSelectEl = getElement('request-domain-select') as HTMLSelectElement;
+const requestReasonEl = getElement('request-reason') as HTMLTextAreaElement;
+const btnSubmitRequest = getElement('btn-submit-request') as HTMLButtonElement;
+const requestStatusEl = getElement('request-status');
 
 // Current tab ID
 let currentTabId: number | null = null;
@@ -110,7 +112,7 @@ let nativeAvailable = false;
  * @param {string} message - Mensaje a mostrar
  * @param {number} duration - Duración en ms
  */
-function showToast(message: string, duration = 2000) {
+function showToast(message: string, duration = 2000): void {
     toastEl.textContent = message;
     toastEl.classList.remove('hidden');
 
@@ -133,7 +135,7 @@ function formatErrorTypes(errors: string[]): string {
     };
 
     return errors
-        .map(err => errorLabels[err] || err)
+        .map(err => errorLabels[err] ?? err)
         .join(', ');
 }
 
@@ -151,10 +153,8 @@ function renderDomainsList(domains: BlockedDomainsData): void {
         emptyMessageEl.classList.remove('hidden');
         btnCopy.disabled = true;
         btnCopy.style.opacity = '0.5';
-        if (btnVerify) {
-            btnVerify.disabled = true;
-            btnVerify.style.opacity = '0.5';
-        }
+        btnVerify.disabled = true;
+        btnVerify.style.opacity = '0.5';
         return;
     }
 
@@ -162,7 +162,7 @@ function renderDomainsList(domains: BlockedDomainsData): void {
     emptyMessageEl.classList.add('hidden');
     btnCopy.disabled = false;
     btnCopy.style.opacity = '1';
-    if (btnVerify && nativeAvailable) {
+    if (nativeAvailable) {
         btnVerify.disabled = false;
         btnVerify.style.opacity = '1';
     }
@@ -173,8 +173,7 @@ function renderDomainsList(domains: BlockedDomainsData): void {
     domainsListEl.innerHTML = hostnames.map(hostname => {
         const data = domains[hostname];
         if (!data) return '';
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        const errors = (data?.errors) ? data.errors : [];
+        const errors = data.errors;
         // Support both old and new format - actually data is BlockedDomainInfo
         // If it was just errors array, type would misalign. Assuming strict structure now.
         const origin = data.origin ?? '';
@@ -229,10 +228,10 @@ function extractTabHostname(url: string | undefined): string {
  */
 async function loadBlockedDomains(): Promise<void> {
     try {
-        const response = await browser.runtime.sendMessage({
+        const response: { domains?: BlockedDomainsData } = await browser.runtime.sendMessage({
             action: 'getBlockedDomains',
             tabId: currentTabId
-        }) as { domains: BlockedDomainsData };
+        });
 
         blockedDomainsData = response.domains ?? {};
         renderDomainsList(blockedDomainsData);
@@ -245,7 +244,7 @@ async function loadBlockedDomains(): Promise<void> {
 /**
  * Copia la lista de dominios al portapapeles
  */
-async function copyToClipboard() {
+async function copyToClipboard(): Promise<void> {
     const hostnames = Object.keys(blockedDomainsData);
 
     if (hostnames.length === 0) {
@@ -258,23 +257,16 @@ async function copyToClipboard() {
 
     try {
         await navigator.clipboard.writeText(text);
-        showToast(`✅ ${hostnames.length} dominio(s) copiado(s)`);
+        showToast(`✅ ${hostnames.length.toString()} dominio(s) copiado(s)`);
     } catch (error) {
-        // Fallback para navegadores más antiguos
-        const textarea = document.createElement('textarea');
-        textarea.value = text;
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-        showToast(`✅ ${hostnames.length} dominio(s) copiado(s)`);
+        showToast(`❌ Error al copiar: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
 
 /**
  * Limpia la lista de dominios bloqueados
  */
-async function clearDomains() {
+async function clearDomains(): Promise<void> {
     try {
         await browser.runtime.sendMessage({
             action: 'clearBlockedDomains',
@@ -298,11 +290,11 @@ async function clearDomains() {
  */
 async function checkNativeAvailable(): Promise<boolean> {
     try {
-        const response = await browser.runtime.sendMessage({
+        const response: { available: boolean } = await browser.runtime.sendMessage({
             action: 'isNativeAvailable'
-        }) as NativeAvailableResponse;
+        });
 
-        nativeAvailable = response && response.available;
+        nativeAvailable = response.available;
 
         if (nativeAvailable) {
             nativeStatusEl.classList.remove('hidden');
@@ -336,15 +328,15 @@ async function verifyDomainsWithNative(): Promise<void> {
 
     try {
         const response = await browser.runtime.sendMessage({
-            action: 'checkWithNative',
             domains: hostnames
-        }) as VerifyResponse;
+        });
+        const data = response as VerifyResponse;
 
-        if (response.success) {
-            renderVerifyResults(response.results);
-            showToast(`🔍 ${response.results.length} dominio(s) verificado(s)`);
+        if (data.success) {
+            renderVerifyResults(data.results);
+            showToast(`🔍 ${data.results.length.toString()} dominio(s) verificado(s)`);
         } else {
-            showToast(`❌ Error: ${response.error ?? 'Desconocido'}`);
+            showToast(`❌ Error: ${data.error ?? 'Desconocido'}`);
         }
     } catch (error) {
         console.error('[Popup] Error verificando dominios:', error);
@@ -360,7 +352,7 @@ async function verifyDomainsWithNative(): Promise<void> {
  * @param {VerifyResult[]} results - Array de resultados de verificación
  */
 function renderVerifyResults(results: VerifyResult[]): void {
-    if (!results || results.length === 0) {
+    if (results.length === 0) {
         hideVerifyResults();
         return;
     }
@@ -386,7 +378,7 @@ function renderVerifyResults(results: VerifyResult[]): void {
 /**
  * Oculta la sección de resultados de verificación
  */
-function hideVerifyResults() {
+function hideVerifyResults(): void {
     verifyResultsEl.classList.add('hidden');
     verifyListEl.innerHTML = '';
 }
@@ -396,7 +388,11 @@ function hideVerifyResults() {
 // =============================================================================
 
 // Access global config from config.js
-const CONFIG = (window as any).OPENPATH_CONFIG as Config;
+// Get config from window object explicitly typed
+interface WindowWithConfig extends Window {
+    OPENPATH_CONFIG: Config;
+}
+const CONFIG = (window as unknown as WindowWithConfig).OPENPATH_CONFIG;
 // loadConfig unused here, logic is inside background or handled via messages
 // const loadConfig = (window as any).loadOpenPathConfig as () => Promise<Config>;
 
@@ -411,7 +407,7 @@ async function checkRequestApiAvailable(): Promise<boolean> {
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => { controller.abort(); }, 5000);
 
     try {
         const response = await fetch(`${apiUrl}/health`, {
@@ -427,7 +423,7 @@ async function checkRequestApiAvailable(): Promise<boolean> {
     } catch (error) {
         clearTimeout(timeout);
         if (CONFIG.DEBUG_MODE) {
-            console.log('[Popup] Request API not available:', (error as any).message || String(error));
+            console.log('[Popup] Request API not available:', error instanceof Error ? error.message : String(error));
         }
     }
 
@@ -437,7 +433,7 @@ async function checkRequestApiAvailable(): Promise<boolean> {
 /**
  * Toggle request section visibility
  */
-function toggleRequestSection() {
+function toggleRequestSection(): void {
     const isHidden = requestSectionEl.classList.contains('hidden');
 
     if (isHidden) {
@@ -455,7 +451,7 @@ function toggleRequestSection() {
 /**
  * Populate the domain select dropdown with origin info
  */
-function populateRequestDomainSelect() {
+function populateRequestDomainSelect(): void {
     const hostnames = Object.keys(blockedDomainsData).sort();
 
     requestDomainSelectEl.innerHTML = '<option value="">Seleccionar dominio...</option>';
@@ -463,7 +459,7 @@ function populateRequestDomainSelect() {
     hostnames.forEach(hostname => {
         const data = blockedDomainsData[hostname];
         if (!data) return;
-        const origin = data.origin || 'desconocido';
+        const origin = data.origin ?? 'desconocido';
         const option = document.createElement('option');
         option.value = hostname;
         option.textContent = hostname;
@@ -481,8 +477,8 @@ function populateRequestDomainSelect() {
  */
 function updateSubmitButtonState(): void {
     const hasSelection = requestDomainSelectEl.value !== '';
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    const hasReason = (requestReasonEl.value || '').trim().length >= 3;
+
+    const hasReason = requestReasonEl.value.trim().length >= 3;
 
     btnSubmitRequest.disabled = !hasSelection || !hasReason;
 }
@@ -501,7 +497,7 @@ async function generateToken(hostname: string, secret: string): Promise<string> 
 /**
  * Submit a domain request using auto-inclusion endpoint
  */
-async function submitDomainRequest() {
+async function submitDomainRequest(): Promise<void> {
     const domain = requestDomainSelectEl.value;
     const reason = requestReasonEl.value.trim();
     const selectedOption = requestDomainSelectEl.selectedOptions[0];
@@ -528,7 +524,7 @@ async function submitDomainRequest() {
 
     try {
         // Get hostname via Native Messaging
-        const hostnameResult = await browser.runtime.sendMessage({ action: 'getHostname' }) as HostnameResponse;
+        const hostnameResult: { success: boolean; hostname: string } = await browser.runtime.sendMessage({ action: 'getHostname' });
         if (!hostnameResult.success) {
             throw new Error('No se pudo obtener el hostname del sistema');
         }
@@ -538,7 +534,7 @@ async function submitDomainRequest() {
         const token = await generateToken(systemHostname, sharedSecret);
 
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), CONFIG.REQUEST_TIMEOUT);
+        const timeout = setTimeout(() => { controller.abort(); }, CONFIG.REQUEST_TIMEOUT);
 
         // Use auto-inclusion endpoint
         const response = await fetch(`${apiUrl}/api/requests/auto`, {
@@ -560,14 +556,14 @@ async function submitDomainRequest() {
 
         if (response.ok && data.success) {
             showRequestStatus(
-                `✅ Dominio añadido a ${data.group_id}\nActualizando whitelist local...`,
+                `✅ Dominio añadido a ${data.group_id ?? 'grupo'}\nActualizando whitelist local...`,
                 'success'
             );
 
             // MultiReplace note: skipping lines for brevity where unchanged
             // Trigger local whitelist update
             try {
-                const updateResult = await browser.runtime.sendMessage({ action: 'triggerWhitelistUpdate' }) as { success: boolean };
+                const updateResult: { success: boolean } = await browser.runtime.sendMessage({ action: 'triggerWhitelistUpdate' });
                 if (updateResult.success) {
                     showRequestStatus(
                         `✅ Dominio ${domain} añadido y whitelist local actualizada`,
@@ -576,7 +572,7 @@ async function submitDomainRequest() {
                     showToast('✅ Dominio añadido y WL actualizada');
                 } else {
                     showRequestStatus(
-                        `✅ Dominio añadido (actualización local pendiente)`,
+                        '✅ Dominio añadido (actualización local pendiente)',
                         'success'
                     );
                     showToast('✅ Dominio añadido');
@@ -590,14 +586,14 @@ async function submitDomainRequest() {
             requestDomainSelectEl.value = '';
             requestReasonEl.value = '';
         } else {
-            const errorMsg = data.error || 'Error desconocido';
+            const errorMsg = data.error ?? 'Error desconocido';
             showRequestStatus(`❌ ${errorMsg}`, 'error');
             showToast(`❌ ${errorMsg}`);
         }
 
     } catch (error) {
         let errorMsg = 'Error de conexión';
-        const err = error as Error;
+        const err = error instanceof Error ? error : new Error(String(error));
 
         if (err.name === 'AbortError') {
             errorMsg = 'Timeout - servidor no responde';
@@ -606,10 +602,10 @@ async function submitDomainRequest() {
         }
 
         showRequestStatus(`❌ ${errorMsg}`, 'error');
-        showToast(`❌ Error al enviar`);
+        showToast('❌ Error al enviar');
 
         if (CONFIG.DEBUG_MODE) {
-            console.error('[Popup] Request error:', error);
+            console.error('[Popup] Request error:', err);
         }
     } finally {
         btnSubmitRequest.disabled = false;
@@ -630,7 +626,7 @@ function showRequestStatus(message: string, type = 'info'): void {
 /**
  * Hide request status message
  */
-function hideRequestStatus() {
+function hideRequestStatus(): void {
     requestStatusEl.classList.add('hidden');
     requestStatusEl.textContent = '';
 }
@@ -649,14 +645,14 @@ async function init(): Promise<void> {
         }
 
         const tab = tabs[0];
-        if (!tab || !tab.id) {
+        if (!tab?.id) {
             tabDomainEl.textContent = 'Error: Pestaña inválida';
             return;
         }
         currentTabId = tab.id;
 
         // Mostrar hostname de la pestaña actual
-        tabDomainEl.textContent = extractTabHostname(tab.url || '');
+        tabDomainEl.textContent = extractTabHostname(tab.url ?? '');
 
         // Cargar dominios bloqueados
         await loadBlockedDomains();
@@ -680,14 +676,14 @@ async function init(): Promise<void> {
 }
 
 // Event Listeners
-btnCopy.addEventListener('click', copyToClipboard);
-btnClear.addEventListener('click', clearDomains);
-btnVerify.addEventListener('click', verifyDomainsWithNative);
+btnCopy.addEventListener('click', () => { void copyToClipboard(); });
+btnClear.addEventListener('click', () => { void clearDomains(); });
+btnVerify.addEventListener('click', () => { void verifyDomainsWithNative(); });
 btnRequest.addEventListener('click', toggleRequestSection);
-btnSubmitRequest.addEventListener('click', submitDomainRequest);
+btnSubmitRequest.addEventListener('click', () => { void submitDomainRequest(); });
 requestDomainSelectEl.addEventListener('change', updateSubmitButtonState);
 requestReasonEl.addEventListener('input', updateSubmitButtonState);
 
 // Inicializar al cargar
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', () => { void init(); });
 

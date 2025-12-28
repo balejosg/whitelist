@@ -1,4 +1,3 @@
-/* eslint-disable */
 /**
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
@@ -273,7 +272,9 @@ await describe('Schedule Storage', async () => {
         await it('should get schedules by teacher', () => {
             const schedules = scheduleStorage.getSchedulesByTeacher(testTeacherId);
             assert.strictEqual(schedules.length, 1);
-            assert.strictEqual(schedules[0].teacher_id, testTeacherId);
+            const firstSchedule = schedules[0];
+            if (!firstSchedule) throw new Error('No schedule found');
+            assert.strictEqual(firstSchedule.teacher_id, testTeacherId);
         });
     });
 

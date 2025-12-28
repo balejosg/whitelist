@@ -1,4 +1,4 @@
-/* eslint-disable */
+
 /**
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
@@ -30,7 +30,7 @@ const TEACHER_PASSWORD = 'TeacherPassword123!';
 const TEACHER_GROUP = 'ciencias-3eso';
 
 // Helper to call tRPC mutations
-async function trpcMutate(procedure: string, input: unknown, headers: Record<string, string> = {}) {
+async function trpcMutate(procedure: string, input: unknown, headers: Record<string, string> = {}): Promise<Response> {
     const response = await fetch(`${API_URL}/trpc/${procedure}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...headers },
@@ -40,7 +40,7 @@ async function trpcMutate(procedure: string, input: unknown, headers: Record<str
 }
 
 // Helper to call tRPC queries
-async function trpcQuery(procedure: string, input?: unknown, headers: Record<string, string> = {}) {
+async function trpcQuery(procedure: string, input?: unknown, headers: Record<string, string> = {}): Promise<Response> {
     let url = `${API_URL}/trpc/${procedure}`;
     if (input !== undefined) {
         url += `?input=${encodeURIComponent(JSON.stringify(input))}`;
@@ -50,9 +50,9 @@ async function trpcQuery(procedure: string, input?: unknown, headers: Record<str
 }
 
 // Parse tRPC response
-interface TRPCResponse<T = unknown> {
-    result?: { data: T };
-    error?: { message: string; code: string };
+interface TRPCResponse {
+    result?: { data: unknown };
+    error?: { message: string; code: string; data?: { code: string; httpStatus: number } };
 }
 
 interface UserResult {
@@ -67,12 +67,6 @@ interface AuthResult {
     user?: UserResult;
 }
 
-interface RoleResult {
-    id: string;
-    role: string;
-    groupIds: string[];
-}
-
 interface CheckResult {
     blocked: boolean;
     domain?: string;
@@ -84,13 +78,13 @@ interface RequestResult {
     status?: string;
 }
 
-async function parseTRPC<T>(response: Response): Promise<{ data?: T; error?: string; code?: string }> {
-    const json = await response.json() as TRPCResponse<T>;
-    if (json.result) {
+async function parseTRPC(response: Response): Promise<{ data?: unknown; error?: string; code?: string }> {
+    const json = await response.json() as TRPCResponse;
+    if (json.result !== undefined) {
         return { data: json.result.data };
     }
-    if (json.error) {
-        return { error: json.error.message, code: json.error.code };
+    if (json.error !== undefined) {
+        return { error: json.error.message, code: json.error.data?.code ?? json.error.code };
     }
     return {};
 }
@@ -124,74 +118,80 @@ await describe('Blocked Domains Tests - US3 (tRPC)', { timeout: 45000 }, async (
         }
     });
 
-    await describe('Setup: Create Teacher with Role', async () => {
-        await test('should create teacher user', async () => {
-            const response = await trpcMutate('users.create', {
-                email: TEACHER_EMAIL,
-                password: TEACHER_PASSWORD,
-                name: 'Pedro García (Blocked Domains Test)'
-            }, { 'Authorization': `Bearer ${String(adminToken)}` });
+    await test('Setup: Create Teacher with Role', async (): Promise<void> => {
+        const token = adminToken ?? '';
+        const response = await trpcMutate('users.create', {
+            email: TEACHER_EMAIL,
+            password: TEACHER_PASSWORD,
+            name: 'Pedro García (Blocked Domains Test)'
+        }, { 'Authorization': `Bearer ${token}` });
 
-            assert.strictEqual(response.status, 200);
-            const { data } = await parseTRPC<UserResult>(response);
-            teacherUserId = data?.id ?? null;
+        assert.strictEqual(response.status, 200);
+        const res = await parseTRPC(response);
+        const data = res.data as UserResult;
+        teacherUserId = data.id;
+    });
+
+    await test('should assign teacher role with groups', async (): Promise<void> => {
+        const token = adminToken ?? '';
+        const response = await trpcMutate('users.assignRole', {
+            userId: String(teacherUserId),
+            role: 'teacher',
+            groupIds: [TEACHER_GROUP]
+        }, { 'Authorization': `Bearer ${token}` });
+
+        assert.strictEqual(response.status, 200);
+        await parseTRPC(response);
+    });
+
+    await test('should login as teacher and get token', async (): Promise<void> => {
+        const response = await trpcMutate('auth.login', {
+            email: TEACHER_EMAIL,
+            password: TEACHER_PASSWORD
         });
 
-        await test('should assign teacher role with groups', async () => {
-            const response = await trpcMutate('users.assignRole', {
-                userId: String(teacherUserId),
-                role: 'teacher',
-                groupIds: [TEACHER_GROUP]
-            }, { 'Authorization': `Bearer ${String(adminToken)}` });
-
-            assert.strictEqual(response.status, 200);
-            const { data } = await parseTRPC<RoleResult>(response);
-            assert.ok(data?.id);
-        });
-
-        await test('should login as teacher and get token', async () => {
-            const response = await trpcMutate('auth.login', {
-                email: TEACHER_EMAIL,
-                password: TEACHER_PASSWORD
-            });
-
-            assert.strictEqual(response.status, 200);
-            const { data } = await parseTRPC<AuthResult>(response);
-            assert.ok(data?.accessToken);
-            teacherToken = data.accessToken;
-        });
+        assert.strictEqual(response.status, 200);
+        const res = await parseTRPC(response);
+        const data = res.data as AuthResult;
+        assert.ok(data.accessToken !== undefined);
+        teacherToken = data.accessToken ?? null;
     });
 
     await describe('requests.check - Check if domain is blocked', async () => {
-        await test('should return blocked status for facebook.com', async () => {
+        await test('should return blocked status for facebook.com', async (): Promise<void> => {
+            const token = teacherToken ?? '';
             const response = await trpcMutate('requests.check', { domain: 'facebook.com' }, {
-                'Authorization': `Bearer ${String(teacherToken)}`
+                'Authorization': `Bearer ${token}`
             });
 
             assert.strictEqual(response.status, 200);
-            const { data } = await parseTRPC<CheckResult>(response);
-            assert.strictEqual(typeof data?.blocked, 'boolean');
+            const res = await parseTRPC(response);
+            const data = res.data as CheckResult;
+            assert.strictEqual(typeof data.blocked, 'boolean');
         });
 
-        await test('should return blocked status for wikipedia.org', async () => {
+        await test('should return blocked status for wikipedia.org', async (): Promise<void> => {
+            const token = teacherToken ?? '';
             const response = await trpcMutate('requests.check', { domain: 'wikipedia.org' }, {
-                'Authorization': `Bearer ${String(teacherToken)}`
+                'Authorization': `Bearer ${token}`
             });
 
             assert.strictEqual(response.status, 200);
-            const { data } = await parseTRPC<CheckResult>(response);
-            assert.strictEqual(typeof data?.blocked, 'boolean');
+            const res = await parseTRPC(response);
+            const data = res.data as CheckResult;
+            assert.strictEqual(typeof data.blocked, 'boolean');
         });
 
-        await test('should reject check without authentication', async () => {
+        await test('should reject check without authentication', async (): Promise<void> => {
             const response = await trpcMutate('requests.check', { domain: 'example.com' });
 
             assert.strictEqual(response.status, 401);
         });
 
-        await test('should reject check without domain parameter', async () => {
+        await test('should reject check without domain parameter', async (): Promise<void> => {
+            const token = teacherToken ?? '';
             const response = await trpcMutate('requests.check', {}, {
-                'Authorization': `Bearer ${String(teacherToken)}`
+                'Authorization': `Bearer ${token}`
             });
 
             assert.strictEqual(response.status, 400);
@@ -199,25 +199,28 @@ await describe('Blocked Domains Tests - US3 (tRPC)', { timeout: 45000 }, async (
     });
 
     await describe('requests.listBlocked - List blocked domains', async () => {
-        await test('should return list of blocked domains for admin', async () => {
+        await test('should return list of blocked domains for admin', async (): Promise<void> => {
+            const token = adminToken ?? '';
             const response = await trpcQuery('requests.listBlocked', undefined, {
-                'Authorization': `Bearer ${String(adminToken)}`
+                'Authorization': `Bearer ${token}`
             });
 
             assert.strictEqual(response.status, 200);
-            const { data } = await parseTRPC<string[]>(response);
+            const res = await parseTRPC(response);
+            const data = res.data as string[];
             assert.ok(Array.isArray(data));
         });
 
-        await test('should reject for non-admin (teacher)', async () => {
+        await test('should reject for non-admin (teacher)', async (): Promise<void> => {
+            const token = teacherToken ?? '';
             const response = await trpcQuery('requests.listBlocked', undefined, {
-                'Authorization': `Bearer ${String(teacherToken)}`
+                'Authorization': `Bearer ${token}`
             });
 
             assert.strictEqual(response.status, 403);
         });
 
-        await test('should reject without authentication', async () => {
+        await test('should reject without authentication', async (): Promise<void> => {
             const response = await trpcQuery('requests.listBlocked');
 
             assert.strictEqual(response.status, 401);
@@ -225,7 +228,7 @@ await describe('Blocked Domains Tests - US3 (tRPC)', { timeout: 45000 }, async (
     });
 
     await describe('Teacher Approval of Blocked Domains', async () => {
-        await test('setup: create a pending request for any domain', async () => {
+        await test('setup: create a pending request for any domain', async (): Promise<void> => {
             const testDomain = `blocked-test-${String(Date.now())}.example.com`;
 
             const response = await trpcMutate('requests.create', {
@@ -235,21 +238,23 @@ await describe('Blocked Domains Tests - US3 (tRPC)', { timeout: 45000 }, async (
             });
 
             if (response.status === 200) {
-                const { data } = await parseTRPC<RequestResult>(response);
-                pendingRequestId = data?.id ?? null;
+                const res = await parseTRPC(response);
+                const data = res.data as RequestResult;
+                pendingRequestId = data.id;
             }
         });
 
-        await test('teacher should be able to approve request (if allowed)', async () => {
+        await test('teacher should be able to approve request (if allowed)', async (): Promise<void> => {
             if (pendingRequestId === null) {
                 console.log('Skipping: No pending request available');
                 return;
             }
 
+            const token = teacherToken ?? '';
             const response = await trpcMutate('requests.approve', {
                 id: pendingRequestId,
                 group_id: TEACHER_GROUP
-            }, { 'Authorization': `Bearer ${String(teacherToken)}` });
+            }, { 'Authorization': `Bearer ${token}` });
 
             // Either success (200) or forbidden (403) depending on domain
             assert.ok([200, 403].includes(response.status), `Expected 200 or 403, got ${String(response.status)}`);
@@ -259,7 +264,7 @@ await describe('Blocked Domains Tests - US3 (tRPC)', { timeout: 45000 }, async (
     await describe('Teacher Approval of Non-blocked Domains', async () => {
         let nonBlockedRequestId: string | null = null;
 
-        await test('setup: create request for safe domain', async () => {
+        await test('setup: create request for safe domain', async (): Promise<void> => {
             const safeDomain = `safe-test-${String(Date.now())}.example.org`;
 
             const response = await trpcMutate('requests.create', {
@@ -269,21 +274,23 @@ await describe('Blocked Domains Tests - US3 (tRPC)', { timeout: 45000 }, async (
             });
 
             if (response.status === 200) {
-                const { data } = await parseTRPC<RequestResult>(response);
-                nonBlockedRequestId = data?.id ?? null;
+                const res = await parseTRPC(response);
+                const data = res.data as RequestResult;
+                nonBlockedRequestId = data.id;
             }
         });
 
-        await test('teacher should successfully approve non-blocked domain', async () => {
+        await test('teacher should successfully approve non-blocked domain', async (): Promise<void> => {
             if (nonBlockedRequestId === null) {
                 console.log('Skipping: No pending request for non-blocked domain');
                 return;
             }
 
+            const token = teacherToken ?? '';
             const response = await trpcMutate('requests.approve', {
                 id: nonBlockedRequestId,
                 group_id: TEACHER_GROUP
-            }, { 'Authorization': `Bearer ${String(teacherToken)}` });
+            }, { 'Authorization': `Bearer ${token}` });
 
             assert.ok(
                 [200, 400, 403].includes(response.status),
