@@ -19,9 +19,10 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
+import { getAvailablePort } from './test-utils.js';
 
-const PORT = process.env.PORT ?? '3000';
-const API_URL = `http://localhost:${PORT}`;
+let PORT: number;
+let API_URL: string;
 
 // Global timeout - force exit if tests hang
 const GLOBAL_TIMEOUT = setTimeout(() => {
@@ -71,9 +72,12 @@ async function parseTRPC(response: Response): Promise<{ data?: unknown; error?: 
 
 await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async () => {
     before(async () => {
-        // Start server for testing - dynamic import for ESM
+        // Start server for testing
+        PORT = await getAvailablePort();
+        API_URL = `http://localhost:${String(PORT)}`;
+        process.env.PORT = String(PORT);
+
         const { app } = await import('../src/server.js');
-        const PORT = parseInt(process.env.PORT ?? '3000', 10);
 
         server = app.listen(PORT, () => {
             console.log(`Test server started on port ${String(PORT)}`);

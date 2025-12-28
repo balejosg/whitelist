@@ -1,0 +1,28 @@
+{
+    "$schema": "https://schema.stryker-mutator.io/stryker-config.json",
+    "packageManager": "npm",
+    "reporters": [
+        "html",
+        "clear-text",
+        "progress"
+    ],
+    "testRunner": "command",
+    "commandRunner": {
+        "command": "npm run test:unit"
+    },
+    "coverageAnalysis": "off",
+    "incremental": true,
+    "mutator": {
+        "excludedMutations": []
+    },
+    "checkers": [
+        "typescript"
+    ],
+    "typescriptChecker": {
+        "prioritizePerformance": true
+    },
+    "mutate": [
+        "src/lib/*.ts",
+        "!src/lib/*.test.ts"
+    ]
+}

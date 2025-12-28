@@ -22,7 +22,9 @@
     "coverage": "npm run test:coverage",
     "test:load": "k6 run tests/load/load-test.js",
     "lint": "eslint . --max-warnings=0",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "test:unit": "node --import tsx --test tests/schedules.test.ts",
+    "test:mutation": "stryker run"
   },
   "keywords": [
     "openpath",
@@ -70,6 +72,8 @@
     "c8": "^10.1.3",
     "eslint": "^8.54.0",
     "tsx": "^4.19.4",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "@stryker-mutator/core": "^8.2.6",
+    "@stryker-mutator/typescript-checker": "^8.2.6"
   }
 }
