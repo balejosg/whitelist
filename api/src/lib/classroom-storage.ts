@@ -351,12 +351,9 @@ export function getWhitelistUrlForMachine(hostname: string): WhitelistUrlResult 
         try {
             // Dynamic import would be better but keeping consistent with original
             const require = createRequire(import.meta.url);
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-call
-            const scheduleStorage = require('./schedule-storage.js');
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
+            const scheduleStorage = require('./schedule-storage.js') as { getCurrentSchedule: (id: string) => { group_id: string } | null | undefined };
             const currentSchedule = scheduleStorage.getCurrentSchedule(classroom.id);
             if (currentSchedule !== null && currentSchedule !== undefined) {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
                 groupId = currentSchedule.group_id;
                 source = 'schedule';
             }

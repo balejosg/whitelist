@@ -12,11 +12,8 @@
  *   K6_BASE_URL=http://api.example.com k6 run load-test.js
  */
 
-// @ts-ignore - k6 typing
 import http from 'k6/http';
-// @ts-ignore - k6 typing
 import { check, sleep } from 'k6';
-// @ts-ignore - k6 typing
 import { Rate, Trend } from 'k6/metrics';
 
 // Custom metrics
@@ -25,13 +22,10 @@ const healthLatency = new Trend('health_latency');
 const requestsLatency = new Trend('requests_latency');
 
 // Configuration
-// @ts-ignore - k6 typing
 const BASE_URL = __ENV.K6_BASE_URL || 'http://localhost:3000';
 
 export const options = {
-    // @ts-ignore - k6 typing
     vus: __ENV.K6_VUS ? parseInt(__ENV.K6_VUS) : 10,
-    // @ts-ignore - k6 typing
     duration: __ENV.K6_DURATION || '30s',
     thresholds: {
         http_req_duration: ['p(95)<500'], // 95% of requests under 500ms

@@ -224,7 +224,6 @@ const gracefulShutdown = (signal: string): void => {
     logger.info(`Received ${signal}, starting graceful shutdown...`);
 
     if (server !== undefined) {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         server.close((err) => {
             if (err) {
                 logger.error('Error during server close', { error: err.message });

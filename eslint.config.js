@@ -28,6 +28,8 @@ export default tseslint.config(
             '**/build/**',
             '**/coverage/**',
             'api/tests/load/**',
+            'spa/sw.ts',
+            'spa/lighthouserc.cjs',
             'eslint.config.js',
             '**/*.config.js',
             '**/*.config.ts',

@@ -1,4 +1,3 @@
-/* eslint-disable */
 /**
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
@@ -59,8 +58,8 @@ interface TRPCResponse<T = unknown> {
     error?: { message: string; code: string };
 }
 
-async function parseTRPC<T>(response: Response): Promise<{ data?: T; error?: string; code?: string }> {
-    const json = await response.json() as TRPCResponse<T>;
+async function parseTRPC(response: Response): Promise<{ data?: unknown; error?: string; code?: string }> {
+    const json = await response.json() as TRPCResponse;
     if (json.result) {
         return { data: json.result.data };
     }
@@ -129,7 +128,7 @@ await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async (
             const response = await trpcMutate('requests.create', input);
             assert.strictEqual(response.status, 200);
 
-            const { data } = await parseTRPC<{ id: string; status: string }>(response);
+            const { data } = await parseTRPC(response) as { data?: { id: string; status: string } };
             if (!data) throw new Error('No data');
             assert.ok(data.id !== '');
             assert.strictEqual(data.status, 'pending');
@@ -216,7 +215,7 @@ await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async (
                 reason: 'Testing status endpoint'
             };
             const createResponse = await trpcMutate('requests.create', createInput);
-            const { data: createData } = await parseTRPC<{ id: string }>(createResponse);
+            const { data: createData } = await parseTRPC(createResponse) as { data?: { id: string } };
             if (!createData) throw new Error('No data');
             const requestId = createData.id;
             assert.ok(requestId !== '');
@@ -225,7 +224,7 @@ await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async (
             const statusResponse = await trpcQuery('requests.getStatus', { id: requestId });
             assert.strictEqual(statusResponse.status, 200);
 
-            const { data: statusData } = await parseTRPC<{ id: string; status: string; domain: string }>(statusResponse);
+            const { data: statusData } = await parseTRPC(statusResponse) as { data?: { id: string; status: string; domain: string } };
             if (!statusData) throw new Error('No data');
             assert.strictEqual(statusData.status, 'pending');
             assert.ok(statusData.id !== '');

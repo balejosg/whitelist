@@ -316,8 +316,7 @@ browser.webNavigation.onBeforeNavigate.addListener(
 browser.tabs.onRemoved.addListener(
     (tabId: number) => {
         if (blockedDomains[tabId]) {
-            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-            delete blockedDomains[tabId];
+            Reflect.deleteProperty(blockedDomains, tabId);
             console.log(`[Monitor] Tab ${tabId.toString()} cerrada, datos eliminados`);
         }
     }

@@ -3,6 +3,8 @@
  * Handles push notifications for teachers
  */
 
+/// <reference lib="webworker" />
+
 /**
  * Type-safe access to ServiceWorkerGlobalScope without redeclaring 'self'
  * which conflicts with DOM library.

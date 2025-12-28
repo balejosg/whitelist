@@ -136,8 +136,9 @@ export const PushManager = {
 
         // Ensure keys are present (toJSON returns PushSubscriptionJSON which has optional keys)
         const { endpoint, keys } = subJSON;
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (!endpoint || !keys?.p256dh || !keys?.auth) {
+        const p256dh = keys?.p256dh;
+        const auth = keys?.auth;
+        if (!endpoint || !p256dh || !auth) {
             throw new Error('Invalid subscription object generated');
         }
 
@@ -146,8 +147,8 @@ export const PushManager = {
                 endpoint,
                 expirationTime: subJSON.expirationTime ?? null,
                 keys: {
-                    p256dh: keys.p256dh,
-                    auth: keys.auth
+                    p256dh,
+                    auth
                 }
             }
         });

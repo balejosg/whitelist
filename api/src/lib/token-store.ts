@@ -118,8 +118,6 @@ export class RedisTokenStore implements TokenStore {
             interface RedisModule {
                 createClient: (options: { url: string }) => RedisClient;
             }
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore - redis is an optional dependency
             const redis = await import('redis') as unknown as RedisModule;
             this.client = redis.createClient({ url: this.redisUrl });
 

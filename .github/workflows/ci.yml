@@ -25,8 +25,16 @@ jobs:
           cache: 'npm'
           cache-dependency-path: './package-lock.json'
       
-      - name: Install dashboard dependencies
-        run: cd dashboard && npm ci
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Verify Strict Compliance (Lint & Type Check)
+        run: npm run verify
+      
+      - name: Check for Suppressions
+        run: |
+          ! grep -rE "eslint-disable|@ts-ignore|@ts-expect-error|biome-ignore" . --exclude-dir="node_modules" --exclude-dir="dist" --exclude-dir="build" --exclude-dir="coverage" --exclude=".github/workflows/ci.yml"
+          echo "✓ No suppressions found"
       
       - name: Shellcheck
         run: |

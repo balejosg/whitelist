@@ -1,4 +1,3 @@
-/* eslint-disable */
 /**
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
@@ -76,8 +75,8 @@ interface AuthResult {
     error?: string;
 }
 
-async function parseTRPC<T>(response: Response): Promise<{ data?: T; error?: string; code?: string }> {
-    const json = await response.json() as TRPCResponse<T>;
+async function parseTRPC(response: Response): Promise<{ data?: unknown; error?: string; code?: string }> {
+    const json = await response.json() as TRPCResponse;
     if (json.result) {
         return { data: json.result.data };
     }
@@ -127,10 +126,10 @@ await describe('Authentication & User Management API Tests (tRPC)', { timeout: 3
             const response = await trpcMutate('auth.register', input);
             assert.strictEqual(response.status, 200);
 
-            const { data } = await parseTRPC<AuthResult>(response);
+            const { data } = await parseTRPC(response) as { data?: AuthResult };
             if (!data) throw new Error('No data');
-            assert.ok(data.user !== undefined);
-            assert.ok(data.user?.id !== undefined);
+            assert.ok(data.user);
+            assert.ok(data.user.id);
         });
 
         await test('should reject registration without email', async () => {
@@ -199,7 +198,7 @@ await describe('Authentication & User Management API Tests (tRPC)', { timeout: 3
             assert.ok([200, 401].includes(response.status), `Expected 200 or 401, got ${String(response.status)}`);
 
             if (response.status === 200) {
-                const { data } = await parseTRPC<AuthResult>(response);
+                const { data } = await parseTRPC(response) as { data?: AuthResult };
                 if (!data) throw new Error('No data');
                 assert.ok(data.accessToken !== undefined && data.accessToken !== '');
                 assert.ok(data.refreshToken !== undefined && data.refreshToken !== '');
@@ -267,9 +266,10 @@ await describe('Authentication & User Management API Tests (tRPC)', { timeout: 3
             assert.ok([200, 401].includes(response.status), `Expected 200 or 401, got ${String(response.status)}`);
 
             if (response.status === 200) {
-                const { data } = await parseTRPC<AuthResult>(response);
-                assert.ok(data?.accessToken);
-                assert.ok(data?.refreshToken);
+                const { data } = await parseTRPC(response) as { data?: AuthResult };
+                if (!data) throw new Error('No data');
+                assert.ok(data.accessToken);
+                assert.ok(data.refreshToken);
             }
         });
 

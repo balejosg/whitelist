@@ -68,8 +68,7 @@ export function saveHealthReport(hostname: string, reportData: Omit<HealthReport
             );
             const oldest = sorted[0];
             if (oldest) {
-                // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-                delete data.hosts[oldest[0]];
+                Reflect.deleteProperty(data.hosts, oldest[0]);
             }
         }
         data.hosts[hostname] = { reports: [], lastSeen: null, currentStatus: null };

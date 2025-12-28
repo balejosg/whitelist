@@ -3,10 +3,13 @@
         "target": "ES2022",
         "module": "ES2022",
         "moduleResolution": "bundler",
-        "ES2022",
-        "dom",
-        "dom.iterable",
-        "scripthost""strict": true,
+        "lib": [
+            "ES2022",
+            "dom",
+            "dom.iterable",
+            "scripthost"
+        ],
+        "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": false,
         "forceConsistentCasingInFileNames": true,
@@ -28,7 +31,6 @@
     },
     "include": [
         "src/**/*",
-        "sw.ts",
         "e2e/**/*",
         "tests/**/*",
         "playwright.config.ts"

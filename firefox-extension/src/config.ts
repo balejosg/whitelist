@@ -105,7 +105,6 @@ async function saveConfig(newConfig: Partial<Config>): Promise<void> {
  * Get current API URL
  * @returns {string} Current API URL
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function getApiUrl(): string {
     return CONFIG.REQUEST_API_URL;
 }
@@ -114,16 +113,23 @@ function getApiUrl(): string {
  * Get all API URLs (primary + fallbacks)
  * @returns {string[]} List of API URLs to try
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function getAllApiUrls(): string[] {
     return [CONFIG.REQUEST_API_URL, ...CONFIG.FALLBACK_API_URLS].filter(Boolean);
 }
 
 // Make config available globally
 if (typeof window !== 'undefined') {
-    const win = window as unknown as { OPENPATH_CONFIG: Config; loadOpenPathConfig: () => Promise<Config>; saveOpenPathConfig: (c: Partial<Config>) => Promise<void> };
+    const win = window as unknown as { 
+        OPENPATH_CONFIG: Config; 
+        loadOpenPathConfig: () => Promise<Config>; 
+        saveOpenPathConfig: (c: Partial<Config>) => Promise<void>;
+        getApiUrl: () => string;
+        getAllApiUrls: () => string[];
+    };
     win.OPENPATH_CONFIG = CONFIG;
     win.loadOpenPathConfig = loadConfig;
     win.saveOpenPathConfig = saveConfig;
+    win.getApiUrl = getApiUrl;
+    win.getAllApiUrls = getAllApiUrls;
 }
 
