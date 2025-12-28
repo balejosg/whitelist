@@ -7,7 +7,7 @@ on:
 
 jobs:
   load-test:
-    name: API Load Test
+    name: API Load Test (k6)
     runs-on: ubuntu-latest
     
     steps:
@@ -18,40 +18,56 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './package-lock.json'
       
-      - name: Install dependencies
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+      
+      - name: Build shared package
+        run: cd shared && npm install && npm run build
+      
+      - name: Install API dependencies
         working-directory: api
         run: npm ci || npm install
+      
+      - name: Build API
+        working-directory: api
+        run: npm run build
       
       - name: Start API server
         working-directory: api
         run: |
-          node server.js &
+          node dist/server.js &
           sleep 5
         env:
           PORT: 3000
+          NODE_ENV: test
           ADMIN_TOKEN: test-token
           SHARED_SECRET: test-secret
       
-      - name: Run load test
-        run: |
-          echo "🔥 Running load test..."
-          
-          # Simple load test with curl
-          for i in {1..100}; do
-            curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/health &
-          done
-          wait
-          
-          # Summary
-          echo ""
-          echo "✅ Load test complete (100 concurrent requests)"
+      - name: Run k6 load test
+        run: k6 run api/tests/load/load-test.ts
+        env:
+          K6_BASE_URL: http://localhost:3000
+          K6_VUS: 20
+          K6_DURATION: 60s
       
-      - name: Health check summary
+      - name: Generate summary
+        if: always()
         run: |
-          response=$(curl -s http://localhost:3000/health)
           echo "## 🏋️ Load Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Endpoint:** \`/health\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Requests:** 100 concurrent" >> $GITHUB_STEP_SUMMARY
-          echo "**Response:** \`$response\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Configuration:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Virtual Users: 20" >> $GITHUB_STEP_SUMMARY
+          echo "- Duration: 60s" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Thresholds:**" >> $GITHUB_STEP_SUMMARY
+          echo "- p(95) response time < 500ms" >> $GITHUB_STEP_SUMMARY
+          echo "- Error rate < 10%" >> $GITHUB_STEP_SUMMARY
+          echo "- Health endpoint p(99) < 100ms" >> $GITHUB_STEP_SUMMARY

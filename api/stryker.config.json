@@ -23,6 +23,7 @@
     },
     "mutate": [
         "src/lib/*.ts",
+        "src/trpc/*.ts",
         "!src/lib/*.test.ts"
     ]
 }
