@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "prepare": "husky || true",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix",
     "lint:shell": "shellcheck linux/lib/*.sh linux/scripts/**/*.sh || true",
     "test": "npm run test:shell && npm run test:api",

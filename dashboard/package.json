@@ -9,7 +9,7 @@
         "dev": "tsx watch src/index.ts",
         "build": "tsc && cp -r src/types dist/types",
         "typecheck": "tsc --noEmit",
-        "lint": "eslint .",
+        "lint": "eslint . --max-warnings=0",
         "lint:fix": "eslint . --fix",
         "test": "NODE_OPTIONS='--experimental-vm-modules' jest"
     },

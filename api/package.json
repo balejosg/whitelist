@@ -20,7 +20,7 @@
     "test:all": "bash -c 'fuser -k 3000/tcp 3001/tcp 3002/tcp 3004/tcp 2>/dev/null || true; node --import tsx tests/run-all.ts'",
     "test:coverage": "node --experimental-test-coverage --import tsx --test tests/api.test.ts tests/auth.test.ts",
     "test:load": "k6 run tests/load/load-test.js",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix"
   },
   "keywords": [

@@ -1,4 +1,4 @@
-
+/* eslint-disable */
 /**
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
@@ -17,7 +17,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-/* eslint-disable */
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
@@ -109,7 +108,7 @@ await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async (
     });
 
     await describe('Health Check', async () => {
-        await test('GET /health should return 200 OK', async (): Promise<void> => {
+        await test('GET /health should return 200 OK', async () => {
             const response = await fetch(`${API_URL}/health`);
             assert.strictEqual(response.status, 200);
 
@@ -120,7 +119,7 @@ await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async (
     });
 
     await describe('tRPC requests.create - Submit Domain Request', async () => {
-        await test('should accept valid domain request', async (): Promise<void> => {
+        await test('should accept valid domain request', async () => {
             const input = {
                 domain: 'test-' + String(Date.now()) + '.example.com',
                 reason: 'Testing purposes',
@@ -131,12 +130,12 @@ await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async (
             assert.strictEqual(response.status, 200);
 
             const { data } = await parseTRPC<{ id: string; status: string }>(response);
-            assert.ok(data, 'Data should exist');
+            if (!data) throw new Error('No data');
             assert.ok(data.id !== '');
             assert.strictEqual(data.status, 'pending');
         });
 
-        await test('should reject request without domain', async (): Promise<void> => {
+        await test('should reject request without domain', async () => {
             const input = {
                 reason: 'Testing',
                 requester_email: 'test@example.com'
@@ -146,7 +145,7 @@ await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async (
             assert.strictEqual(response.status, 400);
         });
 
-        await test('should reject invalid domain format', async (): Promise<void> => {
+        await test('should reject invalid domain format', async () => {
             const input = {
                 domain: 'not-a-valid-domain',
                 reason: 'Testing'
@@ -156,7 +155,7 @@ await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async (
             assert.strictEqual(response.status, 400);
         });
 
-        await test('should reject XSS attempts in domain names', async (): Promise<void> => {
+        await test('should reject XSS attempts in domain names', async () => {
             const input = {
                 domain: '<script>alert("xss")</script>.com',
                 reason: 'Testing'
@@ -168,14 +167,14 @@ await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async (
     });
 
     await describe('tRPC requests.list - List Requests', async () => {
-        await test('should require authentication for listing requests', async (): Promise<void> => {
+        await test('should require authentication for listing requests', async () => {
             const response = await trpcQuery('requests.list', {});
             assert.strictEqual(response.status, 401);
         });
     });
 
     await describe('CORS Headers', async () => {
-        await test('should include CORS headers', async (): Promise<void> => {
+        await test('should include CORS headers', async () => {
             const response = await fetch(`${API_URL}/health`, {
                 headers: { 'Origin': 'http://localhost:3000' }
             });
@@ -185,12 +184,12 @@ await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async (
     });
 
     await describe('Error Handling', async () => {
-        await test('should return 404 for unknown routes', async (): Promise<void> => {
+        await test('should return 404 for unknown routes', async () => {
             const response = await fetch(`${API_URL}/unknown-route`);
             assert.strictEqual(response.status, 404);
         });
 
-        await test('should handle malformed JSON', async (): Promise<void> => {
+        await test('should handle malformed JSON', async () => {
             const response = await fetch(`${API_URL}/trpc/requests.create`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -202,7 +201,7 @@ await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async (
     });
 
     await describe('tRPC requests.getStatus - Check Request Status', async () => {
-        await test('should return 404 for non-existent request', async (): Promise<void> => {
+        await test('should return 404 for non-existent request', async () => {
             const response = await trpcQuery('requests.getStatus', { id: 'nonexistent-id' });
             // tRPC returns 404/NOT_FOUND as a JSON error, but HTTP status might be 200 with error body
             // or could be mapped - check actual behavior
@@ -210,7 +209,7 @@ await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async (
             assert.ok(error !== undefined || response.status === 404);
         });
 
-        await test('should return status for existing request', async (): Promise<void> => {
+        await test('should return status for existing request', async () => {
             // First create a request
             const createInput = {
                 domain: 'status-test-' + String(Date.now()) + '.example.com',
@@ -234,36 +233,36 @@ await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async (
     });
 
     await describe('tRPC requests.listGroups - List Groups', async () => {
-        await test('should require authentication for listing groups', async (): Promise<void> => {
+        await test('should require authentication for listing groups', async () => {
             const response = await trpcQuery('requests.listGroups');
             assert.strictEqual(response.status, 401);
         });
     });
 
     await describe('Admin Endpoints with Invalid Token', async () => {
-        await test('should reject admin list with wrong token', async (): Promise<void> => {
+        await test('should reject admin list with wrong token', async () => {
             const response = await trpcQuery('requests.list', {}, { 'Authorization': 'Bearer wrong-token' });
             assert.strictEqual(response.status, 401);
         });
 
-        await test('should reject approve with wrong token', async (): Promise<void> => {
+        await test('should reject approve with wrong token', async () => {
             const response = await trpcMutate('requests.approve', { id: 'some-id', group_id: 'test' }, { 'Authorization': 'Bearer wrong-token' });
             assert.strictEqual(response.status, 401);
         });
 
-        await test('should reject reject with wrong token', async (): Promise<void> => {
+        await test('should reject reject with wrong token', async () => {
             const response = await trpcMutate('requests.reject', { id: 'some-id', reason: 'test' }, { 'Authorization': 'Bearer wrong-token' });
             assert.strictEqual(response.status, 401);
         });
 
-        await test('should reject delete with wrong token', async (): Promise<void> => {
+        await test('should reject delete with wrong token', async () => {
             const response = await trpcMutate('requests.delete', { id: 'some-id' }, { 'Authorization': 'Bearer wrong-token' });
             assert.strictEqual(response.status, 401);
         });
     });
 
     await describe('Input Sanitization', async () => {
-        await test('should sanitize reason field', async (): Promise<void> => {
+        await test('should sanitize reason field', async () => {
             const response = await trpcMutate('requests.create', {
                 domain: `sanitize-test-${String(Date.now())}.example.com`,
                 reason: '<script>alert("xss")</script>Normal reason'
@@ -272,7 +271,7 @@ await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async (
             assert.strictEqual(response.status, 200);
         });
 
-        await test('should handle very long domain names', async (): Promise<void> => {
+        await test('should handle very long domain names', async () => {
             const longDomain = 'a'.repeat(300) + '.example.com';
             const response = await trpcMutate('requests.create', {
                 domain: longDomain,
@@ -282,7 +281,7 @@ await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async (
             assert.strictEqual(response.status, 400);
         });
 
-        await test('should handle special characters in email', async (): Promise<void> => {
+        await test('should handle special characters in email', async () => {
             const response = await trpcMutate('requests.create', {
                 domain: `email-test-${String(Date.now())}.example.com`,
                 reason: 'Testing',
@@ -294,7 +293,7 @@ await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async (
     });
 
     await describe('Priority Field', async () => {
-        await test('should accept valid priority values', async (): Promise<void> => {
+        await test('should accept valid priority values', async () => {
             const response = await trpcMutate('requests.create', {
                 domain: `priority-test-${String(Date.now())}.example.com`,
                 reason: 'Testing priority',

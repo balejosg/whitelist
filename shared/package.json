@@ -7,7 +7,7 @@
     "scripts": {
         "build": "tsc",
         "typecheck": "tsc --noEmit",
-        "lint": "eslint src/"
+        "lint": "eslint src/ --max-warnings=0"
     },
     "dependencies": {
         "zod": "^3.23.0"

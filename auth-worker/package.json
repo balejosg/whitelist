@@ -6,7 +6,7 @@
     "scripts": {
         "build": "tsc",
         "typecheck": "tsc --noEmit",
-        "lint": "eslint .",
+        "lint": "eslint . --max-warnings=0",
         "lint:fix": "eslint . --fix",
         "dev": "wrangler dev",
         "deploy": "wrangler deploy"
