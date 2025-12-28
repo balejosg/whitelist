@@ -26,7 +26,10 @@ jobs:
           cache-dependency-path: './package-lock.json'
       
       - name: Install dependencies
-        run: npm install
+        run: npm ci || npm install
+      
+      - name: Build shared package
+        run: npm run build --workspace=@openpath/shared
       
       - name: Verify Strict Compliance (Lint & Type Check)
         run: npm run verify
@@ -199,14 +202,17 @@ jobs:
       - name: Build shared package
         run: cd ../shared && npm install && npm run build
       
-      - name: Install dependencies
+      - name: Install dependencies (Root)
         run: npm ci || npm install
       
+      - name: Build shared package
+        run: npm run build --workspace=@openpath/shared
+      
       - name: Run linting
-        run: npm run lint
+        run: npm run lint --workspace=openpath-spa
       
       - name: TypeScript type-check
-        run: npm run typecheck
+        run: npm run typecheck --workspace=openpath-spa
 
   # ============================================
   # Job 6: Build Docker Image
