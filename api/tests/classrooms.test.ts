@@ -6,15 +6,17 @@
  * Classroom Management API Tests (tRPC)
  */
 
+
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
 import { Server } from 'node:http';
+import { getAvailablePort } from './test-utils.js';
 
-const PORT = 3004;
-const API_URL = `http://localhost:${String(PORT)}`;
+let PORT: number;
+let API_URL: string;
 const ADMIN_TOKEN = 'test-admin-token';
 
 let server: Server | undefined;
@@ -75,6 +77,8 @@ async function parseTRPC(response: Response): Promise<{ data?: unknown; error?: 
 
 await describe('Classroom Management API Tests (tRPC)', async () => {
     before(async () => {
+        PORT = await getAvailablePort();
+        API_URL = `http://localhost:${String(PORT)}`;
         process.env.PORT = String(PORT);
         process.env.ADMIN_TOKEN = ADMIN_TOKEN;
 

@@ -18,12 +18,13 @@ import {
     trpcMutate as _trpcMutate,
     trpcQuery as _trpcQuery,
     parseTRPC,
+    getAvailablePort,
     type AuthResult,
     type RequestResult
 } from './test-utils.js';
 
-const PORT = 3002;
-const API_URL = `http://localhost:${String(PORT)}`;
+let PORT: number;
+let API_URL: string;
 
 const GLOBAL_TIMEOUT = setTimeout(() => {
     console.error('\n❌ E2E tests timed out! Forcing exit...');
@@ -56,6 +57,8 @@ console.log(`E2E Test Run ID: ${TEST_RUN_ID}`);
 
 await describe('E2E: Teacher Role Workflow (tRPC)', { timeout: 75000 }, async () => {
     before(async () => {
+        PORT = await getAvailablePort();
+        API_URL = `http://localhost:${String(PORT)}`;
         process.env.PORT = String(PORT);
 
         // Ensure test isolation (users/roles/requests/etc.)

@@ -8,7 +8,30 @@
  * - Test isolation via unique identifiers per run
  * - Consistent tRPC request/response handling
  * - Type-safe response parsing
+ * - Dynamic port allocation to prevent conflicts
  */
+
+import { createServer } from 'node:net';
+
+/**
+ * Get an available port by letting the OS assign one.
+ * This prevents "address already in use" errors when running tests in parallel.
+ */
+export async function getAvailablePort(): Promise<number> {
+    return new Promise((resolve, reject) => {
+        const server = createServer();
+        server.listen(0, () => {
+            const addr = server.address();
+            if (addr && typeof addr === 'object') {
+                const port = addr.port;
+                server.close(() => { resolve(port); });
+            } else {
+                reject(new Error('Failed to get port'));
+            }
+        });
+        server.on('error', reject);
+    });
+}
 
 // Unique identifier for this test run - used for email generation
 export const TEST_RUN_ID = `${String(Date.now())}-${Math.random().toString(36).slice(2, 8)}`;

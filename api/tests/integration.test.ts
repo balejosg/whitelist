@@ -8,15 +8,15 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
+import { getAvailablePort } from './test-utils.js';
 
-const PORT = 3010;
-const BASE_URL = `http://localhost:${String(PORT)}`;
+let PORT: number;
+let BASE_URL: string;
 
 process.env.NODE_ENV = 'test';
 process.env.ADMIN_TOKEN = 'integration-test-admin-token';
 process.env.SHARED_SECRET = 'integration-test-shared-secret';
 process.env.JWT_SECRET = 'integration-test-jwt-secret';
-process.env.PORT = String(PORT);
 
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
 const SHARED_SECRET = process.env.SHARED_SECRET;
@@ -109,6 +109,9 @@ TIMEOUT.unref();
 
 await describe('Integration Tests (tRPC)', async () => {
     before(async () => {
+        PORT = await getAvailablePort();
+        BASE_URL = `http://localhost:${String(PORT)}`;
+        process.env.PORT = String(PORT);
         const { app } = await import('../src/server.js');
         server = app.listen(PORT);
         await new Promise(resolve => setTimeout(resolve, 500));

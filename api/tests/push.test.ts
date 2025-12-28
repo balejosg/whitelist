@@ -6,13 +6,15 @@
  * Push Notifications API Tests (tRPC)
  */
 
+
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
 import webPush from 'web-push';
+import { getAvailablePort } from './test-utils.js';
 
-const PORT = 3003;
-const API_URL = `http://localhost:${String(PORT)}`;
+let PORT: number;
+let API_URL: string;
 
 const GLOBAL_TIMEOUT = setTimeout(() => {
     console.error('\n❌ Tests timed out! Forcing exit...');
@@ -96,6 +98,8 @@ async function parseTRPC(response: Response): Promise<{ data?: unknown; error?: 
 
 await describe('Push Notifications API Tests (tRPC)', { timeout: 45000 }, async () => {
     before(async () => {
+        PORT = await getAvailablePort();
+        API_URL = `http://localhost:${String(PORT)}`;
         process.env.PORT = String(PORT);
         process.env.ADMIN_TOKEN = 'test-admin-token';
         // Ensure push is configured for tests (avoid relying on real secrets)

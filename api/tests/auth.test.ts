@@ -27,9 +27,10 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
+import { getAvailablePort } from './test-utils.js';
 
-const PORT = 3001;
-const API_URL = `http://localhost:${String(PORT)}`;
+let PORT: number;
+let API_URL: string;
 
 // Global timeout - force exit if tests hang (15s)
 const GLOBAL_TIMEOUT = setTimeout(() => {
@@ -88,6 +89,8 @@ async function parseTRPC(response: Response): Promise<{ data?: unknown; error?: 
 
 await describe('Authentication & User Management API Tests (tRPC)', { timeout: 30000 }, async () => {
     before(async () => {
+        PORT = await getAvailablePort();
+        API_URL = `http://localhost:${String(PORT)}`;
         process.env.PORT = String(PORT);
         const { app } = await import('../src/server.js');
 

@@ -6,12 +6,14 @@
  * Security Tests (tRPC & Standard API)
  */
 
+
 import { it, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
+import { getAvailablePort } from './test-utils.js';
 
-const PORT = 3005;
-const API_URL = `http://localhost:${String(PORT)}`;
+let PORT: number;
+let API_URL: string;
 
 let server: Server | undefined;
 
@@ -24,6 +26,8 @@ async function request(path: string): Promise<{ status: number; headers: Headers
 
 await describe('Security and Hardening Tests', async () => {
     before(async () => {
+        PORT = await getAvailablePort();
+        API_URL = `http://localhost:${String(PORT)}`;
         process.env.PORT = String(PORT);
         const { app } = await import('../src/server.js');
         server = app.listen(PORT, () => {

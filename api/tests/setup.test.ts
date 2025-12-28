@@ -31,10 +31,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Server } from 'node:http';
+import { getAvailablePort } from './test-utils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PORT = 3002;
-const API_URL = `http://localhost:${String(PORT)}`;
+let PORT: number;
+let API_URL: string;
 
 // Data files to clean up
 const DATA_DIR = path.join(__dirname, '..', 'data');
@@ -120,6 +121,8 @@ void describe('Setup API Tests', { timeout: 30000 }, async () => {
         // Backup existing data
         backupDataFiles();
 
+        PORT = await getAvailablePort();
+        API_URL = `http://localhost:${String(PORT)}`;
         process.env.PORT = String(PORT);
         const { app } = await import('../src/server.js');
 

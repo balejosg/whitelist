@@ -6,12 +6,14 @@
  * Blocked Domains Tests - US3: Aprobación Delegada (tRPC)
  */
 
+
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
+import { getAvailablePort } from './test-utils.js';
 
-const PORT = 3002;
-const API_URL = `http://localhost:${String(PORT)}`;
+let PORT: number;
+let API_URL: string;
 
 const GLOBAL_TIMEOUT = setTimeout(() => {
     console.error('\n❌ Blocked domains tests timed out! Forcing exit...');
@@ -91,6 +93,8 @@ async function parseTRPC(response: Response): Promise<{ data?: unknown; error?: 
 
 await describe('Blocked Domains Tests - US3 (tRPC)', { timeout: 45000 }, async () => {
     before(async () => {
+        PORT = await getAvailablePort();
+        API_URL = `http://localhost:${String(PORT)}`;
         process.env.PORT = String(PORT);
         process.env.ADMIN_TOKEN = 'test-admin-token';
 
