@@ -2,156 +2,96 @@
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
  *
- * Simple JSON file storage for domain requests
- * Stores requests in data/requests.json
+ * Simple PostgreSQL storage for domain requests
  */
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { v4 as uuidv4 } from 'uuid';
-// =============================================================================
-// Constants
-// =============================================================================
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = process.env.DATA_DIR ?? path.join(__dirname, '..', '..', 'data');
-const REQUESTS_FILE = path.join(DATA_DIR, 'requests.json');
-// =============================================================================
-// Initialization
-// =============================================================================
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-// Initialize empty requests file if not exists
-if (!fs.existsSync(REQUESTS_FILE)) {
-    fs.writeFileSync(REQUESTS_FILE, JSON.stringify({ requests: [] }, null, 2));
-}
-// =============================================================================
-// Internal Functions
-// =============================================================================
-/**
- * Load all requests from file
- */
-function loadData() {
-    try {
-        const data = fs.readFileSync(REQUESTS_FILE, 'utf-8');
-        return JSON.parse(data);
-    }
-    catch (error) {
-        console.error('Error loading requests:', error);
-        return { requests: [] };
-    }
-}
-/**
- * Save data to file
- */
-function saveData(data) {
-    fs.writeFileSync(REQUESTS_FILE, JSON.stringify(data, null, 2));
-}
+import { query } from './db.js';
 // =============================================================================
 // Public API
 // =============================================================================
-/**
- * Get all requests, optionally filtered by status
- */
-export function getAllRequests(status = null) {
-    const data = loadData();
+export async function getAllRequests(status = null) {
+    let sql = 'SELECT * FROM requests';
+    const params = [];
     if (status !== null) {
-        return data.requests.filter((r) => r.status === status);
+        sql += ' WHERE status = $1';
+        params.push(status);
     }
-    return data.requests;
+    sql += ' ORDER BY created_at DESC';
+    const result = await query(sql, params);
+    return result.rows;
 }
-/**
- * Get requests by group ID
- */
-export function getRequestsByGroup(groupId) {
-    const data = loadData();
-    return data.requests.filter((r) => r.group_id === groupId);
+export async function getRequestsByGroup(groupId) {
+    const result = await query('SELECT * FROM requests WHERE group_id = $1 ORDER BY created_at DESC', [groupId]);
+    return result.rows;
 }
-/**
- * Get a single request by ID
- */
-export function getRequestById(id) {
-    const data = loadData();
-    return data.requests.find((r) => r.id === id) ?? null;
+export async function getRequestById(id) {
+    const result = await query('SELECT * FROM requests WHERE id = $1', [id]);
+    return result.rows[0] ?? null;
 }
-/**
- * Check if domain already has a pending request
- */
-export function hasPendingRequest(domain) {
-    const data = loadData();
-    return data.requests.some((r) => r.domain.toLowerCase() === domain.toLowerCase() && r.status === 'pending');
+export async function hasPendingRequest(domain) {
+    const result = await query(`SELECT EXISTS(
+            SELECT 1 FROM requests 
+            WHERE LOWER(domain) = LOWER($1) 
+            AND status = 'pending'
+        ) as exists`, [domain]);
+    return result.rows[0]?.exists ?? false;
 }
-/**
- * Create a new domain request
- */
-export function createRequest(requestData) {
-    const data = loadData();
+export async function createRequest(requestData) {
     const priority = requestData.priority ?? 'normal';
-    const newRequest = {
-        id: `req_${uuidv4().slice(0, 8)}`,
-        domain: requestData.domain.toLowerCase().trim(),
-        reason: requestData.reason ?? '',
-        requester_email: requestData.requesterEmail ?? 'anonymous',
-        group_id: requestData.groupId ?? process.env.DEFAULT_GROUP ?? 'default',
-        priority,
-        status: 'pending',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        resolved_at: null,
-        resolved_by: null
-    };
-    data.requests.push(newRequest);
-    saveData(data);
-    return newRequest;
+    const id = `req_${uuidv4().slice(0, 8)}`;
+    const result = await query(`INSERT INTO requests (
+            id, domain, reason, requester_email, group_id, priority, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, 'pending')
+        RETURNING *`, [
+        id,
+        requestData.domain.toLowerCase().trim(),
+        requestData.reason ?? '',
+        requestData.requesterEmail ?? 'anonymous',
+        requestData.groupId ?? process.env.DEFAULT_GROUP ?? 'default',
+        priority
+    ]);
+    return result.rows[0];
 }
-/**
- * Update request status
- */
-export function updateRequestStatus(id, status, resolvedBy = 'admin', note = null) {
-    const data = loadData();
-    const index = data.requests.findIndex((r) => r.id === id);
-    if (index === -1) {
-        return null;
-    }
-    const request = data.requests[index];
-    if (request === undefined) {
-        return null;
-    }
-    request.status = status;
-    request.updated_at = new Date().toISOString();
-    request.resolved_at = new Date().toISOString();
-    request.resolved_by = resolvedBy;
+export async function updateRequestStatus(id, status, resolvedBy = 'admin', note = null) {
+    const params = [status, resolvedBy, id];
+    let sql = `
+        UPDATE requests 
+        SET status = $1, 
+            resolved_at = NOW(), 
+            resolved_by = $2,
+            updated_at = NOW()
+    `;
     if (note !== null) {
-        request.resolution_note = note;
+        sql += ', resolution_note = $4';
+        params.splice(3, 0, note);
     }
-    saveData(data);
-    return request;
+    sql += ' WHERE id = $3 RETURNING *';
+    const result = await query(sql, params);
+    return result.rows[0] ?? null;
 }
-/**
- * Delete a request
- */
-export function deleteRequest(id) {
-    const data = loadData();
-    const initialLength = data.requests.length;
-    data.requests = data.requests.filter((r) => r.id !== id);
-    if (data.requests.length < initialLength) {
-        saveData(data);
-        return true;
-    }
-    return false;
+export async function deleteRequest(id) {
+    const result = await query('DELETE FROM requests WHERE id = $1', [id]);
+    return (result.rowCount ?? 0) > 0;
 }
-/**
- * Get statistics
- */
-export function getStats() {
-    const data = loadData();
-    return {
-        total: data.requests.length,
-        pending: data.requests.filter((r) => r.status === 'pending').length,
-        approved: data.requests.filter((r) => r.status === 'approved').length,
-        rejected: data.requests.filter((r) => r.status === 'rejected').length
+export async function getStats() {
+    const result = await query('SELECT status, COUNT(*) as count FROM requests GROUP BY status');
+    const stats = {
+        total: 0,
+        pending: 0,
+        approved: 0,
+        rejected: 0
     };
+    result.rows.forEach((row) => {
+        const count = parseInt(row.count, 10);
+        stats.total += count;
+        if (row.status === 'pending')
+            stats.pending = count;
+        if (row.status === 'approved')
+            stats.approved = count;
+        if (row.status === 'rejected')
+            stats.rejected = count;
+    });
+    return stats;
 }
 // =============================================================================
 // Storage Instance (implements interface)

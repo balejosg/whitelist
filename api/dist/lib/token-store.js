@@ -2,196 +2,54 @@
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
  *
- * Token Store - Abstraction for token blacklist storage
- * Supports Memory and Redis backends
+ * Token Store - PostgreSQL-backed token blacklist
  */
 import jwt from 'jsonwebtoken';
+import { query } from './db.js';
 // =============================================================================
-// Memory Token Store (Default)
+// Token Store Implementation
 // =============================================================================
-export class MemoryTokenStore {
-    blacklist;
-    cleanupInterval;
-    constructor() {
-        this.blacklist = new Set();
-        this.cleanupInterval = null;
-        this._startCleanup();
-    }
-    add(token) {
-        this.blacklist.add(token);
-        return Promise.resolve(true);
-    }
-    has(token) {
-        return Promise.resolve(this.blacklist.has(token));
-    }
-    delete(token) {
-        return Promise.resolve(this.blacklist.delete(token));
-    }
-    size() {
-        return Promise.resolve(this.blacklist.size);
-    }
-    cleanup(secret) {
-        for (const token of this.blacklist) {
-            try {
-                jwt.verify(token, secret, { ignoreExpiration: false });
-            }
-            catch (error) {
-                if (error instanceof Error && error.name === 'TokenExpiredError') {
-                    this.blacklist.delete(token);
-                }
-            }
-        }
-        return Promise.resolve();
-    }
-    _startCleanup() {
-        this.cleanupInterval = setInterval(() => {
-            // Cleanup will be triggered by auth.js with the secret
-        }, 5 * 60 * 1000);
-        this.cleanupInterval.unref();
-    }
-    destroy() {
-        if (this.cleanupInterval) {
-            clearInterval(this.cleanupInterval);
-            this.cleanupInterval = null;
-        }
-    }
+export async function blacklistToken(token, expiresAt) {
+    const decoded = jwt.decode(token);
+    const userId = decoded?.userId ?? 'unknown';
+    // Use first 16 chars of token as ID (unique enough)
+    const id = token.substring(0, 16);
+    await query(`INSERT INTO tokens (id, user_id, token_hash, expires_at)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (id) DO NOTHING`, [id, userId, token, expiresAt.toISOString()]);
 }
-export class RedisTokenStore {
-    redisUrl;
-    client;
-    connected;
-    constructor(redisUrl) {
-        this.redisUrl = redisUrl;
-        this.client = null;
-        this.connected = false;
-        void this._connect();
-    }
-    async _connect() {
-        try {
-            const redis = await import('redis');
-            this.client = redis.createClient({ url: this.redisUrl });
-            this.client.on('error', (err) => {
-                const message = err instanceof Error ? err.message : 'Unknown error';
-                console.error('Redis error:', message);
-                this.connected = false;
-            });
-            this.client.on('connect', () => {
-                console.log('✓ Redis connected for token storage');
-                this.connected = true;
-            });
-            await this.client.connect();
-        }
-        catch (error) {
-            const message = error instanceof Error ? error.message : 'Unknown error';
-            console.warn('⚠️ Redis not available, falling back to memory store:', message);
-            this.connected = false;
-        }
-    }
-    async add(token) {
-        if (!this.connected || this.client === null) {
-            return false;
-        }
-        try {
-            const decoded = jwt.decode(token);
-            const ttl = decoded?.exp !== undefined ? decoded.exp - Math.floor(Date.now() / 1000) : 86400;
-            if (ttl > 0) {
-                await this.client.setEx(`blacklist:${token}`, ttl, '1');
-            }
-            return true;
-        }
-        catch (error) {
-            const message = error instanceof Error ? error.message : 'Unknown error';
-            console.error('Redis add error:', message);
-            return false;
-        }
-    }
-    async has(token) {
-        if (!this.connected || this.client === null) {
-            return false;
-        }
-        try {
-            const result = await this.client.get(`blacklist:${token}`);
-            return result !== null;
-        }
-        catch (error) {
-            const message = error instanceof Error ? error.message : 'Unknown error';
-            console.error('Redis has error:', message);
-            return false;
-        }
-    }
-    async delete(token) {
-        if (!this.connected || this.client === null) {
-            return false;
-        }
-        try {
-            await this.client.del(`blacklist:${token}`);
-            return true;
-        }
-        catch (error) {
-            const message = error instanceof Error ? error.message : 'Unknown error';
-            console.error('Redis delete error:', message);
-            return false;
-        }
-    }
-    async size() {
-        if (!this.connected || this.client === null) {
-            return 0;
-        }
-        try {
-            const keys = await this.client.keys('blacklist:*');
-            return keys.length;
-        }
-        catch {
-            return 0;
-        }
-    }
-    cleanup() {
-        // No-op: Redis handles expiration automatically via TTL
-        return Promise.resolve();
-    }
-    async destroy() {
-        if (this.client) {
-            await this.client.quit();
-            this.client = null;
-        }
-    }
+export async function isBlacklisted(token) {
+    const id = token.substring(0, 16);
+    const result = await query(`SELECT EXISTS(
+            SELECT 1 FROM tokens 
+            WHERE id = $1 
+            AND expires_at > NOW()
+        ) as exists`, [id]);
+    return result.rows[0]?.exists ?? false;
+}
+export async function cleanup() {
+    const result = await query('DELETE FROM tokens WHERE expires_at <= NOW()');
+    return result.rowCount ?? 0;
 }
 // =============================================================================
-// Factory Function
+// ITokenStore Adapter
 // =============================================================================
-let _instance = null;
+export const tokenStore = {
+    blacklist: blacklistToken,
+    isBlacklisted,
+    cleanup
+};
+export default tokenStore;
+// =============================================================================
+// Legacy Compatibility Exports
+// =============================================================================
 export function getTokenStore() {
-    if (_instance !== null) {
-        return _instance;
-    }
-    const redisUrl = process.env.REDIS_URL;
-    if (redisUrl !== undefined && redisUrl !== '') {
-        console.log('🔴 Using Redis for token blacklist storage');
-        _instance = new RedisTokenStore(redisUrl);
-    }
-    else {
-        console.log('💾 Using in-memory token blacklist (set REDIS_URL for persistence)');
-        _instance = new MemoryTokenStore();
-    }
-    return _instance;
+    return tokenStore;
 }
 export function resetTokenStore() {
-    if (_instance !== null) {
-        void _instance.destroy();
-        _instance = null;
-    }
+    // No-op for DB-based store
 }
-export function createTokenStoreAdapter(store) {
-    return {
-        async blacklist(token, _expiresAt) {
-            await store.add(token);
-        },
-        async isBlacklisted(token) {
-            return store.has(token);
-        },
-        cleanup() {
-            return Promise.resolve(0);
-        }
-    };
+export function createTokenStoreAdapter(_store) {
+    return tokenStore;
 }
 //# sourceMappingURL=token-store.js.map

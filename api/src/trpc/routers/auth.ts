@@ -35,12 +35,20 @@ export const authRouter = router({
             if (!user.isActive) throw new TRPCError({ code: 'FORBIDDEN', message: 'Account inactive' });
 
             const roles = await roleStorage.getUserRoles(user.id);
-            // NOTE: We allow login even without roles, but some actions might be restricted
-            // Original logic might have required roles, but basic auth just needs valid user
-            // if (roles.length === 0) throw new TRPCError({ code: 'FORBIDDEN', message: 'No role assigned' });
+            // Map roles to camelCase for frontend
+            const mappedRoles = roles.map(r => ({
+                id: r.id,
+                userId: r.user_id,
+                role: r.role,
+                groupIds: r.groups,
+                createdAt: r.created_at,
+                updatedAt: r.updated_at,
+                createdBy: r.created_by,
+                revokedAt: null
+            }));
 
             const tokens = auth.generateTokens(user, roles.map(r => ({ role: r.role, groupIds: r.groups })));
-            return { ...tokens, user: { id: user.id, email: user.email, name: user.name, roles } };
+            return { ...tokens, user: { id: user.id, email: user.email, name: user.name, roles: mappedRoles } };
         }),
 
     refresh: publicProcedure

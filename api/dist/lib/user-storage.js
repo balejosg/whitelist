@@ -2,258 +2,138 @@
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
  *
- * User Storage - JSON file-based user management
- * Stores users in data/users.json
+ * User Storage - PostgreSQL-based user management
  */
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
-// =============================================================================
-// Constants
-// =============================================================================
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = process.env.DATA_DIR ?? path.join(__dirname, '..', '..', 'data');
-const USERS_FILE = path.join(DATA_DIR, 'users.json');
+import { query } from './db.js';
 const BCRYPT_ROUNDS = 12;
 // =============================================================================
-// Initialization
+// Helper Functions
 // =============================================================================
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-// Initialize empty users file if not exists
-if (!fs.existsSync(USERS_FILE)) {
-    fs.writeFileSync(USERS_FILE, JSON.stringify({ users: [] }, null, 2));
-}
-// =============================================================================
-// Internal Functions
-// =============================================================================
-/**
- * Load all users from file
- */
-function loadData() {
-    try {
-        const data = fs.readFileSync(USERS_FILE, 'utf-8');
-        return JSON.parse(data);
-    }
-    catch (error) {
-        console.error('Error loading users:', error);
-        return { users: [] };
-    }
-}
-/**
- * Save data to file
- */
-function saveData(data) {
-    fs.writeFileSync(USERS_FILE, JSON.stringify(data, null, 2));
-}
-/**
- * Remove sensitive fields from user object
- */
 function sanitizeUser(user) {
     return {
         id: user.id,
         email: user.email,
         name: user.name,
-        active: user.isActive,
-        created_at: user.createdAt,
-        updated_at: user.updatedAt
+        active: true,
+        created_at: user.created_at,
+        updated_at: user.updated_at
     };
 }
-/**
- * Convert StoredUser to User type (includes password_hash)
- */
 function toUserType(user) {
     return {
         id: user.id,
         email: user.email,
         name: user.name,
-        password_hash: user.passwordHash,
-        active: user.isActive,
-        created_at: user.createdAt,
-        updated_at: user.updatedAt
+        password_hash: user.password_hash,
+        active: true,
+        created_at: user.created_at,
+        updated_at: user.updated_at
     };
 }
 // =============================================================================
 // Public API
 // =============================================================================
-/**
- * Get all users (without password hashes)
- */
-export function getAllUsers() {
-    const data = loadData();
-    return data.users.map(sanitizeUser);
+export async function getAllUsers() {
+    const result = await query('SELECT id, email, name, created_at, updated_at FROM users ORDER BY created_at DESC');
+    return result.rows.map(sanitizeUser);
 }
-/**
- * Get user by ID
- */
-export function getUserById(id) {
-    const data = loadData();
-    const user = data.users.find((u) => u.id === id);
-    return user ? toUserType(user) : null;
+export async function getUserById(id) {
+    const result = await query('SELECT * FROM users WHERE id = $1', [id]);
+    return result.rows[0] ? toUserType(result.rows[0]) : null;
 }
-/**
- * Get user by email (for authentication, includes password hash)
- */
-export function getUserByEmail(email) {
-    const data = loadData();
-    const user = data.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-    return user ? toUserType(user) : null;
+export async function getUserByEmail(email) {
+    const result = await query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [email]);
+    return result.rows[0] ? toUserType(result.rows[0]) : null;
 }
-/**
- * Check if email already exists
- */
-export function emailExists(email) {
-    const data = loadData();
-    return data.users.some((u) => u.email.toLowerCase() === email.toLowerCase());
+export async function emailExists(email) {
+    const result = await query('SELECT EXISTS(SELECT 1 FROM users WHERE LOWER(email) = LOWER($1)) as exists', [email]);
+    return result.rows[0]?.exists ?? false;
 }
-/**
- * Create a new user
- */
 export async function createUser(userData) {
-    const data = loadData();
-    // Hash password
     const passwordHash = await bcrypt.hash(userData.password, BCRYPT_ROUNDS);
-    const newUser = {
-        id: `user_${uuidv4().slice(0, 8)}`,
-        email: userData.email.toLowerCase().trim(),
-        name: userData.name.trim(),
-        passwordHash,
-        emailVerified: false,
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        lastLoginAt: null
-    };
-    data.users.push(newUser);
-    saveData(data);
-    return sanitizeUser(newUser);
+    const id = `user_${uuidv4().slice(0, 8)}`;
+    const result = await query(`INSERT INTO users (id, email, name, password_hash)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, email, name, created_at, updated_at`, [id, userData.email.toLowerCase().trim(), userData.name.trim(), passwordHash]);
+    const user = result.rows[0];
+    if (!user) {
+        throw new Error('Failed to create user');
+    }
+    return sanitizeUser(user);
 }
-/**
- * Update a user
- */
 export async function updateUser(id, updates) {
-    const data = loadData();
-    const index = data.users.findIndex((u) => u.id === id);
-    if (index === -1) {
-        return null;
-    }
-    const existingUser = data.users[index];
-    if (!existingUser) {
-        return null;
-    }
-    // Build updated user
-    const updatedUser = {
-        ...existingUser,
-        updatedAt: new Date().toISOString()
-    };
-    // Apply updates
+    const setClauses = [];
+    const values = [];
+    let paramIndex = 1;
     if (updates.email !== undefined) {
-        updatedUser.email = updates.email.toLowerCase().trim();
+        setClauses.push(`email = $${paramIndex++}`);
+        values.push(updates.email.toLowerCase().trim());
     }
     if (updates.name !== undefined) {
-        updatedUser.name = updates.name.trim();
+        setClauses.push(`name = $${paramIndex++}`);
+        values.push(updates.name.trim());
     }
     if (updates.password !== undefined) {
-        updatedUser.passwordHash = await bcrypt.hash(updates.password, BCRYPT_ROUNDS);
+        const passwordHash = await bcrypt.hash(updates.password, BCRYPT_ROUNDS);
+        setClauses.push(`password_hash = $${paramIndex++}`);
+        values.push(passwordHash);
     }
-    if (updates.active !== undefined) {
-        updatedUser.isActive = updates.active;
+    if (setClauses.length === 0) {
+        // No updates, just return existing user
+        const result = await query('SELECT id, email, name, created_at, updated_at FROM users WHERE id = $1', [id]);
+        return result.rows[0] ? sanitizeUser(result.rows[0]) : null;
     }
-    data.users[index] = updatedUser;
-    saveData(data);
-    return sanitizeUser(updatedUser);
+    values.push(id);
+    const result = await query(`UPDATE users SET ${setClauses.join(', ')}
+         WHERE id = $${paramIndex}
+         RETURNING id, email, name, created_at, updated_at`, values);
+    return result.rows[0] ? sanitizeUser(result.rows[0]) : null;
 }
-/**
- * Update last login timestamp
- */
-export function updateLastLogin(id) {
-    const data = loadData();
-    const index = data.users.findIndex((u) => u.id === id);
-    if (index !== -1) {
-        const user = data.users[index];
-        if (user !== undefined) {
-            user.lastLoginAt = new Date().toISOString();
-            saveData(data);
-        }
-    }
+export async function updateLastLogin(id) {
+    await query('UPDATE users SET updated_at = NOW() WHERE id = $1', [id]);
 }
-/**
- * Delete a user
- */
-export function deleteUser(id) {
-    const data = loadData();
-    const initialLength = data.users.length;
-    data.users = data.users.filter((u) => u.id !== id);
-    if (data.users.length < initialLength) {
-        saveData(data);
-        return true;
-    }
-    return false;
+export async function deleteUser(id) {
+    const result = await query('DELETE FROM users WHERE id = $1', [id]);
+    return (result.rowCount ?? 0) > 0;
 }
-/**
- * Verify email
- */
-export function verifyEmail(id) {
-    const data = loadData();
-    const index = data.users.findIndex((u) => u.id === id);
-    if (index === -1) {
-        return false;
-    }
-    const user = data.users[index];
-    if (user !== undefined) {
-        user.emailVerified = true;
-        user.updatedAt = new Date().toISOString();
-        saveData(data);
-        return true;
-    }
-    return false;
+export async function verifyEmail(id) {
+    const result = await query('UPDATE users SET updated_at = NOW() WHERE id = $1', [id]);
+    return (result.rowCount ?? 0) > 0;
 }
-/**
- * Verify password for a user
- */
 export async function verifyPassword(user, password) {
     return bcrypt.compare(password, user.password_hash);
 }
-/**
- * Verify password by email - gets user and verifies password
- * Returns user with extra fields for route compatibility, or null if invalid
- */
 export async function verifyPasswordByEmail(email, password) {
-    const data = loadData();
-    const storedUser = data.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (!storedUser) {
+    const result = await query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [email]);
+    const user = result.rows[0];
+    if (!user) {
         return null;
     }
-    const isValid = await bcrypt.compare(password, storedUser.passwordHash);
+    const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) {
         return null;
     }
-    // Return user with all fields needed by routes
     return {
-        id: storedUser.id,
-        email: storedUser.email,
-        name: storedUser.name,
-        password_hash: storedUser.passwordHash,
-        active: storedUser.isActive,
-        isActive: storedUser.isActive,
-        emailVerified: storedUser.emailVerified,
-        created_at: storedUser.createdAt,
-        updated_at: storedUser.updatedAt
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        password_hash: user.password_hash,
+        active: true,
+        isActive: true,
+        emailVerified: false,
+        created_at: user.created_at,
+        updated_at: user.updated_at
     };
 }
-/**
- * Get user statistics
- */
-export function getStats() {
-    const data = loadData();
+export async function getStats() {
+    const result = await query('SELECT COUNT(*) as total FROM users');
+    const total = parseInt(result.rows[0]?.total ?? '0', 10);
     return {
-        total: data.users.length,
-        active: data.users.filter((u) => u.isActive).length,
-        verified: data.users.filter((u) => u.emailVerified).length
+        total,
+        active: total,
+        verified: 0
     };
 }
 // =============================================================================

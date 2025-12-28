@@ -2,43 +2,10 @@
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
  *
- * Schedule Storage Module
- * Manages classroom schedules (recurring reservations by teachers)
+ * Schedule Storage - PostgreSQL-based schedule management
  */
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
-// =============================================================================
-// Constants
-// =============================================================================
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = process.env.DATA_DIR ?? path.join(__dirname, '..', '..', 'data');
-const SCHEDULES_FILE = path.join(DATA_DIR, 'schedules.json');
-// =============================================================================
-// Initialization
-// =============================================================================
-if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-if (!fs.existsSync(SCHEDULES_FILE)) {
-    fs.writeFileSync(SCHEDULES_FILE, JSON.stringify({ schedules: [] }, null, 2));
-}
-// =============================================================================
-// Data Access
-// =============================================================================
-function loadSchedules() {
-    try {
-        const data = fs.readFileSync(SCHEDULES_FILE, 'utf-8');
-        return JSON.parse(data);
-    }
-    catch {
-        return { schedules: [] };
-    }
-}
-function saveSchedules(data) {
-    fs.writeFileSync(SCHEDULES_FILE, JSON.stringify(data, null, 2));
-}
+import { query } from './db.js';
 // =============================================================================
 // Time Utilities
 // =============================================================================
@@ -58,26 +25,35 @@ export function timesOverlap(start1, end1, start2, end2) {
 // =============================================================================
 // Schedule CRUD
 // =============================================================================
-export function getSchedulesByClassroom(classroomId) {
-    const data = loadSchedules();
-    return data.schedules.filter((s) => s.classroom_id === classroomId);
+export async function getSchedulesByClassroom(classroomId) {
+    const result = await query('SELECT * FROM schedules WHERE classroom_id = $1 ORDER BY day_of_week, start_time', [classroomId]);
+    return result.rows;
 }
-export function getSchedulesByTeacher(teacherId) {
-    const data = loadSchedules();
-    return data.schedules.filter((s) => s.teacher_id === teacherId);
+export async function getSchedulesByTeacher(teacherId) {
+    const result = await query('SELECT * FROM schedules WHERE teacher_id = $1 ORDER BY day_of_week, start_time', [teacherId]);
+    return result.rows;
 }
-export function getScheduleById(id) {
-    const data = loadSchedules();
-    return data.schedules.find((s) => s.id === id) ?? null;
+export async function getScheduleById(id) {
+    const result = await query('SELECT * FROM schedules WHERE id = $1::uuid', [id]);
+    return result.rows[0] ?? null;
 }
-export function findConflict(classroomId, dayOfWeek, startTime, endTime, excludeId = null) {
-    const data = loadSchedules();
-    return data.schedules.find((s) => s.classroom_id === classroomId &&
-        s.day_of_week === dayOfWeek &&
-        s.id !== excludeId &&
-        timesOverlap(s.start_time, s.end_time, startTime, endTime)) ?? null;
+export async function findConflict(classroomId, dayOfWeek, startTime, endTime, excludeId = null) {
+    let sql = `
+        SELECT * FROM schedules
+        WHERE classroom_id = $1
+        AND day_of_week = $2
+        AND ($3::time, $4::time) OVERLAPS (start_time, end_time)
+    `;
+    const params = [classroomId, dayOfWeek, startTime, endTime];
+    if (excludeId !== null) {
+        sql += ' AND id != $5::uuid';
+        params.push(excludeId);
+    }
+    sql += ' LIMIT 1';
+    const result = await query(sql, params);
+    return result.rows[0] ?? null;
 }
-export function createSchedule(scheduleData) {
+export async function createSchedule(scheduleData) {
     const { classroom_id, teacher_id, group_id, day_of_week, start_time, end_time } = scheduleData;
     if (day_of_week < 1 || day_of_week > 5) {
         throw new Error('day_of_week must be between 1 (Monday) and 5 (Friday)');
@@ -89,87 +65,82 @@ export function createSchedule(scheduleData) {
     if (timeToMinutes(start_time) >= timeToMinutes(end_time)) {
         throw new Error('start_time must be before end_time');
     }
-    const conflict = findConflict(classroom_id, day_of_week, start_time, end_time);
+    const conflict = await findConflict(classroom_id, day_of_week, start_time, end_time);
     if (conflict !== null) {
         const error = new Error('Schedule conflict');
         error.conflict = conflict;
         throw error;
     }
-    const data = loadSchedules();
-    const schedule = {
-        id: crypto.randomUUID(),
-        classroom_id,
-        teacher_id,
-        group_id,
-        day_of_week,
-        start_time,
-        end_time,
-        recurrence: 'weekly',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-    };
-    data.schedules.push(schedule);
-    saveSchedules(data);
-    return schedule;
+    const id = crypto.randomUUID();
+    const result = await query(`INSERT INTO schedules (
+            id, classroom_id, teacher_id, group_id, 
+            day_of_week, start_time, end_time, recurrence
+        ) VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, 'weekly')
+        RETURNING *`, [id, classroom_id, teacher_id, group_id, day_of_week, start_time, end_time]);
+    return result.rows[0];
 }
-export function updateSchedule(id, updates) {
-    const data = loadSchedules();
-    const index = data.schedules.findIndex((s) => s.id === id);
-    if (index === -1)
-        return null;
-    const schedule = data.schedules[index];
-    if (schedule === undefined)
+export async function updateSchedule(id, updates) {
+    const schedule = await getScheduleById(id);
+    if (!schedule)
         return null;
     const newDayOfWeek = updates.day_of_week ?? schedule.day_of_week;
     const newStartTime = updates.start_time ?? schedule.start_time;
     const newEndTime = updates.end_time ?? schedule.end_time;
-    const conflict = findConflict(schedule.classroom_id, newDayOfWeek, newStartTime, newEndTime, id);
+    const conflict = await findConflict(schedule.classroom_id, newDayOfWeek, newStartTime, newEndTime, id);
     if (conflict !== null) {
         const error = new Error('Schedule conflict');
         error.conflict = conflict;
         throw error;
     }
-    if (updates.day_of_week !== undefined)
-        schedule.day_of_week = updates.day_of_week;
-    if (updates.start_time !== undefined)
-        schedule.start_time = updates.start_time;
-    if (updates.end_time !== undefined)
-        schedule.end_time = updates.end_time;
-    if (updates.group_id !== undefined)
-        schedule.group_id = updates.group_id;
-    schedule.updated_at = new Date().toISOString();
-    saveSchedules(data);
-    return schedule;
-}
-export function deleteSchedule(id) {
-    const data = loadSchedules();
-    const initialLength = data.schedules.length;
-    data.schedules = data.schedules.filter((s) => s.id !== id);
-    if (data.schedules.length < initialLength) {
-        saveSchedules(data);
-        return true;
+    const setClauses = [];
+    const values = [];
+    let paramIndex = 1;
+    if (updates.day_of_week !== undefined) {
+        setClauses.push(`day_of_week = $${paramIndex++}`);
+        values.push(updates.day_of_week);
     }
-    return false;
+    if (updates.start_time !== undefined) {
+        setClauses.push(`start_time = $${paramIndex++}`);
+        values.push(updates.start_time);
+    }
+    if (updates.end_time !== undefined) {
+        setClauses.push(`end_time = $${paramIndex++}`);
+        values.push(updates.end_time);
+    }
+    if (updates.group_id !== undefined) {
+        setClauses.push(`group_id = $${paramIndex++}`);
+        values.push(updates.group_id);
+    }
+    if (setClauses.length === 0) {
+        return schedule;
+    }
+    values.push(id);
+    const result = await query(`UPDATE schedules SET ${setClauses.join(', ')}
+         WHERE id = $${paramIndex}::uuid
+         RETURNING *`, values);
+    return result.rows[0] ?? null;
 }
-export function getCurrentSchedule(classroomId, date = new Date()) {
+export async function deleteSchedule(id) {
+    const result = await query('DELETE FROM schedules WHERE id = $1::uuid', [id]);
+    return (result.rowCount ?? 0) > 0;
+}
+export async function getCurrentSchedule(classroomId, date = new Date()) {
     const dayOfWeek = date.getDay();
     if (dayOfWeek === 0 || dayOfWeek === 6) {
         return null;
     }
     const currentTime = date.toTimeString().slice(0, 5);
-    const currentMinutes = timeToMinutes(currentTime);
-    const data = loadSchedules();
-    return data.schedules.find((s) => s.classroom_id === classroomId &&
-        s.day_of_week === dayOfWeek &&
-        timeToMinutes(s.start_time) <= currentMinutes &&
-        timeToMinutes(s.end_time) > currentMinutes) ?? null;
+    const result = await query(`SELECT * FROM schedules
+         WHERE classroom_id = $1
+         AND day_of_week = $2
+         AND start_time <= $3::time
+         AND end_time > $3::time
+         LIMIT 1`, [classroomId, dayOfWeek, currentTime]);
+    return result.rows[0] ?? null;
 }
-export function deleteSchedulesByClassroom(classroomId) {
-    const data = loadSchedules();
-    const initialLength = data.schedules.length;
-    data.schedules = data.schedules.filter((s) => s.classroom_id !== classroomId);
-    saveSchedules(data);
-    return initialLength - data.schedules.length;
+export async function deleteSchedulesByClassroom(classroomId) {
+    const result = await query('DELETE FROM schedules WHERE classroom_id = $1', [classroomId]);
+    return result.rowCount ?? 0;
 }
 export default {
     getSchedulesByClassroom,

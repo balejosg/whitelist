@@ -2,101 +2,72 @@
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
  *
- * Setup Storage - Manages first-time setup configuration
- * Stores setup data in data/setup.json
+ * Setup Storage - PostgreSQL-backed setup configuration
  */
-import fs from 'node:fs';
-import path from 'node:path';
 import crypto from 'node:crypto';
-import { fileURLToPath } from 'node:url';
-// =============================================================================
-// Constants
-// =============================================================================
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = process.env.DATA_DIR ?? path.join(__dirname, '..', '..', 'data');
-const SETUP_FILE = path.join(DATA_DIR, 'setup.json');
-// =============================================================================
-// Initialization
-// =============================================================================
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-}
+import { query } from './db.js';
 // =============================================================================
 // Public API
 // =============================================================================
-/**
- * Get setup configuration data
- * @returns SetupData if setup has been completed, null otherwise
- */
-export function getSetupData() {
-    if (!fs.existsSync(SETUP_FILE)) {
+export async function getSetupData() {
+    const result = await query(`SELECT key, value FROM settings 
+         WHERE key IN ('registration_token', 'setup_completed_at', 'setup_by_user_id')`);
+    if (result.rows.length === 0) {
         return null;
     }
-    try {
-        const data = fs.readFileSync(SETUP_FILE, 'utf-8');
-        return JSON.parse(data);
-    }
-    catch (error) {
-        console.error('Error loading setup data:', error);
+    const data = {};
+    result.rows.forEach((row) => {
+        data[row.key] = row.value;
+    });
+    if (!data.registration_token) {
         return null;
     }
+    return {
+        registrationToken: data.registration_token,
+        setupCompletedAt: data.setup_completed_at ?? new Date().toISOString(),
+        setupByUserId: data.setup_by_user_id ?? 'unknown'
+    };
 }
-/**
- * Save setup configuration data
- */
-export function saveSetupData(data) {
-    fs.writeFileSync(SETUP_FILE, JSON.stringify(data, null, 2));
+export async function saveSetupData(data) {
+    await query(`INSERT INTO settings (key, value) VALUES ('registration_token', $1)
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [data.registrationToken]);
+    await query(`INSERT INTO settings (key, value) VALUES ('setup_completed_at', $1)
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [data.setupCompletedAt]);
+    await query(`INSERT INTO settings (key, value) VALUES ('setup_by_user_id', $1)
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [data.setupByUserId]);
 }
-/**
- * Check if initial setup has been completed
- */
-export function isSetupComplete() {
-    return getSetupData() !== null;
+export async function isSetupComplete() {
+    const data = await getSetupData();
+    return data !== null;
 }
-/**
- * Get the current registration token
- * @returns Token string if setup is complete, null otherwise
- */
-export function getRegistrationToken() {
-    const data = getSetupData();
+export async function getRegistrationToken() {
+    const data = await getSetupData();
     return data?.registrationToken ?? null;
 }
 /**
  * Generate a new registration token
- * @returns The new 64-character hex token
  */
 export function generateRegistrationToken() {
     return crypto.randomBytes(32).toString('hex');
 }
-/**
- * Regenerate the registration token and save it
- * @returns The new registration token, or null if setup not complete
- */
-export function regenerateRegistrationToken() {
-    const data = getSetupData();
+export async function regenerateRegistrationToken() {
+    const data = await getSetupData();
     if (data === null) {
         return null;
     }
     const newToken = generateRegistrationToken();
     data.registrationToken = newToken;
-    saveSetupData(data);
+    await saveSetupData(data);
     return newToken;
 }
-/**
- * Validate a registration token using timing-safe comparison
- * @param token Token to validate
- * @returns true if token matches, false otherwise
- */
-export function validateRegistrationToken(token) {
-    const storedToken = getRegistrationToken();
+export async function validateRegistrationToken(token) {
+    const storedToken = await getRegistrationToken();
     if (storedToken === null || token === '') {
         return false;
     }
     try {
         const tokenBuffer = Buffer.from(token, 'utf-8');
         const storedBuffer = Buffer.from(storedToken, 'utf-8');
-        // Ensure buffers are same length for timing-safe comparison
         if (tokenBuffer.length !== storedBuffer.length) {
             return false;
         }

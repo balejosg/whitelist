@@ -99,7 +99,7 @@ export function generateTokens(user, roles = []) {
 export async function verifyToken(token) {
     try {
         // Check blacklist (async for Redis support)
-        const isBlacklistedToken = await tokenStore.has(token);
+        const isBlacklistedToken = await tokenStore.isBlacklisted(token);
         if (isBlacklistedToken) {
             return null;
         }
@@ -147,20 +147,22 @@ export async function verifyRefreshToken(token) {
  * Blacklist a token (logout)
  */
 export async function blacklistToken(token) {
-    await tokenStore.add(token);
+    const decoded = await verifyToken(token);
+    const expiresAt = decoded?.exp ? new Date(decoded.exp * 1000) : new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await tokenStore.blacklist(token, expiresAt);
     return true;
 }
 /**
  * Remove expired tokens from blacklist
  */
 export async function cleanupBlacklist() {
-    await tokenStore.cleanup(JWT_SECRET);
+    await tokenStore.cleanup();
 }
 /**
  * Check if token is blacklisted
  */
 export async function isBlacklisted(token) {
-    return tokenStore.has(token);
+    return tokenStore.isBlacklisted(token);
 }
 /**
  * Check if decoded token has admin role
