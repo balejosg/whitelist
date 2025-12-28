@@ -29,7 +29,10 @@ export default tseslint.config(
             '**/coverage/**',
             'api/tests/load/**',
             'eslint.config.js',
-            '**/*.config.js'
+            '**/*.config.js',
+            '**/*.config.ts',
+            '**/*.config.mjs',
+            '**/__tests__/**'
         ],
     }
 );

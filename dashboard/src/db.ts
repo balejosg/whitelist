@@ -1,6 +1,11 @@
 import bcrypt from 'bcryptjs';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+// ESM-compatible __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export interface User {
     id: number;
@@ -76,6 +81,15 @@ let db = loadDb();
 
 export function reloadDb(): void {
     db = loadDb();
+}
+
+// Reset database to default state (for testing)
+export function resetDb(): void {
+    db = JSON.parse(JSON.stringify(defaultDb)) as DatabaseSchema;
+    // Clear any persisted file
+    if (fs.existsSync(DB_PATH)) {
+        fs.unlinkSync(DB_PATH);
+    }
 }
 
 // ============================================================================

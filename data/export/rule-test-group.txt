@@ -1,0 +1,4 @@
+#DESACTIVADO
+
+## WHITELIST
+example.com

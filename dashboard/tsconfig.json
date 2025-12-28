@@ -23,7 +23,7 @@
     "exclude": [
         "node_modules",
         "dist",
-        "**/*.test.ts",
+        "__tests__/**/*",
         "eslint.config.mjs"
     ]
 }

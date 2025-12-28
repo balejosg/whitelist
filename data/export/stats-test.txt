@@ -1,0 +1,8 @@
+#DESACTIVADO
+
+## WHITELIST
+site1.com
+site2.com
+
+## BLOCKED-SUBDOMAINS
+blocked.com

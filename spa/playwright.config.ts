@@ -1,14 +1,13 @@
-// @ts-check
-const { defineConfig, devices } = require('@playwright/test');
+import { defineConfig, devices } from '@playwright/test';
 
 /**
  * OpenPath SPA - Playwright E2E Configuration
- * 
+ *
  * Tests require:
  * - API server running on port 3001
  * - SPA served (can use simple http-server or the API serves static files)
  */
-module.exports = defineConfig({
+export default defineConfig({
     testDir: './e2e',
 
     // Run tests in parallel
@@ -29,7 +28,7 @@ module.exports = defineConfig({
     // Shared settings for all projects
     use: {
         // Base URL for navigation
-        baseURL: process.env.BASE_URL || 'http://localhost:3001',
+        baseURL: process.env.BASE_URL ?? 'http://localhost:3001',
 
         // Collect trace on first retry
         trace: 'on-first-retry',

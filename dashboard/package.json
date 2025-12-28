@@ -11,7 +11,7 @@
         "typecheck": "tsc --noEmit",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
-        "test": "jest"
+        "test": "NODE_OPTIONS='--experimental-vm-modules' jest"
     },
     "dependencies": {
         "bcryptjs": "^2.4.3",
@@ -28,6 +28,7 @@
         "@types/express-session": "^1.18.1",
         "@types/jest": "^29.5.14",
         "@types/node": "^22.10.2",
+        "@types/supertest": "^6.0.3",
         "@types/uuid": "^10.0.0",
         "@typescript-eslint/eslint-plugin": "^8.18.2",
         "@typescript-eslint/parser": "^8.18.2",
@@ -41,14 +42,27 @@
         "typescript-eslint": "^8.50.1"
     },
     "jest": {
+        "preset": "ts-jest/presets/default-esm",
         "testEnvironment": "node",
-        "testMatch": [
-            "**/__tests__/**/*.test.js"
+        "extensionsToTreatAsEsm": [
+            ".ts"
         ],
+        "testMatch": [
+            "**/__tests__/**/*.test.ts"
+        ],
+        "transform": {
+            "^.+\\.ts$": [
+                "ts-jest",
+                {
+                    "useESM": true,
+                    "isolatedModules": true
+                }
+            ]
+        },
         "coverageDirectory": "coverage",
         "collectCoverageFrom": [
-            "server/**/*.js",
-            "!server/__tests__/**"
+            "src/**/*.ts",
+            "!src/__tests__/**"
         ],
         "coverageThreshold": {
             "global": {
@@ -57,6 +71,9 @@
                 "lines": 0,
                 "statements": 0
             }
+        },
+        "moduleNameMapper": {
+            "^(\\.{1,2}/.*)\\.js$": "$1"
         }
     },
     "engines": {

@@ -35,7 +35,8 @@
         "src/**/*",
         "sw.ts",
         "e2e/**/*",
-        "tests/**/*"
+        "tests/**/*",
+        "playwright.config.ts"
     ],
     "exclude": [
         "node_modules",
