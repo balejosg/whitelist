@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "PORT=3006 node --import tsx --test --test-force-exit tests/api.test.ts",
     "test:auth": "PORT=3001 node --import tsx --test --test-force-exit tests/auth.test.ts",
