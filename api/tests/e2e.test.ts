@@ -9,6 +9,9 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import {
     TEST_RUN_ID,
     uniqueEmail,
@@ -29,6 +32,8 @@ const GLOBAL_TIMEOUT = setTimeout(() => {
 GLOBAL_TIMEOUT.unref();
 
 let server: Server | undefined;
+
+let testDataDir: string | null = null;
 
 let adminToken: string | null = null;
 let teacherToken: string | null = null;
@@ -52,6 +57,11 @@ console.log(`E2E Test Run ID: ${TEST_RUN_ID}`);
 await describe('E2E: Teacher Role Workflow (tRPC)', { timeout: 75000 }, async () => {
     before(async () => {
         process.env.PORT = String(PORT);
+
+        // Ensure test isolation (users/roles/requests/etc.)
+        testDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openpath-e2e-'));
+        process.env.DATA_DIR = testDataDir;
+
         const { app } = await import('../src/server.js');
 
         server = app.listen(PORT, () => {
@@ -73,26 +83,27 @@ await describe('E2E: Teacher Role Workflow (tRPC)', { timeout: 75000 }, async ()
                 });
             });
         }
+
+        if (testDataDir) {
+            fs.rmSync(testDataDir, { recursive: true, force: true });
+            testDataDir = null;
+        }
     });
 
     await describe('Step 1: Setup Admin User', async () => {
-        await test('should register admin user (María)', async (): Promise<void> => {
-            const response = await trpcMutate('auth.register', {
-                email: ADMIN_EMAIL,
-                password: ADMIN_PASSWORD,
-                name: 'María Admin'
+        await test('should create first admin via setup endpoint', async (): Promise<void> => {
+            const response = await fetch(`${API_URL}/api/setup/first-admin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: ADMIN_EMAIL,
+                    password: ADMIN_PASSWORD,
+                    name: 'María Admin'
+                })
             });
 
-            // 200 = new user, 409 = already exists (from previous test run)
-            assert.ok([200, 409].includes(response.status), `Expected 200 or 409, got ${String(response.status)}`);
-
-            if (response.status === 200) {
-                const res = await parseTRPC(response);
-                const data = res.data as AuthResult;
-                assert.ok(data.user?.id !== undefined);
-            } else {
-                console.log('Admin user already exists, will login');
-            }
+            // In isolated DATA_DIR this should always be the first admin
+            assert.strictEqual(response.status, 201);
         });
 
         await test('should login as admin', async (): Promise<void> => {
@@ -209,7 +220,8 @@ await describe('E2E: Teacher Role Workflow (tRPC)', { timeout: 75000 }, async ()
             const response = await trpcMutate('requests.create', {
                 domain: TEST_DOMAIN,
                 reason: 'I need this for homework',
-                requester_email: 'student@test.com'
+                requester_email: 'student@test.com',
+                group_id: TEACHER_GROUP
             });
 
             assert.strictEqual(response.status, 200);

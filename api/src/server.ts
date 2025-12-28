@@ -38,7 +38,7 @@
  */
 
 import express from 'express';
-import type { Request, Response, ErrorRequestHandler } from 'express';
+import type { Request, Response, ErrorRequestHandler, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import path from 'node:path';
@@ -51,6 +51,11 @@ import logger from './lib/logger.js';
 
 // Error tracking and request ID middleware
 import { requestIdMiddleware, errorTrackingMiddleware } from './lib/error-tracking.js';
+
+import * as roleStorage from './lib/role-storage.js';
+import * as userStorage from './lib/user-storage.js';
+import * as setupStorage from './lib/setup-storage.js';
+import * as auth from './lib/auth.js';
 
 // Swagger/OpenAPI (optional - only load if dependencies installed)
 let swaggerUi: typeof import('swagger-ui-express') | undefined;
@@ -88,6 +93,7 @@ app.use(helmet({
             connectSrc: ["'self'", 'https://api.github.com']
         }
     },
+    frameguard: { action: 'deny' },
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
@@ -145,6 +151,130 @@ app.use(logger.requestMiddleware);
 app.get('/health', (_req, res) => {
     res.json({ status: 'ok', service: 'openpath-api' });
 });
+
+// =============================================================================
+// Legacy/Compatibility REST Endpoints
+// =============================================================================
+
+function parseBearerToken(req: Request): string | null {
+    const header = req.header('authorization');
+    if (!header) return null;
+    const match = /^Bearer\s+(.+)$/i.exec(header);
+    return match ? match[1] ?? null : null;
+}
+
+async function requireAdmin(req: Request, res: Response): Promise<auth.DecodedWithRoles | null> {
+    const token = parseBearerToken(req);
+    if (!token) {
+        res.status(401).json({ success: false, error: 'Authentication required' });
+        return null;
+    }
+
+    const decoded = await auth.verifyAccessToken(token);
+    if (!decoded || !auth.isAdminToken(decoded)) {
+        res.status(401).json({ success: false, error: 'Invalid or missing admin token' });
+        return null;
+    }
+
+    return decoded;
+}
+
+function asyncRoute(
+    handler: (req: Request, res: Response, next: NextFunction) => Promise<void>
+): (req: Request, res: Response, next: NextFunction) => void {
+    return (req, res, next) => {
+        void handler(req, res, next).catch(next);
+    };
+}
+
+// Setup REST API (used by setup.html and existing clients)
+app.get('/api/setup/status', (_req: Request, res: Response) => {
+    const hasAdmin = roleStorage.hasAnyAdmins();
+    res.status(200).json({
+        success: true,
+        needsSetup: !hasAdmin,
+        hasAdmin,
+    });
+});
+
+app.post('/api/setup/first-admin', asyncRoute(async (req: Request, res: Response) => {
+    if (roleStorage.hasAnyAdmins()) {
+        res.status(403).json({ success: false, error: 'Setup already completed' });
+        return;
+    }
+
+    const { email, name, password } = (req.body ?? {}) as { email?: unknown; name?: unknown; password?: unknown };
+
+    if (typeof email !== 'string' || typeof name !== 'string' || typeof password !== 'string') {
+        res.status(400).json({ success: false, error: 'Missing required fields' });
+        return;
+    }
+
+    if (!email.includes('@') || name.trim() === '' || password.length < 8) {
+        res.status(400).json({ success: false, error: 'Invalid fields' });
+        return;
+    }
+
+    if (userStorage.emailExists(email)) {
+        res.status(409).json({ success: false, error: 'Email already registered' });
+        return;
+    }
+
+    const user = await userStorage.createUser({ email, name, password });
+    roleStorage.assignRole({
+        userId: user.id,
+        role: 'admin',
+        groups: [],
+        createdBy: user.id,
+    });
+
+    const registrationToken = setupStorage.generateRegistrationToken();
+    setupStorage.saveSetupData({
+        registrationToken,
+        setupCompletedAt: new Date().toISOString(),
+        setupByUserId: user.id,
+    });
+
+    res.status(201).json({
+        success: true,
+        registrationToken,
+        redirectTo: '/login',
+        user: { id: user.id, email: user.email, name: user.name },
+    });
+}));
+
+app.post('/api/setup/validate-token', (req: Request, res: Response) => {
+    const { token } = (req.body ?? {}) as { token?: unknown };
+    if (typeof token !== 'string' || token.trim() === '') {
+        res.status(400).json({ success: false, error: 'Token required' });
+        return;
+    }
+    res.status(200).json({ success: true, valid: setupStorage.validateRegistrationToken(token) });
+});
+
+app.get('/api/setup/registration-token', asyncRoute(async (req: Request, res: Response) => {
+    const decoded = await requireAdmin(req, res);
+    if (!decoded) return;
+
+    const token = setupStorage.getRegistrationToken();
+    if (!token) {
+        res.status(404).json({ success: false, error: 'Setup not completed' });
+        return;
+    }
+    res.status(200).json({ success: true, registrationToken: token });
+}));
+
+app.post('/api/setup/regenerate-token', asyncRoute(async (req: Request, res: Response) => {
+    const decoded = await requireAdmin(req, res);
+    if (!decoded) return;
+
+    const token = setupStorage.regenerateRegistrationToken();
+    if (!token) {
+        res.status(404).json({ success: false, error: 'Setup not completed' });
+        return;
+    }
+    res.status(200).json({ success: true, registrationToken: token });
+}));
 
 // Swagger/OpenAPI documentation
 if (swaggerUi && getSwaggerSpec) {

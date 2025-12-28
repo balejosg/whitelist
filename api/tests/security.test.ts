@@ -64,22 +64,15 @@ await describe('Security and Hardening Tests', async () => {
 
     await describe('Authentication and Authorization', async () => {
         await it('should reject access to private routes without token', async (): Promise<void> => {
-            const response = await fetch(`${API_URL}/trpc/users.list`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
-            });
+            const response = await fetch(`${API_URL}/trpc/users.list`);
             assert.strictEqual(response.status, 401);
         });
 
         await it('should reject invalid auth token format', async (): Promise<void> => {
             const response = await fetch(`${API_URL}/trpc/users.list`, {
-                method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'Authorization': 'InvalidFormat token123'
-                },
-                body: JSON.stringify({})
+                }
             });
             assert.strictEqual(response.status, 401);
         });

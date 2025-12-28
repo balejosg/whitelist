@@ -9,6 +9,7 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
+import webPush from 'web-push';
 
 const PORT = 3003;
 const API_URL = `http://localhost:${String(PORT)}`;
@@ -97,6 +98,11 @@ await describe('Push Notifications API Tests (tRPC)', { timeout: 45000 }, async 
     before(async () => {
         process.env.PORT = String(PORT);
         process.env.ADMIN_TOKEN = 'test-admin-token';
+        // Ensure push is configured for tests (avoid relying on real secrets)
+        const keys = webPush.generateVAPIDKeys();
+        process.env.VAPID_SUBJECT = 'mailto:test@example.com';
+        process.env.VAPID_PUBLIC_KEY = keys.publicKey;
+        process.env.VAPID_PRIVATE_KEY = keys.privateKey;
 
         const { app } = await import('../src/server.js');
 

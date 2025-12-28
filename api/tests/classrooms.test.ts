@@ -8,6 +8,7 @@
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
+import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
 import { Server } from 'node:http';
@@ -17,6 +18,7 @@ const API_URL = `http://localhost:${String(PORT)}`;
 const ADMIN_TOKEN = 'test-admin-token';
 
 let server: Server | undefined;
+let testDataDir: string | null = null;
 
 // Helper to call tRPC mutations
 async function trpcMutate(procedure: string, input: unknown, headers: Record<string, string> = {}): Promise<Response> {
@@ -76,6 +78,10 @@ await describe('Classroom Management API Tests (tRPC)', async () => {
         process.env.PORT = String(PORT);
         process.env.ADMIN_TOKEN = ADMIN_TOKEN;
 
+        // Ensure test isolation (classrooms/machines persisted data)
+        testDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openpath-classrooms-'));
+        process.env.DATA_DIR = testDataDir;
+
         // Ensure etc exists
         const etcPath = path.join(process.cwd(), 'etc');
         if (!fs.existsSync(etcPath)) fs.mkdirSync(etcPath, { recursive: true });
@@ -96,6 +102,11 @@ await describe('Classroom Management API Tests (tRPC)', async () => {
                     resolve();
                 });
             });
+        }
+
+        if (testDataDir) {
+            fs.rmSync(testDataDir, { recursive: true, force: true });
+            testDataDir = null;
         }
     });
 
@@ -164,6 +175,8 @@ await describe('Classroom Management API Tests (tRPC)', async () => {
 
     await describe('Machine Operations', async () => {
         await test('classrooms.registerMachine - should register computer', async (): Promise<void> => {
+            process.env.SHARED_SECRET = 'test-shared-secret';
+
             const listResponse = await trpcQuery('classrooms.list', undefined, {
                 'Authorization': `Bearer ${ADMIN_TOKEN}`
             });
@@ -175,8 +188,8 @@ await describe('Classroom Management API Tests (tRPC)', async () => {
 
             const response = await trpcMutate('classrooms.registerMachine', {
                 hostname: 'pc-01',
-                classroom: classroomName
-            }, { 'Authorization': `Bearer ${ADMIN_TOKEN}` });
+                classroom_name: classroomName
+            }, { 'Authorization': `Bearer ${process.env.SHARED_SECRET}` });
 
             assert.ok([200, 201].includes(response.status), `Expected 200 or 201, got ${String(response.status)}`);
             const res = await parseTRPC(response);
@@ -187,7 +200,7 @@ await describe('Classroom Management API Tests (tRPC)', async () => {
         await test('classrooms.getWhitelistUrl - returns url and group', async (): Promise<void> => {
             const response = await trpcQuery('classrooms.getWhitelistUrl', {
                 hostname: 'pc-01'
-            });
+            }, { 'Authorization': `Bearer ${process.env.SHARED_SECRET ?? ''}` });
 
             assert.strictEqual(response.status, 200);
 
@@ -200,7 +213,7 @@ await describe('Classroom Management API Tests (tRPC)', async () => {
         await test('classrooms.getWhitelistUrl - 404 for unknown machine', async (): Promise<void> => {
             const response = await trpcQuery('classrooms.getWhitelistUrl', {
                 hostname: 'unknown-pc'
-            });
+            }, { 'Authorization': `Bearer ${process.env.SHARED_SECRET ?? ''}` });
             assert.strictEqual(response.status, 404);
         });
     });

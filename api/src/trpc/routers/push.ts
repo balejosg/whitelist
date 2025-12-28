@@ -5,6 +5,18 @@ import * as push from '../../lib/push.js';
 import * as auth from '../../lib/auth.js';
 
 export const pushRouter = router({
+    // Backwards-compatible alias (older clients/tests)
+    getVapidPublicKey: publicProcedure.query(() => {
+        const publicKey = push.getVapidPublicKey();
+        if (publicKey === null || publicKey === '') {
+            throw new TRPCError({
+                code: 'SERVICE_UNAVAILABLE',
+                message: 'Push notifications not configured'
+            });
+        }
+        return { publicKey, enabled: true };
+    }),
+
     getVapidKey: publicProcedure.query(() => {
         const publicKey = push.getVapidPublicKey();
         if (publicKey === null || publicKey === '') {
