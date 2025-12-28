@@ -18,7 +18,7 @@ import type { IClassroomStorage, CreateClassroomData, UpdateClassroomData } from
 // =============================================================================
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.join(__dirname, '..', '..', 'data');
+const DATA_DIR = process.env.DATA_DIR ?? path.join(__dirname, '..', '..', 'data');
 const CLASSROOMS_FILE = path.join(DATA_DIR, 'classrooms.json');
 const MACHINES_FILE = path.join(DATA_DIR, 'machines.json');
 
