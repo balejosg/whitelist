@@ -1,7 +1,6 @@
 {
   "name": "openpath-monorepo",
   "version": "1.0.0",
-  "type": "module",
   "description": "DNS-based URL whitelist enforcement system for educational environments",
   "private": true,
   "scripts": {
