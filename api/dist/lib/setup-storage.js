@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 // Constants
 // =============================================================================
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.join(__dirname, '..', '..', 'data');
+const DATA_DIR = process.env.DATA_DIR ?? path.join(__dirname, '..', '..', 'data');
 const SETUP_FILE = path.join(DATA_DIR, 'setup.json');
 // =============================================================================
 // Initialization

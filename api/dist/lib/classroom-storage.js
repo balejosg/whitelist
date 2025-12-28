@@ -13,7 +13,7 @@ import { v4 as uuidv4 } from 'uuid';
 // Constants
 // =============================================================================
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.join(__dirname, '..', '..', 'data');
+const DATA_DIR = process.env.DATA_DIR ?? path.join(__dirname, '..', '..', 'data');
 const CLASSROOMS_FILE = path.join(DATA_DIR, 'classrooms.json');
 const MACHINES_FILE = path.join(DATA_DIR, 'machines.json');
 // =============================================================================
@@ -246,12 +246,9 @@ export function getWhitelistUrlForMachine(hostname) {
         try {
             // Dynamic import would be better but keeping consistent with original
             const require = createRequire(import.meta.url);
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-call
             const scheduleStorage = require('./schedule-storage.js');
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
             const currentSchedule = scheduleStorage.getCurrentSchedule(classroom.id);
             if (currentSchedule !== null && currentSchedule !== undefined) {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
                 groupId = currentSchedule.group_id;
                 source = 'schedule';
             }

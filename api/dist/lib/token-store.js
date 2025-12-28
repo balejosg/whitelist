@@ -68,12 +68,7 @@ export class RedisTokenStore {
     }
     async _connect() {
         try {
-            // Dynamic import for optional redis dependency
-            // redis is an optional dependency
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
-            // @ts-ignore - redis is an optional dependency
             const redis = await import('redis');
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
             this.client = redis.createClient({ url: this.redisUrl });
             this.client.on('error', (err) => {
                 const message = err instanceof Error ? err.message : 'Unknown error';

@@ -14,7 +14,7 @@ import { v4 as uuidv4 } from 'uuid';
 // Constants
 // =============================================================================
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.join(__dirname, '..', '..', 'data');
+const DATA_DIR = process.env.DATA_DIR ?? path.join(__dirname, '..', '..', 'data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const BCRYPT_ROUNDS = 12;
 // =============================================================================

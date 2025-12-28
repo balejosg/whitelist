@@ -13,7 +13,7 @@ import { v4 as uuidv4 } from 'uuid';
 // Constants
 // =============================================================================
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.join(__dirname, '..', '..', 'data');
+const DATA_DIR = process.env.DATA_DIR ?? path.join(__dirname, '..', '..', 'data');
 const ROLES_FILE = path.join(DATA_DIR, 'user_roles.json');
 export const VALID_ROLES = ['admin', 'teacher', 'student'];
 // =============================================================================

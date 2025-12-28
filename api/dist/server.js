@@ -21,12 +21,19 @@
  * Home server deployment for handling domain requests.
  * Runs on your local network, exposed via DuckDNS.
  *
- * Endpoints:
- *   POST /api/requests         - Submit domain request (public)
- *   GET  /api/requests         - List all requests (admin)
- *   POST /api/requests/:id/approve - Approve request (admin)
- *   POST /api/requests/:id/reject  - Reject request (admin)
- *   GET  /health               - Health check
+ * tRPC Routers (mounted at /trpc):
+ *   auth        - Authentication (login, register, logout, refresh)
+ *   users       - User management (admin only)
+ *   requests    - Domain request handling
+ *   classrooms  - Classroom/machine management
+ *   schedules   - Schedule reservations
+ *   push        - Push notification subscriptions
+ *   healthReports - Client health reporting
+ *   setup       - Initial setup endpoints
+ *   healthcheck - Server health status
+ *
+ * Other Endpoints:
+ *   GET /health - Basic health check
  */
 import express from 'express';
 import cors from 'cors';
@@ -37,18 +44,12 @@ import rateLimit from 'express-rate-limit';
 import 'dotenv/config';
 // Structured logging with Winston
 import logger from './lib/logger.js';
-// Route handlers
-import setupRouter from './routes/setup.js';
-import requestsRouter from './routes/requests.js';
-import healthReportsRouter from './routes/health-reports.js';
-import authRouter from './routes/auth.js';
-import usersRouter from './routes/users.js';
-import pushRouter from './routes/push.js';
-import classroomsRouter from './routes/classrooms.js';
-import schedulesRouter from './routes/schedules.js';
-import healthcheckRouter from './routes/healthcheck.js';
 // Error tracking and request ID middleware
 import { requestIdMiddleware, errorTrackingMiddleware } from './lib/error-tracking.js';
+import * as roleStorage from './lib/role-storage.js';
+import * as userStorage from './lib/user-storage.js';
+import * as setupStorage from './lib/setup-storage.js';
+import * as auth from './lib/auth.js';
 // Swagger/OpenAPI (optional - only load if dependencies installed)
 let swaggerUi;
 let getSwaggerSpec;
@@ -81,6 +82,7 @@ app.use(helmet({
             connectSrc: ["'self'", 'https://api.github.com']
         }
     },
+    frameguard: { action: 'deny' },
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
@@ -97,7 +99,7 @@ if (corsOrigins === '*' && process.env.NODE_ENV === 'production') {
 app.use(cors({
     origin: corsOrigins === '*' ? '*' : corsOrigins.split(',').map(o => o.trim()),
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'trpc-batch-mode'],
     credentials: true
 }));
 // Global rate limiter
@@ -123,8 +125,115 @@ app.use(logger.requestMiddleware);
 // =============================================================================
 // Routes
 // =============================================================================
-// Health check endpoints
-app.use('/health', healthcheckRouter);
+// Basic health check for liveness probes
+app.get('/health', (_req, res) => {
+    res.json({ status: 'ok', service: 'openpath-api' });
+});
+// =============================================================================
+// Legacy/Compatibility REST Endpoints
+// =============================================================================
+function parseBearerToken(req) {
+    const header = req.header('authorization');
+    if (!header)
+        return null;
+    const match = /^Bearer\s+(.+)$/i.exec(header);
+    return match ? match[1] ?? null : null;
+}
+async function requireAdmin(req, res) {
+    const token = parseBearerToken(req);
+    if (!token) {
+        res.status(401).json({ success: false, error: 'Authentication required' });
+        return null;
+    }
+    const decoded = await auth.verifyAccessToken(token);
+    if (!decoded || !auth.isAdminToken(decoded)) {
+        res.status(401).json({ success: false, error: 'Invalid or missing admin token' });
+        return null;
+    }
+    return decoded;
+}
+function asyncRoute(handler) {
+    return (req, res, next) => {
+        void handler(req, res, next).catch(next);
+    };
+}
+// Setup REST API (used by setup.html and existing clients)
+app.get('/api/setup/status', (_req, res) => {
+    const hasAdmin = roleStorage.hasAnyAdmins();
+    res.status(200).json({
+        success: true,
+        needsSetup: !hasAdmin,
+        hasAdmin,
+    });
+});
+app.post('/api/setup/first-admin', asyncRoute(async (req, res) => {
+    if (roleStorage.hasAnyAdmins()) {
+        res.status(403).json({ success: false, error: 'Setup already completed' });
+        return;
+    }
+    const { email, name, password } = (req.body ?? {});
+    if (typeof email !== 'string' || typeof name !== 'string' || typeof password !== 'string') {
+        res.status(400).json({ success: false, error: 'Missing required fields' });
+        return;
+    }
+    if (!email.includes('@') || name.trim() === '' || password.length < 8) {
+        res.status(400).json({ success: false, error: 'Invalid fields' });
+        return;
+    }
+    if (userStorage.emailExists(email)) {
+        res.status(409).json({ success: false, error: 'Email already registered' });
+        return;
+    }
+    const user = await userStorage.createUser({ email, name, password });
+    roleStorage.assignRole({
+        userId: user.id,
+        role: 'admin',
+        groups: [],
+        createdBy: user.id,
+    });
+    const registrationToken = setupStorage.generateRegistrationToken();
+    setupStorage.saveSetupData({
+        registrationToken,
+        setupCompletedAt: new Date().toISOString(),
+        setupByUserId: user.id,
+    });
+    res.status(201).json({
+        success: true,
+        registrationToken,
+        redirectTo: '/login',
+        user: { id: user.id, email: user.email, name: user.name },
+    });
+}));
+app.post('/api/setup/validate-token', (req, res) => {
+    const { token } = (req.body ?? {});
+    if (typeof token !== 'string' || token.trim() === '') {
+        res.status(400).json({ success: false, error: 'Token required' });
+        return;
+    }
+    res.status(200).json({ success: true, valid: setupStorage.validateRegistrationToken(token) });
+});
+app.get('/api/setup/registration-token', asyncRoute(async (req, res) => {
+    const decoded = await requireAdmin(req, res);
+    if (!decoded)
+        return;
+    const token = setupStorage.getRegistrationToken();
+    if (!token) {
+        res.status(404).json({ success: false, error: 'Setup not completed' });
+        return;
+    }
+    res.status(200).json({ success: true, registrationToken: token });
+}));
+app.post('/api/setup/regenerate-token', asyncRoute(async (req, res) => {
+    const decoded = await requireAdmin(req, res);
+    if (!decoded)
+        return;
+    const token = setupStorage.regenerateRegistrationToken();
+    if (!token) {
+        res.status(404).json({ success: false, error: 'Setup not completed' });
+        return;
+    }
+    res.status(200).json({ success: true, registrationToken: token });
+}));
 // Swagger/OpenAPI documentation
 if (swaggerUi && getSwaggerSpec) {
     app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(getSwaggerSpec(), {
@@ -136,58 +245,6 @@ if (swaggerUi && getSwaggerSpec) {
         res.send(getSwaggerSpec());
     });
 }
-// API info endpoint
-app.get('/api', (_req, res) => {
-    res.json({
-        name: 'AulaFocus Request API',
-        version: '2.0.0',
-        endpoints: {
-            'GET /api/setup/status': 'Check if initial setup is needed (public)',
-            'POST /api/setup/first-admin': 'Create first admin user (public)',
-            'GET /api/setup/registration-token': 'Get registration token (admin)',
-            'POST /api/setup/regenerate-token': 'Regenerate registration token (admin)',
-            'POST /api/setup/validate-token': 'Validate registration token (public)',
-            'POST /api/auth/register': 'Register new user',
-            'POST /api/auth/login': 'Login with email/password',
-            'POST /api/auth/refresh': 'Refresh access token',
-            'POST /api/auth/logout': 'Logout (invalidate tokens)',
-            'GET /api/auth/me': 'Get current user info',
-            'GET /api/users': 'List all users',
-            'POST /api/users': 'Create user',
-            'PATCH /api/users/:id': 'Update user',
-            'DELETE /api/users/:id': 'Delete user',
-            'POST /api/requests': 'Submit a domain request (public)',
-            'GET /api/requests/status/:id': 'Check request status (public)',
-            'GET /api/requests': 'List all requests (admin/teacher)',
-            'POST /api/requests/:id/approve': 'Approve request (admin/teacher)',
-            'POST /api/requests/:id/reject': 'Reject request (admin/teacher)',
-            'GET /api/push/vapid-key': 'Get VAPID public key (public)',
-            'POST /api/push/subscribe': 'Register push subscription',
-            'POST /api/health-reports': 'Submit health report (shared secret)',
-            'GET /api/health-reports': 'List all hosts status (admin)',
-            'GET /api/classrooms': 'List all classrooms (admin)',
-            'POST /api/classrooms': 'Create classroom (admin)',
-            'GET /api/schedules/classroom/:id': 'Get classroom schedule (auth)',
-            'POST /api/schedules': 'Create reservation (teacher/admin)'
-        }
-    });
-});
-// Setup routes (before auth - must be accessible without authentication)
-app.use('/api/setup', setupRouter);
-// Authentication routes
-app.use('/api/auth', authRouter);
-// User management routes
-app.use('/api/users', usersRouter);
-// Request routes
-app.use('/api/requests', requestsRouter);
-// Health reports from student machines
-app.use('/api/health-reports', healthReportsRouter);
-// Push notifications
-app.use('/api/push', pushRouter);
-// Classroom management
-app.use('/api/classrooms', classroomsRouter);
-// Schedule reservations
-app.use('/api/schedules', schedulesRouter);
 // tRPC Adapter
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import { appRouter } from './trpc/routers/index.js';
@@ -234,23 +291,28 @@ const gracefulShutdown = (signal) => {
     }
     isShuttingDown = true;
     logger.info(`Received ${signal}, starting graceful shutdown...`);
-    if (server !== undefined) {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        server.close((err) => {
-            if (err) {
-                logger.error('Error during server close', { error: err.message });
-                process.exit(1);
-            }
-            logger.info('Server closed, no longer accepting connections');
-        });
-    }
     const forceShutdownTimeout = setTimeout(() => {
         logger.error('Graceful shutdown timeout exceeded, forcing exit');
         process.exit(1);
     }, SHUTDOWN_TIMEOUT_MS);
-    logger.info('Graceful shutdown completed successfully');
-    clearTimeout(forceShutdownTimeout);
-    process.exit(0);
+    const finish = (exitCode) => {
+        clearTimeout(forceShutdownTimeout);
+        process.exit(exitCode);
+    };
+    if (server === undefined) {
+        logger.info('No active server instance to close');
+        finish(0);
+        return;
+    }
+    server.close((err) => {
+        if (err) {
+            logger.error('Error during server close', { error: err.message });
+            finish(1);
+            return;
+        }
+        logger.info('Server closed, no longer accepting connections');
+        finish(0);
+    });
 };
 // Start server when run directly
 const isMainModule = import.meta.url === `file://${process.argv[1] ?? ''}`;
