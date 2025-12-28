@@ -54,6 +54,17 @@ jobs:
           git tag "${{ steps.vars.outputs.tag }}"
           git push origin "${{ steps.vars.outputs.tag }}" || echo "Tag already exists or push failed, continuing..."
       
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Firefox Extension
+        working-directory: firefox-extension
+        run: |
+          npm ci
+          npm run build
+
       - name: Validate package contents
         run: |
           echo "🔍 Validating package structure before creating release..."

@@ -149,10 +149,10 @@ test_required_files() {
         
         # Firefox extension
         "firefox-extension/manifest.json"
-        "firefox-extension/background.js"
-        "firefox-extension/config.js"
+        "firefox-extension/dist/background.js"
+        "firefox-extension/dist/config.js"
         "firefox-extension/popup/popup.html"
-        "firefox-extension/popup/popup.js"
+        "firefox-extension/dist/popup.js"
         "firefox-extension/popup/popup.css"
         "firefox-extension/native/openpath-native-host.py"
         "firefox-extension/native/openpath_native_host.json"
