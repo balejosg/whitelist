@@ -18,7 +18,7 @@ export default tseslint.config(
             '@typescript-eslint/no-non-null-assertion': 'error',
             '@typescript-eslint/explicit-module-boundary-types': 'error',
             '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
-            'no-console': 'warn',
+            'no-console': 'error',
         },
     },
     {
