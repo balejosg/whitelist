@@ -60,8 +60,9 @@ echo "[6/8] Copying Firefox extension..."
 mkdir -p "$BUILD_DIR/usr/share/openpath/firefox-extension"
 # Copy extension files (excluding dev/build files)
 cp "$ROOT_DIR/firefox-extension/manifest.json" "$BUILD_DIR/usr/share/openpath/firefox-extension/"
-cp "$ROOT_DIR/firefox-extension/background.js" "$BUILD_DIR/usr/share/openpath/firefox-extension/"
-cp "$ROOT_DIR/firefox-extension/config.js" "$BUILD_DIR/usr/share/openpath/firefox-extension/"
+mkdir -p "$BUILD_DIR/usr/share/openpath/firefox-extension/dist"
+cp "$ROOT_DIR/firefox-extension/dist/background.js" "$BUILD_DIR/usr/share/openpath/firefox-extension/dist/"
+cp "$ROOT_DIR/firefox-extension/dist/config.js" "$BUILD_DIR/usr/share/openpath/firefox-extension/dist/"
 cp -r "$ROOT_DIR/firefox-extension/popup" "$BUILD_DIR/usr/share/openpath/firefox-extension/"
 cp -r "$ROOT_DIR/firefox-extension/icons" "$BUILD_DIR/usr/share/openpath/firefox-extension/"
 

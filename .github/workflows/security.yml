@@ -122,7 +122,7 @@ jobs:
       
       - name: Build Docker image
         run: |
-          docker build -t openpath-api:scan ./api
+          docker build -t openpath-api:scan -f api/Dockerfile .
       
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master

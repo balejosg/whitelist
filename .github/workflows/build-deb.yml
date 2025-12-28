@@ -79,6 +79,17 @@ jobs:
           echo "suite=$SUITE" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION for suite: $SUITE"
       
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Firefox Extension
+        working-directory: firefox-extension
+        run: |
+          npm ci
+          npm run build
+
       - name: Build Debian package
         run: |
           chmod +x linux/scripts/build/build-deb.sh
