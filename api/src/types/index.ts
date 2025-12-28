@@ -149,6 +149,8 @@ export interface JWTPayload {
     roles: RoleInfo[];
     type: 'access' | 'refresh';
     isLegacy?: boolean;
+    iat?: number;
+    exp?: number;
 }
 
 /**

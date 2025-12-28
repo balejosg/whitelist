@@ -78,7 +78,10 @@ export async function getRegistrationToken(): Promise<string | null> {
     return data?.registrationToken ?? null;
 }
 
-export async function generateRegistrationToken(): Promise<string> {
+/**
+ * Generate a new registration token
+ */
+export function generateRegistrationToken(): string {
     return crypto.randomBytes(32).toString('hex');
 }
 

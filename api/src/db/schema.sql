@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+DROP INDEX IF EXISTS idx_users_email;
 CREATE INDEX idx_users_email ON users(email);
 
 -- =============================================================================
@@ -37,8 +38,8 @@ CREATE TABLE IF NOT EXISTS roles (
     UNIQUE(user_id)
 );
 
-CREATE INDEX idx_roles_user_id ON roles(user_id);
-CREATE INDEX idx_roles_role ON roles(role);
+CREATE INDEX IF NOT EXISTS idx_roles_user_id ON roles(user_id);
+CREATE INDEX IF NOT EXISTS idx_roles_role ON roles(role);
 
 -- =============================================================================
 -- Requests Table
@@ -59,9 +60,9 @@ CREATE TABLE IF NOT EXISTS requests (
     resolution_note TEXT
 );
 
-CREATE INDEX idx_requests_status ON requests(status);
-CREATE INDEX idx_requests_group_id ON requests(group_id);
-CREATE INDEX idx_requests_domain ON requests(LOWER(domain));
+CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status);
+CREATE INDEX IF NOT EXISTS idx_requests_group_id ON requests(group_id);
+CREATE INDEX IF NOT EXISTS idx_requests_domain ON requests(LOWER(domain));
 
 -- =============================================================================
 -- Classrooms Table
@@ -77,7 +78,7 @@ CREATE TABLE IF NOT EXISTS classrooms (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_classrooms_name ON classrooms(name);
+CREATE INDEX IF NOT EXISTS idx_classrooms_name ON classrooms(name);
 
 -- =============================================================================
 -- Machines Table
@@ -93,8 +94,8 @@ CREATE TABLE IF NOT EXISTS machines (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_machines_hostname ON machines(LOWER(hostname));
-CREATE INDEX idx_machines_classroom_id ON machines(classroom_id);
+CREATE INDEX IF NOT EXISTS idx_machines_hostname ON machines(LOWER(hostname));
+CREATE INDEX IF NOT EXISTS idx_machines_classroom_id ON machines(classroom_id);
 
 -- =============================================================================
 -- Schedules Table
@@ -114,9 +115,9 @@ CREATE TABLE IF NOT EXISTS schedules (
     CHECK (start_time < end_time)
 );
 
-CREATE INDEX idx_schedules_classroom_id ON schedules(classroom_id);
-CREATE INDEX idx_schedules_teacher_id ON schedules(teacher_id);
-CREATE INDEX idx_schedules_day_time ON schedules(classroom_id, day_of_week, start_time, end_time);
+CREATE INDEX IF NOT EXISTS idx_schedules_classroom_id ON schedules(classroom_id);
+CREATE INDEX IF NOT EXISTS idx_schedules_teacher_id ON schedules(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_schedules_day_time ON schedules(classroom_id, day_of_week, start_time, end_time);
 
 -- =============================================================================
 -- Tokens Table (Refresh Tokens)
@@ -130,8 +131,8 @@ CREATE TABLE IF NOT EXISTS tokens (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_tokens_user_id ON tokens(user_id);
-CREATE INDEX idx_tokens_expires_at ON tokens(expires_at);
+CREATE INDEX IF NOT EXISTS idx_tokens_user_id ON tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_tokens_expires_at ON tokens(expires_at);
 
 -- =============================================================================
 -- Settings Table (Setup, Registration Token, etc.)
@@ -156,23 +157,30 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS users_updated_at ON users;
 CREATE TRIGGER users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS roles_updated_at ON roles;
 CREATE TRIGGER roles_updated_at BEFORE UPDATE ON roles
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS requests_updated_at ON requests;
 CREATE TRIGGER requests_updated_at BEFORE UPDATE ON requests
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS classrooms_updated_at ON classrooms;
 CREATE TRIGGER classrooms_updated_at BEFORE UPDATE ON classrooms
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS machines_updated_at ON machines;
 CREATE TRIGGER machines_updated_at BEFORE UPDATE ON machines
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS schedules_updated_at ON schedules;
 CREATE TRIGGER schedules_updated_at BEFORE UPDATE ON schedules
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS settings_updated_at ON settings;
 CREATE TRIGGER settings_updated_at BEFORE UPDATE ON settings
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();

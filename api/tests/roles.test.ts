@@ -11,6 +11,7 @@ import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
 import { getAvailablePort } from './test-utils.js';
+import db from '../src/lib/db.js';
 
 let PORT: number;
 let API_URL: string;
@@ -111,6 +112,8 @@ await describe('Role Management E2E Tests (tRPC)', { timeout: 45000 }, async () 
                 });
             });
         }
+        // Close database pool
+        await db.close();
     });
 
     await test('Setup: Create Teacher User', async (): Promise<void> => {

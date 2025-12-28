@@ -20,7 +20,7 @@ export const authRouter = router({
     register: publicProcedure
         .input(registerInput)
         .mutation(async ({ input }) => {
-            if (userStorage.emailExists(input.email)) {
+            if (await userStorage.emailExists(input.email)) {
                 throw new TRPCError({ code: 'CONFLICT', message: 'Email already registered' });
             }
             const user = await userStorage.createUser(input);
@@ -34,12 +34,12 @@ export const authRouter = router({
             if (!user) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid credentials' });
             if (!user.isActive) throw new TRPCError({ code: 'FORBIDDEN', message: 'Account inactive' });
 
-            const roles = roleStorage.getUserRoles(user.id);
+            const roles = await roleStorage.getUserRoles(user.id);
             // NOTE: We allow login even without roles, but some actions might be restricted
             // Original logic might have required roles, but basic auth just needs valid user
             // if (roles.length === 0) throw new TRPCError({ code: 'FORBIDDEN', message: 'No role assigned' });
 
-            const tokens = auth.generateTokens(user, roles);
+            const tokens = auth.generateTokens(user, roles.map(r => ({ role: r.role, groupIds: r.groups })));
             return { ...tokens, user: { id: user.id, email: user.email, name: user.name, roles } };
         }),
 
@@ -49,12 +49,12 @@ export const authRouter = router({
             const decoded = await auth.verifyRefreshToken(input.refreshToken);
             if (!decoded) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid refresh token' });
 
-            const user = userStorage.getUserById(decoded.sub);
+            const user = await userStorage.getUserById(decoded.sub);
             if (user?.isActive !== true) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'User not found' });
 
             await auth.blacklistToken(input.refreshToken);
-            const roles = roleStorage.getUserRoles(user.id);
-            return auth.generateTokens(user, roles);
+            const roles = await roleStorage.getUserRoles(user.id);
+            return auth.generateTokens(user, roles.map(r => ({ role: r.role, groupIds: r.groups })));
         }),
 
     logout: protectedProcedure
@@ -66,10 +66,10 @@ export const authRouter = router({
             return { success: true };
         }),
 
-    me: protectedProcedure.query(({ ctx }) => {
-        const user = userStorage.getUserById(ctx.user.sub);
+    me: protectedProcedure.query(async ({ ctx }) => {
+        const user = await userStorage.getUserById(ctx.user.sub);
         if (!user) throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
-        const roles = roleStorage.getUserRoles(user.id);
+        const roles = await roleStorage.getUserRoles(user.id);
         return { user: { ...user, roles } };
     }),
 });

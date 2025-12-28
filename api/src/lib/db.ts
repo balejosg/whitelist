@@ -5,13 +5,13 @@
  * PostgreSQL Database Connection Pool
  */
 
-import pg from 'pg';
+import pg, { type QueryResult, type QueryResultRow } from 'pg';
 import 'dotenv/config';
 
 const { Pool } = pg;
 
 // =============================================================================
-// Configuration
+// Database Configuration
 // =============================================================================
 
 const config = {
@@ -22,18 +22,15 @@ const config = {
     password: process.env.DB_PASSWORD ?? 'openpath_dev',
     max: parseInt(process.env.DB_POOL_MAX ?? '20', 10),
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
+    connectionTimeoutMillis: 2000,
 };
 
-// =============================================================================
-// Connection Pool
-// =============================================================================
+// Create the pool
+const pool = new Pool(config);
 
-export const pool = new Pool(config);
-
-// Handle pool errors
+// Log pool errors
 pool.on('error', (err) => {
-    console.error('Unexpected error on idle client', err);
+    console.error('Unexpected error on idle database client', err);
 });
 
 // =============================================================================
@@ -43,33 +40,13 @@ pool.on('error', (err) => {
 /**
  * Execute a query with automatic connection management
  */
-export async function query<T = unknown>(
+export async function query<T extends QueryResultRow = QueryResultRow>(
     text: string,
     params?: unknown[]
-): Promise<pg.QueryResult<T>> {
+): Promise<QueryResult<T>> {
     const client = await pool.connect();
     try {
         return await client.query<T>(text, params);
-    } finally {
-        client.release();
-    }
-}
-
-/**
- * Execute a transaction
- */
-export async function transaction<T>(
-    callback: (client: pg.PoolClient) => Promise<T>
-): Promise<T> {
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
-        const result = await callback(client);
-        await client.query('COMMIT');
-        return result;
-    } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
     } finally {
         client.release();
     }
@@ -90,16 +67,36 @@ export async function testConnection(): Promise<boolean> {
 }
 
 /**
- * Close the connection pool
+ * Perform operations within a transaction
+ */
+export async function transaction<T>(
+    fn: (query: typeof pool.query) => Promise<T>
+): Promise<T> {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const result = await fn(client.query.bind(client));
+        await client.query('COMMIT');
+        return result;
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
+/**
+ * Close the pool (for testing/shutdown)
  */
 export async function close(): Promise<void> {
     await pool.end();
+    console.log('Database pool closed');
 }
 
 export default {
-    pool,
     query,
-    transaction,
     testConnection,
+    transaction,
     close,
 };

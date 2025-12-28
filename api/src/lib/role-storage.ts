@@ -50,7 +50,7 @@ function toRoleType(db: DBRole): Role {
         id: db.id,
         user_id: db.user_id,
         role: db.role,
-        groups: db.groups ?? [],
+        groups: db.groups,
         created_at: db.created_at,
         expires_at: null
     };
@@ -80,7 +80,7 @@ export async function getAllTeachers(): Promise<TeacherInfo[]> {
     const teachers = await getUsersByRole('teacher');
     return teachers.map((r) => ({
         userId: r.user_id,
-        groupIds: r.groups ?? [],
+        groupIds: r.groups,
         createdAt: r.created_at,
         createdBy: r.created_by
     }));
@@ -137,13 +137,13 @@ export async function getApprovalGroups(userId: string): Promise<string[] | 'all
     }
 
     const result = await query<{ groups: string[] }>(
-        `SELECT groups FROM roles WHERE user_id = $1 AND role = 'teacher'`,
+        'SELECT groups FROM roles WHERE user_id = $1 AND role = \'teacher\'',
         [userId]
     );
 
     const allGroups = new Set<string>();
     result.rows.forEach((row) => {
-        (row.groups ?? []).forEach((g) => allGroups.add(g));
+        (row.groups).forEach((g) => allGroups.add(g));
     });
 
     return Array.from(allGroups);
@@ -164,12 +164,13 @@ export async function assignRole(roleData: AssignRoleData & { createdBy?: string
 
     if (existing.rows[0]) {
         // Update existing role's groups
-        const uniqueGroups = [...new Set([...(existing.rows[0].groups ?? []), ...groups])];
+        const uniqueGroups = [...new Set([...(existing.rows[0].groups), ...groups])];
         const result = await query<DBRole>(
             'UPDATE roles SET groups = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
             [uniqueGroups, existing.rows[0].id]
         );
-        return result.rows[0]!;
+        if (!result.rows[0]) throw new Error('Role update failed');
+        return result.rows[0];
     }
 
     // Create new role
@@ -183,7 +184,8 @@ export async function assignRole(roleData: AssignRoleData & { createdBy?: string
         [id, userId, role, groupsToStore, createdBy]
     );
 
-    return result.rows[0]!;
+    if (!result.rows[0]) throw new Error('Role creation failed');
+    return result.rows[0];
 }
 
 export async function updateRoleGroups(roleId: string, groupIds: string[]): Promise<DBRole | null> {
@@ -198,7 +200,7 @@ export async function addGroupsToRole(roleId: string, groupIds: string[]): Promi
     const role = await getRoleById(roleId);
     if (!role) return null;
 
-    const uniqueGroups = [...new Set([...(role.groups ?? []), ...groupIds])];
+    const uniqueGroups = [...new Set([...(role.groups), ...groupIds])];
     return updateRoleGroups(roleId, uniqueGroups);
 }
 
@@ -206,11 +208,11 @@ export async function removeGroupsFromRole(roleId: string, groupIds: string[]): 
     const role = await getRoleById(roleId);
     if (!role) return null;
 
-    const filteredGroups = (role.groups ?? []).filter((g) => !groupIds.includes(g));
+    const filteredGroups = (role.groups).filter((g) => !groupIds.includes(g));
     return updateRoleGroups(roleId, filteredGroups);
 }
 
-export async function revokeRole(roleId: string, revokedBy?: string): Promise<boolean> {
+export async function revokeRole(roleId: string, _revokedBy?: string): Promise<boolean> {
     const result = await query(
         'DELETE FROM roles WHERE id = $1',
         [roleId]
@@ -218,7 +220,7 @@ export async function revokeRole(roleId: string, revokedBy?: string): Promise<bo
     return (result.rowCount ?? 0) > 0;
 }
 
-export async function revokeAllUserRoles(userId: string, revokedBy?: string): Promise<number> {
+export async function revokeAllUserRoles(userId: string, _revokedBy?: string): Promise<number> {
     const result = await query(
         'DELETE FROM roles WHERE user_id = $1',
         [userId]

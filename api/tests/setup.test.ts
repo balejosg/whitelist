@@ -32,6 +32,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Server } from 'node:http';
 import { getAvailablePort } from './test-utils.js';
+import db from '../src/lib/db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 let PORT: number;
@@ -148,6 +149,8 @@ void describe('Setup API Tests', { timeout: 30000 }, async () => {
                 });
             });
         }
+        // Close database pool
+        await db.close();
     });
 
     // ============================================

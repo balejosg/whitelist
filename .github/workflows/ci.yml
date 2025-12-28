@@ -133,6 +133,21 @@ jobs:
     defaults:
       run:
         working-directory: api
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: openpath
+          POSTGRES_PASSWORD: openpath_dev
+          POSTGRES_DB: openpath
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     
     steps:
       - name: Checkout code
@@ -160,6 +175,15 @@ jobs:
       - name: Build TypeScript
         run: npm run build
       
+      - name: Run Database Migrations
+        run: npm run db:migrate
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: openpath
+          DB_USER: openpath
+          DB_PASSWORD: openpath_dev
+
       - name: Run tests with coverage
         run: npm run test:coverage
         env:
@@ -167,6 +191,11 @@ jobs:
           ADMIN_TOKEN: test-admin-token-for-ci
           SHARED_SECRET: test-shared-secret-for-ci
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: openpath
+          DB_USER: openpath
+          DB_PASSWORD: openpath_dev
       
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5

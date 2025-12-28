@@ -19,6 +19,21 @@ import type {
     PushSubscription
 } from './index.js';
 
+// Re-export all types as named exports
+export type {
+    DomainRequest,
+    RequestStatus,
+    RequestPriority,
+    User,
+    SafeUser,
+    Role,
+    UserRole,
+    Classroom,
+    Machine,
+    Schedule,
+    PushSubscription
+};
+
 // =============================================================================
 // Request Storage
 // =============================================================================

@@ -8,7 +8,7 @@ import * as roleStorage from '../../lib/role-storage.js';
 export const usersRouter = router({
     list: adminProcedure.query(async () => {
         const users = await userStorage.getAllUsers();
-        return Promise.all(users.map(async (u: SafeUser) => {
+        return Promise.all(users.map(async (u) => {
             const roles = await roleStorage.getUserRoles(u.id);
             return { ...u, roles };
         }));

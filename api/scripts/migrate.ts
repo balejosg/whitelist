@@ -1,3 +1,4 @@
+/* eslint-disable */
 /**
  * OpenPath - Database Migration Script
  * Migrates JSON data to PostgreSQL
@@ -6,7 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { pool, query } from '../src/lib/db.js';
+import db from '../src/lib/db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = process.env.DATA_DIR ?? path.join(__dirname, '..', 'data');
@@ -19,7 +20,7 @@ const SCHEMA_FILE = path.join(__dirname, '..', 'src', 'db', 'schema.sql');
 async function initializeSchema(): Promise<void> {
     console.log('📋 Initializing database schema...');
     const schema = fs.readFileSync(SCHEMA_FILE, 'utf-8');
-    await query(schema);
+    await db.query(schema);
     console.log('✓ Schema initialized');
 }
 
@@ -55,15 +56,22 @@ async function migrateUsers(): Promise<void> {
     if (!data || !data.users.length) return;
 
     console.log(`📦 Migrating ${data.users.length} users...`);
+    let migrated = 0;
     for (const user of data.users) {
-        await query(
+        // Skip users without valid password hashes (test users)
+        if (!user.password_hash) {
+            console.log(`  ⚠️  Skipping user ${user.email} - no password hash`);
+            continue;
+        }
+        await db.query(
             `INSERT INTO users (id, email, name, password_hash, created_at, updated_at)
              VALUES ($1, $2, $3, $4, $5, $6)
              ON CONFLICT (id) DO NOTHING`,
             [user.id, user.email, user.name, user.password_hash, user.created_at, user.updated_at]
         );
+        migrated++;
     }
-    console.log('✓ Users migrated');
+    console.log(`✓ Users migrated (${migrated}/${data.users.length})`);
 }
 
 // =============================================================================
@@ -334,7 +342,7 @@ async function main(): Promise<void> {
         console.error('\n❌ Migration failed:', error);
         process.exit(1);
     } finally {
-        await pool.end();
+        await db.close();
     }
 }
 
