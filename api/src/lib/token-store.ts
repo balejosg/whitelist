@@ -2,11 +2,11 @@
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
  *
- * Token Store - Abstraction for token blacklist storage
- * Supports Memory and Redis backends
+ * Token Store - PostgreSQL-backed token blacklist
  */
 
 import jwt from 'jsonwebtoken';
+import { query } from './db.js';
 import type { ITokenStore } from '../types/storage.js';
 
 // =============================================================================
@@ -17,246 +17,73 @@ interface DecodedTokenBase {
     exp?: number;
 }
 
-interface TokenStore {
-    add(token: string): Promise<boolean>;
-    has(token: string): Promise<boolean>;
-    delete(token: string): Promise<boolean>;
-    size(): Promise<number>;
-    cleanup(secret: string): Promise<void>;
-    destroy(): void | Promise<void>;
+
+
+// =============================================================================
+// Token Store Implementation
+// =============================================================================
+
+export async function blacklistToken(token: string, expiresAt: Date): Promise<void> {
+    const decoded = jwt.decode(token) as DecodedTokenBase & { userId?: string } | null;
+    const userId = decoded?.userId ?? 'unknown';
+
+    // Use first 16 chars of token as ID (unique enough)
+    const id = token.substring(0, 16);
+
+    await query(
+        `INSERT INTO tokens (id, user_id, token_hash, expires_at)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (id) DO NOTHING`,
+        [id, userId, token, expiresAt.toISOString()]
+    );
+}
+
+export async function isBlacklisted(token: string): Promise<boolean> {
+    const id = token.substring(0, 16);
+
+    const result = await query<{ exists: boolean }>(
+        `SELECT EXISTS(
+            SELECT 1 FROM tokens 
+            WHERE id = $1 
+            AND expires_at > NOW()
+        ) as exists`,
+        [id]
+    );
+
+    return result.rows[0]?.exists ?? false;
+}
+
+export async function cleanup(): Promise<number> {
+    const result = await query(
+        'DELETE FROM tokens WHERE expires_at <= NOW()'
+    );
+    return result.rowCount ?? 0;
 }
 
 // =============================================================================
-// Memory Token Store (Default)
+// ITokenStore Adapter
 // =============================================================================
 
-export class MemoryTokenStore implements TokenStore {
-    private readonly blacklist: Set<string>;
-    private cleanupInterval: ReturnType<typeof setInterval> | null;
+export const tokenStore: ITokenStore = {
+    blacklist: blacklistToken,
+    isBlacklisted,
+    cleanup
+};
 
-    constructor() {
-        this.blacklist = new Set();
-        this.cleanupInterval = null;
-        this._startCleanup();
-    }
-
-    add(token: string): Promise<boolean> {
-        this.blacklist.add(token);
-        return Promise.resolve(true);
-    }
-
-    has(token: string): Promise<boolean> {
-        return Promise.resolve(this.blacklist.has(token));
-    }
-
-    delete(token: string): Promise<boolean> {
-        return Promise.resolve(this.blacklist.delete(token));
-    }
-
-    size(): Promise<number> {
-        return Promise.resolve(this.blacklist.size);
-    }
-
-    cleanup(secret: string): Promise<void> {
-        for (const token of this.blacklist) {
-            try {
-                jwt.verify(token, secret, { ignoreExpiration: false });
-            } catch (error) {
-                if (error instanceof Error && error.name === 'TokenExpiredError') {
-                    this.blacklist.delete(token);
-                }
-            }
-        }
-        return Promise.resolve();
-    }
-
-    private _startCleanup(): void {
-        this.cleanupInterval = setInterval(() => {
-            // Cleanup will be triggered by auth.js with the secret
-        }, 5 * 60 * 1000);
-        this.cleanupInterval.unref();
-    }
-
-    destroy(): void {
-        if (this.cleanupInterval) {
-            clearInterval(this.cleanupInterval);
-            this.cleanupInterval = null;
-        }
-    }
-}
+export default tokenStore;
 
 // =============================================================================
-// Redis Token Store (Production)
+// Legacy Compatibility Exports
 // =============================================================================
 
-interface RedisClient {
-    on(event: string, callback: (arg?: unknown) => void): void;
-    connect(): Promise<void>;
-    setEx(key: string, ttl: number, value: string): Promise<void>;
-    get(key: string): Promise<string | null>;
-    del(key: string): Promise<number>;
-    keys(pattern: string): Promise<string[]>;
-    quit(): Promise<void>;
-}
-
-export class RedisTokenStore implements TokenStore {
-    private readonly redisUrl: string;
-    private client: RedisClient | null;
-    private connected: boolean;
-
-    constructor(redisUrl: string) {
-        this.redisUrl = redisUrl;
-        this.client = null;
-        this.connected = false;
-        void this._connect();
-    }
-
-    private async _connect(): Promise<void> {
-        try {
-            // Dynamic import for optional redis dependency
-            // redis is an optional dependency
-            interface RedisModule {
-                createClient: (options: { url: string }) => RedisClient;
-            }
-            const redis = await import('redis') as unknown as RedisModule;
-            this.client = redis.createClient({ url: this.redisUrl });
-
-            this.client.on('error', (err: unknown) => {
-                const message = err instanceof Error ? err.message : 'Unknown error';
-                console.error('Redis error:', message);
-                this.connected = false;
-            });
-
-            this.client.on('connect', () => {
-                console.log('✓ Redis connected for token storage');
-                this.connected = true;
-            });
-
-            await this.client.connect();
-        } catch (error) {
-            const message = error instanceof Error ? error.message : 'Unknown error';
-            console.warn('⚠️ Redis not available, falling back to memory store:', message);
-            this.connected = false;
-        }
-    }
-
-    async add(token: string): Promise<boolean> {
-        if (!this.connected || this.client === null) {
-            return false;
-        }
-
-        try {
-            const decoded = jwt.decode(token) as DecodedTokenBase | null;
-            const ttl = decoded?.exp !== undefined ? decoded.exp - Math.floor(Date.now() / 1000) : 86400;
-
-            if (ttl > 0) {
-                await this.client.setEx(`blacklist:${token}`, ttl, '1');
-            }
-            return true;
-        } catch (error) {
-            const message = error instanceof Error ? error.message : 'Unknown error';
-            console.error('Redis add error:', message);
-            return false;
-        }
-    }
-
-    async has(token: string): Promise<boolean> {
-        if (!this.connected || this.client === null) {
-            return false;
-        }
-
-        try {
-            const result = await this.client.get(`blacklist:${token}`);
-            return result !== null;
-        } catch (error) {
-            const message = error instanceof Error ? error.message : 'Unknown error';
-            console.error('Redis has error:', message);
-            return false;
-        }
-    }
-
-    async delete(token: string): Promise<boolean> {
-        if (!this.connected || this.client === null) {
-            return false;
-        }
-
-        try {
-            await this.client.del(`blacklist:${token}`);
-            return true;
-        } catch (error) {
-            const message = error instanceof Error ? error.message : 'Unknown error';
-            console.error('Redis delete error:', message);
-            return false;
-        }
-    }
-
-    async size(): Promise<number> {
-        if (!this.connected || this.client === null) {
-            return 0;
-        }
-
-        try {
-            const keys = await this.client.keys('blacklist:*');
-            return keys.length;
-        } catch {
-            return 0;
-        }
-    }
-
-    cleanup(): Promise<void> {
-        // No-op: Redis handles expiration automatically via TTL
-        return Promise.resolve();
-    }
-
-    async destroy(): Promise<void> {
-        if (this.client) {
-            await this.client.quit();
-            this.client = null;
-        }
-    }
-}
-
-// =============================================================================
-// Factory Function
-// =============================================================================
-
-let _instance: TokenStore | null = null;
-
-export function getTokenStore(): TokenStore {
-    if (_instance !== null) {
-        return _instance;
-    }
-
-    const redisUrl = process.env.REDIS_URL;
-
-    if (redisUrl !== undefined && redisUrl !== '') {
-        console.log('🔴 Using Redis for token blacklist storage');
-        _instance = new RedisTokenStore(redisUrl);
-    } else {
-        console.log('💾 Using in-memory token blacklist (set REDIS_URL for persistence)');
-        _instance = new MemoryTokenStore();
-    }
-
-    return _instance;
+export function getTokenStore(): ITokenStore {
+    return tokenStore;
 }
 
 export function resetTokenStore(): void {
-    if (_instance !== null) {
-        void _instance.destroy();
-        _instance = null;
-    }
+    // No-op for DB-based store
 }
 
-export function createTokenStoreAdapter(store: TokenStore): ITokenStore {
-    return {
-        async blacklist(token: string, _expiresAt: Date): Promise<void> {
-            await store.add(token);
-        },
-        async isBlacklisted(token: string): Promise<boolean> {
-            return store.has(token);
-        },
-        cleanup(): Promise<number> {
-            return Promise.resolve(0);
-        }
-    };
+export function createTokenStoreAdapter(_store?: unknown): ITokenStore {
+    return tokenStore;
 }
