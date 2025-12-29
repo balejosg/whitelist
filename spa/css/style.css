@@ -2,15 +2,15 @@
 :root {
     --font-family: var(--font-sans);
 
-    /* Colors - Dark theme (custom) */
-    --bg-primary: #0f0f0f;
-    --bg-secondary: #1a1a1a;
-    --bg-tertiary: #242424;
-    --bg-elevated: #2a2a2a;
+    /* Colors - Dark theme (Open Props) */
+    --bg-primary: var(--gray-12);
+    --bg-secondary: var(--gray-11);
+    --bg-tertiary: var(--gray-10);
+    --bg-elevated: var(--gray-9);
 
-    --text-primary: #ffffff;
-    --text-secondary: #a0a0a0;
-    --text-muted: #666666;
+    --text-primary: var(--gray-0);
+    --text-secondary: var(--gray-5);
+    --text-muted: var(--gray-7);
 
     --accent-primary: var(--indigo-6);
     --accent-primary-hover: var(--indigo-5);
@@ -19,7 +19,7 @@
     --accent-danger: var(--red-6);
     --accent-danger-hover: var(--red-5);
 
-    --border-color: #333333;
+    --border-color: var(--gray-8);
     --border-radius: var(--radius-2);
     --border-radius-sm: var(--radius-1);
 
@@ -303,7 +303,7 @@ a:hover {
 }
 
 .btn-github:hover {
-    background: #3a3f44;
+    background: var(--gray-8);
     transform: translateY(-1px);
     box-shadow: var(--shadow-md);
 }
@@ -793,7 +793,7 @@ a:hover {
 }
 
 .system-toggle.active:hover {
-    background: #16a34a;
+    background: var(--green-7);
 }
 
 .system-toggle.inactive {
