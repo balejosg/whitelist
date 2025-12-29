@@ -16,8 +16,30 @@ const db = {
 };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = process.env.DATA_DIR ?? path.join(__dirname, '..', 'data');
-const SCHEMA_FILE = path.join(__dirname, '..', 'src', 'db', 'schema.sql');
+
+// Resolve paths with fallback support for both Production (Docker) and Development (Local/CI) environments
+// In Docker: script is in /app/api/dist/scripts, schema is copied to /app/api/dist/src/db/schema.sql
+// In Local/CI: script is in api/dist/scripts, schema is in api/src/db/schema.sql
+
+// Resolve SCHEMA_FILE
+let schemaPath = path.join(__dirname, '..', 'src', 'db', 'schema.sql'); // Check dist location first
+if (!fs.existsSync(schemaPath)) {
+    schemaPath = path.join(__dirname, '..', '..', 'src', 'db', 'schema.sql'); // Fallback to source location
+}
+const SCHEMA_FILE = schemaPath;
+
+// Resolve DATA_DIR
+const envDataDir = process.env.DATA_DIR;
+let dataPath = envDataDir;
+
+if (!dataPath) {
+    const distData = path.join(__dirname, '..', 'data'); // Check dist/data
+    const rootData = path.join(__dirname, '..', '..', 'data'); // Check api/data
+
+    // Prefer dist/data if it exists (hypothetical future case), otherwise default to source data
+    dataPath = fs.existsSync(distData) ? distData : rootData;
+}
+const DATA_DIR = dataPath;
 
 // =============================================================================
 // Initialize Schema
