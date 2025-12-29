@@ -64,8 +64,8 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@stryker-mutator/core": "^8.2.6",
-    "@stryker-mutator/typescript-checker": "^8.2.6",
+    "@stryker-mutator/core": "^9.4.0",
+    "@stryker-mutator/typescript-checker": "^9.4.0",
     "@types/bcrypt": "^5.0.2",
     "@types/compression": "^1.7.5",
     "@types/cors": "^2.8.17",

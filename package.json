@@ -49,5 +49,8 @@
     "dashboard",
     "auth-worker",
     "firefox-extension"
-  ]
+  ],
+  "overrides": {
+    "esbuild": "^0.25.0"
+  }
 }
