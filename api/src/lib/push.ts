@@ -4,28 +4,21 @@
  *
  * Push Notification Module
  * Handles Web Push subscriptions and notification sending
+ * Storage: PostgreSQL via Drizzle ORM
  */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import webPush from 'web-push';
+import { db } from '../db/index.js';
+import { pushSubscriptions } from '../db/schema.js';
 import type { DomainRequest } from '../types/index.js';
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = process.env.DATA_DIR ?? path.join(__dirname, '..', '..', 'data');
-const SUBSCRIPTIONS_FILE = path.join(DATA_DIR, 'push-subscriptions.json');
 
 // =============================================================================
 // Types
 // =============================================================================
 
-export interface PushSubscription {
+export interface PushSubscriptionData {
     endpoint: string;
     expirationTime: number | null;
     keys: {
@@ -34,17 +27,13 @@ export interface PushSubscription {
     };
 }
 
-interface SubscriptionRecord {
+export interface SubscriptionRecord {
     id: string;
     userId: string;
     groupIds: string[];
-    subscription: PushSubscription;
+    subscription: PushSubscriptionData;
     userAgent: string;
     createdAt: string;
-}
-
-interface SubscriptionsData {
-    subscriptions: SubscriptionRecord[];
 }
 
 interface NotificationPayload {
@@ -94,90 +83,86 @@ if (VAPID_CONFIGURED) {
 }
 
 // =============================================================================
-// Storage Functions
+// Storage Functions (Postgres)
 // =============================================================================
 
-function loadSubscriptions(): SubscriptionsData {
-    try {
-        if (!fs.existsSync(SUBSCRIPTIONS_FILE)) {
-            return { subscriptions: [] };
-        }
-        const data = fs.readFileSync(SUBSCRIPTIONS_FILE, 'utf-8');
-        return JSON.parse(data) as SubscriptionsData;
-    } catch (error) {
-        console.error('Error loading push subscriptions:', error);
-        return { subscriptions: [] };
-    }
+function dbRowToRecord(row: typeof pushSubscriptions.$inferSelect): SubscriptionRecord {
+    return {
+        id: row.id,
+        userId: row.userId,
+        groupIds: row.groupIds,
+        subscription: {
+            endpoint: row.endpoint,
+            expirationTime: null,
+            keys: {
+                p256dh: row.p256dh,
+                auth: row.auth,
+            },
+        },
+        userAgent: row.userAgent ?? '',
+        createdAt: row.createdAt?.toISOString() ?? new Date().toISOString(),
+    };
 }
 
-function saveSubscriptions(data: SubscriptionsData): void {
-    if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    fs.writeFileSync(SUBSCRIPTIONS_FILE, JSON.stringify(data, null, 2));
-}
-
-export function saveSubscription(
+export async function saveSubscription(
     userId: string,
     groupIds: string[],
-    subscription: PushSubscription,
+    subscription: PushSubscriptionData,
     userAgent = ''
-): SubscriptionRecord {
-    const data = loadSubscriptions();
+): Promise<SubscriptionRecord> {
+    // Remove existing subscription with same endpoint (upsert behavior)
+    await db.delete(pushSubscriptions)
+        .where(eq(pushSubscriptions.endpoint, subscription.endpoint));
 
-    data.subscriptions = data.subscriptions.filter(
-        (s) => s.subscription.endpoint !== subscription.endpoint
-    );
-
-    const record: SubscriptionRecord = {
+    const record = {
         id: `push_${uuidv4().slice(0, 8)}`,
+        userId,
+        groupIds,
+        endpoint: subscription.endpoint,
+        p256dh: subscription.keys.p256dh,
+        auth: subscription.keys.auth,
+        userAgent,
+    };
+
+    await db.insert(pushSubscriptions).values(record);
+
+    return {
+        id: record.id,
         userId,
         groupIds,
         subscription,
         userAgent,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
     };
-
-    data.subscriptions.push(record);
-    saveSubscriptions(data);
-
-    return record;
 }
 
-export function getSubscriptionsForGroup(groupId: string): SubscriptionRecord[] {
-    const data = loadSubscriptions();
-    return data.subscriptions.filter((s) => s.groupIds.includes(groupId));
+export async function getSubscriptionsForGroup(groupId: string): Promise<SubscriptionRecord[]> {
+    const rows = await db.select().from(pushSubscriptions);
+    // Filter by groupId (array contains)
+    return rows
+        .filter((row) => row.groupIds.includes(groupId))
+        .map(dbRowToRecord);
 }
 
-export function getSubscriptionsForUser(userId: string): SubscriptionRecord[] {
-    const data = loadSubscriptions();
-    return data.subscriptions.filter((s) => s.userId === userId);
+export async function getSubscriptionsForUser(userId: string): Promise<SubscriptionRecord[]> {
+    const rows = await db.select()
+        .from(pushSubscriptions)
+        .where(eq(pushSubscriptions.userId, userId));
+    return rows.map(dbRowToRecord);
 }
 
-export function deleteSubscriptionByEndpoint(endpoint: string): boolean {
-    const data = loadSubscriptions();
-    const initialLength = data.subscriptions.length;
-    data.subscriptions = data.subscriptions.filter(
-        (s) => s.subscription.endpoint !== endpoint
-    );
-
-    if (data.subscriptions.length < initialLength) {
-        saveSubscriptions(data);
-        return true;
-    }
-    return false;
+export async function deleteSubscriptionByEndpoint(endpoint: string): Promise<boolean> {
+    const result = await db.delete(pushSubscriptions)
+        .where(eq(pushSubscriptions.endpoint, endpoint))
+        .returning({ id: pushSubscriptions.id });
+    return result.length > 0;
 }
 
-export function deleteSubscriptionById(id: string): boolean {
-    const data = loadSubscriptions();
-    const initialLength = data.subscriptions.length;
-    data.subscriptions = data.subscriptions.filter((s) => s.id !== id);
-
-    if (data.subscriptions.length < initialLength) {
-        saveSubscriptions(data);
-        return true;
-    }
-    return false;
+export async function deleteSubscriptionById(id: string): Promise<boolean> {
+    const result = await db.delete(pushSubscriptions)
+        .where(eq(pushSubscriptions.id, id))
+        .returning({ id: pushSubscriptions.id });
+    return result.length > 0;
 }
 
 // =============================================================================
@@ -191,7 +176,7 @@ export async function notifyTeachersOfNewRequest(
         return { sent: 0, failed: 0, disabled: true };
     }
 
-    const subscriptions = getSubscriptionsForGroup(request.groupId);
+    const subscriptions = await getSubscriptionsForGroup(request.groupId);
 
     if (subscriptions.length === 0) {
         return { sent: 0, failed: 0, noSubscriptions: true };
@@ -219,7 +204,7 @@ export async function notifyTeachersOfNewRequest(
     let sent = 0;
     let failed = 0;
 
-    results.forEach((result, i) => {
+    for (const [i, result] of results.entries()) {
         if (result.status === 'fulfilled') {
             sent++;
         } else {
@@ -228,14 +213,14 @@ export async function notifyTeachersOfNewRequest(
             if (reason?.statusCode === 410) {
                 const sub = subscriptions[i];
                 if (sub !== undefined) {
-                    deleteSubscriptionByEndpoint(sub.subscription.endpoint);
+                    await deleteSubscriptionByEndpoint(sub.subscription.endpoint);
                     console.log(`Removed expired push subscription: ${sub.id}`);
                 }
             } else {
                 console.error('Push notification failed:', reason?.message);
             }
         }
-    });
+    }
 
     console.log(`Push notifications sent: ${String(sent)}/${String(subscriptions.length)} for request ${request.id}`);
     return { sent, failed, total: subscriptions.length };

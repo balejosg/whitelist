@@ -146,6 +146,42 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 
 -- =============================================================================
+-- Push Subscriptions Table
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id VARCHAR(50) PRIMARY KEY,
+    user_id VARCHAR(50) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    group_ids TEXT[] NOT NULL,
+    endpoint TEXT UNIQUE NOT NULL,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    user_agent TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_push_subs_user_id ON push_subscriptions(user_id);
+
+-- =============================================================================
+-- Health Reports Table
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS health_reports (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    hostname VARCHAR(255) NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    dnsmasq_running INTEGER,
+    dns_resolving INTEGER,
+    fail_count INTEGER DEFAULT 0,
+    actions TEXT,
+    version VARCHAR(50),
+    reported_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_health_reports_hostname ON health_reports(hostname);
+CREATE INDEX IF NOT EXISTS idx_health_reports_reported_at ON health_reports(reported_at);
+
+-- =============================================================================
 -- Triggers for updated_at
 -- =============================================================================
 

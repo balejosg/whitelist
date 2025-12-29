@@ -145,6 +145,39 @@ export const settings = pgTable('settings', {
 });
 
 // =============================================================================
+// Push Subscriptions Table
+// =============================================================================
+
+export const pushSubscriptions = pgTable('push_subscriptions', {
+    id: varchar('id', { length: 50 }).primaryKey(),
+    userId: varchar('user_id', { length: 50 })
+        .notNull()
+        .references(() => users.id, { onDelete: 'cascade' }),
+    groupIds: text('group_ids').array().notNull(),
+    endpoint: text('endpoint').unique().notNull(),
+    p256dh: text('p256dh').notNull(),
+    auth: text('auth').notNull(),
+    userAgent: text('user_agent'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+// =============================================================================
+// Health Reports Table
+// =============================================================================
+
+export const healthReports = pgTable('health_reports', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    hostname: varchar('hostname', { length: 255 }).notNull(),
+    status: varchar('status', { length: 50 }).notNull(),
+    dnsmasqRunning: integer('dnsmasq_running'), // 1=true, 0=false, null=unknown
+    dnsResolving: integer('dns_resolving'),     // 1=true, 0=false, null=unknown
+    failCount: integer('fail_count').default(0),
+    actions: text('actions'),
+    version: varchar('version', { length: 50 }),
+    reportedAt: timestamp('reported_at', { withTimezone: true }).defaultNow(),
+});
+
+// =============================================================================
 // Type Inference Helpers
 // =============================================================================
 
@@ -171,3 +204,10 @@ export type NewToken = typeof tokens.$inferInsert;
 
 export type Setting = typeof settings.$inferSelect;
 export type NewSetting = typeof settings.$inferInsert;
+
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+export type NewPushSubscription = typeof pushSubscriptions.$inferInsert;
+
+export type HealthReport = typeof healthReports.$inferSelect;
+export type NewHealthReport = typeof healthReports.$inferInsert;
+
