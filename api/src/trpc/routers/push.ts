@@ -28,9 +28,9 @@ export const pushRouter = router({
         return { publicKey, enabled: true };
     }),
 
-    getStatus: protectedProcedure.query(({ ctx }) => {
+    getStatus: protectedProcedure.query(async ({ ctx }) => {
         const enabled = push.isPushEnabled();
-        const subscriptions = push.getSubscriptionsForUser(ctx.user.sub);
+        const subscriptions = await push.getSubscriptionsForUser(ctx.user.sub);
 
         return {
             pushEnabled: enabled,
@@ -56,7 +56,7 @@ export const pushRouter = router({
             }),
             groupIds: z.array(z.string()).optional(),
         }))
-        .mutation(({ input, ctx }) => {
+        .mutation(async ({ input, ctx }) => {
             let targetGroups = input.groupIds;
 
             if (targetGroups === undefined || targetGroups.length === 0) {
@@ -72,10 +72,10 @@ export const pushRouter = router({
 
             try {
                 const userAgent = ctx.req.headers['user-agent'] ?? '';
-                const record = push.saveSubscription(
+                const record = await push.saveSubscription(
                     ctx.user.sub,
                     targetGroups,
-                    input.subscription as push.PushSubscription,
+                    input.subscription as push.PushSubscriptionData,
                     userAgent
                 );
 
@@ -95,16 +95,16 @@ export const pushRouter = router({
             endpoint: z.string().optional(),
             subscriptionId: z.string().optional(),
         }))
-        .mutation(({ input }) => {
+        .mutation(async ({ input }) => {
             if ((input.endpoint === undefined || input.endpoint === '') && (input.subscriptionId === undefined || input.subscriptionId === '')) {
                 throw new TRPCError({ code: 'BAD_REQUEST', message: 'Either endpoint or subscriptionId required' });
             }
 
             let deleted = false;
             if (input.endpoint !== undefined && input.endpoint !== '') {
-                deleted = push.deleteSubscriptionByEndpoint(input.endpoint);
+                deleted = await push.deleteSubscriptionByEndpoint(input.endpoint);
             } else if (input.subscriptionId !== undefined && input.subscriptionId !== '') {
-                deleted = push.deleteSubscriptionById(input.subscriptionId);
+                deleted = await push.deleteSubscriptionById(input.subscriptionId);
             }
 
             if (!deleted) {

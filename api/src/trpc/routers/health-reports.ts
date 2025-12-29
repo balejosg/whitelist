@@ -16,8 +16,8 @@ export const healthReportsRouter = router({
             actions: z.string().optional(),
             version: z.string().optional(),
         }))
-        .mutation(({ input }) => {
-            healthReports.saveHealthReport(input.hostname, stripUndefined({
+        .mutation(async ({ input }) => {
+            await healthReports.saveHealthReport(input.hostname, stripUndefined({
                 status: input.status,
                 dnsmasq_running: input.dnsmasq_running ?? null,
                 dns_resolving: input.dns_resolving ?? null,
@@ -29,8 +29,8 @@ export const healthReportsRouter = router({
             return { success: true, message: 'Health report received' };
         }),
 
-    list: adminProcedure.query(() => {
-        const data = healthReports.getAllReports();
+    list: adminProcedure.query(async () => {
+        const data = await healthReports.getAllReports();
         const summary: {
             totalHosts: number;
             lastUpdated: string | null;
@@ -68,8 +68,8 @@ export const healthReportsRouter = router({
 
     getAlerts: adminProcedure
         .input(z.object({ stale_threshold: z.number().default(10) }))
-        .query(({ input }) => {
-            const data = healthReports.getAllReports();
+        .query(async ({ input }) => {
+            const data = await healthReports.getAllReports();
             const problemStatuses = ['FAIL_OPEN', 'CRITICAL', 'WARNING'];
             const now = new Date();
             const alerts: {
@@ -109,8 +109,8 @@ export const healthReportsRouter = router({
 
     getByHost: adminProcedure
         .input(z.object({ hostname: z.string() }))
-        .query(({ input }) => {
-            const host = healthReports.getHostReports(input.hostname);
+        .query(async ({ input }) => {
+            const host = await healthReports.getHostReports(input.hostname);
             if (!host) throw new TRPCError({ code: 'NOT_FOUND', message: 'Host not found' });
 
             return {

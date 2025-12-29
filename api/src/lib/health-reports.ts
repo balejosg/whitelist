@@ -107,7 +107,8 @@ export async function getAllReports(): Promise<ReportsData> {
             currentStatus: null,
         };
 
-        const host = hosts[report.hostname];
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const host = hosts[report.hostname]!;
         const timestamp = report.reportedAt?.toISOString() ?? new Date().toISOString();
 
         // First report for this host is the most recent (due to ordering)
