@@ -36,8 +36,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build packages
-        run: npm run build --workspaces --if-present
+      - name: Build shared
+        run: npm run build --workspace=@openpath/shared
+
+      - name: Build API and SPA
+        run: npm run build --workspaces --if-present --workspace=@openpath/api --workspace=openpath-spa --workspace=@openpath/dashboard
 
       - name: Install Playwright browsers
         run: cd spa && npx playwright install --with-deps chromium

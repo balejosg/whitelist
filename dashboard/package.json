@@ -10,7 +10,7 @@
         "dev": "tsx watch src/index.ts",
         "clean": "rm -rf dist coverage",
         "prebuild": "npm run clean",
-        "build": "tsc && cp -r src/types dist/types",
+        "build": "tsc",
         "typecheck": "tsc --noEmit",
         "lint": "eslint . --max-warnings=0",
         "lint:fix": "eslint . --fix",
