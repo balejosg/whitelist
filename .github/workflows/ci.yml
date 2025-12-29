@@ -64,6 +64,21 @@ jobs:
     name: Web API Tests
     runs-on: ubuntu-latest
     
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: openpath
+          POSTGRES_PASSWORD: openpath_dev
+          POSTGRES_DB: openpath
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -84,11 +99,23 @@ jobs:
       - name: Build api package (for type exports)
         run: npm run build --workspace=@openpath/api
 
+      - name: Run Database Migrations
+        run: npm run db:migrate --workspace=@openpath/api
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: openpath
+          DB_USER: openpath
+          DB_PASSWORD: openpath_dev
+
       - name: Run linting
         run: npm run lint --workspace=dashboard
       
       - name: Run tests
         run: npm test --workspace=dashboard
+        env:
+          DATABASE_URL: postgresql://openpath:openpath_dev@localhost:5432/openpath
+          NODE_ENV: test
       
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
