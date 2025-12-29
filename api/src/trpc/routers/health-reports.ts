@@ -10,18 +10,18 @@ export const healthReportsRouter = router({
         .input(z.object({
             hostname: z.string().min(1),
             status: z.string().min(1),
-            dnsmasq_running: z.boolean().optional(),
-            dns_resolving: z.boolean().optional(),
-            fail_count: z.number().optional(),
+            dnsmasqRunning: z.boolean().optional(),
+            dnsResolving: z.boolean().optional(),
+            failCount: z.number().optional(),
             actions: z.string().optional(),
             version: z.string().optional(),
         }))
         .mutation(async ({ input }) => {
             await healthReports.saveHealthReport(input.hostname, stripUndefined({
                 status: input.status,
-                dnsmasq_running: input.dnsmasq_running ?? null,
-                dns_resolving: input.dns_resolving ?? null,
-                fail_count: input.fail_count ?? 0,
+                dnsmasqRunning: input.dnsmasqRunning ?? null,
+                dnsResolving: input.dnsResolving ?? null,
+                failCount: input.failCount ?? 0,
                 actions: input.actions ?? '',
                 version: input.version ?? 'unknown',
             }) as Omit<HealthReport, 'timestamp'>);
@@ -60,14 +60,14 @@ export const healthReportsRouter = router({
                 status: host.currentStatus,
                 lastSeen: host.lastSeen,
                 ...(host.version !== undefined && { version: host.version }),
-                recentFailCount: lastReport?.fail_count ?? 0
+                recentFailCount: lastReport?.failCount ?? 0
             });
         }
         return summary;
     }),
 
     getAlerts: adminProcedure
-        .input(z.object({ stale_threshold: z.number().default(10) }))
+        .input(z.object({ staleThreshold: z.number().default(10) }))
         .query(async ({ input }) => {
             const data = await healthReports.getAllReports();
             const problemStatuses = ['FAIL_OPEN', 'CRITICAL', 'WARNING'];
@@ -94,7 +94,7 @@ export const healthReportsRouter = router({
                     });
                 }
 
-                if (minutesSinceLastSeen > input.stale_threshold) {
+                if (minutesSinceLastSeen > input.staleThreshold) {
                     alerts.push({
                         hostname,
                         type: 'stale',

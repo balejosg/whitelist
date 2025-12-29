@@ -54,12 +54,12 @@ export const schedulesRouter = router({
 
             try {
                 const schedule = await scheduleStorage.createSchedule({
-                    classroom_id: input.classroomId,
-                    teacher_id: ctx.user.sub,
-                    group_id: input.groupId,
-                    day_of_week: input.dayOfWeek as 0 | 1 | 2 | 3 | 4 | 5 | 6,
-                    start_time: input.startTime,
-                    end_time: input.endTime,
+                    classroomId: input.classroomId,
+                    teacherId: ctx.user.sub,
+                    groupId: input.groupId,
+                    dayOfWeek: input.dayOfWeek,
+                    startTime: input.startTime,
+                    endTime: input.endTime,
                 });
                 return schedule;
             } catch (error: unknown) {
@@ -102,10 +102,10 @@ export const schedulesRouter = router({
 
             try {
                 const updateData = stripUndefined({
-                    day_of_week: input.dayOfWeek as 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined,
-                    start_time: input.startTime,
-                    end_time: input.endTime,
-                    group_id: input.groupId,
+                    dayOfWeek: input.dayOfWeek,
+                    startTime: input.startTime,
+                    endTime: input.endTime,
+                    groupId: input.groupId,
                 });
 
                 const updated = await scheduleStorage.updateSchedule(input.id, updateData);

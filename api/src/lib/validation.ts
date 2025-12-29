@@ -114,8 +114,8 @@ export const requestSchemas = {
     submitRequest: Joi.object({
         domain: schemas.domain.required(),
         reason: schemas.reason,
-        submitter_name: schemas.name,
-        submitter_email: schemas.email
+        submitterName: schemas.name,
+        submitterEmail: schemas.email
     }),
 
     // Domain check
@@ -197,7 +197,7 @@ export const classroomSchemas = {
 
     registerMachine: Joi.object({
         hostname: Joi.string().min(1).max(253).required(),
-        classroom_id: schemas.optionalId
+        classroomId: schemas.optionalId
     })
 } as const;
 

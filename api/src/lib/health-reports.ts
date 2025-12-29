@@ -18,9 +18,9 @@ import { healthReports, machines } from '../db/schema.js';
 export interface HealthReport {
     timestamp: string;
     status: string;
-    dnsmasq_running: boolean | null;
-    dns_resolving: boolean | null;
-    fail_count: number;
+    dnsmasqRunning: boolean | null;
+    dnsResolving: boolean | null;
+    failCount: number;
     actions: string;
     version: string;
 }
@@ -57,9 +57,9 @@ export async function saveHealthReport(
     await db.insert(healthReports).values({
         hostname,
         status: reportData.status,
-        dnsmasqRunning: reportData.dnsmasq_running === null ? null : (reportData.dnsmasq_running ? 1 : 0),
-        dnsResolving: reportData.dns_resolving === null ? null : (reportData.dns_resolving ? 1 : 0),
-        failCount: reportData.fail_count,
+        dnsmasqRunning: reportData.dnsmasqRunning === null ? null : (reportData.dnsmasqRunning ? 1 : 0),
+        dnsResolving: reportData.dnsResolving === null ? null : (reportData.dnsResolving ? 1 : 0),
+        failCount: reportData.failCount,
         actions: reportData.actions,
         version: reportData.version,
         reportedAt: now,
@@ -123,9 +123,9 @@ export async function getAllReports(): Promise<ReportsData> {
         host.reports.push({
             timestamp,
             status: report.status,
-            dnsmasq_running: report.dnsmasqRunning === null ? null : report.dnsmasqRunning === 1,
-            dns_resolving: report.dnsResolving === null ? null : report.dnsResolving === 1,
-            fail_count: report.failCount ?? 0,
+            dnsmasqRunning: report.dnsmasqRunning === null ? null : report.dnsmasqRunning === 1,
+            dnsResolving: report.dnsResolving === null ? null : report.dnsResolving === 1,
+            failCount: report.failCount ?? 0,
             actions: report.actions ?? '',
             version: report.version ?? '',
         });
@@ -158,9 +158,9 @@ export async function getHostReports(hostname: string): Promise<HostData | null>
         reports: reports.map((report) => ({
             timestamp: report.reportedAt?.toISOString() ?? new Date().toISOString(),
             status: report.status,
-            dnsmasq_running: report.dnsmasqRunning === null ? null : report.dnsmasqRunning === 1,
-            dns_resolving: report.dnsResolving === null ? null : report.dnsResolving === 1,
-            fail_count: report.failCount ?? 0,
+            dnsmasqRunning: report.dnsmasqRunning === null ? null : report.dnsmasqRunning === 1,
+            dnsResolving: report.dnsResolving === null ? null : report.dnsResolving === 1,
+            failCount: report.failCount ?? 0,
             actions: report.actions ?? '',
             version: report.version ?? '',
         })),

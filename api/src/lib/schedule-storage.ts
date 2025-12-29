@@ -20,19 +20,19 @@ interface ScheduleConflictError extends Error {
 }
 
 interface CreateScheduleInput {
-    classroom_id: string;
-    teacher_id: string;
-    group_id: string;
-    day_of_week: number;
-    start_time: string;
-    end_time: string;
+    classroomId: string;
+    teacherId: string;
+    groupId: string;
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
 }
 
 interface UpdateScheduleInput {
-    day_of_week?: number | undefined;
-    start_time?: string | undefined;
-    end_time?: string | undefined;
-    group_id?: string | undefined;
+    dayOfWeek?: number | undefined;
+    startTime?: string | undefined;
+    endTime?: string | undefined;
+    groupId?: string | undefined;
 }
 
 // =============================================================================
@@ -121,22 +121,22 @@ export async function findConflict(
 }
 
 export async function createSchedule(scheduleData: CreateScheduleInput): Promise<DBSchedule> {
-    const { classroom_id, teacher_id, group_id, day_of_week, start_time, end_time } = scheduleData;
+    const { classroomId, teacherId, groupId, dayOfWeek, startTime, endTime } = scheduleData;
 
-    if (day_of_week < 1 || day_of_week > 5) {
-        throw new Error('day_of_week must be between 1 (Monday) and 5 (Friday)');
+    if (dayOfWeek < 1 || dayOfWeek > 5) {
+        throw new Error('dayOfWeek must be between 1 (Monday) and 5 (Friday)');
     }
 
     const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-    if (!timeRegex.test(start_time) || !timeRegex.test(end_time)) {
+    if (!timeRegex.test(startTime) || !timeRegex.test(endTime)) {
         throw new Error('Invalid time format. Use HH:MM (24h)');
     }
 
-    if (timeToMinutes(start_time) >= timeToMinutes(end_time)) {
-        throw new Error('start_time must be before end_time');
+    if (timeToMinutes(startTime) >= timeToMinutes(endTime)) {
+        throw new Error('startTime must be before endTime');
     }
 
-    const conflict = await findConflict(classroom_id, day_of_week, start_time, end_time);
+    const conflict = await findConflict(classroomId, dayOfWeek, startTime, endTime);
     if (conflict !== null) {
         const error: ScheduleConflictError = new Error('Schedule conflict');
         error.conflict = conflict;
@@ -148,12 +148,12 @@ export async function createSchedule(scheduleData: CreateScheduleInput): Promise
     const [result] = await db.insert(schedules)
         .values({
             id,
-            classroomId: classroom_id,
-            teacherId: teacher_id,
-            groupId: group_id,
-            dayOfWeek: day_of_week,
-            startTime: start_time,
-            endTime: end_time,
+            classroomId: classroomId,
+            teacherId: teacherId,
+            groupId: groupId,
+            dayOfWeek: dayOfWeek,
+            startTime: startTime,
+            endTime: endTime,
             recurrence: 'weekly',
         })
         .returning();
@@ -166,9 +166,9 @@ export async function updateSchedule(id: string, updates: UpdateScheduleInput): 
     const schedule = await getScheduleById(id);
     if (!schedule) return null;
 
-    const newDayOfWeek = updates.day_of_week ?? schedule.dayOfWeek;
-    const newStartTime = updates.start_time ?? schedule.startTime;
-    const newEndTime = updates.end_time ?? schedule.endTime;
+    const newDayOfWeek = updates.dayOfWeek ?? schedule.dayOfWeek;
+    const newStartTime = updates.startTime ?? schedule.startTime;
+    const newEndTime = updates.endTime ?? schedule.endTime;
 
     const conflict = await findConflict(schedule.classroomId, newDayOfWeek, newStartTime, newEndTime, id);
     if (conflict !== null) {
@@ -179,17 +179,17 @@ export async function updateSchedule(id: string, updates: UpdateScheduleInput): 
 
     const updateValues: Partial<typeof schedules.$inferInsert> = {};
 
-    if (updates.day_of_week !== undefined) {
-        updateValues.dayOfWeek = updates.day_of_week;
+    if (updates.dayOfWeek !== undefined) {
+        updateValues.dayOfWeek = updates.dayOfWeek;
     }
-    if (updates.start_time !== undefined) {
-        updateValues.startTime = updates.start_time;
+    if (updates.startTime !== undefined) {
+        updateValues.startTime = updates.startTime;
     }
-    if (updates.end_time !== undefined) {
-        updateValues.endTime = updates.end_time;
+    if (updates.endTime !== undefined) {
+        updateValues.endTime = updates.endTime;
     }
-    if (updates.group_id !== undefined) {
-        updateValues.groupId = updates.group_id;
+    if (updates.groupId !== undefined) {
+        updateValues.groupId = updates.groupId;
     }
 
     if (Object.keys(updateValues).length === 0) {

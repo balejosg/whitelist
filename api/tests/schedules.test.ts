@@ -79,7 +79,7 @@ await describe('Schedule Storage', async () => {
         await it('should create a schedule', async () => {
             const schedule = await scheduleStorage.createSchedule({
                 classroomId: testClassroomId,
-                teacher_id: testTeacherId,
+                teacherId: testTeacherId,
                 groupId: testGroupId,
                 dayOfWeek: 1,
                 startTime: '08:00',
@@ -96,7 +96,7 @@ await describe('Schedule Storage', async () => {
             await assert.rejects(async () => {
                 await scheduleStorage.createSchedule({
                     classroomId: testClassroomId,
-                    teacher_id: testTeacherId,
+                    teacherId: testTeacherId,
                     groupId: testGroupId,
                     dayOfWeek: 6,
                     startTime: '08:00',
@@ -109,7 +109,7 @@ await describe('Schedule Storage', async () => {
             await assert.rejects(async () => {
                 await scheduleStorage.createSchedule({
                     classroomId: testClassroomId,
-                    teacher_id: testTeacherId,
+                    teacherId: testTeacherId,
                     groupId: testGroupId,
                     dayOfWeek: 1,
                     startTime: '8:00',
@@ -122,7 +122,7 @@ await describe('Schedule Storage', async () => {
             await assert.rejects(async () => {
                 await scheduleStorage.createSchedule({
                     classroomId: testClassroomId,
-                    teacher_id: testTeacherId,
+                    teacherId: testTeacherId,
                     groupId: testGroupId,
                     dayOfWeek: 1,
                     startTime: '09:00',
@@ -134,7 +134,7 @@ await describe('Schedule Storage', async () => {
         await it('should detect conflicts', async () => {
             await scheduleStorage.createSchedule({
                 classroomId: testClassroomId,
-                teacher_id: testTeacherId,
+                teacherId: testTeacherId,
                 groupId: testGroupId,
                 dayOfWeek: 1,
                 startTime: '08:00',
@@ -144,7 +144,7 @@ await describe('Schedule Storage', async () => {
             await assert.rejects(async () => {
                 await scheduleStorage.createSchedule({
                     classroomId: testClassroomId,
-                    teacher_id: testTeacherId, // Reusing same teacher/classroom for conflict
+                    teacherId: testTeacherId, // Reusing same teacher/classroom for conflict
                     groupId: 'group-other',
                     dayOfWeek: 1,
                     startTime: '08:30',
@@ -156,7 +156,7 @@ await describe('Schedule Storage', async () => {
         await it('should allow non-overlapping schedules', async () => {
             await scheduleStorage.createSchedule({
                 classroomId: testClassroomId,
-                teacher_id: testTeacherId,
+                teacherId: testTeacherId,
                 groupId: testGroupId,
                 dayOfWeek: 1,
                 startTime: '08:00',
@@ -165,7 +165,7 @@ await describe('Schedule Storage', async () => {
 
             const schedule2 = await scheduleStorage.createSchedule({
                 classroomId: testClassroomId,
-                teacher_id: testTeacherId,
+                teacherId: testTeacherId,
                 groupId: 'group-other',
                 dayOfWeek: 1,
                 startTime: '09:00',
@@ -178,7 +178,7 @@ await describe('Schedule Storage', async () => {
         await it('should update a schedule', async () => {
             const schedule = await scheduleStorage.createSchedule({
                 classroomId: testClassroomId,
-                teacher_id: testTeacherId,
+                teacherId: testTeacherId,
                 groupId: testGroupId,
                 dayOfWeek: 1,
                 startTime: '08:00',
@@ -198,7 +198,7 @@ await describe('Schedule Storage', async () => {
         await it('should delete a schedule', async () => {
             const schedule = await scheduleStorage.createSchedule({
                 classroomId: testClassroomId,
-                teacher_id: testTeacherId,
+                teacherId: testTeacherId,
                 groupId: testGroupId,
                 dayOfWeek: 1,
                 startTime: '08:00',
@@ -217,7 +217,7 @@ await describe('Schedule Storage', async () => {
         beforeEach(async () => {
             await scheduleStorage.createSchedule({
                 classroomId: testClassroomId,
-                teacher_id: testTeacherId,
+                teacherId: testTeacherId,
                 groupId: testGroupId,
                 dayOfWeek: 1,
                 startTime: '08:00',
@@ -225,7 +225,7 @@ await describe('Schedule Storage', async () => {
             });
             await scheduleStorage.createSchedule({
                 classroomId: testClassroomId,
-                teacher_id: testTeacherId,
+                teacherId: testTeacherId,
                 groupId: 'group-other',
                 dayOfWeek: 1,
                 startTime: '09:00',
@@ -255,7 +255,7 @@ await describe('Schedule Storage', async () => {
         await it('should return null on weekends', async () => {
             await scheduleStorage.createSchedule({
                 classroomId: testClassroomId,
-                teacher_id: testTeacherId,
+                teacherId: testTeacherId,
                 groupId: testGroupId,
                 dayOfWeek: 1,
                 startTime: '08:00',
@@ -270,7 +270,7 @@ await describe('Schedule Storage', async () => {
         await it('should return correct schedule for current time', async () => {
             await scheduleStorage.createSchedule({
                 classroomId: testClassroomId,
-                teacher_id: testTeacherId,
+                teacherId: testTeacherId,
                 groupId: testGroupId,
                 dayOfWeek: 3,
                 startTime: '08:00',
@@ -287,7 +287,7 @@ await describe('Schedule Storage', async () => {
         await it('should return null outside scheduled times', async () => {
             await scheduleStorage.createSchedule({
                 classroomId: testClassroomId,
-                teacher_id: testTeacherId,
+                teacherId: testTeacherId,
                 groupId: testGroupId,
                 dayOfWeek: 3,
                 startTime: '08:00',
@@ -342,7 +342,7 @@ await describe('Schedule Storage', async () => {
 
                 await scheduleStorage.createSchedule({
                     classroomId: classroom.id,
-                    teacher_id: testTeacherId,
+                    teacherId: testTeacherId,
                     groupId: 'scheduled-group',
                     dayOfWeek: dayOfWeek,
                     startTime: startTime,
