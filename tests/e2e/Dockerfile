@@ -48,7 +48,7 @@ WORKDIR /openpath
 COPY . .
 
 # Make scripts executable
-RUN chmod +x install.sh uninstall.sh scripts/*.sh tests/e2e/*.sh lib/*.sh 2>/dev/null || true
+RUN chmod +x linux/*.sh linux/scripts/**/*.sh tests/e2e/*.sh linux/lib/*.sh 2>/dev/null || true
 
 # Create the test runner service
 RUN echo '[Unit]\n\

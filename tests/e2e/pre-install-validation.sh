@@ -54,11 +54,12 @@ test_file_permissions() {
     test_section "1/5" "Script execution permissions"
     
     local scripts=(
-        "install.sh"
-        "uninstall.sh"
-        "auto-reinstall-unattended.sh"
-        "parse-har.py"
-        "setup-cd.sh"
+        "linux/install.sh"
+        "linux/uninstall.sh"
+        "linux/scripts/runtime/openpath-update.sh"
+        "linux/scripts/runtime/dnsmasq-watchdog.sh"
+        "linux/scripts/runtime/captive-portal-detector.sh"
+        "linux/scripts/runtime/openpath-cmd.sh"
     )
     
     for script in "${scripts[@]}"; do
@@ -75,16 +76,16 @@ test_file_permissions() {
     done
     
     # Check lib scripts
-    if [ -d "$PROJECT_ROOT/lib" ]; then
+    if [ -d "$PROJECT_ROOT/linux/lib" ]; then
         local lib_count=0
-        for lib_script in "$PROJECT_ROOT"/lib/*.sh; do
+        for lib_script in "$PROJECT_ROOT"/linux/lib/*.sh; do
             if [ -f "$lib_script" ]; then
                 lib_count=$((lib_count + 1))
             fi
         done
         
         if [ $lib_count -eq 6 ]; then
-            test_pass "Found 6 library scripts in lib/"
+            test_pass "Found 6 library scripts in linux/lib/"
         else
             test_fail "Expected 6 library scripts, found $lib_count"
         fi
