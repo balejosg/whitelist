@@ -51,21 +51,8 @@ services:
     networks:
       - openpath-network
 
-  # Web Dashboard
-  web:
-    image: ghcr.io/${GITHUB_REPOSITORY:-balejosg/openpath}/dashboard:latest
-    container_name: openpath-web
-    restart: unless-stopped
-    ports:
-      - "${WEB_PORT:-8080}:8080"
-    environment:
-      - NODE_ENV=production
-      - PORT=8080
-      - API_URL=${API_URL:-http://localhost:3000}
-    depends_on:
-      - api
-    networks:
-      - openpath-network
+  # Note: The Web Dashboard (SPA) is served directly by the API on port 3000.
+  # No separate 'web' service is required.
 
 volumes:
   postgres_data:

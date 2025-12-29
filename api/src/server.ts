@@ -17,7 +17,7 @@
  */
 
 /**
- * AulaFocus Request API Server
+ * OpenPath Request API Server
  * 
  * Home server deployment for handling domain requests.
  * Runs on your local network, exposed via DuckDNS.
@@ -379,7 +379,11 @@ app.use('/trpc', createExpressMiddleware({
 }));
 
 // Serve SPA static files
-app.use(express.static(path.join(__dirname, '../../spa')));
+const spaPath = process.env.NODE_ENV === 'production'
+    ? path.join(__dirname, '../../../spa')
+    : path.join(__dirname, '../../spa');
+
+app.use(express.static(spaPath));
 
 // =============================================================================
 // Error Handling

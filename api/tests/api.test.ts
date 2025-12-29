@@ -129,7 +129,7 @@ await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async (
             const input = {
                 domain: 'test-' + String(Date.now()) + '.example.com',
                 reason: 'Testing purposes',
-                requester_email: 'test@example.com'
+                requesterEmail: 'test@example.com'
             };
 
             const response = await trpcMutate('requests.create', input);
@@ -144,7 +144,7 @@ await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async (
         await test('should reject request without domain', async () => {
             const input = {
                 reason: 'Testing',
-                requester_email: 'test@example.com'
+                requesterEmail: 'test@example.com'
             };
 
             const response = await trpcMutate('requests.create', input);
@@ -252,7 +252,7 @@ await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async (
         });
 
         await test('should reject approve with wrong token', async () => {
-            const response = await trpcMutate('requests.approve', { id: 'some-id', group_id: 'test' }, { 'Authorization': 'Bearer wrong-token' });
+            const response = await trpcMutate('requests.approve', { id: 'some-id', groupId: 'test' }, { 'Authorization': 'Bearer wrong-token' });
             assert.strictEqual(response.status, 401);
         });
 
@@ -291,7 +291,7 @@ await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async (
             const response = await trpcMutate('requests.create', {
                 domain: `email-test-${String(Date.now())}.example.com`,
                 reason: 'Testing',
-                requester_email: 'valid+tag@example.com'
+                requesterEmail: 'valid+tag@example.com'
             });
 
             assert.strictEqual(response.status, 200);

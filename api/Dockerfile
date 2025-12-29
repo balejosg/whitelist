@@ -9,6 +9,7 @@ RUN apk add --no-cache python3 make g++
 COPY package*.json ./
 COPY api/package*.json ./api/
 COPY shared/package*.json ./shared/
+COPY spa/package*.json ./spa/
 
 # Install all dependencies
 RUN npm ci
@@ -16,9 +17,13 @@ RUN npm ci
 # Copy source code
 COPY api ./api
 COPY shared ./shared
+COPY spa ./spa
 
 # Build shared package first
 RUN cd shared && npm run build
+
+# Build SPA
+RUN cd spa && npm run build
 
 # Build TypeScript to dist/
 WORKDIR /app/api
@@ -45,6 +50,7 @@ RUN npm ci --only=production && npm cache clean --force
 # Copy built artifacts from builder stage
 COPY --from=builder /app/api/dist ./api/dist
 COPY --from=builder /app/shared/dist ./shared/dist
+COPY --from=builder /app/spa ./spa
 
 # Copy database schema (needed for migration)
 # We place it in a location where migrate.js expects it: ../src/db/schema.sql relative to dist/scripts/

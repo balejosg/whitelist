@@ -62,24 +62,24 @@ services:
       timeout: 10s
       retries: 3
 
-  # Web Management Interface
-  web:
-    build:
-      context: ./dashboard
-      dockerfile: Dockerfile
-    container_name: dashboard-dev
-    volumes:
-      - ./dashboard:/app
-      - /app/node_modules
-    ports:
-      - "8080:8080"
-    environment:
-      - NODE_ENV=development
-      - PORT=8080
-    depends_on:
-      - api
-    restart: unless-stopped
-    command: npm run dev
+  # Legacy Web Management Interface (Optional)
+  # dashboard:
+  #   build:
+  #     context: ./dashboard
+  #     dockerfile: Dockerfile
+  #   container_name: dashboard-dev
+  #   volumes:
+  #     - ./dashboard:/app
+  #     - /app/node_modules
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     - NODE_ENV=development
+  #     - PORT=8080
+  #   depends_on:
+  #     - api
+  #   restart: unless-stopped
+  #   command: npm run dev
 
 # Persist data between restarts
 volumes:

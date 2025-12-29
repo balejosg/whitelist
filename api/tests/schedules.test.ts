@@ -78,12 +78,12 @@ await describe('Schedule Storage', async () => {
     await describe('CRUD Operations', async () => {
         await it('should create a schedule', async () => {
             const schedule = await scheduleStorage.createSchedule({
-                classroom_id: testClassroomId,
+                classroomId: testClassroomId,
                 teacher_id: testTeacherId,
-                group_id: testGroupId,
-                day_of_week: 1,
-                start_time: '08:00',
-                end_time: '09:00'
+                groupId: testGroupId,
+                dayOfWeek: 1,
+                startTime: '08:00',
+                endTime: '09:00'
             });
 
             assert.ok(schedule.id !== '');
@@ -95,81 +95,81 @@ await describe('Schedule Storage', async () => {
         await it('should reject invalid day of week', async () => {
             await assert.rejects(async () => {
                 await scheduleStorage.createSchedule({
-                    classroom_id: testClassroomId,
+                    classroomId: testClassroomId,
                     teacher_id: testTeacherId,
-                    group_id: testGroupId,
-                    day_of_week: 6,
-                    start_time: '08:00',
-                    end_time: '09:00'
+                    groupId: testGroupId,
+                    dayOfWeek: 6,
+                    startTime: '08:00',
+                    endTime: '09:00'
                 });
-            }, /day_of_week must be between 1.*and 5/);
+            }, /dayOfWeek must be between 1.*and 5/);
         });
 
         await it('should reject invalid time format', async () => {
             await assert.rejects(async () => {
                 await scheduleStorage.createSchedule({
-                    classroom_id: testClassroomId,
+                    classroomId: testClassroomId,
                     teacher_id: testTeacherId,
-                    group_id: testGroupId,
-                    day_of_week: 1,
-                    start_time: '8:00',
-                    end_time: '09:00'
+                    groupId: testGroupId,
+                    dayOfWeek: 1,
+                    startTime: '8:00',
+                    endTime: '09:00'
                 });
             }, /Invalid time format/);
         });
 
-        await it('should reject start_time >= end_time', async () => {
+        await it('should reject startTime >= endTime', async () => {
             await assert.rejects(async () => {
                 await scheduleStorage.createSchedule({
-                    classroom_id: testClassroomId,
+                    classroomId: testClassroomId,
                     teacher_id: testTeacherId,
-                    group_id: testGroupId,
-                    day_of_week: 1,
-                    start_time: '09:00',
-                    end_time: '08:00'
+                    groupId: testGroupId,
+                    dayOfWeek: 1,
+                    startTime: '09:00',
+                    endTime: '08:00'
                 });
-            }, /start_time must be before end_time/);
+            }, /startTime must be before endTime/);
         });
 
         await it('should detect conflicts', async () => {
             await scheduleStorage.createSchedule({
-                classroom_id: testClassroomId,
+                classroomId: testClassroomId,
                 teacher_id: testTeacherId,
-                group_id: testGroupId,
-                day_of_week: 1,
-                start_time: '08:00',
-                end_time: '09:00'
+                groupId: testGroupId,
+                dayOfWeek: 1,
+                startTime: '08:00',
+                endTime: '09:00'
             });
 
             await assert.rejects(async () => {
                 await scheduleStorage.createSchedule({
-                    classroom_id: testClassroomId,
+                    classroomId: testClassroomId,
                     teacher_id: testTeacherId, // Reusing same teacher/classroom for conflict
-                    group_id: 'group-other',
-                    day_of_week: 1,
-                    start_time: '08:30',
-                    end_time: '09:30'
+                    groupId: 'group-other',
+                    dayOfWeek: 1,
+                    startTime: '08:30',
+                    endTime: '09:30'
                 });
             }, /Schedule conflict/);
         });
 
         await it('should allow non-overlapping schedules', async () => {
             await scheduleStorage.createSchedule({
-                classroom_id: testClassroomId,
+                classroomId: testClassroomId,
                 teacher_id: testTeacherId,
-                group_id: testGroupId,
-                day_of_week: 1,
-                start_time: '08:00',
-                end_time: '09:00'
+                groupId: testGroupId,
+                dayOfWeek: 1,
+                startTime: '08:00',
+                endTime: '09:00'
             });
 
             const schedule2 = await scheduleStorage.createSchedule({
-                classroom_id: testClassroomId,
+                classroomId: testClassroomId,
                 teacher_id: testTeacherId,
-                group_id: 'group-other',
-                day_of_week: 1,
-                start_time: '09:00',
-                end_time: '10:00'
+                groupId: 'group-other',
+                dayOfWeek: 1,
+                startTime: '09:00',
+                endTime: '10:00'
             });
 
             assert.ok(schedule2.id !== '');
@@ -177,17 +177,17 @@ await describe('Schedule Storage', async () => {
 
         await it('should update a schedule', async () => {
             const schedule = await scheduleStorage.createSchedule({
-                classroom_id: testClassroomId,
+                classroomId: testClassroomId,
                 teacher_id: testTeacherId,
-                group_id: testGroupId,
-                day_of_week: 1,
-                start_time: '08:00',
-                end_time: '09:00'
+                groupId: testGroupId,
+                dayOfWeek: 1,
+                startTime: '08:00',
+                endTime: '09:00'
             });
 
             const updated = await scheduleStorage.updateSchedule(schedule.id, {
-                start_time: '08:30',
-                end_time: '09:30'
+                startTime: '08:30',
+                endTime: '09:30'
             });
 
             assert.ok(updated);
@@ -197,12 +197,12 @@ await describe('Schedule Storage', async () => {
 
         await it('should delete a schedule', async () => {
             const schedule = await scheduleStorage.createSchedule({
-                classroom_id: testClassroomId,
+                classroomId: testClassroomId,
                 teacher_id: testTeacherId,
-                group_id: testGroupId,
-                day_of_week: 1,
-                start_time: '08:00',
-                end_time: '09:00'
+                groupId: testGroupId,
+                dayOfWeek: 1,
+                startTime: '08:00',
+                endTime: '09:00'
             });
 
             const deleted = await scheduleStorage.deleteSchedule(schedule.id);
@@ -216,20 +216,20 @@ await describe('Schedule Storage', async () => {
     await describe('Query Operations', async () => {
         beforeEach(async () => {
             await scheduleStorage.createSchedule({
-                classroom_id: testClassroomId,
+                classroomId: testClassroomId,
                 teacher_id: testTeacherId,
-                group_id: testGroupId,
-                day_of_week: 1,
-                start_time: '08:00',
-                end_time: '09:00'
+                groupId: testGroupId,
+                dayOfWeek: 1,
+                startTime: '08:00',
+                endTime: '09:00'
             });
             await scheduleStorage.createSchedule({
-                classroom_id: testClassroomId,
+                classroomId: testClassroomId,
                 teacher_id: testTeacherId,
-                group_id: 'group-other',
-                day_of_week: 1,
-                start_time: '09:00',
-                end_time: '10:00'
+                groupId: 'group-other',
+                dayOfWeek: 1,
+                startTime: '09:00',
+                endTime: '10:00'
             });
         });
 
@@ -254,12 +254,12 @@ await describe('Schedule Storage', async () => {
 
         await it('should return null on weekends', async () => {
             await scheduleStorage.createSchedule({
-                classroom_id: testClassroomId,
+                classroomId: testClassroomId,
                 teacher_id: testTeacherId,
-                group_id: testGroupId,
-                day_of_week: 1,
-                start_time: '08:00',
-                end_time: '09:00'
+                groupId: testGroupId,
+                dayOfWeek: 1,
+                startTime: '08:00',
+                endTime: '09:00'
             });
 
             const sunday = new Date('2025-01-05T09:00:00');
@@ -269,12 +269,12 @@ await describe('Schedule Storage', async () => {
 
         await it('should return correct schedule for current time', async () => {
             await scheduleStorage.createSchedule({
-                classroom_id: testClassroomId,
+                classroomId: testClassroomId,
                 teacher_id: testTeacherId,
-                group_id: testGroupId,
-                day_of_week: 3,
-                start_time: '08:00',
-                end_time: '09:00'
+                groupId: testGroupId,
+                dayOfWeek: 3,
+                startTime: '08:00',
+                endTime: '09:00'
             });
 
             const wednesday = new Date('2025-01-08T08:30:00'); // Wed Jan 08 2025
@@ -286,12 +286,12 @@ await describe('Schedule Storage', async () => {
 
         await it('should return null outside scheduled times', async () => {
             await scheduleStorage.createSchedule({
-                classroom_id: testClassroomId,
+                classroomId: testClassroomId,
                 teacher_id: testTeacherId,
-                group_id: testGroupId,
-                day_of_week: 3,
-                start_time: '08:00',
-                end_time: '09:00'
+                groupId: testGroupId,
+                dayOfWeek: 3,
+                startTime: '08:00',
+                endTime: '09:00'
             });
 
             const wednesday = new Date('2025-01-08T10:00:00');
@@ -341,12 +341,12 @@ await describe('Schedule Storage', async () => {
                 // Conflict check? Logic assumes none
 
                 await scheduleStorage.createSchedule({
-                    classroom_id: classroom.id,
+                    classroomId: classroom.id,
                     teacher_id: testTeacherId,
-                    group_id: 'scheduled-group',
-                    day_of_week: dayOfWeek,
-                    start_time: startTime,
-                    end_time: endTime
+                    groupId: 'scheduled-group',
+                    dayOfWeek: dayOfWeek,
+                    startTime: startTime,
+                    endTime: endTime
                 });
 
                 const result = await classroomStorage.getWhitelistUrlForMachine('pc-test-01');

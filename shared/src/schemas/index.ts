@@ -11,23 +11,43 @@ export const DomainRequest = z.object({
     id: z.string(),
     domain: z.string(),
     reason: z.string(),
-    requester_email: z.string(),
-    group_id: z.string(),
+    requesterEmail: z.string(),
+    groupId: z.string(),
     priority: RequestPriority,
     status: RequestStatus,
-    created_at: z.string(),
-    updated_at: z.string(),
-    resolved_at: z.string().nullable(),
-    resolved_by: z.string().nullable(),
-    resolution_note: z.string().optional(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+    resolvedAt: z.string().nullable(),
+    resolvedBy: z.string().nullable(),
+    resolutionNote: z.string().optional(),
 });
 
 export const User = z.object({
     id: z.string(),
     email: z.string().email(),
     name: z.string(),
+    active: z.boolean().optional(),
     isActive: z.boolean().optional(),
     emailVerified: z.boolean().optional(),
-    created_at: z.string(),
-    updated_at: z.string(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+});
+
+export const Classroom = z.object({
+    id: z.string(),
+    name: z.string(),
+    displayName: z.string(),
+    defaultGroupId: z.string().nullable(),
+    activeGroupId: z.string().nullable(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+});
+
+export const Machine = z.object({
+    id: z.string(),
+    hostname: z.string(),
+    classroomId: z.string().nullable(),
+    version: z.string().optional(),
+    lastSeen: z.string().nullable(),
+    status: MachineStatus,
 });

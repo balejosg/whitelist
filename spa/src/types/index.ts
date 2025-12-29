@@ -8,7 +8,7 @@
 // =============================================================================
 
 export type RequestStatus = 'pending' | 'approved' | 'rejected';
-export type RequestPriority = 'low' | 'normal' | 'high';
+export type RequestPriority = 'low' | 'normal' | 'high' | 'urgent';
 export type UserRole = 'admin' | 'teacher' | 'student';
 export type MachineStatus = 'online' | 'offline' | 'unknown';
 

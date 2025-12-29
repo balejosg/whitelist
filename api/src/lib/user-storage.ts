@@ -44,7 +44,9 @@ function toUserType(user: DBUser): User {
         email: user.email,
         name: user.name,
         passwordHash: user.passwordHash,
-        active: true,
+        active: user.isActive,
+        isActive: user.isActive,
+        emailVerified: user.emailVerified,
         createdAt: user.createdAt?.toISOString() ?? new Date().toISOString(),
         updatedAt: user.updatedAt?.toISOString() ?? new Date().toISOString()
     };
@@ -59,6 +61,8 @@ export async function getAllUsers(): Promise<SafeUser[]> {
         id: users.id,
         email: users.email,
         name: users.name,
+        isActive: users.isActive,
+        emailVerified: users.emailVerified,
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
     })
@@ -69,7 +73,9 @@ export async function getAllUsers(): Promise<SafeUser[]> {
         id: row.id,
         email: row.email,
         name: row.name,
-        active: true,
+        active: row.isActive,
+        isActive: row.isActive,
+        emailVerified: row.emailVerified,
         createdAt: row.createdAt?.toISOString() ?? new Date().toISOString(),
         updatedAt: row.updatedAt?.toISOString() ?? new Date().toISOString()
     }));
@@ -247,26 +253,23 @@ export async function verifyPasswordByEmail(
         email: user.email,
         name: user.name,
         passwordHash: user.passwordHash,
-        active: true,
-        isActive: true,
-        emailVerified: false,
+        active: user.isActive,
+        isActive: user.isActive,
+        emailVerified: user.emailVerified,
         createdAt: user.createdAt?.toISOString() ?? new Date().toISOString(),
         updatedAt: user.updatedAt?.toISOString() ?? new Date().toISOString()
     };
 }
 
 export async function getStats(): Promise<UserStats> {
-    const result = await db.select({
-        total: count(),
-    })
-        .from(users);
-
-    const total = result[0]?.total ?? 0;
+    const [totalRes] = await db.select({ count: count() }).from(users);
+    const [activeRes] = await db.select({ count: count() }).from(users).where(eq(users.isActive, true));
+    const [verifiedRes] = await db.select({ count: count() }).from(users).where(eq(users.emailVerified, true));
 
     return {
-        total,
-        active: total,
-        verified: 0
+        total: totalRes?.count ?? 0,
+        active: activeRes?.count ?? 0,
+        verified: verifiedRes?.count ?? 0
     };
 }
 
