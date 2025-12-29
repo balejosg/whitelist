@@ -2,151 +2,73 @@
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
  *
- * Core Type Definitions
+ * API Type Definitions
+ * Re-exports shared types + API-specific types (JWT, Express, Config)
  */
 
 // =============================================================================
-// Domain Types
+// Re-export from @openpath/shared (single source of truth)
 // =============================================================================
 
-export type RequestStatus = 'pending' | 'approved' | 'rejected';
-export type RequestPriority = 'low' | 'normal' | 'high' | 'urgent';
-export type UserRole = 'admin' | 'teacher' | 'student';
-export type MachineStatus = 'online' | 'offline' | 'unknown';
+export {
+    // Zod Schemas (for runtime validation)
+    RequestStatus as RequestStatusSchema,
+    RequestPriority as RequestPrioritySchema,
+    UserRole as UserRoleSchema,
+    MachineStatus as MachineStatusSchema,
+    HealthStatus as HealthStatusSchema,
+    DomainRequest as DomainRequestSchema,
+    User as UserSchema,
+    SafeUser as SafeUserSchema,
+    Role as RoleSchema,
+    RoleInfo as RoleInfoSchema,
+    Classroom as ClassroomSchema,
+    Machine as MachineSchema,
+    Schedule as ScheduleSchema,
+    HealthReport as HealthReportSchema,
+    PushSubscription as PushSubscriptionSchema,
+    CreateRequestDTO as CreateRequestDTOSchema,
+    UpdateRequestStatusDTO as UpdateRequestStatusDTOSchema,
+    CreateUserDTO as CreateUserDTOSchema,
+    LoginDTO as LoginDTOSchema,
+    CreateClassroomDTO as CreateClassroomDTOSchema,
+    CreateScheduleDTO as CreateScheduleDTOSchema,
+} from '@openpath/shared';
 
-/**
- * Domain unlock request
- */
-export interface DomainRequest {
-    id: string;
-    domain: string;
-    reason: string;
-    requesterEmail: string;
-    groupId: string;
-    priority: RequestPriority;
-    status: RequestStatus;
-    createdAt: string;
-    updatedAt: string;
-    resolvedAt: string | null;
-    resolvedBy: string | null;
-    resolutionNote?: string;
-}
-
-/**
- * System user - matches storage implementation
- */
-export interface User {
-    id: string;
-    email: string;
-    name: string;
-    passwordHash: string;
-    isActive: boolean;
-    emailVerified?: boolean;
-    createdAt: string;
-    updatedAt: string;
-}
-
-/**
- * User without sensitive fields
- */
-export type SafeUser = Omit<User, 'passwordHash'>;
-
-/**
- * Role assignment for a user
- */
-export interface Role {
-    id: string;
-    userId: string;
-    role: UserRole;
-    groupIds: string[];
-    createdAt: string;
-    expiresAt: string | null;
-}
-
-/**
- * Classroom with machines
- */
-export interface Classroom {
-    id: string;
-    name: string;
-    displayName: string;
-    machines?: Machine[];
-    createdAt: string;
-    updatedAt: string;
-    activeGroupId?: string | null;
-    defaultGroupId?: string | null;
-    machineCount?: number;
-    currentGroupId?: string | null;
-}
-
-/**
- * Machine in a classroom
- */
-export interface Machine {
-    id: string;
-    hostname: string;
-    classroomId: string | null;
-    version?: string | undefined;
-    lastSeen: string | null;
-    status: MachineStatus;
-    createdAt?: string | undefined;
-    updatedAt?: string | undefined;
-}
-
-/**
- * Weekly schedule entry
- */
-export interface Schedule {
-    id: string;
-    classroomId: string;
-    dayOfWeek: 0 | 1 | 2 | 3 | 4 | 5 | 6;
-    startTime: string; // HH:MM format
-    endTime: string;   // HH:MM format
-    groupId: string;
-    teacherId: string;
-    subject?: string;
-    active: boolean;
-    createdAt: string;
-    updatedAt?: string;
-}
-
-/**
- * Health report from client machine
- */
-export interface HealthReport {
-    id: string;
-    hostname: string;
-    classroomId: string;
-    status: 'healthy' | 'warning' | 'error';
-    details: Record<string, unknown>;
-    reportedAt: string;
-}
-
-/**
- * Push subscription for notifications
- */
-export interface PushSubscription {
-    id: string;
-    userId: string;
-    endpoint: string;
-    keys: {
-        p256dh: string;
-        auth: string;
-    };
-    createdAt: string;
-}
+export type {
+    // Types (inferred from Zod)
+    RequestStatus,
+    RequestPriority,
+    UserRole,
+    MachineStatus,
+    HealthStatus,
+    DomainRequest,
+    User,
+    SafeUser,
+    Role,
+    RoleInfo,
+    Classroom,
+    Machine,
+    Schedule,
+    HealthReport,
+    PushSubscription,
+    // DTO Types
+    CreateRequestDTO,
+    UpdateRequestStatusDTO,
+    CreateUserDTO,
+    LoginDTO,
+    CreateClassroomDTO,
+    CreateScheduleDTO,
+    // Response types
+    APIResponseType,
+    PaginatedResponse,
+} from '@openpath/shared';
 
 // =============================================================================
-// JWT Types
+// JWT Types (API-specific)
 // =============================================================================
 
-/**
- * Role info in JWT payload
- */
-export interface RoleInfo {
-    role: UserRole;
-    groupIds: string[];
-}
+import type { RoleInfo } from '@openpath/shared';
 
 /**
  * JWT token payload - matches auth.ts implementation
@@ -170,29 +92,10 @@ export interface DecodedToken extends JWTPayload {
 }
 
 // =============================================================================
-// API Response Types
+// API-specific Response Types
 // =============================================================================
 
-/**
- * Standard API response wrapper
- */
-export interface APIResponse<T = unknown> {
-    success: boolean;
-    data?: T;
-    error?: string;
-    code?: string;
-    message?: string;
-}
-
-/**
- * Paginated API response
- */
-export interface PaginatedResponse<T> extends APIResponse<T[]> {
-    total: number;
-    page: number;
-    limit: number;
-    hasMore: boolean;
-}
+import type { SafeUser } from '@openpath/shared';
 
 /**
  * Statistics response
@@ -202,46 +105,6 @@ export interface StatsResponse {
     pending: number;
     approved: number;
     rejected: number;
-}
-
-// =============================================================================
-// Request/Response DTOs
-// =============================================================================
-
-/**
- * Create request DTO
- */
-export interface CreateRequestDTO {
-    domain: string;
-    reason?: string;
-    requesterEmail?: string;
-    groupId?: string;
-    priority?: RequestPriority;
-}
-
-/**
- * Update request status DTO
- */
-export interface UpdateRequestStatusDTO {
-    status: 'approved' | 'rejected';
-    note?: string;
-}
-
-/**
- * Create user DTO
- */
-export interface CreateUserDTO {
-    email: string;
-    name: string;
-    password: string;
-}
-
-/**
- * Login DTO
- */
-export interface LoginDTO {
-    email: string;
-    password: string;
 }
 
 /**
@@ -254,28 +117,8 @@ export interface LoginResponse {
     user: SafeUser;
 }
 
-/**
- * Create classroom DTO
- */
-export interface CreateClassroomDTO {
-    name: string;
-    displayName?: string;
-}
-
-/**
- * Create schedule DTO
- */
-export interface CreateScheduleDTO {
-    classroomId: string;
-    dayOfWeek: number;
-    startTime: string;
-    endTime: string;
-    groupId: string;
-    subject: string;
-}
-
 // =============================================================================
-// Express Extensions
+// Express Extensions (API-specific)
 // =============================================================================
 
 import type { Request, Response, NextFunction } from 'express';
@@ -314,7 +157,7 @@ export type AuthMiddleware = (
 ) => void | Promise<void>;
 
 // =============================================================================
-// Configuration Types
+// Configuration Types (API-specific)
 // =============================================================================
 
 /**

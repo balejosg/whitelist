@@ -9,6 +9,8 @@ import * as db from '../src/db.js';
 
 await describe('Database Module', async () => {
     before(async () => {
+        // Wait for DB connection
+        await db.waitForDb();
         // Reset database to clean state
         await db.resetDb();
     });
@@ -44,7 +46,7 @@ await describe('Database Module', async () => {
 
             assert.ok(group);
             assert.strictEqual(group.name, 'my-group');
-            assert.strictEqual(group.display_name, 'My Group');
+            assert.strictEqual(group.displayName, 'My Group');
             assert.strictEqual(group.enabled, 1);
         });
 
@@ -53,7 +55,7 @@ await describe('Database Module', async () => {
             const group = await db.getGroupByName('named-group');
 
             assert.ok(group);
-            assert.strictEqual(group.display_name, 'Named Group');
+            assert.strictEqual(group.displayName, 'Named Group');
         });
 
         await it('createGroup throws on duplicate name', async () => {
@@ -61,7 +63,7 @@ await describe('Database Module', async () => {
 
             await assert.rejects(async () => {
                 await db.createGroup('unique-group', 'Another Display Name');
-            }, /SQLITE_CONSTRAINT_UNIQUE/);
+            }, /UNIQUE_CONSTRAINT_VIOLATION/);
         });
 
         await it('updateGroup modifies group properties', async () => {
@@ -70,7 +72,7 @@ await describe('Database Module', async () => {
 
             const group = await db.getGroupById(groupId);
             assert.ok(group);
-            assert.strictEqual(group.display_name, 'Updated Name');
+            assert.strictEqual(group.displayName, 'Updated Name');
             assert.strictEqual(group.enabled, 0);
         });
 

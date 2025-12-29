@@ -43,7 +43,7 @@ export const roles = pgTable('roles', {
         .notNull()
         .references(() => users.id, { onDelete: 'cascade' }),
     role: varchar('role', { length: 20 }).notNull(), // 'admin' | 'teacher' | 'student'
-    groups: text('groups').array(),
+    groupIds: text('group_ids').array(),
     createdBy: varchar('created_by', { length: 50 }).references(() => users.id),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),

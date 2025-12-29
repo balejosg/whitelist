@@ -15,7 +15,7 @@ export type {
     JWTPayload,
     DecodedToken,
     // API response types
-    APIResponse,
+    APIResponseType,
     PaginatedResponse,
     StatsResponse,
     // DTO types

@@ -41,14 +41,14 @@ export const authRouter = router({
                 id: r.id,
                 userId: r.userId,
                 role: r.role as UserRole,
-                groupIds: r.groups ?? [],
+                groupIds: r.groupIds ?? [],
                 createdAt: r.createdAt?.toISOString() ?? new Date().toISOString(),
                 updatedAt: r.updatedAt?.toISOString() ?? new Date().toISOString(),
                 createdBy: r.createdBy,
                 revokedAt: null
             }));
 
-            const tokens = auth.generateTokens(user, roles.map(r => ({ role: r.role as 'admin' | 'teacher' | 'student', groupIds: r.groups ?? [] })));
+            const tokens = auth.generateTokens(user, roles.map(r => ({ role: r.role as 'admin' | 'teacher' | 'student', groupIds: r.groupIds ?? [] })));
             return {
                 ...tokens,
                 user: {
@@ -71,7 +71,7 @@ export const authRouter = router({
 
             await auth.blacklistToken(input.refreshToken);
             const roles = await roleStorage.getUserRoles(user.id);
-            return auth.generateTokens(user, roles.map(r => ({ role: r.role as 'admin' | 'teacher' | 'student', groupIds: r.groups ?? [] })));
+            return auth.generateTokens(user, roles.map(r => ({ role: r.role as 'admin' | 'teacher' | 'student', groupIds: r.groupIds ?? [] })));
         }),
 
     logout: protectedProcedure
@@ -91,7 +91,7 @@ export const authRouter = router({
             id: r.id,
             userId: r.userId,
             role: r.role as UserRole,
-            groupIds: r.groups ?? [],
+            groupIds: r.groupIds ?? [],
             createdAt: r.createdAt?.toISOString() ?? new Date().toISOString(),
             updatedAt: r.updatedAt?.toISOString() ?? new Date().toISOString(),
             createdBy: r.createdBy,

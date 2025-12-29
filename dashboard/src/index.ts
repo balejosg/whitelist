@@ -76,7 +76,7 @@ app.post('/api/auth/login', asyncHandler(async (req: Request, res: Response): Pr
         req.session.user = {
             id: user.id,
             username: user.username,
-            password_hash: ''
+            passwordHash: ''
         };
         res.json({ success: true, user: { username: user.username } });
     } else {
@@ -157,7 +157,7 @@ app.post('/api/groups', requireAuth, asyncHandler(async (req: Request, res: Resp
         await db.exportGroupToFile(id);
         res.json({ success: true, id, name: safeName });
     } catch (err: unknown) {
-        if (err instanceof Error && err.message === 'SQLITE_CONSTRAINT_UNIQUE') {
+        if (err instanceof Error && err.message === 'UNIQUE_CONSTRAINT_VIOLATION') {
             res.status(400).json({ error: 'Ya existe un grupo con ese nombre' });
             return;
         }

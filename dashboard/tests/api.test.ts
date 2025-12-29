@@ -14,6 +14,8 @@ let sessionCookie: string | undefined;
 
 await describe('API Routes', async () => {
     before(async () => {
+        // Wait for DB connection
+        await db.waitForDb();
         // Reset database to ensure admin user exists
         await db.resetDb();
     });

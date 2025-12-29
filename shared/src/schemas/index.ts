@@ -62,8 +62,12 @@ export const Classroom = z.object({
     displayName: z.string(),
     defaultGroupId: z.string().nullable(),
     activeGroupId: z.string().nullable(),
+    currentGroupId: z.string().nullable().optional(),
     createdAt: z.string(),
     updatedAt: z.string(),
+    // Optional computed/joined fields
+    machines: z.array(z.lazy(() => Machine)).optional(),
+    machineCount: z.number().optional(),
 });
 
 export const Machine = z.object({
@@ -103,11 +107,11 @@ export const HealthReport = z.object({
 export const PushSubscription = z.object({
     id: z.string(),
     userId: z.string(),
+    groupIds: z.array(z.string()),
     endpoint: z.string(),
-    keys: z.object({
-        p256dh: z.string(),
-        auth: z.string(),
-    }),
+    p256dh: z.string(),
+    auth: z.string(),
+    userAgent: z.string().nullable().optional(),
     createdAt: z.string(),
 });
 
@@ -131,3 +135,82 @@ export type Machine = z.infer<typeof Machine>;
 export type Schedule = z.infer<typeof Schedule>;
 export type HealthReport = z.infer<typeof HealthReport>;
 export type PushSubscription = z.infer<typeof PushSubscription>;
+
+// =============================================================================
+// API Response Types
+// =============================================================================
+
+export const APIResponse = <T extends z.ZodType>(dataSchema: T) =>
+    z.object({
+        success: z.boolean(),
+        data: dataSchema.optional(),
+        error: z.string().optional(),
+        code: z.string().optional(),
+        message: z.string().optional(),
+    });
+
+export interface APIResponseType<T = unknown> {
+    success: boolean;
+    data?: T;
+    error?: string;
+    code?: string;
+    message?: string;
+}
+
+export interface PaginatedResponse<T> extends APIResponseType<T[]> {
+    total: number;
+    page: number;
+    limit: number;
+    hasMore: boolean;
+}
+
+// =============================================================================
+// DTO Schemas
+// =============================================================================
+
+export const CreateRequestDTO = z.object({
+    domain: z.string().min(1),
+    reason: z.string().optional(),
+    requesterEmail: z.string().email().optional(),
+    groupId: z.string().optional(),
+    priority: RequestPriority.optional(),
+});
+
+export const UpdateRequestStatusDTO = z.object({
+    status: z.enum(['approved', 'rejected']),
+    note: z.string().optional(),
+});
+
+export const CreateUserDTO = z.object({
+    email: z.string().email(),
+    name: z.string().min(1),
+    password: z.string().min(8),
+});
+
+export const LoginDTO = z.object({
+    email: z.string().email(),
+    password: z.string().min(8),
+});
+
+export const CreateClassroomDTO = z.object({
+    name: z.string().min(1),
+    displayName: z.string().optional(),
+});
+
+export const CreateScheduleDTO = z.object({
+    classroomId: z.string(),
+    dayOfWeek: z.number().min(0).max(6),
+    startTime: z.string(),
+    endTime: z.string(),
+    groupId: z.string(),
+    subject: z.string().optional(),
+});
+
+// DTO Types
+export type CreateRequestDTO = z.infer<typeof CreateRequestDTO>;
+export type UpdateRequestStatusDTO = z.infer<typeof UpdateRequestStatusDTO>;
+export type CreateUserDTO = z.infer<typeof CreateUserDTO>;
+export type LoginDTO = z.infer<typeof LoginDTO>;
+export type CreateClassroomDTO = z.infer<typeof CreateClassroomDTO>;
+export type CreateScheduleDTO = z.infer<typeof CreateScheduleDTO>;
+

@@ -9,7 +9,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import pg from 'pg';
 import {
     whitelistGroups,
@@ -46,55 +46,55 @@ export const db = drizzle(pool);
 export interface User {
     id: string;
     username: string;
-    password_hash?: string;
+    passwordHash?: string;
     role?: string | null;
 }
 
 export interface Group {
     id: string;
     name: string;
-    display_name: string;
+    displayName: string;
     enabled: number; // 0 or 1 for backward compat
-    created_at: string;
-    updated_at?: string | null;
+    createdAt: string;
+    updatedAt?: string | null;
     // Computed properties
-    whitelist_count?: number;
-    blocked_subdomain_count?: number;
-    blocked_path_count?: number;
+    whitelistCount?: number;
+    blockedSubdomainCount?: number;
+    blockedPathCount?: number;
 }
 
 export interface Rule {
     id: string;
-    group_id: string;
+    groupId: string;
     type: 'whitelist' | 'blocked_subdomain' | 'blocked_path';
     value: string;
     comment?: string | null;
-    created_at: string;
+    createdAt: string;
 }
 
 // =============================================================================
 // Helper Functions
 // =============================================================================
 
-function dbGroupToLegacy(g: WhitelistGroup): Omit<Group, 'whitelist_count' | 'blocked_subdomain_count' | 'blocked_path_count'> {
+function dbGroupToLegacy(g: WhitelistGroup): Omit<Group, 'whitelistCount' | 'blockedSubdomainCount' | 'blockedPathCount'> {
     return {
         id: g.id,
         name: g.name,
-        display_name: g.displayName,
+        displayName: g.displayName,
         enabled: g.enabled,
-        created_at: g.createdAt?.toISOString() ?? new Date().toISOString(),
-        updated_at: g.updatedAt?.toISOString() ?? null,
+        createdAt: g.createdAt?.toISOString() ?? new Date().toISOString(),
+        updatedAt: g.updatedAt?.toISOString() ?? null,
     };
 }
 
 function dbRuleToLegacy(r: WhitelistRule): Rule {
     return {
         id: r.id,
-        group_id: r.groupId,
+        groupId: r.groupId,
         type: r.type as Rule['type'],
         value: r.value,
         comment: r.comment,
-        created_at: r.createdAt?.toISOString() ?? new Date().toISOString(),
+        createdAt: r.createdAt?.toISOString() ?? new Date().toISOString(),
     };
 }
 
@@ -110,9 +110,9 @@ export async function getAllGroups(): Promise<Group[]> {
         const groupRules = rules.filter(r => r.groupId === g.id);
         return {
             ...dbGroupToLegacy(g),
-            whitelist_count: groupRules.filter(r => r.type === 'whitelist').length,
-            blocked_subdomain_count: groupRules.filter(r => r.type === 'blocked_subdomain').length,
-            blocked_path_count: groupRules.filter(r => r.type === 'blocked_path').length,
+            whitelistCount: groupRules.filter(r => r.type === 'whitelist').length,
+            blockedSubdomainCount: groupRules.filter(r => r.type === 'blocked_subdomain').length,
+            blockedPathCount: groupRules.filter(r => r.type === 'blocked_path').length,
         };
     });
 }
@@ -126,9 +126,9 @@ export async function getGroupById(id: string | number): Promise<Group | undefin
     const rules = await db.select().from(whitelistRules).where(eq(whitelistRules.groupId, stringId));
     return {
         ...dbGroupToLegacy(group),
-        whitelist_count: rules.filter(r => r.type === 'whitelist').length,
-        blocked_subdomain_count: rules.filter(r => r.type === 'blocked_subdomain').length,
-        blocked_path_count: rules.filter(r => r.type === 'blocked_path').length,
+        whitelistCount: rules.filter(r => r.type === 'whitelist').length,
+        blockedSubdomainCount: rules.filter(r => r.type === 'blocked_subdomain').length,
+        blockedPathCount: rules.filter(r => r.type === 'blocked_path').length,
     };
 }
 
@@ -142,7 +142,7 @@ export async function getGroupByName(name: string): Promise<Group | undefined> {
 export async function createGroup(name: string, displayName: string): Promise<string> {
     const existing = await getGroupByName(name);
     if (existing) {
-        throw new Error('SQLITE_CONSTRAINT_UNIQUE');
+        throw new Error('UNIQUE_CONSTRAINT_VIOLATION');
     }
 
     const id = uuidv4();
@@ -382,6 +382,22 @@ export async function toggleSystemStatus(enable: boolean): Promise<ReturnType<ty
 // =============================================================================
 // Legacy Compatibility (for tests)
 // =============================================================================
+
+export async function waitForDb(retries = 30, delay = 1000): Promise<void> {
+    for (let i = 0; i < retries; i++) {
+        try {
+            await db.execute(sql`SELECT 1`);
+            return;
+        } catch (error) {
+            if (i === retries - 1) {
+                console.error('Failed to connect to database after retries:', error);
+                throw error;
+            }
+            console.log(`Waiting for database... (${String(i + 1)}/${String(retries)})`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+}
 
 export async function resetDb(): Promise<void> {
     await db.delete(whitelistRules);

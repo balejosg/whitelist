@@ -41,7 +41,7 @@ function toRoleType(db: DBRole): Role {
         id: db.id,
         userId: db.userId,
         role: db.role as UserRole,
-        groupIds: db.groups ?? [],
+        groupIds: db.groupIds ?? [],
         createdAt: db.createdAt?.toISOString() ?? new Date().toISOString(),
         expiresAt: null
     };
@@ -72,7 +72,7 @@ export async function getAllTeachers(): Promise<TeacherInfo[]> {
 
     return result.map((r) => ({
         userId: r.userId,
-        groupIds: r.groups ?? [],
+        groupIds: r.groupIds ?? [],
         createdAt: r.createdAt?.toISOString() ?? new Date().toISOString(),
         createdBy: r.createdBy ?? 'unknown'
     }));
@@ -112,12 +112,12 @@ export async function canApproveForGroup(userId: string, groupId: string): Promi
     }
 
     // Check if user is teacher with access to this group
-    const result = await db.select({ groups: roles.groups })
+    const result = await db.select({ groupIds: roles.groupIds })
         .from(roles)
         .where(and(
             eq(roles.userId, userId),
             eq(roles.role, 'teacher'),
-            sql`${groupId} = ANY(${roles.groups})`
+            sql`${groupId} = ANY(${roles.groupIds})`
         ))
         .limit(1);
 
@@ -132,12 +132,12 @@ export async function getApprovalGroups(userId: string): Promise<string[] | 'all
     }
 
     // Get teacher groups
-    const result = await db.select({ groups: roles.groups })
+    const result = await db.select({ groupIds: roles.groupIds })
         .from(roles)
         .where(and(eq(roles.userId, userId), eq(roles.role, 'teacher')))
         .limit(1);
 
-    return result[0]?.groups ?? [];
+    return result[0]?.groupIds ?? [];
 }
 
 export async function assignRole(roleData: AssignRoleData & { createdBy?: string }): Promise<DBRole> {
@@ -152,7 +152,7 @@ export async function assignRole(roleData: AssignRoleData & { createdBy?: string
     if (existing[0]) {
         // Update existing role with new groups
         const [updated] = await db.update(roles)
-            .set({ groups: groupIds })
+            .set({ groupIds: groupIds })
             .where(eq(roles.id, existing[0].id))
             .returning();
 
@@ -169,7 +169,7 @@ export async function assignRole(roleData: AssignRoleData & { createdBy?: string
             id,
             userId,
             role,
-            groups: groupIds,
+            groupIds: groupIds,
             createdBy: createdBy ?? null,
         })
         .returning();
@@ -182,7 +182,7 @@ export async function assignRole(roleData: AssignRoleData & { createdBy?: string
 
 export async function updateRoleGroups(roleId: string, groupIds: string[]): Promise<DBRole | null> {
     const [result] = await db.update(roles)
-        .set({ groups: groupIds })
+        .set({ groupIds: groupIds })
         .where(eq(roles.id, roleId))
         .returning();
 
@@ -197,7 +197,7 @@ export async function addGroupsToRole(roleId: string, groupIds: string[]): Promi
 
     if (!existing[0]) return null;
 
-    const existingGroups = existing[0].groups ?? [];
+    const existingGroups = existing[0].groupIds ?? [];
     const newGroups = [...new Set([...existingGroups, ...groupIds])];
 
     return updateRoleGroups(roleId, newGroups);
@@ -211,7 +211,7 @@ export async function removeGroupsFromRole(roleId: string, groupIds: string[]): 
 
     if (!existing[0]) return null;
 
-    const existingGroups = existing[0].groups ?? [];
+    const existingGroups = existing[0].groupIds ?? [];
     const newGroups = existingGroups.filter((g) => !groupIds.includes(g));
 
     return updateRoleGroups(roleId, newGroups);
@@ -235,13 +235,13 @@ export async function removeGroupFromAllRoles(groupId: string): Promise<number> 
     // Get all roles containing this group
     const rolesWithGroup = await db.select()
         .from(roles)
-        .where(sql`${groupId} = ANY(${roles.groups})`);
+        .where(sql`${groupId} = ANY(${roles.groupIds})`);
 
     let updated = 0;
     for (const role of rolesWithGroup) {
-        const newGroups = (role.groups ?? []).filter((g) => g !== groupId);
+        const newGroups = (role.groupIds ?? []).filter((g: string) => g !== groupId);
         await db.update(roles)
-            .set({ groups: newGroups })
+            .set({ groupIds: newGroups })
             .where(eq(roles.id, role.id));
         updated++;
     }
@@ -272,7 +272,7 @@ export async function updateRole(roleId: string, data: Partial<Role>): Promise<R
     const updateValues: Partial<typeof roles.$inferInsert> = {};
 
     if (data.groupIds !== undefined) {
-        updateValues.groups = data.groupIds;
+        updateValues.groupIds = data.groupIds;
     }
 
     if (Object.keys(updateValues).length === 0) {
