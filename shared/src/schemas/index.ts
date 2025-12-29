@@ -140,7 +140,13 @@ export type PushSubscription = z.infer<typeof PushSubscription>;
 // API Response Types
 // =============================================================================
 
-export const APIResponse = <T extends z.ZodType>(dataSchema: T) =>
+export const APIResponse = <T extends z.ZodType>(dataSchema: T): z.ZodObject<{
+    success: z.ZodBoolean;
+    data: z.ZodOptional<T>;
+    error: z.ZodOptional<z.ZodString>;
+    code: z.ZodOptional<z.ZodString>;
+    message: z.ZodOptional<z.ZodString>;
+}> =>
     z.object({
         success: z.boolean(),
         data: dataSchema.optional(),
