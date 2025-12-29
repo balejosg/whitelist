@@ -57,6 +57,7 @@ import * as userStorage from './lib/user-storage.js';
 import * as setupStorage from './lib/setup-storage.js';
 import * as auth from './lib/auth.js';
 import * as classroomStorage from './lib/classroom-storage.js';
+import * as healthReports from './lib/health-reports.js';
 
 // Swagger/OpenAPI (optional - only load if dependencies installed)
 let swaggerUi: typeof import('swagger-ui-express') | undefined;
@@ -355,7 +356,35 @@ app.get('/api/classrooms/machines/:hostname/whitelist-url', asyncRoute(async (re
 
     res.status(200).json({ success: true, ...result });
 }));
+app.post('/api/health-reports', asyncRoute(async (req: Request, res: Response) => {
+    if (!requireSharedSecret(req, res)) return;
 
+    const { hostname, status, dnsmasqRunning, dnsResolving, failCount, actions, version } = (req.body ?? {}) as {
+        hostname?: unknown;
+        status?: unknown;
+        dnsmasqRunning?: unknown;
+        dnsResolving?: unknown;
+        failCount?: unknown;
+        actions?: unknown;
+        version?: unknown;
+    };
+
+    if (typeof hostname !== 'string' || hostname.trim() === '') {
+        res.status(400).json({ success: false, error: 'Hostname required' });
+        return;
+    }
+
+    await healthReports.saveHealthReport(hostname, {
+        status: typeof status === 'string' ? status : 'unknown',
+        dnsmasqRunning: typeof dnsmasqRunning === 'boolean' ? dnsmasqRunning : null,
+        dnsResolving: typeof dnsResolving === 'boolean' ? dnsResolving : null,
+        failCount: typeof failCount === 'number' ? failCount : 0,
+        actions: typeof actions === 'string' ? actions : '',
+        version: typeof version === 'string' ? version : 'unknown',
+    });
+
+    res.status(200).json({ success: true, message: 'Health report received' });
+}));
 // Swagger/OpenAPI documentation
 if (swaggerUi && getSwaggerSpec) {
     app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(getSwaggerSpec(), {
