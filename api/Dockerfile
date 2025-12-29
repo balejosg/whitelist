@@ -43,6 +43,10 @@ RUN npm ci --only=production && npm cache clean --force
 COPY --from=builder /app/api/dist ./api/dist
 COPY --from=builder /app/shared/dist ./shared/dist
 
+# Copy database schema (needed for migration)
+# We place it in a location where migrate.js expects it: ../src/db/schema.sql relative to dist/scripts/
+COPY api/src/db/schema.sql ./api/dist/src/db/schema.sql
+
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 -G nodejs && \
@@ -63,4 +67,4 @@ ENTRYPOINT ["dumb-init", "--"]
 
 # Start the compiled application
 WORKDIR /app/api
-CMD ["node", "dist/server.js"]
+CMD ["node", "dist/src/server.js"]

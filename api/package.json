@@ -2,10 +2,10 @@
   "name": "api",
   "version": "1.0.4",
   "description": "REST API for OpenPath domain requests - Home server deployment",
-  "main": "dist/server.js",
+  "main": "dist/src/server.js",
   "type": "module",
   "scripts": {
-    "start": "node dist/server.js",
+    "start": "node dist/src/server.js",
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
@@ -25,8 +25,8 @@
     "lint:fix": "eslint . --fix",
     "test:unit": "node --import tsx --test tests/schedules.test.ts",
     "test:mutation": "stryker run",
-    "db:migrate": "node --import tsx scripts/migrate.ts",
-    "db:test": "node --import tsx -e \"import db from './src/lib/db.js'; await db.testConnection(); await db.close();\""
+    "db:migrate": "node dist/scripts/migrate.js",
+    "db:test": "node -e \"import db from './dist/src/lib/db.js'; await db.testConnection(); await db.close();\""
   },
   "keywords": [
     "openpath",

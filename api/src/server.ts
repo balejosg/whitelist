@@ -56,6 +56,7 @@ import * as roleStorage from './lib/role-storage.js';
 import * as userStorage from './lib/user-storage.js';
 import * as setupStorage from './lib/setup-storage.js';
 import * as auth from './lib/auth.js';
+import * as classroomStorage from './lib/classroom-storage.js';
 
 // Swagger/OpenAPI (optional - only load if dependencies installed)
 let swaggerUi: typeof import('swagger-ui-express') | undefined;
@@ -170,13 +171,34 @@ async function requireAdmin(req: Request, res: Response): Promise<auth.DecodedWi
         return null;
     }
 
-    const decoded = await auth.verifyAccessToken(token);
+    let decoded = await auth.verifyAccessToken(token);
+
+    // Fallback to legacy admin token
+    if (!decoded && process.env.ADMIN_TOKEN !== undefined && process.env.ADMIN_TOKEN !== '' && token === process.env.ADMIN_TOKEN) {
+        decoded = auth.createLegacyAdminPayload();
+    }
+
     if (!decoded || !auth.isAdminToken(decoded)) {
         res.status(401).json({ success: false, error: 'Invalid or missing admin token' });
         return null;
     }
 
     return decoded;
+}
+
+async function requireSharedSecret(req: Request, res: Response): Promise<boolean> {
+    const secret = process.env.SHARED_SECRET;
+    if (secret === undefined || secret === '') {
+        return true; // If not set, allow (matching trpc logic)
+    }
+
+    const token = parseBearerToken(req);
+    if (!token || token !== secret) {
+        res.status(401).json({ success: false, error: 'Invalid or missing shared secret' });
+        return false;
+    }
+
+    return true;
 }
 
 function asyncRoute(
@@ -263,7 +285,6 @@ app.get('/api/setup/registration-token', asyncRoute(async (req: Request, res: Re
     }
     res.status(200).json({ success: true, registrationToken: token });
 }));
-
 app.post('/api/setup/regenerate-token', asyncRoute(async (req: Request, res: Response) => {
     const decoded = await requireAdmin(req, res);
     if (!decoded) return;
@@ -274,6 +295,61 @@ app.post('/api/setup/regenerate-token', asyncRoute(async (req: Request, res: Res
         return;
     }
     res.status(200).json({ success: true, registrationToken: token });
+}));
+
+// =============================================================================
+// Classroom/Machine compatibility endpoints for Linux clients
+// =============================================================================
+
+app.post('/api/classrooms/machines/register', asyncRoute(async (req: Request, res: Response) => {
+    if (!await requireSharedSecret(req, res)) return;
+
+    const { hostname, classroom_id, classroom_name, version } = (req.body ?? {}) as {
+        hostname?: unknown;
+        classroom_id?: unknown;
+        classroom_name?: unknown;
+        version?: unknown;
+    };
+
+    if (typeof hostname !== 'string' || hostname.trim() === '') {
+        res.status(400).json({ success: false, error: 'Hostname required' });
+        return;
+    }
+
+    let finalClassroomId = typeof classroom_id === 'string' ? classroom_id : undefined;
+
+    if (!finalClassroomId && typeof classroom_name === 'string' && classroom_name !== '') {
+        const classroom = await classroomStorage.getClassroomByName(classroom_name);
+        if (classroom) finalClassroomId = classroom.id;
+    }
+
+    if (!finalClassroomId) {
+        res.status(400).json({ success: false, error: 'Valid classroom_id or classroom_name is required' });
+        return;
+    }
+
+    const machine = await classroomStorage.registerMachine({
+        hostname,
+        classroomId: finalClassroomId,
+        version: typeof version === 'string' ? version : undefined,
+    });
+
+    res.status(200).json({ success: true, machine });
+}));
+
+app.get('/api/classrooms/machines/:hostname/whitelist-url', asyncRoute(async (req: Request, res: Response) => {
+    if (!await requireSharedSecret(req, res)) return;
+
+    const { hostname } = req.params;
+    await classroomStorage.updateMachineLastSeen(hostname);
+    const result = await classroomStorage.getWhitelistUrlForMachine(hostname);
+
+    if (!result) {
+        res.status(404).json({ success: false, error: 'Machine not found or no group configured' });
+        return;
+    }
+
+    res.status(200).json({ success: true, ...result });
 }));
 
 // Swagger/OpenAPI documentation

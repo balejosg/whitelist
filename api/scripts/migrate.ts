@@ -94,7 +94,7 @@ async function migrateRoles(): Promise<void> {
 
     console.log(`📦 Migrating ${data.roles.length} roles...`);
     for (const role of data.roles) {
-        await query(
+        await db.query(
             `INSERT INTO roles (id, user_id, role, groups, created_by, created_at, updated_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7)
              ON CONFLICT (user_id) DO UPDATE SET
@@ -132,7 +132,7 @@ async function migrateRequests(): Promise<void> {
 
     console.log(`📦 Migrating ${data.requests.length} requests...`);
     for (const req of data.requests) {
-        await query(
+        await db.query(
             `INSERT INTO requests (id, domain, reason, requester_email, group_id, priority, status, created_at, updated_at, resolved_at, resolved_by, resolution_note)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
              ON CONFLICT (id) DO NOTHING`,
@@ -175,7 +175,7 @@ async function migrateClassrooms(): Promise<void> {
 
     console.log(`📦 Migrating ${data.classrooms.length} classrooms...`);
     for (const classroom of data.classrooms) {
-        await query(
+        await db.query(
             `INSERT INTO classrooms (id, name, display_name, default_group_id, active_group_id, created_at, updated_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7)
              ON CONFLICT (id) DO NOTHING`,
@@ -213,7 +213,7 @@ async function migrateMachines(): Promise<void> {
 
     console.log(`📦 Migrating ${data.machines.length} machines...`);
     for (const machine of data.machines) {
-        await query(
+        await db.query(
             `INSERT INTO machines (id, hostname, classroom_id, version, last_seen, created_at, updated_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7)
              ON CONFLICT (id) DO NOTHING`,
@@ -254,7 +254,7 @@ async function migrateSchedules(): Promise<void> {
 
     console.log(`📦 Migrating ${data.schedules.length} schedules...`);
     for (const schedule of data.schedules) {
-        await query(
+        await db.query(
             `INSERT INTO schedules (id, classroom_id, teacher_id, group_id, day_of_week, start_time, end_time, recurrence, created_at, updated_at)
              VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10)
              ON CONFLICT (id) DO NOTHING`,
@@ -291,21 +291,21 @@ async function migrateSettings(): Promise<void> {
 
     console.log('📦 Migrating settings...');
     if (data.registration_token) {
-        await query(
+        await db.query(
             `INSERT INTO settings (key, value) VALUES ($1, $2)
              ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
             ['registration_token', data.registration_token]
         );
     }
     if (data.setup_completed_at) {
-        await query(
+        await db.query(
             `INSERT INTO settings (key, value) VALUES ($1, $2)
              ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
             ['setup_completed_at', data.setup_completed_at]
         );
     }
     if (data.setup_by_user_id) {
-        await query(
+        await db.query(
             `INSERT INTO settings (key, value) VALUES ($1, $2)
              ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
             ['setup_by_user_id', data.setup_by_user_id]
