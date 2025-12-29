@@ -186,7 +186,7 @@ async function requireAdmin(req: Request, res: Response): Promise<auth.DecodedWi
     return decoded;
 }
 
-async function requireSharedSecret(req: Request, res: Response): Promise<boolean> {
+function requireSharedSecret(req: Request, res: Response): boolean {
     const secret = process.env.SHARED_SECRET;
     if (secret === undefined || secret === '') {
         return true; // If not set, allow (matching trpc logic)
@@ -246,11 +246,11 @@ app.post('/api/setup/first-admin', asyncRoute(async (req: Request, res: Response
     await roleStorage.assignRole({
         userId: user.id,
         role: 'admin',
-        groups: [],
+        groupIds: [],
         createdBy: user.id,
     });
 
-    const registrationToken = await setupStorage.generateRegistrationToken();
+    const registrationToken = setupStorage.generateRegistrationToken();
     await setupStorage.saveSetupData({
         registrationToken,
         setupCompletedAt: new Date().toISOString(),
@@ -302,7 +302,7 @@ app.post('/api/setup/regenerate-token', asyncRoute(async (req: Request, res: Res
 // =============================================================================
 
 app.post('/api/classrooms/machines/register', asyncRoute(async (req: Request, res: Response) => {
-    if (!await requireSharedSecret(req, res)) return;
+    if (!requireSharedSecret(req, res)) return;
 
     const { hostname, classroom_id, classroom_name, version } = (req.body ?? {}) as {
         hostname?: unknown;
@@ -331,16 +331,20 @@ app.post('/api/classrooms/machines/register', asyncRoute(async (req: Request, re
     const machine = await classroomStorage.registerMachine({
         hostname,
         classroomId: finalClassroomId,
-        version: typeof version === 'string' ? version : undefined,
+        ...(typeof version === 'string' ? { version } : {}),
     });
 
     res.status(200).json({ success: true, machine });
 }));
 
 app.get('/api/classrooms/machines/:hostname/whitelist-url', asyncRoute(async (req: Request, res: Response) => {
-    if (!await requireSharedSecret(req, res)) return;
+    if (!requireSharedSecret(req, res)) return;
 
-    const { hostname } = req.params;
+    const hostname = req.params.hostname ?? '';
+    if (hostname === '') {
+        res.status(400).json({ success: false, error: 'Hostname required' });
+        return;
+    }
     await classroomStorage.updateMachineLastSeen(hostname);
     const result = await classroomStorage.getWhitelistUrlForMachine(hostname);
 
@@ -460,35 +464,59 @@ const gracefulShutdown = (signal: string): void => {
 const isMainModule = import.meta.url === `file://${process.argv[1] ?? ''}`;
 
 if (isMainModule) {
+    const serverStartTime = new Date();
     server = app.listen(PORT, HOST, () => {
-        logger.info('Server started', {
-            host: HOST,
-            port: PORT,
-            env: process.env.NODE_ENV ?? 'development',
-            endpoints: {
-                health: '/health',
-                api: '/api',
-                docs: '/api-docs'
+        void (async () => {
+            logger.info('Server started', {
+                host: HOST,
+                port: String(PORT),
+                env: process.env.NODE_ENV,
+                apiId: process.env.API_ID,
+                startup_time: {
+                    start: serverStartTime.toISOString(),
+                    elapsed_ms: String(Date.now() - serverStartTime.getTime())
+                }
+            });
+
+            if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD && !(await roleStorage.hasAnyAdmins())) {
+                logger.info('Creating default admin user from environment variables...');
+                try {
+                    const admin = await userStorage.createUser({
+                        email: process.env.ADMIN_EMAIL,
+                        name: 'System Admin',
+                        password: process.env.ADMIN_PASSWORD,
+                    });
+
+                    await roleStorage.assignRole({
+                        userId: admin.id,
+                        role: 'admin',
+                        groupIds: [],
+                    });
+                    logger.info(`Default admin user created: ${admin.email}`);
+                } catch (error) {
+                    logger.error('Failed to create default admin user', { error: error instanceof Error ? error.message : String(error) });
+                }
             }
-        });
 
-        console.log('');
-        console.log('╔═══════════════════════════════════════════════════════╗');
-        console.log('║       🛡️  OpenPath Request API Server                 ║');
-        console.log('╠═══════════════════════════════════════════════════════╣');
-        console.log(`║  Running on: http://${HOST}:${String(PORT)}                      ║`);
-        console.log('║  Health:     /health                                  ║');
-        console.log('║  API Docs:   /api-docs                                ║');
-        console.log('╚═══════════════════════════════════════════════════════╝');
-        console.log('');
-
-        if (process.env.ADMIN_TOKEN === undefined || process.env.ADMIN_TOKEN === '') {
-            logger.warn('ADMIN_TOKEN not set - admin endpoints will fail');
-        }
-        if (process.env.GITHUB_TOKEN === undefined || process.env.GITHUB_TOKEN === '') {
-            logger.warn('GITHUB_TOKEN not set - approval will fail to push to GitHub');
-        }
+            console.log('');
+            console.log('╔═══════════════════════════════════════════════════════╗');
+            console.log('║       🛡️  OpenPath Request API Server                 ║');
+            console.log('╚═══════════════════════════════════════════════════════╝');
+            console.log(`  🚀 Server is running on http://${HOST}:${String(PORT)}`);
+            if (swaggerUi) {
+                console.log(`  📜 API Documentation:  http://${HOST}:${String(PORT)}/docs`);
+            }
+            console.log(`  👉 Health Check:        http://${HOST}:${String(PORT)}/health`);
+            console.log('─────────────────────────────────────────────────────────');
+            console.log('');
+        })();
     });
+    if (process.env.ADMIN_TOKEN === undefined || process.env.ADMIN_TOKEN === '') {
+        logger.warn('ADMIN_TOKEN not set - admin endpoints will fail');
+    }
+    if (process.env.GITHUB_TOKEN === undefined || process.env.GITHUB_TOKEN === '') {
+        logger.warn('GITHUB_TOKEN not set - approval will fail to push to GitHub');
+    }
 
     process.on('SIGTERM', () => { gracefulShutdown('SIGTERM'); });
     process.on('SIGINT', () => { gracefulShutdown('SIGINT'); });

@@ -96,7 +96,7 @@ export async function loadPendingRequests(): Promise<void> {
         const teacherGroups = Auth.getTeacherGroups();
 
         listEl.innerHTML = requests.map(req => {
-            const canApprove = isAdmin || (isTeacher && teacherGroups.includes(req.group_id));
+            const canApprove = isAdmin || (isTeacher && teacherGroups.includes(req.groupId));
 
             // If teacher, only show groups they are assigned to in the select
             const availableGroupsForSelect = isAdmin
@@ -107,18 +107,18 @@ export async function loadPendingRequests(): Promise<void> {
                 <div class="request-item ${!canApprove ? 'read-only' : ''}" data-id="${req.id}">
                     <div class="request-info">
                         <span class="request-domain">${escapeHtml(req.domain)}</span>
-                        <span class="request-time">${relativeTime(req.created_at)}</span>
+                        <span class="request-time">${relativeTime(req.createdAt)}</span>
                         <span class="request-meta">
-                            ${escapeHtml(req.requester_email || 'Anonymous')} •
+                            ${escapeHtml(req.requesterEmail || 'Anonymous')} •
                             <span class="request-reason">${escapeHtml(req.reason)}</span>
                         </span>
-                        ${req.group_id ? `<span class="request-group-tag">Grupo: ${escapeHtml(req.group_id)}</span>` : ''}
+                        ${req.groupId ? `<span class="request-group-tag">Grupo: ${escapeHtml(req.groupId)}</span>` : ''}
                     </div>
                     <div class="request-actions">
                         ${canApprove ? `
                             <select class="request-group-select">
                                 <option value="" disabled selected>Seleccionar grupo...</option>
-                                ${availableGroupsForSelect.map(g => `<option value="${g}" ${req.group_id === g ? 'selected' : ''}>${g}</option>`).join('')}
+                                ${availableGroupsForSelect.map(g => `<option value="${g}" ${req.groupId === g ? 'selected' : ''}>${g}</option>`).join('')}
                             </select>
                             <button class="btn btn-sm btn-success request-approve-btn" onclick="window.approveRequest('${req.id}', this)">✓ Aprobar</button>
                             <button class="btn btn-sm btn-danger request-reject-btn" onclick="window.rejectRequest('${req.id}')">✗ Rechazar</button>
@@ -157,7 +157,7 @@ window.approveRequest = async (id: string, btn: HTMLElement) => {
     }
 
     try {
-        await trpc.requests.approve.mutate({ id, group_id: groupId });
+        await trpc.requests.approve.mutate({ id, groupId: groupId });
         showToast('Solicitud aprobada');
         item.remove();
         void loadPendingRequests(); // Refresh count

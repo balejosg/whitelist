@@ -7,7 +7,22 @@ import { stripUndefined } from '../../lib/utils.js';
 
 export const classroomsRouter = router({
     list: adminProcedure.query(async () => {
-        return await classroomStorage.getAllClassrooms();
+        const classrooms = await classroomStorage.getAllClassrooms();
+        return Promise.all(classrooms.map(async (c) => {
+            const rawMachines = await classroomStorage.getMachinesByClassroom(c.id);
+            const machines = rawMachines.map(m => ({
+                hostname: m.hostname,
+                lastSeen: m.lastSeen?.toISOString() ?? null,
+                status: 'unknown' as const
+            }));
+            const currentGroupId = await classroomStorage.getCurrentGroupId(c.id);
+            return {
+                ...c,
+                currentGroupId,
+                machines,
+                machineCount: machines.length,
+            };
+        }));
     }),
 
     get: adminProcedure
@@ -16,29 +31,40 @@ export const classroomsRouter = router({
             const classroom = await classroomStorage.getClassroomById(input.id);
             if (!classroom) throw new TRPCError({ code: 'NOT_FOUND' });
 
-            const machines = await classroomStorage.getMachinesByClassroom(input.id);
+            const rawMachines = await classroomStorage.getMachinesByClassroom(input.id);
+            const machines = rawMachines.map(m => ({
+                hostname: m.hostname,
+                lastSeen: m.lastSeen?.toISOString() ?? null,
+                status: 'unknown' as const
+            }));
             const currentGroupId = await classroomStorage.getCurrentGroupId(input.id);
 
             return {
-                ...classroom,
-                current_group_id: currentGroupId,
+                id: classroom.id,
+                name: classroom.name,
+                displayName: classroom.displayName,
+                defaultGroupId: classroom.defaultGroupId,
+                activeGroupId: classroom.activeGroupId,
+                createdAt: classroom.createdAt?.toISOString() ?? new Date().toISOString(),
+                updatedAt: classroom.updatedAt?.toISOString() ?? new Date().toISOString(),
+                currentGroupId,
                 machines,
-                machine_count: machines.length,
+                machineCount: machines.length,
             };
         }),
 
     create: adminProcedure
         .input(z.object({
             name: z.string().min(1),
-            display_name: z.string().optional(),
-            default_group_id: z.string().optional(),
+            displayName: z.string().optional(),
+            defaultGroupId: z.string().optional(),
         }))
         .mutation(async ({ input }) => {
             try {
                 const createData = stripUndefined({
                     name: input.name,
-                    displayName: input.display_name,
-                    defaultGroupId: input.default_group_id,
+                    displayName: input.displayName,
+                    defaultGroupId: input.defaultGroupId,
                 });
                 return await classroomStorage.createClassroom(createData as CreateClassroomData & { defaultGroupId?: string });
             } catch (error) {
@@ -52,13 +78,13 @@ export const classroomsRouter = router({
     update: adminProcedure
         .input(z.object({
             id: z.string(),
-            display_name: z.string().optional(),
-            default_group_id: z.string().optional(),
+            displayName: z.string().optional(),
+            defaultGroupId: z.string().optional(),
         }))
         .mutation(async ({ input }) => {
             const updateData = stripUndefined({
-                displayName: input.display_name,
-                defaultGroupId: input.default_group_id,
+                displayName: input.displayName,
+                defaultGroupId: input.defaultGroupId,
             });
             const updated = await classroomStorage.updateClassroom(input.id, updateData as UpdateClassroomData & { defaultGroupId?: string });
             if (!updated) throw new TRPCError({ code: 'NOT_FOUND' });
@@ -68,16 +94,24 @@ export const classroomsRouter = router({
     setActiveGroup: adminProcedure
         .input(z.object({
             id: z.string(),
-            group_id: z.string().nullable(),
+            groupId: z.string().nullable(),
         }))
         .mutation(async ({ input }) => {
-            const updated = await classroomStorage.setActiveGroup(input.id, input.group_id);
+            const updated = await classroomStorage.setActiveGroup(input.id, input.groupId);
             if (!updated) throw new TRPCError({ code: 'NOT_FOUND' });
 
             const currentGroupId = await classroomStorage.getCurrentGroupId(input.id);
             return {
-                classroom: updated,
-                current_group_id: currentGroupId,
+                classroom: {
+                    id: updated.id,
+                    name: updated.name,
+                    displayName: updated.displayName,
+                    defaultGroupId: updated.defaultGroupId,
+                    activeGroupId: updated.activeGroupId,
+                    createdAt: updated.createdAt?.toISOString() ?? new Date().toISOString(),
+                    updatedAt: updated.updatedAt?.toISOString() ?? new Date().toISOString(),
+                },
+                currentGroupId,
             };
         }),
 
@@ -98,20 +132,20 @@ export const classroomsRouter = router({
     registerMachine: sharedSecretProcedure
         .input(z.object({
             hostname: z.string().min(1),
-            classroom_id: z.string().optional(),
-            classroom_name: z.string().optional(),
+            classroomId: z.string().optional(),
+            classroomName: z.string().optional(),
             version: z.string().optional(),
         }))
         .mutation(async ({ input }) => {
-            let classroomId = input.classroom_id;
+            let classroomId = input.classroomId;
 
-            if ((classroomId === undefined || classroomId === '') && (input.classroom_name !== undefined && input.classroom_name !== '')) {
-                const classroom = await classroomStorage.getClassroomByName(input.classroom_name);
+            if ((classroomId === undefined || classroomId === '') && (input.classroomName !== undefined && input.classroomName !== '')) {
+                const classroom = await classroomStorage.getClassroomByName(input.classroomName);
                 if (classroom) classroomId = classroom.id;
             }
 
             if (classroomId === undefined || classroomId === '') {
-                throw new TRPCError({ code: 'BAD_REQUEST', message: 'Valid classroom_id or classroom_name is required' });
+                throw new TRPCError({ code: 'BAD_REQUEST', message: 'Valid classroomId or classroomName is required' });
             }
 
             const classroom = await classroomStorage.getClassroomById(classroomId);
@@ -128,7 +162,7 @@ export const classroomsRouter = router({
                 classroom: {
                     id: classroom.id,
                     name: classroom.name,
-                    display_name: classroom.display_name,
+                    displayName: classroom.displayName,
                 }
             };
         }),

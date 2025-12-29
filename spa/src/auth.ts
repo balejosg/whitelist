@@ -1,4 +1,4 @@
-import type { AuthAPI, AuthTokens, StoredUser, User, UserRole, APIResponse } from './types/index.js';
+import type { AuthAPI, AuthTokens, StoredUser, User, UserRole, APIResponse, RoleInfo } from './types/index.js';
 import { trpc } from './trpc.js';
 
 /**
@@ -85,10 +85,7 @@ export const Auth: AuthAPI = {
             }
             return false;
         }
-        return user.roles.some((r: UserRole | { role: UserRole }) => {
-            if (typeof r === 'string') return r === role;
-            return (r as { role: UserRole }).role === role;
-        });
+        return user.roles.some((r: RoleInfo) => r.role === role);
     },
 
     isAdmin(): boolean {
@@ -127,11 +124,9 @@ export const Auth: AuthAPI = {
         // Use `any` cast for safety or update types?
         // I'll update types later if needed. For now I handle both.
 
-        user.roles.forEach((r: UserRole | { role: UserRole, groupIds?: string[] }) => {
-            const roleName = typeof r === 'string' ? r : r.role;
-            if (roleName === 'teacher') {
-                const groupIds = typeof r === 'object' && r.groupIds ? r.groupIds : [];
-                groupIds.forEach((g: string) => groups.add(g));
+        user.roles.forEach((r: RoleInfo) => {
+            if (r.role === 'teacher') {
+                r.groupIds.forEach((g: string) => groups.add(g));
             }
         });
 

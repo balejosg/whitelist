@@ -2,15 +2,16 @@
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
  *
- * Setup Storage - PostgreSQL-backed setup configuration
+ * Setup Storage - PostgreSQL-backed setup configuration using Drizzle ORM
  */
 
 import crypto from 'node:crypto';
-import { query } from './db.js';
+import { inArray } from 'drizzle-orm';
+import { db, settings } from '../db/index.js';
 
 // =============================================================================
 // Types
-// ==================================================================== =========
+// =============================================================================
 
 export interface SetupData {
     registrationToken: string;
@@ -23,17 +24,16 @@ export interface SetupData {
 // =============================================================================
 
 export async function getSetupData(): Promise<SetupData | null> {
-    const result = await query<{ key: string; value: string }>(
-        `SELECT key, value FROM settings 
-         WHERE key IN ('registration_token', 'setup_completed_at', 'setup_by_user_id')`
-    );
+    const result = await db.select()
+        .from(settings)
+        .where(inArray(settings.key, ['registration_token', 'setup_completed_at', 'setup_by_user_id']));
 
-    if (result.rows.length === 0) {
+    if (result.length === 0) {
         return null;
     }
 
     const data: Record<string, string> = {};
-    result.rows.forEach((row) => {
+    result.forEach((row) => {
         data[row.key] = row.value;
     });
 
@@ -49,23 +49,29 @@ export async function getSetupData(): Promise<SetupData | null> {
 }
 
 export async function saveSetupData(data: SetupData): Promise<void> {
-    await query(
-        `INSERT INTO settings (key, value) VALUES ('registration_token', $1)
-         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
-        [data.registrationToken]
-    );
+    // Save registration token
+    await db.insert(settings)
+        .values({ key: 'registration_token', value: data.registrationToken })
+        .onConflictDoUpdate({
+            target: settings.key,
+            set: { value: data.registrationToken }
+        });
 
-    await query(
-        `INSERT INTO settings (key, value) VALUES ('setup_completed_at', $1)
-         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
-        [data.setupCompletedAt]
-    );
+    // Save setup completed timestamp
+    await db.insert(settings)
+        .values({ key: 'setup_completed_at', value: data.setupCompletedAt })
+        .onConflictDoUpdate({
+            target: settings.key,
+            set: { value: data.setupCompletedAt }
+        });
 
-    await query(
-        `INSERT INTO settings (key, value) VALUES ('setup_by_user_id', $1)
-         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
-        [data.setupByUserId]
-    );
+    // Save setup user ID
+    await db.insert(settings)
+        .values({ key: 'setup_by_user_id', value: data.setupByUserId })
+        .onConflictDoUpdate({
+            target: settings.key,
+            set: { value: data.setupByUserId }
+        });
 }
 
 export async function isSetupComplete(): Promise<boolean> {

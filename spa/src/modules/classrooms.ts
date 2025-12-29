@@ -53,15 +53,15 @@ export function renderClassroomsList(): void {
     listEl.innerHTML = allClassrooms.map(c => `
         <div class="classroom-card" data-id="${c.id}">
             <div class="classroom-info">
-                <h3>🏫 ${escapeHtml(c.display_name || c.name)}</h3>
-                <p>{(c.machines?.length ?? 0).toString()} computers</p>
+                <h3>🏫 ${escapeHtml(c.displayName || c.name)}</h3>
+                <p>${(c.machines?.length ?? 0).toString()} computers</p>
             </div>
             <div class="classroom-group">
                 <label>Active group:</label>
                 <select class="active-group-select" onchange="window.changeClassroomGroup('${c.id}', this.value)">
-                    <option value="">-- Default: ${escapeHtml(c.default_group_id ?? 'none')} --</option>
+                    <option value="">-- Default: ${escapeHtml(c.defaultGroupId ?? 'none')} --</option>
                     ${state.allGroups.map(g => `
-                        <option value="${g.name}" ${c.active_group_id === g.name ? 'selected' : ''}>${g.name}</option>
+                        <option value="${g.name}" ${c.activeGroupId === g.name ? 'selected' : ''}>${g.name}</option>
                     `).join('')}
                 </select>
             </div>
@@ -77,7 +77,7 @@ export function renderClassroomsList(): void {
  */
 export async function changeClassroomGroup(classroomId: string, groupId: string): Promise<void> {
     try {
-        await trpc.classrooms.setActiveGroup.mutate({ id: classroomId, group_id: groupId || null });
+        await trpc.classrooms.setActiveGroup.mutate({ id: classroomId, groupId: groupId || null });
         showToast(groupId ? `Active group: ${groupId}` : 'Using default group');
         await loadClassrooms();
     } catch (error: unknown) {
@@ -121,8 +121,8 @@ export function initClassroomListeners(): void {
             try {
                 await trpc.classrooms.create.mutate({
                     name,
-                    display_name: name,
-                    default_group_id: defaultGroupId || undefined
+                    displayName: name,
+                    defaultGroupId: defaultGroupId || undefined
                 });
                 closeModal('modal-new-classroom');
                 (document.getElementById('new-classroom-form') as HTMLFormElement | null)?.reset();

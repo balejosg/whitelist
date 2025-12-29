@@ -34,11 +34,11 @@ export const setupRouter = router({
             await roleStorage.assignRole({
                 userId: user.id,
                 role: 'admin',
-                groups: [],
+                groupIds: [],
                 createdBy: user.id,
             });
 
-            const registrationToken = await setupStorage.generateRegistrationToken();
+            const registrationToken = setupStorage.generateRegistrationToken();
             await setupStorage.saveSetupData({
                 registrationToken,
                 setupCompletedAt: new Date().toISOString(),

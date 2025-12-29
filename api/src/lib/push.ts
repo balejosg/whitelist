@@ -191,7 +191,7 @@ export async function notifyTeachersOfNewRequest(
         return { sent: 0, failed: 0, disabled: true };
     }
 
-    const subscriptions = getSubscriptionsForGroup(request.group_id);
+    const subscriptions = getSubscriptionsForGroup(request.groupId);
 
     if (subscriptions.length === 0) {
         return { sent: 0, failed: 0, noSubscriptions: true };
@@ -205,7 +205,7 @@ export async function notifyTeachersOfNewRequest(
         data: {
             requestId: request.id,
             domain: request.domain,
-            groupId: request.group_id,
+            groupId: request.groupId,
             url: `/?highlight=${request.id}`
         }
     };

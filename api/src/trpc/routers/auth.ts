@@ -4,6 +4,7 @@ import { TRPCError } from '@trpc/server';
 import * as userStorage from '../../lib/user-storage.js';
 import * as roleStorage from '../../lib/role-storage.js';
 import * as auth from '../../lib/auth.js';
+import type { UserRole } from '../../types/index.js';
 
 const loginInput = z.object({
     email: z.string().email(),
@@ -38,17 +39,25 @@ export const authRouter = router({
             // Map roles to camelCase for frontend
             const mappedRoles = roles.map(r => ({
                 id: r.id,
-                userId: r.user_id,
-                role: r.role,
-                groupIds: r.groups,
-                createdAt: r.created_at,
-                updatedAt: r.updated_at,
-                createdBy: r.created_by,
+                userId: r.userId,
+                role: r.role as UserRole,
+                groupIds: r.groups ?? [],
+                createdAt: r.createdAt?.toISOString() ?? new Date().toISOString(),
+                updatedAt: r.updatedAt?.toISOString() ?? new Date().toISOString(),
+                createdBy: r.createdBy,
                 revokedAt: null
             }));
 
-            const tokens = auth.generateTokens(user, roles.map(r => ({ role: r.role, groupIds: r.groups })));
-            return { ...tokens, user: { id: user.id, email: user.email, name: user.name, roles: mappedRoles } };
+            const tokens = auth.generateTokens(user, roles.map(r => ({ role: r.role as 'admin' | 'teacher' | 'student', groupIds: r.groups ?? [] })));
+            return {
+                ...tokens,
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    name: user.name,
+                    roles: mappedRoles
+                }
+            };
         }),
 
     refresh: publicProcedure
@@ -62,7 +71,7 @@ export const authRouter = router({
 
             await auth.blacklistToken(input.refreshToken);
             const roles = await roleStorage.getUserRoles(user.id);
-            return auth.generateTokens(user, roles.map(r => ({ role: r.role, groupIds: r.groups })));
+            return auth.generateTokens(user, roles.map(r => ({ role: r.role as 'admin' | 'teacher' | 'student', groupIds: r.groups ?? [] })));
         }),
 
     logout: protectedProcedure
@@ -78,6 +87,23 @@ export const authRouter = router({
         const user = await userStorage.getUserById(ctx.user.sub);
         if (!user) throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
         const roles = await roleStorage.getUserRoles(user.id);
-        return { user: { ...user, roles } };
+        const mappedRoles = roles.map(r => ({
+            id: r.id,
+            userId: r.userId,
+            role: r.role as UserRole,
+            groupIds: r.groups ?? [],
+            createdAt: r.createdAt?.toISOString() ?? new Date().toISOString(),
+            updatedAt: r.updatedAt?.toISOString() ?? new Date().toISOString(),
+            createdBy: r.createdBy,
+            revokedAt: null
+        }));
+        return {
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                roles: mappedRoles
+            }
+        };
     }),
 });

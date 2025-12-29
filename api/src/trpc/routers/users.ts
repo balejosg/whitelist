@@ -39,7 +39,7 @@ export const usersRouter = router({
                 await roleStorage.assignRole({
                     userId: user.id,
                     role: input.role,
-                    groups: input.groupIds ?? [],
+                    groupIds: input.groupIds ?? [],
                     createdBy: ctx.user.sub,
                 });
             }
@@ -83,7 +83,7 @@ export const usersRouter = router({
             return await roleStorage.assignRole({
                 userId: input.userId,
                 role: input.role,
-                groups: input.groupIds,
+                groupIds: input.groupIds,
                 createdBy: ctx.user.sub,
             });
         }),

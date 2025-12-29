@@ -15,8 +15,8 @@ export const requestsRouter = router({
         .input(z.object({
             domain: z.string().regex(/^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/),
             reason: z.string().optional(),
-            requester_email: z.string().email().optional(),
-            group_id: z.string().optional(),
+            requesterEmail: z.string().email().optional(),
+            groupId: z.string().optional(),
             priority: RequestPriority.optional(),
         }))
         .mutation(async ({ input }) => {
@@ -27,8 +27,8 @@ export const requestsRouter = router({
             const createData = stripUndefined({
                 domain: input.domain.toLowerCase(),
                 reason: input.reason ?? 'No reason provided',
-                requesterEmail: input.requester_email,
-                groupId: input.group_id,
+                requesterEmail: input.requesterEmail,
+                groupId: input.groupId,
                 priority: input.priority,
             }) as CreateRequestData;
 
@@ -53,7 +53,7 @@ export const requestsRouter = router({
             let requests = await storage.getAllRequests(input.status ?? null);
             const groups = auth.getApprovalGroups(ctx.user);
             if (groups !== 'all') {
-                requests = requests.filter(r => groups.includes(r.group_id));
+                requests = requests.filter(r => groups.includes(r.groupId));
             }
             return requests;
         }),
@@ -66,7 +66,7 @@ export const requestsRouter = router({
             if (!request) throw new TRPCError({ code: 'NOT_FOUND' });
 
             const groups = auth.getApprovalGroups(ctx.user);
-            if (groups !== 'all' && !groups.includes(request.group_id)) {
+            if (groups !== 'all' && !groups.includes(request.groupId)) {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'No access to this request' });
             }
 
@@ -75,7 +75,7 @@ export const requestsRouter = router({
 
     // Teacher+: Approve
     approve: teacherProcedure
-        .input(z.object({ id: z.string(), group_id: z.string().optional() }))
+        .input(z.object({ id: z.string(), groupId: z.string().optional() }))
         .mutation(async ({ input, ctx }) => {
             const request = await storage.getRequestById(input.id);
             if (!request) throw new TRPCError({ code: 'NOT_FOUND' });
@@ -83,7 +83,7 @@ export const requestsRouter = router({
                 throw new TRPCError({ code: 'BAD_REQUEST', message: `Already ${request.status}` });
             }
 
-            const targetGroup = input.group_id ?? request.group_id;
+            const targetGroup = input.groupId ?? request.groupId;
             if (!auth.canApproveGroup(ctx.user, targetGroup)) {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot approve for this group' });
             }

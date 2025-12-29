@@ -2,28 +2,18 @@
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
  *
- * Schedule Storage - PostgreSQL-based schedule management
+ * Schedule Storage - PostgreSQL-based schedule management using Drizzle ORM
  */
 
 import crypto from 'node:crypto';
-import { query } from './db.js';
+import { eq, and, sql } from 'drizzle-orm';
+import { db, schedules } from '../db/index.js';
 
 // =============================================================================
 // Types
 // =============================================================================
 
-interface DBSchedule {
-    id: string;
-    classroom_id: string;
-    teacher_id: string;
-    group_id: string;
-    day_of_week: number;
-    start_time: string;
-    end_time: string;
-    recurrence: string;
-    created_at: string;
-    updated_at: string;
-}
+type DBSchedule = typeof schedules.$inferSelect;
 
 interface ScheduleConflictError extends Error {
     conflict?: DBSchedule;
@@ -75,27 +65,30 @@ export function timesOverlap(
 // =============================================================================
 
 export async function getSchedulesByClassroom(classroomId: string): Promise<DBSchedule[]> {
-    const result = await query<DBSchedule>(
-        'SELECT * FROM schedules WHERE classroom_id = $1 ORDER BY day_of_week, start_time',
-        [classroomId]
-    );
-    return result.rows;
+    const result = await db.select()
+        .from(schedules)
+        .where(eq(schedules.classroomId, classroomId))
+        .orderBy(schedules.dayOfWeek, schedules.startTime);
+
+    return result;
 }
 
 export async function getSchedulesByTeacher(teacherId: string): Promise<DBSchedule[]> {
-    const result = await query<DBSchedule>(
-        'SELECT * FROM schedules WHERE teacher_id = $1 ORDER BY day_of_week, start_time',
-        [teacherId]
-    );
-    return result.rows;
+    const result = await db.select()
+        .from(schedules)
+        .where(eq(schedules.teacherId, teacherId))
+        .orderBy(schedules.dayOfWeek, schedules.startTime);
+
+    return result;
 }
 
 export async function getScheduleById(id: string): Promise<DBSchedule | null> {
-    const result = await query<DBSchedule>(
-        'SELECT * FROM schedules WHERE id = $1::uuid',
-        [id]
-    );
-    return result.rows[0] ?? null;
+    const result = await db.select()
+        .from(schedules)
+        .where(eq(schedules.id, id))
+        .limit(1);
+
+    return result[0] ?? null;
 }
 
 export async function findConflict(
@@ -105,23 +98,26 @@ export async function findConflict(
     endTime: string,
     excludeId: string | null = null
 ): Promise<DBSchedule | null> {
-    let sql = `
-        SELECT * FROM schedules
-        WHERE classroom_id = $1
-        AND day_of_week = $2
-        AND ($3::time, $4::time) OVERLAPS (start_time, end_time)
-    `;
-    const params: unknown[] = [classroomId, dayOfWeek, startTime, endTime];
+    // Use raw SQL for OVERLAPS operator
+    const conditions = excludeId !== null
+        ? and(
+            eq(schedules.classroomId, classroomId),
+            eq(schedules.dayOfWeek, dayOfWeek),
+            sql`(${startTime}::time, ${endTime}::time) OVERLAPS (${schedules.startTime}, ${schedules.endTime})`,
+            sql`${schedules.id} != ${excludeId}::uuid`
+        )
+        : and(
+            eq(schedules.classroomId, classroomId),
+            eq(schedules.dayOfWeek, dayOfWeek),
+            sql`(${startTime}::time, ${endTime}::time) OVERLAPS (${schedules.startTime}, ${schedules.endTime})`
+        );
 
-    if (excludeId !== null) {
-        sql += ' AND id != $5::uuid';
-        params.push(excludeId);
-    }
+    const result = await db.select()
+        .from(schedules)
+        .where(conditions)
+        .limit(1);
 
-    sql += ' LIMIT 1';
-
-    const result = await query<DBSchedule>(sql, params);
-    return result.rows[0] ?? null;
+    return result[0] ?? null;
 }
 
 export async function createSchedule(scheduleData: CreateScheduleInput): Promise<DBSchedule> {
@@ -149,74 +145,69 @@ export async function createSchedule(scheduleData: CreateScheduleInput): Promise
 
     const id = crypto.randomUUID();
 
-    const result = await query<DBSchedule>(
-        `INSERT INTO schedules (
-            id, classroom_id, teacher_id, group_id, 
-            day_of_week, start_time, end_time, recurrence
-        ) VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, 'weekly')
-        RETURNING *`,
-        [id, classroom_id, teacher_id, group_id, day_of_week, start_time, end_time]
-    );
+    const [result] = await db.insert(schedules)
+        .values({
+            id,
+            classroomId: classroom_id,
+            teacherId: teacher_id,
+            groupId: group_id,
+            dayOfWeek: day_of_week,
+            startTime: start_time,
+            endTime: end_time,
+            recurrence: 'weekly',
+        })
+        .returning();
 
-    return result.rows[0]!;
+    if (!result) throw new Error('Failed to create schedule');
+    return result;
 }
 
 export async function updateSchedule(id: string, updates: UpdateScheduleInput): Promise<DBSchedule | null> {
     const schedule = await getScheduleById(id);
     if (!schedule) return null;
 
-    const newDayOfWeek = updates.day_of_week ?? schedule.day_of_week;
-    const newStartTime = updates.start_time ?? schedule.start_time;
-    const newEndTime = updates.end_time ?? schedule.end_time;
+    const newDayOfWeek = updates.day_of_week ?? schedule.dayOfWeek;
+    const newStartTime = updates.start_time ?? schedule.startTime;
+    const newEndTime = updates.end_time ?? schedule.endTime;
 
-    const conflict = await findConflict(schedule.classroom_id, newDayOfWeek, newStartTime, newEndTime, id);
+    const conflict = await findConflict(schedule.classroomId, newDayOfWeek, newStartTime, newEndTime, id);
     if (conflict !== null) {
         const error: ScheduleConflictError = new Error('Schedule conflict');
         error.conflict = conflict;
         throw error;
     }
 
-    const setClauses: string[] = [];
-    const values: unknown[] = [];
-    let paramIndex = 1;
+    const updateValues: Partial<typeof schedules.$inferInsert> = {};
 
     if (updates.day_of_week !== undefined) {
-        setClauses.push(`day_of_week = $${paramIndex++}`);
-        values.push(updates.day_of_week);
+        updateValues.dayOfWeek = updates.day_of_week;
     }
     if (updates.start_time !== undefined) {
-        setClauses.push(`start_time = $${paramIndex++}`);
-        values.push(updates.start_time);
+        updateValues.startTime = updates.start_time;
     }
     if (updates.end_time !== undefined) {
-        setClauses.push(`end_time = $${paramIndex++}`);
-        values.push(updates.end_time);
+        updateValues.endTime = updates.end_time;
     }
     if (updates.group_id !== undefined) {
-        setClauses.push(`group_id = $${paramIndex++}`);
-        values.push(updates.group_id);
+        updateValues.groupId = updates.group_id;
     }
 
-    if (setClauses.length === 0) {
+    if (Object.keys(updateValues).length === 0) {
         return schedule;
     }
 
-    values.push(id);
-    const result = await query<DBSchedule>(
-        `UPDATE schedules SET ${setClauses.join(', ')}
-         WHERE id = $${paramIndex}::uuid
-         RETURNING *`,
-        values
-    );
+    const [result] = await db.update(schedules)
+        .set(updateValues)
+        .where(eq(schedules.id, id))
+        .returning();
 
-    return result.rows[0] ?? null;
+    return result ?? null;
 }
 
 export async function deleteSchedule(id: string): Promise<boolean> {
-    const result = await query(
-        'DELETE FROM schedules WHERE id = $1::uuid',
-        [id]
-    );
+    const result = await db.delete(schedules)
+        .where(eq(schedules.id, id));
+
     return (result.rowCount ?? 0) > 0;
 }
 
@@ -229,24 +220,23 @@ export async function getCurrentSchedule(classroomId: string, date: Date = new D
 
     const currentTime = date.toTimeString().slice(0, 5);
 
-    const result = await query<DBSchedule>(
-        `SELECT * FROM schedules
-         WHERE classroom_id = $1
-         AND day_of_week = $2
-         AND start_time <= $3::time
-         AND end_time > $3::time
-         LIMIT 1`,
-        [classroomId, dayOfWeek, currentTime]
-    );
+    const result = await db.select()
+        .from(schedules)
+        .where(and(
+            eq(schedules.classroomId, classroomId),
+            eq(schedules.dayOfWeek, dayOfWeek),
+            sql`${schedules.startTime} <= ${currentTime}::time`,
+            sql`${schedules.endTime} > ${currentTime}::time`
+        ))
+        .limit(1);
 
-    return result.rows[0] ?? null;
+    return result[0] ?? null;
 }
 
 export async function deleteSchedulesByClassroom(classroomId: string): Promise<number> {
-    const result = await query(
-        'DELETE FROM schedules WHERE classroom_id = $1',
-        [classroomId]
-    );
+    const result = await db.delete(schedules)
+        .where(eq(schedules.classroomId, classroomId));
+
     return result.rowCount ?? 0;
 }
 

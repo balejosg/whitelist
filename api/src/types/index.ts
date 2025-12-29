@@ -21,15 +21,15 @@ export interface DomainRequest {
     id: string;
     domain: string;
     reason: string;
-    requester_email: string;
-    group_id: string;
+    requesterEmail: string;
+    groupId: string;
     priority: RequestPriority;
     status: RequestStatus;
-    created_at: string;
-    updated_at: string;
-    resolved_at: string | null;
-    resolved_by: string | null;
-    resolution_note?: string;
+    createdAt: string;
+    updatedAt: string;
+    resolvedAt: string | null;
+    resolvedBy: string | null;
+    resolutionNote?: string;
 }
 
 /**
@@ -39,29 +39,29 @@ export interface User {
     id: string;
     email: string;
     name: string;
-    password_hash: string;
+    passwordHash: string;
     active: boolean;
     isActive?: boolean;  // Alias used in routes
     emailVerified?: boolean;
-    created_at: string;
-    updated_at: string;
+    createdAt: string;
+    updatedAt: string;
 }
 
 /**
  * User without sensitive fields
  */
-export type SafeUser = Omit<User, 'password_hash'>;
+export type SafeUser = Omit<User, 'passwordHash'>;
 
 /**
  * Role assignment for a user
  */
 export interface Role {
     id: string;
-    user_id: string;
+    userId: string;
     role: UserRole;
-    groups: string[];
-    created_at: string;
-    expires_at: string | null;
+    groupIds: string[];
+    createdAt: string;
+    expiresAt: string | null;
 }
 
 /**
@@ -70,10 +70,14 @@ export interface Role {
 export interface Classroom {
     id: string;
     name: string;
-    display_name: string;
-    machines: Machine[];
-    created_at: string;
-    updated_at: string;
+    displayName: string;
+    machines?: Machine[];
+    createdAt: string;
+    updatedAt: string;
+    activeGroupId?: string | null;
+    defaultGroupId?: string | null;
+    machineCount?: number;
+    currentGroupId?: string | null;
 }
 
 /**
@@ -81,7 +85,7 @@ export interface Classroom {
  */
 export interface Machine {
     hostname: string;
-    last_seen: string | null;
+    lastSeen: string | null;
     status: MachineStatus;
 }
 
@@ -90,15 +94,16 @@ export interface Machine {
  */
 export interface Schedule {
     id: string;
-    classroom_id: string;
-    day_of_week: 0 | 1 | 2 | 3 | 4 | 5 | 6;
-    start_time: string; // HH:MM format
-    end_time: string;   // HH:MM format
-    group_id: string;
-    teacher_id: string;
-    subject: string;
+    classroomId: string;
+    dayOfWeek: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+    startTime: string; // HH:MM format
+    endTime: string;   // HH:MM format
+    groupId: string;
+    teacherId: string;
+    subject?: string;
     active: boolean;
-    created_at: string;
+    createdAt: string;
+    updatedAt?: string;
 }
 
 /**

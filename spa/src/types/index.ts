@@ -24,11 +24,11 @@ export interface UserRoleInfo {
 }
 
 export interface ClassroomStats {
-    total_classrooms: number;
-    total_machines: number;
-    online_machines: number;
-    offline_machines: number;
-    unknown_machines: number;
+    totalClassrooms: number;
+    totalMachines: number;
+    onlineMachines: number;
+    offlineMachines: number;
+    unknownMachines: number;
 }
 
 
@@ -39,15 +39,15 @@ export interface DomainRequest {
     id: string;
     domain: string;
     reason: string;
-    requester_email: string;
-    group_id: string;
+    requesterEmail: string;
+    groupId: string;
     priority: RequestPriority;
     status: RequestStatus;
-    created_at: string;
-    updated_at: string;
-    resolved_at: string | null;
-    resolved_by: string | null;
-    resolution_note?: string;
+    createdAt: string;
+    updatedAt: string;
+    resolvedAt: string | null;
+    resolvedBy: string | null;
+    resolutionNote?: string;
 }
 
 /**
@@ -58,9 +58,13 @@ export interface User {
     email: string;
     name: string;
     login?: string; // GitHub login
-    avatar_url?: string;
-    roles?: UserRoleInfo[];
-    groups?: string[];
+    avatarUrl?: string; // GitHub/S3 avatar
+    roles?: RoleInfo[];
+}
+
+export interface RoleInfo {
+    role: UserRole;
+    groupIds: string[];
 }
 
 /**
@@ -69,12 +73,14 @@ export interface User {
 export interface Classroom {
     id: string;
     name: string;
-    display_name: string;
+    displayName: string;
     machines?: Machine[];
-    created_at: string;
-    updated_at: string;
-    active_group_id?: string | null;
-    default_group_id?: string | null;
+    createdAt: string;
+    updatedAt: string;
+    activeGroupId?: string | null;
+    defaultGroupId?: string | null;
+    currentGroupId?: string | null;
+    machineCount?: number;
 }
 
 /**
@@ -82,7 +88,7 @@ export interface Classroom {
  */
 export interface Machine {
     hostname: string;
-    last_seen: string | null;
+    lastSeen: string | null;
     status: MachineStatus;
 }
 
@@ -91,17 +97,17 @@ export interface Machine {
  */
 export interface Schedule {
     id: string;
-    classroom_id: string;
-    day_of_week: number;
-    start_time: string;
-    end_time: string;
-    group_id: string;
-    teacher_id: string;
-    teacher_name?: string;
+    classroomId: string;
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
+    groupId: string;
+    teacherId: string;
+    teacherName?: string;
     subject?: string;
     active?: boolean;
-    is_mine?: boolean;
-    can_edit?: boolean;
+    isMine?: boolean;
+    canEdit?: boolean;
 }
 
 export interface ScheduleSlot {
@@ -131,8 +137,7 @@ export interface StoredUser {
     id: string;
     email: string;
     name: string;
-    roles: UserRoleInfo[];
-    groups: string[];
+    roles: RoleInfo[];
 }
 
 /**

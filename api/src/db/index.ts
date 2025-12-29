@@ -1,0 +1,78 @@
+/**
+ * OpenPath - Strict Internet Access Control
+ * Copyright (C) 2025 OpenPath Authors
+ *
+ * Drizzle ORM Database Client
+ * Main entry point for database operations.
+ */
+
+import { drizzle } from 'drizzle-orm/node-postgres';
+import pg from 'pg';
+import * as schema from './schema.js';
+import * as relations from './relations.js';
+import 'dotenv/config';
+
+const { Pool } = pg;
+
+// =============================================================================
+// Database Configuration
+// =============================================================================
+
+const pool = new Pool({
+    host: process.env.DB_HOST ?? 'localhost',
+    port: parseInt(process.env.DB_PORT ?? '5432', 10),
+    database: process.env.DB_NAME ?? 'openpath',
+    user: process.env.DB_USER ?? 'openpath',
+    password: process.env.DB_PASSWORD ?? 'openpath_dev',
+    max: parseInt(process.env.DB_POOL_MAX ?? '20', 10),
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+});
+
+// Log pool errors
+pool.on('error', (err) => {
+    console.error('Unexpected error on idle database client', err);
+});
+
+// =============================================================================
+// Drizzle Client
+// =============================================================================
+
+export const db = drizzle(pool, {
+    schema: { ...schema, ...relations },
+});
+
+// =============================================================================
+// Re-export Schema and Types
+// =============================================================================
+
+export * from './schema.js';
+
+// =============================================================================
+// Legacy Compatibility Exports
+// =============================================================================
+
+// Export pool for legacy db.ts compatibility during migration
+export { pool };
+
+/**
+ * Test database connection
+ */
+export async function testConnection(): Promise<boolean> {
+    try {
+        const result = await pool.query('SELECT NOW()');
+        console.log('✓ Database connection successful:', result.rows[0]);
+        return true;
+    } catch (error) {
+        console.error('✗ Database connection failed:', error);
+        return false;
+    }
+}
+
+/**
+ * Close the pool (for testing/shutdown)
+ */
+export async function close(): Promise<void> {
+    await pool.end();
+    console.log('Database pool closed');
+}

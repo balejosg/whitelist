@@ -2,11 +2,12 @@
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
  *
- * Simple PostgreSQL storage for domain requests
+ * Simple PostgreSQL storage for domain requests using Drizzle ORM
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { query } from './db.js';
+import { eq, desc, and, sql, count } from 'drizzle-orm';
+import { db, requests } from '../db/index.js';
 import type {
     DomainRequest,
     RequestStatus,
@@ -19,72 +20,91 @@ import type {
 } from '../types/storage.js';
 
 // =============================================================================
+// Type Conversion Helper
+// =============================================================================
+
+function toStorageType(row: typeof requests.$inferSelect): DomainRequest {
+    return {
+        id: row.id,
+        domain: row.domain,
+        reason: row.reason ?? '',
+        requesterEmail: row.requesterEmail ?? '',
+        groupId: row.groupId,
+        priority: (row.priority ?? 'normal') as RequestPriority,
+        status: (row.status ?? 'pending') as RequestStatus,
+        createdAt: row.createdAt?.toISOString() ?? new Date().toISOString(),
+        updatedAt: row.updatedAt?.toISOString() ?? new Date().toISOString(),
+        resolvedAt: row.resolvedAt?.toISOString() ?? null,
+        resolvedBy: row.resolvedBy ?? null,
+        resolutionNote: row.resolutionNote ?? '',
+    };
+}
+
+// =============================================================================
 // Public API
 // =============================================================================
 
 export async function getAllRequests(status: RequestStatus | null = null): Promise<DomainRequest[]> {
-    let sql = 'SELECT * FROM requests';
-    const params: unknown[] = [];
+    const conditions = status !== null ? eq(requests.status, status) : undefined;
 
-    if (status !== null) {
-        sql += ' WHERE status = $1';
-        params.push(status);
-    }
+    const result = await db.select()
+        .from(requests)
+        .where(conditions)
+        .orderBy(desc(requests.createdAt));
 
-    sql += ' ORDER BY created_at DESC';
-
-    const result = await query<DomainRequest>(sql, params);
-    return result.rows;
+    return result.map(toStorageType);
 }
 
 export async function getRequestsByGroup(groupId: string): Promise<DomainRequest[]> {
-    const result = await query<DomainRequest>(
-        'SELECT * FROM requests WHERE group_id = $1 ORDER BY created_at DESC',
-        [groupId]
-    );
-    return result.rows;
+    const result = await db.select()
+        .from(requests)
+        .where(eq(requests.groupId, groupId))
+        .orderBy(desc(requests.createdAt));
+
+    return result.map(toStorageType);
 }
 
 export async function getRequestById(id: string): Promise<DomainRequest | null> {
-    const result = await query<DomainRequest>(
-        'SELECT * FROM requests WHERE id = $1',
-        [id]
-    );
-    return result.rows[0] ?? null;
+    const result = await db.select()
+        .from(requests)
+        .where(eq(requests.id, id))
+        .limit(1);
+
+    return result[0] ? toStorageType(result[0]) : null;
 }
 
 export async function hasPendingRequest(domain: string): Promise<boolean> {
-    const result = await query<{ exists: boolean }>(
-        `SELECT EXISTS(
-            SELECT 1 FROM requests 
-            WHERE LOWER(domain) = LOWER($1) 
-            AND status = 'pending'
-        ) as exists`,
-        [domain]
-    );
-    return result.rows[0]?.exists ?? false;
+    const result = await db.select({ id: requests.id })
+        .from(requests)
+        .where(and(
+            sql`LOWER(${requests.domain}) = LOWER(${domain})`,
+            eq(requests.status, 'pending')
+        ))
+        .limit(1);
+
+    return result.length > 0;
 }
 
 export async function createRequest(requestData: CreateRequestData): Promise<DomainRequest> {
     const priority: RequestPriority = requestData.priority ?? 'normal';
     const id = `req_${uuidv4().slice(0, 8)}`;
 
-    const result = await query<DomainRequest>(
-        `INSERT INTO requests (
-            id, domain, reason, requester_email, group_id, priority, status
-        ) VALUES ($1, $2, $3, $4, $5, $6, 'pending')
-        RETURNING *`,
-        [
+    const [result] = await db.insert(requests)
+        .values({
             id,
-            requestData.domain.toLowerCase().trim(),
-            requestData.reason ?? '',
-            requestData.requesterEmail ?? 'anonymous',
-            requestData.groupId ?? process.env.DEFAULT_GROUP ?? 'default',
-            priority
-        ]
-    );
+            domain: requestData.domain.toLowerCase().trim(),
+            reason: requestData.reason ?? '',
+            requesterEmail: requestData.requesterEmail ?? 'anonymous',
+            groupId: requestData.groupId ?? process.env.DEFAULT_GROUP ?? 'default',
+            priority,
+            status: 'pending',
+        })
+        .returning();
 
-    return result.rows[0]!;
+    if (!result) {
+        throw new Error(`Failed to create request for domain "${requestData.domain}"`);
+    }
+    return toStorageType(result);
 }
 
 export async function updateRequestStatus(
@@ -93,38 +113,38 @@ export async function updateRequestStatus(
     resolvedBy = 'admin',
     note: string | null = null
 ): Promise<DomainRequest | null> {
-    const params: unknown[] = [status, resolvedBy, id];
-    let sql = `
-        UPDATE requests 
-        SET status = $1, 
-            resolved_at = NOW(), 
-            resolved_by = $2,
-            updated_at = NOW()
-    `;
+    const updateValues: Partial<typeof requests.$inferInsert> = {
+        status,
+        resolvedBy,
+        resolvedAt: new Date(),
+    };
 
     if (note !== null) {
-        sql += ', resolution_note = $4';
-        params.splice(3, 0, note);
+        updateValues.resolutionNote = note;
     }
 
-    sql += ' WHERE id = $3 RETURNING *';
+    const [result] = await db.update(requests)
+        .set(updateValues)
+        .where(eq(requests.id, id))
+        .returning();
 
-    const result = await query<DomainRequest>(sql, params);
-    return result.rows[0] ?? null;
+    return result ? toStorageType(result) : null;
 }
 
 export async function deleteRequest(id: string): Promise<boolean> {
-    const result = await query(
-        'DELETE FROM requests WHERE id = $1',
-        [id]
-    );
+    const result = await db.delete(requests)
+        .where(eq(requests.id, id));
+
     return (result.rowCount ?? 0) > 0;
 }
 
 export async function getStats(): Promise<RequestStats> {
-    const result = await query<{ status: RequestStatus; count: string }>(
-        'SELECT status, COUNT(*) as count FROM requests GROUP BY status'
-    );
+    const result = await db.select({
+        status: requests.status,
+        count: count(),
+    })
+        .from(requests)
+        .groupBy(requests.status);
 
     const stats: RequestStats = {
         total: 0,
@@ -133,12 +153,12 @@ export async function getStats(): Promise<RequestStats> {
         rejected: 0
     };
 
-    result.rows.forEach((row) => {
-        const count = parseInt(row.count, 10);
-        stats.total += count;
-        if (row.status === 'pending') stats.pending = count;
-        if (row.status === 'approved') stats.approved = count;
-        if (row.status === 'rejected') stats.rejected = count;
+    result.forEach((row) => {
+        const cnt = row.count;
+        stats.total += cnt;
+        if (row.status === 'pending') stats.pending = cnt;
+        if (row.status === 'approved') stats.approved = cnt;
+        if (row.status === 'rejected') stats.rejected = cnt;
     });
 
     return stats;

@@ -203,7 +203,7 @@ async function initScheduleSection(): Promise<void> {
         classrooms.forEach((c) => {
             const option = document.createElement('option');
             option.value = c.id;
-            option.textContent = c.display_name || c.name;
+            option.textContent = c.displayName || c.name;
             select.appendChild(option);
         });
     } catch (e) {

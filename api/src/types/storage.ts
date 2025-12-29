@@ -124,7 +124,7 @@ export interface IUserStorage {
 export interface AssignRoleData {
     userId: string;
     role: UserRole;
-    groups: string[];
+    groupIds: string[];
     expiresAt?: string | null;
 }
 

@@ -112,21 +112,21 @@ export const SchedulesModule = {
      */
     renderCell(dayOfWeek: number, slot: ScheduleSlot, schedule: Schedule | null): string {
         if (schedule) {
-            const group = this.groups.find(g => g.id === schedule.group_id);
-            const groupName = group?.name ?? schedule.group_id;
-            // Assuming Schedule type has can_edit and is_mine properties (from API)
+            const group = this.groups.find(g => g.id === schedule.groupId);
+            const groupName = group?.name ?? schedule.groupId;
+            // Assuming Schedule type has canEdit and isMine properties (from API)
             // If they are not in the Interface yet, we might need to add them or cast.
             // Interface: "active: boolean" only.
-            // Interface updated to include is_mine and can_edit
-            const canEdit = (schedule.can_edit ?? false) || (schedule.is_mine ?? false);
+            // Interface updated to include isMine and canEdit
+            const canEdit = (schedule.canEdit ?? false) || (schedule.isMine ?? false);
 
             return `
-                <div class="schedule-cell schedule-cell-occupied ${schedule.is_mine ? 'is-mine' : 'is-other'}"
+                <div class="schedule-cell schedule-cell-occupied ${schedule.isMine ? 'is-mine' : 'is-other'}"
                      data-schedule-id="${schedule.id}"
                      data-day="${dayOfWeek.toString()}"
                      data-start="${slot.start}"
                      data-end="${slot.end}"
-                     title="${schedule.is_mine ? 'Mi reserva' : 'Ocupado'}">
+                     title="${schedule.isMine ? 'Mi reserva' : 'Ocupado'}">
                     <span class="schedule-group-name">${groupName}</span>
                     ${canEdit ? '<button class="schedule-delete-btn" title="Eliminar">×</button>' : ''}
                 </div>
@@ -139,7 +139,7 @@ export const SchedulesModule = {
                  data-day="${dayOfWeek.toString()}"
                  data-start="${slot.start}"
                  data-end="${slot.end}"
-                 title="Clic para reservar">
+                 title="Click to reserve">
                 <span class="schedule-add-icon">+</span>
             </div>
         `;
@@ -179,9 +179,9 @@ export const SchedulesModule = {
      */
     findScheduleForSlot(dayOfWeek: number, startTime: string, endTime: string): Schedule | null {
         return this.schedules.find(s =>
-            s.day_of_week === dayOfWeek &&
-            s.start_time === startTime &&
-            s.end_time === endTime
+            s.dayOfWeek === dayOfWeek &&
+            s.startTime === startTime &&
+            s.endTime === endTime
         ) ?? null;
     },
 
@@ -219,11 +219,11 @@ export const SchedulesModule = {
         // Create schedule
         try {
             await trpc.schedules.create.mutate({
-                classroom_id: this.currentClassroomId ?? '',
-                group_id: groupId,
-                day_of_week: dayOfWeek,
-                start_time: startTime,
-                end_time: endTime
+                classroomId: this.currentClassroomId ?? '',
+                groupId: groupId,
+                dayOfWeek: dayOfWeek,
+                startTime: startTime,
+                endTime: endTime
             });
             showToast('Reserva creada', 'success');
             // Reload
