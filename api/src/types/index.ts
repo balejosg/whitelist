@@ -64,6 +64,9 @@ export type {
     PaginatedResponse,
 } from '@openpath/shared';
 
+// Backwards compatibility alias
+export type APIResponse<T = unknown> = import('@openpath/shared').APIResponseType<T>;
+
 // =============================================================================
 // JWT Types (API-specific)
 // =============================================================================
