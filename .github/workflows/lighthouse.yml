@@ -35,6 +35,9 @@ jobs:
       - name: Build API
         run: npm run build --workspace=@openpath/api
 
+      - name: Build SPA
+        run: npm run build --workspace=openpath-spa
+
       - name: Start API server
         run: |
           npm start --workspace=@openpath/api &
@@ -43,7 +46,13 @@ jobs:
           NODE_ENV: test
           ADMIN_TOKEN: lighthouse-test-token
           JWT_SECRET: lighthouse-test-secret
-          PORT: 3000
+          PORT: 3001
+
+      - name: Start SPA server
+        run: |
+          npx -y http-server spa -p 3000 -c-1 &
+          sleep 5
+          curl -f http://localhost:3000/ || echo "SPA server starting..."
       
       - name: Run Lighthouse CI
         uses: treosh/lighthouse-ci-action@v12
