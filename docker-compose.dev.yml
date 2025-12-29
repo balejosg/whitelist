@@ -26,12 +26,16 @@ services:
   # Request API Server
   api:
     build:
-      context: ./api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: api/Dockerfile
     container_name: openpath-api-dev
     volumes:
-      - ./api:/app
-      - /app/node_modules # Don't override node_modules
+      - .:/app
+      - /app/node_modules
+      - /app/api/node_modules
+      - /app/shared/node_modules
+      - /app/spa/node_modules
+    working_dir: /app/api
     ports:
       - "3000:3000"
     environment:
@@ -39,6 +43,7 @@ services:
       - PORT=3000
       - HOST=0.0.0.0
       - DEBUG=1
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-key-change-me}
       # Database configuration
       - DB_HOST=db
       - DB_PORT=5432
@@ -57,7 +62,7 @@ services:
     restart: unless-stopped
     command: npm run dev
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:3000/health" ]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health" ]
       interval: 30s
       timeout: 10s
       retries: 3

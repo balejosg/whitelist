@@ -46,6 +46,9 @@ RUN apk add --no-cache dumb-init python3 make g++
 COPY package*.json ./
 COPY api/package*.json ./api/
 COPY shared/package*.json ./shared/
+COPY spa/package*.json ./spa/
+COPY dashboard/package*.json ./dashboard/
+COPY auth-worker/package*.json ./auth-worker/
 
 # Install production dependencies only
 RUN npm ci --only=production && npm cache clean --force
@@ -54,6 +57,7 @@ RUN npm ci --only=production && npm cache clean --force
 COPY --from=builder /app/api/dist ./api/dist
 COPY --from=builder /app/shared/dist ./shared/dist
 COPY --from=builder /app/spa ./spa
+COPY --from=builder /app/api/data ./api/data
 
 # Copy database schema (needed for migration)
 # We place it in a location where migrate.js expects it: ../src/db/schema.sql relative to dist/scripts/
