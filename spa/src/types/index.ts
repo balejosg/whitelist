@@ -4,13 +4,25 @@
  */
 
 // =============================================================================
-// Domain Types (matching backend)
+// Re-export Domain Types from API (single source of truth)
 // =============================================================================
 
-export type RequestStatus = 'pending' | 'approved' | 'rejected';
-export type RequestPriority = 'low' | 'normal' | 'high' | 'urgent';
-export type UserRole = 'admin' | 'teacher' | 'student';
-export type MachineStatus = 'online' | 'offline' | 'unknown';
+export type {
+    RequestStatus,
+    RequestPriority,
+    UserRole,
+    MachineStatus,
+    DomainRequest,
+    RoleInfo,
+    APIResponse,
+    PaginatedResponse,
+} from '@openpath/api';
+
+// =============================================================================
+// SPA-Specific Entity Extensions (frontend-only fields)
+// =============================================================================
+
+import type { UserRole, RoleInfo, MachineStatus, DomainRequest, APIResponse } from '@openpath/api';
 
 export interface UserRoleInfo {
     id: string;
@@ -31,27 +43,8 @@ export interface ClassroomStats {
     unknownMachines: number;
 }
 
-
 /**
- * Domain unlock request
- */
-export interface DomainRequest {
-    id: string;
-    domain: string;
-    reason: string;
-    requesterEmail: string;
-    groupId: string;
-    priority: RequestPriority;
-    status: RequestStatus;
-    createdAt: string;
-    updatedAt: string;
-    resolvedAt: string | null;
-    resolvedBy: string | null;
-    resolutionNote?: string;
-}
-
-/**
- * User (safe version without password)
+ * User (safe version for frontend, with optional GitHub fields)
  */
 export interface User {
     id: string;
@@ -62,13 +55,8 @@ export interface User {
     roles?: RoleInfo[];
 }
 
-export interface RoleInfo {
-    role: UserRole;
-    groupIds: string[];
-}
-
 /**
- * Classroom
+ * Classroom (with frontend-specific computed fields)
  */
 export interface Classroom {
     id: string;
@@ -84,16 +72,19 @@ export interface Classroom {
 }
 
 /**
- * Machine in classroom
+ * Machine (simplified for display)
  */
 export interface Machine {
+    id?: string;
     hostname: string;
+    classroomId?: string | null;
+    version?: string;
     lastSeen: string | null;
     status: MachineStatus;
 }
 
 /**
- * Schedule entry
+ * Schedule (with frontend-specific fields)
  */
 export interface Schedule {
     id: string;
@@ -114,7 +105,6 @@ export interface ScheduleSlot {
     start: string;
     end: string;
 }
-
 
 // =============================================================================
 // Auth Types
@@ -154,7 +144,7 @@ export interface OAuthCallbackResult {
 // =============================================================================
 
 /**
- * GitHub API instance interface
+ * SPA configuration
  */
 export interface SPAConfig {
     owner: string;
@@ -162,12 +152,8 @@ export interface SPAConfig {
     branch: string;
     whitelistPath: string;
     token?: string;
-    gruposDir?: string; // Add optional for legacy support
+    gruposDir?: string;
 }
-
-// ...
-
-// ...
 
 export interface GitHubAPIInstance {
     token: string;
@@ -195,16 +181,12 @@ export interface GitHubFile {
 /**
  * Group data (whitelist content)
  */
-/**
- * Group data (whitelist content)
- */
 export interface GroupData {
     enabled: boolean;
     whitelist: string[];
     blocked_subdomains: string[];
     blocked_paths: string[];
 }
-
 
 /**
  * Whitelist rule entry
@@ -217,9 +199,8 @@ export interface WhitelistRule {
 }
 
 /**
- * Application state
+ * Whitelist group
  */
-// ... (Group interface)
 export interface Group {
     name: string;
     path: string;
@@ -242,47 +223,9 @@ export interface AppState {
     canEdit: boolean;
 }
 
-// ...
-
-/**
- * Auth API interface
- */
-export interface AuthAPI {
-    // ...
-    getToken(): string | null;
-    // ...
-}
-
-/**
- * Requests API instance interface
- */
-export interface RequestsAPIInstance {
-    apiUrl: string;
-    init(url: string, token?: string): void;
-    isConfigured(): boolean;
-    healthCheck(): Promise<boolean>;
-    getPendingRequests(): Promise<RequestsResponse>;
-    getRequests(status?: RequestStatus): Promise<RequestsResponse>;
-    createRequest(data: { domain: string; reason?: string }): Promise<APIResponse<DomainRequest>>;
-    approveRequest(id: string, groupId?: string, token?: string): Promise<APIResponse<DomainRequest>>;
-    rejectRequest(id: string, reason?: string, token?: string): Promise<APIResponse<DomainRequest>>;
-    deleteRequest(id: string): Promise<APIResponse<void>>;
-}
-
 // =============================================================================
 // API Response Types
 // =============================================================================
-
-/**
- * Standard API response
- */
-export interface APIResponse<T = unknown> {
-    success: boolean;
-    data?: T;
-    error?: string;
-    code?: string;
-    message?: string;
-}
 
 /**
  * Paginated response
@@ -320,21 +263,6 @@ export interface SchedulesResponse extends APIResponse<Schedule[]> {
  */
 export interface UsersResponse extends APIResponse<User[]> {
     users: User[];
-}
-
-// =============================================================================
-// Configuration Types
-// =============================================================================
-
-/**
- * SPA configuration
- */
-export interface SPAConfig {
-    owner: string;
-    repo: string;
-    branch: string;
-    whitelistPath: string;
-    token?: string;
 }
 
 /**
@@ -479,7 +407,7 @@ export interface RequestsAPIInstance {
     init(url: string, token?: string): void;
     isConfigured(): boolean;
     healthCheck(): Promise<boolean>;
-    getRequests(status?: RequestStatus): Promise<RequestsResponse>;
+    getRequests(status?: import('@openpath/api').RequestStatus): Promise<RequestsResponse>;
     getPendingRequests(): Promise<RequestsResponse>;
     createRequest(data: { domain: string; reason?: string }): Promise<APIResponse<DomainRequest>>;
     approveRequest(id: string, groupId?: string, token?: string): Promise<APIResponse<DomainRequest>>;
@@ -497,8 +425,7 @@ export interface ConfigAPI {
 }
 
 /**
-/**
- * Schedules module interface
+ * Schedule group for selection
  */
 export interface ScheduleGroup {
     id: string;
@@ -520,4 +447,5 @@ export interface SchedulesModule {
     SLOT_MINUTES: number;
     showGroupSelectionModal(dayOfWeek: number, startTime: string, endTime: string): Promise<void>;
 }
+
 export { };

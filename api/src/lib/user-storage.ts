@@ -44,7 +44,6 @@ function toUserType(user: DBUser): User {
         email: user.email,
         name: user.name,
         passwordHash: user.passwordHash,
-        active: user.isActive,
         isActive: user.isActive,
         emailVerified: user.emailVerified,
         createdAt: user.createdAt?.toISOString() ?? new Date().toISOString(),
@@ -73,7 +72,6 @@ export async function getAllUsers(): Promise<SafeUser[]> {
         id: row.id,
         email: row.email,
         name: row.name,
-        active: row.isActive,
         isActive: row.isActive,
         emailVerified: row.emailVerified,
         createdAt: row.createdAt?.toISOString() ?? new Date().toISOString(),
@@ -135,7 +133,7 @@ export async function createUser(userData: CreateUserData): Promise<SafeUser> {
         id: result.id,
         email: result.email,
         name: result.name,
-        active: true,
+        isActive: true,
         createdAt: result.createdAt?.toISOString() ?? new Date().toISOString(),
         updatedAt: result.updatedAt?.toISOString() ?? new Date().toISOString()
     };
@@ -174,7 +172,7 @@ export async function updateUser(
             id: existing[0].id,
             email: existing[0].email,
             name: existing[0].name,
-            active: true,
+            isActive: true,
             createdAt: existing[0].createdAt?.toISOString() ?? new Date().toISOString(),
             updatedAt: existing[0].updatedAt?.toISOString() ?? new Date().toISOString()
         } : null;
@@ -195,7 +193,7 @@ export async function updateUser(
         id: result.id,
         email: result.email,
         name: result.name,
-        active: true,
+        isActive: true,
         createdAt: result.createdAt?.toISOString() ?? new Date().toISOString(),
         updatedAt: result.updatedAt?.toISOString() ?? new Date().toISOString()
     } : null;
@@ -253,7 +251,6 @@ export async function verifyPasswordByEmail(
         email: user.email,
         name: user.name,
         passwordHash: user.passwordHash,
-        active: user.isActive,
         isActive: user.isActive,
         emailVerified: user.emailVerified,
         createdAt: user.createdAt?.toISOString() ?? new Date().toISOString(),

@@ -40,8 +40,7 @@ export interface User {
     email: string;
     name: string;
     passwordHash: string;
-    active: boolean;
-    isActive?: boolean;  // Alias used in routes
+    isActive: boolean;
     emailVerified?: boolean;
     createdAt: string;
     updatedAt: string;
@@ -84,9 +83,14 @@ export interface Classroom {
  * Machine in a classroom
  */
 export interface Machine {
+    id: string;
     hostname: string;
+    classroomId: string | null;
+    version?: string | undefined;
     lastSeen: string | null;
     status: MachineStatus;
+    createdAt?: string | undefined;
+    updatedAt?: string | undefined;
 }
 
 /**
@@ -112,10 +116,10 @@ export interface Schedule {
 export interface HealthReport {
     id: string;
     hostname: string;
-    classroom_id: string;
+    classroomId: string;
     status: 'healthy' | 'warning' | 'error';
     details: Record<string, unknown>;
-    reported_at: string;
+    reportedAt: string;
 }
 
 /**
@@ -123,13 +127,13 @@ export interface HealthReport {
  */
 export interface PushSubscription {
     id: string;
-    user_id: string;
+    userId: string;
     endpoint: string;
     keys: {
         p256dh: string;
         auth: string;
     };
-    created_at: string;
+    createdAt: string;
 }
 
 // =============================================================================
@@ -210,8 +214,8 @@ export interface StatsResponse {
 export interface CreateRequestDTO {
     domain: string;
     reason?: string;
-    requester_email?: string;
-    group_id?: string;
+    requesterEmail?: string;
+    groupId?: string;
     priority?: RequestPriority;
 }
 
@@ -255,18 +259,18 @@ export interface LoginResponse {
  */
 export interface CreateClassroomDTO {
     name: string;
-    display_name?: string;
+    displayName?: string;
 }
 
 /**
  * Create schedule DTO
  */
 export interface CreateScheduleDTO {
-    classroom_id: string;
-    day_of_week: number;
-    start_time: string;
-    end_time: string;
-    group_id: string;
+    classroomId: string;
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
+    groupId: string;
     subject: string;
 }
 

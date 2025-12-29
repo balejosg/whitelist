@@ -53,7 +53,10 @@ function toClassroomType(classroom: DBClassroom, machineList: DBMachine[] = []):
         name: classroom.name,
         displayName: classroom.displayName,
         machines: machineList.map((m) => ({
+            id: m.id,
             hostname: m.hostname,
+            classroomId: m.classroomId,
+            version: m.version ?? undefined,
             lastSeen: m.lastSeen?.toISOString() ?? null,
             status: 'unknown' as MachineStatus
         })),
@@ -412,7 +415,10 @@ export const classroomStorage: IClassroomStorage = {
     addMachine: async (classroomId: string, hostname: string) => {
         const machine = await registerMachine({ hostname, classroomId });
         return {
+            id: machine.id,
             hostname: machine.hostname,
+            classroomId: machine.classroomId,
+            version: machine.version ?? undefined,
             lastSeen: machine.lastSeen?.toISOString() ?? null,
             status: 'unknown' as MachineStatus
         };
@@ -430,7 +436,10 @@ export const classroomStorage: IClassroomStorage = {
         return {
             classroom: toClassroomType(classroom),
             machine: {
+                id: machine.id,
                 hostname: machine.hostname,
+                classroomId: machine.classroomId,
+                version: machine.version ?? undefined,
                 lastSeen: machine.lastSeen?.toISOString() ?? null,
                 status: 'unknown' as MachineStatus
             }
