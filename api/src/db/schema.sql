@@ -1,224 +1,150 @@
--- OpenPath Database Schema (PostgreSQL)
--- Copyright (C) 2025 OpenPath Authors
-
--- =============================================================================
--- Extensions
--- =============================================================================
-
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- =============================================================================
--- Users Table
--- =============================================================================
-
-CREATE TABLE IF NOT EXISTS users (
-    id VARCHAR(50) PRIMARY KEY,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE NOT NULL,
-    email_verified BOOLEAN DEFAULT FALSE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+CREATE TABLE "classrooms" (
+	"id" varchar(50) PRIMARY KEY NOT NULL,
+	"name" varchar(100) NOT NULL,
+	"display_name" varchar(255) NOT NULL,
+	"default_group_id" varchar(100),
+	"active_group_id" varchar(100),
+	"created_at" timestamp with time zone DEFAULT now(),
+	"updated_at" timestamp with time zone DEFAULT now(),
+	CONSTRAINT "classrooms_name_unique" UNIQUE("name")
 );
-
-DROP INDEX IF EXISTS idx_users_email;
-CREATE INDEX idx_users_email ON users(email);
-
--- =============================================================================
--- Roles Table
--- =============================================================================
-
-CREATE TABLE IF NOT EXISTS roles (
-    id VARCHAR(50) PRIMARY KEY,
-    user_id VARCHAR(50) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'teacher', 'student')),
-    groups TEXT[], -- Array of group IDs
-    created_by VARCHAR(50) REFERENCES users(id),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(user_id)
+--> statement-breakpoint
+CREATE TABLE "dashboard_users" (
+	"id" varchar(50) PRIMARY KEY NOT NULL,
+	"username" varchar(100) NOT NULL,
+	"password_hash" varchar(255) NOT NULL,
+	"role" varchar(50) DEFAULT 'admin',
+	"created_at" timestamp with time zone DEFAULT now(),
+	"updated_at" timestamp with time zone DEFAULT now(),
+	CONSTRAINT "dashboard_users_username_unique" UNIQUE("username")
 );
-
-CREATE INDEX IF NOT EXISTS idx_roles_user_id ON roles(user_id);
-CREATE INDEX IF NOT EXISTS idx_roles_role ON roles(role);
-
--- =============================================================================
--- Requests Table
--- =============================================================================
-
-CREATE TABLE IF NOT EXISTS requests (
-    id VARCHAR(50) PRIMARY KEY,
-    domain VARCHAR(255) NOT NULL,
-    reason TEXT,
-    requester_email VARCHAR(255),
-    group_id VARCHAR(100) NOT NULL,
-    priority VARCHAR(20) DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
-    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    resolved_at TIMESTAMP WITH TIME ZONE,
-    resolved_by VARCHAR(255),
-    resolution_note TEXT
+--> statement-breakpoint
+CREATE TABLE "health_reports" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"hostname" varchar(255) NOT NULL,
+	"status" varchar(50) NOT NULL,
+	"dnsmasq_running" integer,
+	"dns_resolving" integer,
+	"fail_count" integer DEFAULT 0,
+	"actions" text,
+	"version" varchar(50),
+	"reported_at" timestamp with time zone DEFAULT now()
 );
-
-CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status);
-CREATE INDEX IF NOT EXISTS idx_requests_group_id ON requests(group_id);
-CREATE INDEX IF NOT EXISTS idx_requests_domain ON requests(LOWER(domain));
-
--- =============================================================================
--- Classrooms Table
--- =============================================================================
-
-CREATE TABLE IF NOT EXISTS classrooms (
-    id VARCHAR(50) PRIMARY KEY,
-    name VARCHAR(100) UNIQUE NOT NULL,
-    display_name VARCHAR(255) NOT NULL,
-    default_group_id VARCHAR(100),
-    active_group_id VARCHAR(100),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+--> statement-breakpoint
+CREATE TABLE "machines" (
+	"id" varchar(50) PRIMARY KEY NOT NULL,
+	"hostname" varchar(255) NOT NULL,
+	"classroom_id" varchar(50),
+	"version" varchar(50) DEFAULT 'unknown',
+	"last_seen" timestamp with time zone DEFAULT now(),
+	"created_at" timestamp with time zone DEFAULT now(),
+	"updated_at" timestamp with time zone DEFAULT now(),
+	CONSTRAINT "machines_hostname_unique" UNIQUE("hostname")
 );
-
-CREATE INDEX IF NOT EXISTS idx_classrooms_name ON classrooms(name);
-
--- =============================================================================
--- Machines Table
--- =============================================================================
-
-CREATE TABLE IF NOT EXISTS machines (
-    id VARCHAR(50) PRIMARY KEY,
-    hostname VARCHAR(255) UNIQUE NOT NULL,
-    classroom_id VARCHAR(50) REFERENCES classrooms(id) ON DELETE CASCADE,
-    version VARCHAR(50) DEFAULT 'unknown',
-    last_seen TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+--> statement-breakpoint
+CREATE TABLE "push_subscriptions" (
+	"id" varchar(50) PRIMARY KEY NOT NULL,
+	"user_id" varchar(50) NOT NULL,
+	"group_ids" text[] NOT NULL,
+	"endpoint" text NOT NULL,
+	"p256dh" text NOT NULL,
+	"auth" text NOT NULL,
+	"user_agent" text,
+	"created_at" timestamp with time zone DEFAULT now(),
+	CONSTRAINT "push_subscriptions_endpoint_unique" UNIQUE("endpoint")
 );
-
-CREATE INDEX IF NOT EXISTS idx_machines_hostname ON machines(LOWER(hostname));
-CREATE INDEX IF NOT EXISTS idx_machines_classroom_id ON machines(classroom_id);
-
--- =============================================================================
--- Schedules Table
--- =============================================================================
-
-CREATE TABLE IF NOT EXISTS schedules (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    classroom_id VARCHAR(50) NOT NULL REFERENCES classrooms(id) ON DELETE CASCADE,
-    teacher_id VARCHAR(50) NOT NULL REFERENCES users(id),
-    group_id VARCHAR(100) NOT NULL,
-    day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 1 AND 5),
-    start_time TIME NOT NULL,
-    end_time TIME NOT NULL,
-    recurrence VARCHAR(20) DEFAULT 'weekly',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    CHECK (start_time < end_time)
+--> statement-breakpoint
+CREATE TABLE "requests" (
+	"id" varchar(50) PRIMARY KEY NOT NULL,
+	"domain" varchar(255) NOT NULL,
+	"reason" text,
+	"requester_email" varchar(255),
+	"group_id" varchar(100) NOT NULL,
+	"priority" varchar(20) DEFAULT 'normal',
+	"status" varchar(20) DEFAULT 'pending',
+	"created_at" timestamp with time zone DEFAULT now(),
+	"updated_at" timestamp with time zone DEFAULT now(),
+	"resolved_at" timestamp with time zone,
+	"resolved_by" varchar(255),
+	"resolution_note" text
 );
-
-CREATE INDEX IF NOT EXISTS idx_schedules_classroom_id ON schedules(classroom_id);
-CREATE INDEX IF NOT EXISTS idx_schedules_teacher_id ON schedules(teacher_id);
-CREATE INDEX IF NOT EXISTS idx_schedules_day_time ON schedules(classroom_id, day_of_week, start_time, end_time);
-
--- =============================================================================
--- Tokens Table (Refresh Tokens)
--- =============================================================================
-
-CREATE TABLE IF NOT EXISTS tokens (
-    id VARCHAR(50) PRIMARY KEY,
-    user_id VARCHAR(50) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token_hash VARCHAR(255) NOT NULL,
-    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+--> statement-breakpoint
+CREATE TABLE "roles" (
+	"id" varchar(50) PRIMARY KEY NOT NULL,
+	"user_id" varchar(50) NOT NULL,
+	"role" varchar(20) NOT NULL,
+	"groups" text[],
+	"created_by" varchar(50),
+	"created_at" timestamp with time zone DEFAULT now(),
+	"updated_at" timestamp with time zone DEFAULT now(),
+	CONSTRAINT "roles_user_id_key" UNIQUE("user_id")
 );
-
-CREATE INDEX IF NOT EXISTS idx_tokens_user_id ON tokens(user_id);
-CREATE INDEX IF NOT EXISTS idx_tokens_expires_at ON tokens(expires_at);
-
--- =============================================================================
--- Settings Table (Setup, Registration Token, etc.)
--- =============================================================================
-
-CREATE TABLE IF NOT EXISTS settings (
-    key VARCHAR(100) PRIMARY KEY,
-    value TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+--> statement-breakpoint
+CREATE TABLE "schedules" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"classroom_id" varchar(50) NOT NULL,
+	"teacher_id" varchar(50) NOT NULL,
+	"group_id" varchar(100) NOT NULL,
+	"day_of_week" integer NOT NULL,
+	"start_time" time NOT NULL,
+	"end_time" time NOT NULL,
+	"recurrence" varchar(20) DEFAULT 'weekly',
+	"created_at" timestamp with time zone DEFAULT now(),
+	"updated_at" timestamp with time zone DEFAULT now()
 );
-
--- =============================================================================
--- Push Subscriptions Table
--- =============================================================================
-
-CREATE TABLE IF NOT EXISTS push_subscriptions (
-    id VARCHAR(50) PRIMARY KEY,
-    user_id VARCHAR(50) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    group_ids TEXT[] NOT NULL,
-    endpoint TEXT UNIQUE NOT NULL,
-    p256dh TEXT NOT NULL,
-    auth TEXT NOT NULL,
-    user_agent TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+--> statement-breakpoint
+CREATE TABLE "settings" (
+	"key" varchar(100) PRIMARY KEY NOT NULL,
+	"value" text NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now(),
+	"updated_at" timestamp with time zone DEFAULT now()
 );
-
-CREATE INDEX IF NOT EXISTS idx_push_subs_user_id ON push_subscriptions(user_id);
-
--- =============================================================================
--- Health Reports Table
--- =============================================================================
-
-CREATE TABLE IF NOT EXISTS health_reports (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    hostname VARCHAR(255) NOT NULL,
-    status VARCHAR(50) NOT NULL,
-    dnsmasq_running INTEGER,
-    dns_resolving INTEGER,
-    fail_count INTEGER DEFAULT 0,
-    actions TEXT,
-    version VARCHAR(50),
-    reported_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+--> statement-breakpoint
+CREATE TABLE "tokens" (
+	"id" varchar(50) PRIMARY KEY NOT NULL,
+	"user_id" varchar(50) NOT NULL,
+	"token_hash" varchar(255) NOT NULL,
+	"expires_at" timestamp with time zone NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now()
 );
-
-CREATE INDEX IF NOT EXISTS idx_health_reports_hostname ON health_reports(hostname);
-CREATE INDEX IF NOT EXISTS idx_health_reports_reported_at ON health_reports(reported_at);
-
--- =============================================================================
--- Triggers for updated_at
--- =============================================================================
-
-CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS users_updated_at ON users;
-CREATE TRIGGER users_updated_at BEFORE UPDATE ON users
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
-DROP TRIGGER IF EXISTS roles_updated_at ON roles;
-CREATE TRIGGER roles_updated_at BEFORE UPDATE ON roles
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
-DROP TRIGGER IF EXISTS requests_updated_at ON requests;
-CREATE TRIGGER requests_updated_at BEFORE UPDATE ON requests
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
-DROP TRIGGER IF EXISTS classrooms_updated_at ON classrooms;
-CREATE TRIGGER classrooms_updated_at BEFORE UPDATE ON classrooms
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
-DROP TRIGGER IF EXISTS machines_updated_at ON machines;
-CREATE TRIGGER machines_updated_at BEFORE UPDATE ON machines
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
-DROP TRIGGER IF EXISTS schedules_updated_at ON schedules;
-CREATE TRIGGER schedules_updated_at BEFORE UPDATE ON schedules
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
-DROP TRIGGER IF EXISTS settings_updated_at ON settings;
-CREATE TRIGGER settings_updated_at BEFORE UPDATE ON settings
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+--> statement-breakpoint
+CREATE TABLE "users" (
+	"id" varchar(50) PRIMARY KEY NOT NULL,
+	"email" varchar(255) NOT NULL,
+	"name" varchar(255) NOT NULL,
+	"password_hash" varchar(255) NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"email_verified" boolean DEFAULT false NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now(),
+	"updated_at" timestamp with time zone DEFAULT now(),
+	CONSTRAINT "users_email_unique" UNIQUE("email")
+);
+--> statement-breakpoint
+CREATE TABLE "whitelist_groups" (
+	"id" varchar(50) PRIMARY KEY NOT NULL,
+	"name" varchar(100) NOT NULL,
+	"display_name" varchar(255) NOT NULL,
+	"enabled" integer DEFAULT 1 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now(),
+	"updated_at" timestamp with time zone DEFAULT now(),
+	CONSTRAINT "whitelist_groups_name_unique" UNIQUE("name")
+);
+--> statement-breakpoint
+CREATE TABLE "whitelist_rules" (
+	"id" varchar(50) PRIMARY KEY NOT NULL,
+	"group_id" varchar(50) NOT NULL,
+	"type" varchar(50) NOT NULL,
+	"value" varchar(500) NOT NULL,
+	"comment" text,
+	"created_at" timestamp with time zone DEFAULT now(),
+	CONSTRAINT "whitelist_rules_group_type_value_key" UNIQUE("group_id","type","value")
+);
+--> statement-breakpoint
+ALTER TABLE "machines" ADD CONSTRAINT "machines_classroom_id_classrooms_id_fk" FOREIGN KEY ("classroom_id") REFERENCES "public"."classrooms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "push_subscriptions" ADD CONSTRAINT "push_subscriptions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "roles" ADD CONSTRAINT "roles_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "roles" ADD CONSTRAINT "roles_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "schedules" ADD CONSTRAINT "schedules_classroom_id_classrooms_id_fk" FOREIGN KEY ("classroom_id") REFERENCES "public"."classrooms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "schedules" ADD CONSTRAINT "schedules_teacher_id_users_id_fk" FOREIGN KEY ("teacher_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "tokens" ADD CONSTRAINT "tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "whitelist_rules" ADD CONSTRAINT "whitelist_rules_group_id_whitelist_groups_id_fk" FOREIGN KEY ("group_id") REFERENCES "public"."whitelist_groups"("id") ON DELETE cascade ON UPDATE no action;
