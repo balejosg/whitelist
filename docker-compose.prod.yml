@@ -13,7 +13,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-openpath}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-openpath}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -47,7 +47,7 @@ services:
         condition: service_healthy
     volumes:
       - api-logs:/app/logs
-      # - api-data:/app/data # Not needed if using Postgres? But setup-storage etc might use it? Setup uses DB now.
+      # - api-data:/app/data # Legacy JSON storage volume, no longer needed with Postgres
     networks:
       - openpath-network
 
@@ -61,7 +61,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=8080
-      - VITE_API_URL=${API_URL:-http://localhost:3000} 
+      - VITE_API_URL=${API_URL:-http://localhost:3000}
       # Note: VITE_API_URL is build-time for Vite, but dashboard is static?
       # If dashboard is served by node server (dist/server.js usually), it might use runtime env?
       # Checking dashboard/Dockerfile...
@@ -75,6 +75,7 @@ volumes:
   postgres_data:
   api-logs:
   api-data:
+
 
 networks:
   openpath-network:

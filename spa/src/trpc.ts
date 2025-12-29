@@ -1,5 +1,5 @@
 import { createTRPCClient, httpBatchLink } from '@trpc/client';
-import type { AppRouter } from '../../api/src/trpc/routers/index.js';
+import type { AppRouter } from '@openpath/api';
 
 function getApiUrl(): string {
     return localStorage.getItem('requests_api_url') ?? '';

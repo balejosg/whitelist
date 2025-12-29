@@ -98,7 +98,6 @@ void describe('Setup API Tests', { timeout: 30000 }, async () => {
             });
         }
         // Close database pool
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         await closeConnection();
     });
 

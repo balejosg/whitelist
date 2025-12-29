@@ -31,22 +31,17 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: |
-            api/package-lock.json
-            spa/package.json
+          cache-dependency-path: './package-lock.json'
 
-      - name: Install API dependencies
-        run: cd api && npm ci
-      
-      - name: Install SPA dependencies
-        run: cd spa && npm install
-      
+      - name: Install dependencies
+        run: npm ci
+
       - name: Install Playwright browsers
-        run: cd spa && npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium --workspace=openpath-spa
       
       - name: Start API server
         run: |
-          cd api && npm start &
+          npm start --workspace=@openpath/api &
           npx wait-on -t 30000 http://localhost:3001/health
         env:
           PORT: 3001
@@ -80,7 +75,7 @@ jobs:
           echo "Test users setup complete"
       
       - name: Run Playwright tests
-        run: cd spa && npx playwright test --project=chromium --retries=1
+        run: npm run test:e2e --workspace=openpath-spa -- --project=chromium --retries=1
         env:
           BASE_URL: http://localhost:8080
           API_URL: http://localhost:3001

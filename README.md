@@ -175,7 +175,7 @@ After regeneration, the old token becomes invalid. You'll need to use the new to
 **Security Notes:**
 - Keep the registration token secure - anyone with it can register PCs to your server
 - Regenerate the token if you suspect it has been compromised
-- The token is stored server-side in `api/data/setup.json`
+- The token is stored in the `settings` table in PostgreSQL
 
 ## Troubleshooting
 

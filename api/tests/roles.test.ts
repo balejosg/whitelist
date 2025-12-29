@@ -115,7 +115,6 @@ await describe('Role Management E2E Tests (tRPC)', { timeout: 45000 }, async () 
             });
         }
         // Close database pool
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         await closeConnection();
     });
 

@@ -115,7 +115,6 @@ await describe('Authentication & User Management API Tests (tRPC)', { timeout: 3
             });
         }
         // Close database pool
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         await closeConnection();
     });
 
@@ -360,7 +359,6 @@ await describe('Authentication & User Management API Tests (tRPC)', { timeout: 3
 
         await test('should logout successfully', async () => {
             if (!accessToken) return;
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const response = await trpcMutate('auth.logout', {}, { 'Authorization': `Bearer ${accessToken}` });
             assert.strictEqual(response.status, 200, 'Logout should return 200');
         });

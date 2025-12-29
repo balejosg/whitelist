@@ -30,6 +30,19 @@ jobs:
           echo "package_name=openpath-dnsmasq_${VERSION}-1_amd64.deb" >> $GITHUB_OUTPUT
           echo "Building prerelease version: $VERSION"
       
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Firefox Extension
+        run: npm run build --workspace=openpath-firefox-extension
+
       - name: Build Debian package
         run: |
           chmod +x linux/scripts/build/build-deb.sh

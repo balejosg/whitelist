@@ -28,6 +28,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared package
+        run: npm run build --workspace=@openpath/shared
+
+      - name: Build SPA
+        run: npm run build --workspace=openpath-spa
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
       
@@ -35,19 +51,21 @@ jobs:
         run: |
           echo "📦 Preparing static site for deployment..."
           
-          # List files to be deployed
-          echo ""
-          echo "Files in spa/:"
-          ls -la spa/
+          # Create a deployment directory
+          mkdir -p _site
+          cp spa/index.html _site/
+          cp spa/setup.html _site/
+          cp -r spa/css _site/ 2>/dev/null || true
+          cp -r spa/dist _site/
           
           echo ""
-          echo "Total size:"
-          du -sh spa/
+          echo "Files in _site/:"
+          ls -la _site/
       
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: spa/
+          path: _site/
 
   # ============================================
   # Deploy Job

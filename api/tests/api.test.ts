@@ -110,7 +110,6 @@ await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async (
             });
         }
         // Close database pool
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         await closeConnection();
     });
 

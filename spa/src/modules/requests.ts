@@ -109,7 +109,7 @@ export async function loadPendingRequests(): Promise<void> {
                         <span class="request-domain">${escapeHtml(req.domain)}</span>
                         <span class="request-time">${relativeTime(req.createdAt)}</span>
                         <span class="request-meta">
-                            ${escapeHtml(req.requesterEmail || 'Anonymous')} •
+                            ${escapeHtml(req.requesterEmail ?? 'Anonymous')} •
                             <span class="request-reason">${escapeHtml(req.reason)}</span>
                         </span>
                         ${req.groupId ? `<span class="request-group-tag">Grupo: ${escapeHtml(req.groupId)}</span>` : ''}
