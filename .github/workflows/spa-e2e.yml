@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build packages
+        run: npm run build --workspaces --if-present
+
       - name: Install Playwright browsers
         run: cd spa && npx playwright install --with-deps chromium
       
