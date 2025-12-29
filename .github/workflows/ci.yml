@@ -404,7 +404,7 @@ jobs:
         uses: actions/checkout@v4
       
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.4
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
@@ -414,121 +414,140 @@ jobs:
             set -e
             export PATH=$PATH:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
             
-            DEPLOY_DIR="${{ secrets.DEPLOY_PATH || '/opt/openpath' }}"
+            DEPLOY_DIR="${{ secrets.DEPLOY_PATH || '$HOME/openpath' }}"
+            # Expand $HOME if present
+            DEPLOY_DIR=$(eval echo "$DEPLOY_DIR")
             
-            # Create directory if it doesn't exist
-            if [ ! -d "$DEPLOY_DIR" ]; then
-              if command -v sudo >/dev/null 2>&1; then
-                sudo mkdir -p "$DEPLOY_DIR"
-                sudo chown -R $USER:$USER "$DEPLOY_DIR"
-              else
-                mkdir -p "$DEPLOY_DIR" || {
-                  echo "⚠️ Could not create $DEPLOY_DIR, falling back to ~/openpath"
-                  DEPLOY_DIR="$HOME/openpath"
-                  mkdir -p "$DEPLOY_DIR"
-                }
-              fi
-            fi
-
-            # Navigate to deployment directory
+            echo "🚀 Deploying to $DEPLOY_DIR..."
+            mkdir -p "$DEPLOY_DIR"
             cd "$DEPLOY_DIR"
 
             # Check for docker or podman
-            DOCKER_CMD="docker"
-            if ! command -v docker >/dev/null 2>&1; then
-              if command -v podman >/dev/null 2>&1; then
-                DOCKER_CMD="podman"
-                echo "Using podman instead of docker"
-              else
-                echo "❌ Neither docker nor podman found in PATH ($PATH)"
-                exit 1
-              fi
+            DOCKER_CMD=""
+            if command -v docker >/dev/null 2>&1; then
+              DOCKER_CMD="docker"
+            elif command -v podman >/dev/null 2>&1; then
+              DOCKER_CMD="podman"
+              echo "Using podman instead of docker"
             fi
 
-            # Login to GitHub Container Registry
-            echo "${{ secrets.GITHUB_TOKEN }}" | $DOCKER_CMD login ghcr.io -u ${{ github.actor }} --password-stdin
+            if [ -n "$DOCKER_CMD" ]; then
+              echo "🐳 Using container-based deployment ($DOCKER_CMD)..."
+              # Login to GitHub Container Registry
+              echo "${{ secrets.GITHUB_TOKEN }}" | $DOCKER_CMD login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            # Pull latest images
-            $DOCKER_CMD pull ghcr.io/${{ github.repository }}/api:latest
+              # Pull latest images
+              $DOCKER_CMD pull ghcr.io/${{ github.repository }}/api:latest
 
-            # Create docker-compose.prod.yml if it doesn't exist
-            cat > docker-compose.prod.yml << 'EOF'
-            version: '3.8'
-            
-            services:
-              db:
-                image: postgres:16-alpine
-                container_name: openpath-postgres
-                restart: unless-stopped
-                environment:
-                  POSTGRES_DB: ${DB_NAME:-openpath}
-                  POSTGRES_USER: ${DB_USER:-openpath}
-                  POSTGRES_PASSWORD: ${DB_PASSWORD}
-                volumes:
-                  - postgres_data:/var/lib/postgresql/data
-                healthcheck:
-                  test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-openpath}"]
-                  interval: 10s
-                  timeout: 5s
-                  retries: 5
-                networks:
-                  - openpath-network
-            
-              api:
-                image: ghcr.io/${{ github.repository }}/api:latest
-                container_name: openpath-api
-                restart: unless-stopped
-                ports:
-                  - "${API_PORT:-3000}:3000"
-                environment:
-                  - NODE_ENV=production
-                  - PORT=3000
-                  - DB_HOST=db
-                  - DB_PORT=5432
-                  - DB_NAME=${DB_NAME:-openpath}
-                  - DB_USER=${DB_USER:-openpath}
-                  - DB_PASSWORD=${DB_PASSWORD}
-                  - JWT_SECRET=${JWT_SECRET}
-                  - ADMIN_TOKEN=${ADMIN_TOKEN}
-                  - SHARED_SECRET=${SHARED_SECRET}
-                  - CORS_ORIGINS=${CORS_ORIGINS}
-                depends_on:
-                  db:
-                    condition: service_healthy
-                networks:
-                  - openpath-network
-            
-            volumes:
-              postgres_data:
-            
-            networks:
-              openpath-network:
-                name: openpath-network
-            EOF
+              # Create docker-compose.prod.yml
+              cat > docker-compose.prod.yml << 'EOF'
+              version: '3.8'
+              
+              services:
+                db:
+                  image: postgres:16-alpine
+                  container_name: openpath-postgres
+                  restart: unless-stopped
+                  environment:
+                    POSTGRES_DB: ${DB_NAME:-openpath}
+                    POSTGRES_USER: ${DB_USER:-openpath}
+                    POSTGRES_PASSWORD: ${DB_PASSWORD}
+                  volumes:
+                    - postgres_data:/var/lib/postgresql/data
+                  healthcheck:
+                    test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-openpath}"]
+                    interval: 10s
+                    timeout: 5s
+                    retries: 5
+                  networks:
+                    - openpath-network
+              
+                api:
+                  image: ghcr.io/${{ github.repository }}/api:latest
+                  container_name: openpath-api
+                  restart: unless-stopped
+                  ports:
+                    - "${API_PORT:-3000}:3000"
+                  environment:
+                    - NODE_ENV=production
+                    - PORT=3000
+                    - DB_HOST=db
+                    - DB_PORT=5432
+                    - DB_NAME=${DB_NAME:-openpath}
+                    - DB_USER=${DB_USER:-openpath}
+                    - DB_PASSWORD=${DB_PASSWORD}
+                    - JWT_SECRET=${JWT_SECRET}
+                    - ADMIN_TOKEN=${ADMIN_TOKEN}
+                    - SHARED_SECRET=${SHARED_SECRET}
+                    - CORS_ORIGINS=${CORS_ORIGINS}
+                  depends_on:
+                    db:
+                      condition: service_healthy
+                  networks:
+                    - openpath-network
+              
+              volumes:
+                postgres_data:
+              
+              networks:
+                openpath-network:
+                  name: openpath-network
+              EOF
 
-            # Check for docker-compose or docker compose
-            COMPOSE_CMD="$DOCKER_CMD compose"
-            if ! $DOCKER_CMD compose version >/dev/null 2>&1; then
-              if command -v docker-compose >/dev/null 2>&1; then
-                COMPOSE_CMD="docker-compose"
-              else
-                echo "❌ docker compose not available"
+              # Check for docker-compose or docker compose
+              COMPOSE_CMD="$DOCKER_CMD compose"
+              if ! $DOCKER_CMD compose version >/dev/null 2>&1; then
+                if command -v docker-compose >/dev/null 2>&1; then
+                  COMPOSE_CMD="docker-compose"
+                else
+                  echo "❌ docker compose not available"
+                  exit 1
+                fi
+              fi
+
+              # Run database migrations if needed
+              $COMPOSE_CMD -f docker-compose.prod.yml up -d db
+              sleep 10  # Wait for PostgreSQL to be ready
+
+              # Deploy API with zero-downtime (recreate only api container)
+              $COMPOSE_CMD -f docker-compose.prod.yml up -d --force-recreate api
+
+              # Run migrations
+              $COMPOSE_CMD -f docker-compose.prod.yml exec -T api npm run db:migrate || true
+
+              # Clean up old images
+              $DOCKER_CMD image prune -f
+            else
+              echo "⚠️ No container runtime found. Falling back to native deployment..."
+              
+              # Check for git and npm
+              if ! command -v git >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+                echo "❌ git or npm not found. Cannot deploy natively."
                 exit 1
               fi
+
+              # Clone or pull
+              if [ ! -d ".git" ]; then
+                git clone https://github.com/${{ github.repository }}.git .
+              else
+                git fetch origin main
+                git reset --hard origin/main
+              fi
+
+              # Install and build
+              npm ci
+              npm run build --workspace=@openpath/shared
+              npm run build --workspace=@openpath/api
+              
+              # Restart service if it exists
+              if command -v rc-service >/dev/null 2>&1; then
+                rc-service openpath-api restart || echo "⚠️ Could not restart openpath-api service"
+              elif command -v systemctl >/dev/null 2>&1; then
+                systemctl restart openpath-api || echo "⚠️ Could not restart openpath-api service"
+              else
+                echo "⚠️ No service manager found. Please restart the API manually."
+              fi
             fi
-
-            # Run database migrations if needed
-            $COMPOSE_CMD -f docker-compose.prod.yml up -d db
-            sleep 10  # Wait for PostgreSQL to be ready
-
-            # Deploy API with zero-downtime (recreate only api container)
-            $COMPOSE_CMD -f docker-compose.prod.yml up -d --force-recreate api
-
-            # Run migrations
-            $COMPOSE_CMD -f docker-compose.prod.yml exec -T api npm run db:migrate || true
-
-            # Clean up old images
-            $DOCKER_CMD image prune -f
 
             echo "✅ Deployment completed successfully"
 
