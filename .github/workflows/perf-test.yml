@@ -29,21 +29,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y k6
       
+      - name: Install dependencies
+        run: npm ci
+
       - name: Build shared package
-        run: cd shared && npm install && npm run build
-      
-      - name: Install API dependencies
-        working-directory: api
-        run: npm ci || npm install
-      
+        run: npm run build --workspace=@openpath/shared
+
       - name: Build API
-        working-directory: api
-        run: npm run build
-      
+        run: npm run build --workspace=@openpath/api
+
       - name: Start API server
-        working-directory: api
         run: |
-          node dist/server.js &
+          npm start --workspace=@openpath/api &
           sleep 5
         env:
           PORT: 3000

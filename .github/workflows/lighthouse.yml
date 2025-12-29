@@ -27,18 +27,20 @@ jobs:
           node-version: '20'
       
       - name: Install dependencies
-        working-directory: api
-        run: npm ci || npm install
-      
+        run: npm ci
+
+      - name: Build API
+        run: npm run build --workspace=@openpath/api
+
       - name: Start API server
-        working-directory: api
         run: |
-          npm start &
+          npm start --workspace=@openpath/api &
           sleep 5
         env:
           NODE_ENV: test
           ADMIN_TOKEN: lighthouse-test-token
           JWT_SECRET: lighthouse-test-secret
+          PORT: 3000
       
       - name: Run Lighthouse CI
         uses: treosh/lighthouse-ci-action@v12
