@@ -413,16 +413,24 @@ jobs:
           script: |
             set -e
             
+            DEPLOY_DIR="${{ secrets.DEPLOY_PATH || '/opt/openpath' }}"
+            
             # Create directory if it doesn't exist
-            if command -v sudo >/dev/null 2>&1; then
-              sudo mkdir -p ${{ secrets.DEPLOY_PATH || '/opt/openpath' }}
-              sudo chown -R $USER:$USER ${{ secrets.DEPLOY_PATH || '/opt/openpath' }}
-            else
-              mkdir -p ${{ secrets.DEPLOY_PATH || '/opt/openpath' }}
+            if [ ! -d "$DEPLOY_DIR" ]; then
+              if command -v sudo >/dev/null 2>&1; then
+                sudo mkdir -p "$DEPLOY_DIR"
+                sudo chown -R $USER:$USER "$DEPLOY_DIR"
+              else
+                mkdir -p "$DEPLOY_DIR" || {
+                  echo "⚠️ Could not create $DEPLOY_DIR, falling back to ~/openpath"
+                  DEPLOY_DIR="$HOME/openpath"
+                  mkdir -p "$DEPLOY_DIR"
+                }
+              fi
             fi
 
             # Navigate to deployment directory
-            cd ${{ secrets.DEPLOY_PATH || '/opt/openpath' }}
+            cd "$DEPLOY_DIR"
             
             # Login to GitHub Container Registry
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
