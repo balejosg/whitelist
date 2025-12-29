@@ -7,7 +7,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import db from '../src/lib/db.js';
+import { pool } from '../src/db/index.js';
+
+// Adapter to match legacy db interface used in this script
+const db = {
+    query: (text: string, params?: unknown[]) => pool.query(text, params),
+    close: () => pool.end()
+};
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = process.env.DATA_DIR ?? path.join(__dirname, '..', 'data');

@@ -11,5 +11,6 @@ export default defineConfig({
         database: process.env.DB_NAME ?? 'openpath',
         user: process.env.DB_USER ?? 'openpath',
         password: process.env.DB_PASSWORD ?? 'openpath_dev',
+        ssl: false,
     },
 });

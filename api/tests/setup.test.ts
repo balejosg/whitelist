@@ -27,27 +27,15 @@
 
 import { test, describe, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+// fs/path imports removed as they are no longer needed for data backup
+// fs/path imports removed as they are no longer needed
 import type { Server } from 'node:http';
-import { getAvailablePort } from './test-utils.js';
-import db from '../src/lib/db.js';
+import { getAvailablePort, resetDb } from './test-utils.js';
+import { closeConnection } from '../src/db/index.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// __dirname removed (unused)
 let PORT: number;
 let API_URL: string;
-
-// Data files to clean up
-const DATA_DIR = path.join(__dirname, '..', 'data');
-const SETUP_FILE = path.join(DATA_DIR, 'setup.json');
-const ROLES_FILE = path.join(DATA_DIR, 'user_roles.json');
-const USERS_FILE = path.join(DATA_DIR, 'users.json');
-
-// Backup original files
-let originalRolesData: string | null = null;
-let originalUsersData: string | null = null;
-let originalSetupData: string | null = null;
 
 // Global timeout - force exit if tests hang (20s)
 const GLOBAL_TIMEOUT = setTimeout(() => {
@@ -77,50 +65,10 @@ interface ValidateTokenResponse {
     valid: boolean;
 }
 
-function backupDataFiles(): void {
-    if (fs.existsSync(ROLES_FILE)) {
-        originalRolesData = fs.readFileSync(ROLES_FILE, 'utf-8');
-    }
-    if (fs.existsSync(USERS_FILE)) {
-        originalUsersData = fs.readFileSync(USERS_FILE, 'utf-8');
-    }
-    if (fs.existsSync(SETUP_FILE)) {
-        originalSetupData = fs.readFileSync(SETUP_FILE, 'utf-8');
-    }
-}
-
-function restoreDataFiles(): void {
-    if (originalRolesData !== null) {
-        fs.writeFileSync(ROLES_FILE, originalRolesData);
-    } else if (fs.existsSync(ROLES_FILE)) {
-        fs.writeFileSync(ROLES_FILE, JSON.stringify({ roles: [] }, null, 2));
-    }
-
-    if (originalUsersData !== null) {
-        fs.writeFileSync(USERS_FILE, originalUsersData);
-    } else if (fs.existsSync(USERS_FILE)) {
-        fs.writeFileSync(USERS_FILE, JSON.stringify({ users: [] }, null, 2));
-    }
-
-    if (originalSetupData !== null) {
-        fs.writeFileSync(SETUP_FILE, originalSetupData);
-    } else if (fs.existsSync(SETUP_FILE)) {
-        fs.unlinkSync(SETUP_FILE);
-    }
-}
-
-function clearDataFiles(): void {
-    fs.writeFileSync(ROLES_FILE, JSON.stringify({ roles: [] }, null, 2));
-    fs.writeFileSync(USERS_FILE, JSON.stringify({ users: [] }, null, 2));
-    if (fs.existsSync(SETUP_FILE)) {
-        fs.unlinkSync(SETUP_FILE);
-    }
-}
-
 void describe('Setup API Tests', { timeout: 30000 }, async () => {
     before(async () => {
-        // Backup existing data
-        backupDataFiles();
+        // Reset DB logic
+        await resetDb();
 
         PORT = await getAvailablePort();
         API_URL = `http://localhost:${String(PORT)}`;
@@ -135,8 +83,8 @@ void describe('Setup API Tests', { timeout: 30000 }, async () => {
     });
 
     after(async () => {
-        // Restore original data
-        restoreDataFiles();
+        // Reset DB logic
+        await resetDb();
 
         if (server !== undefined) {
             if ('closeAllConnections' in server && typeof server.closeAllConnections === 'function') {
@@ -150,15 +98,16 @@ void describe('Setup API Tests', { timeout: 30000 }, async () => {
             });
         }
         // Close database pool
-        await db.close();
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await closeConnection();
     });
 
     // ============================================
     // Setup Status Tests
     // ============================================
     await describe('GET /api/setup/status', async () => {
-        beforeEach(() => {
-            clearDataFiles();
+        beforeEach(async () => {
+            await resetDb();
         });
 
         await test('should return needsSetup: true when no admins exist', async () => {
@@ -176,8 +125,8 @@ void describe('Setup API Tests', { timeout: 30000 }, async () => {
     // First Admin Creation Tests
     // ============================================
     await describe('POST /api/setup/first-admin', async () => {
-        beforeEach(() => {
-            clearDataFiles();
+        beforeEach(async () => {
+            await resetDb();
         });
 
         await test('should create first admin and return registration token', async () => {
@@ -293,7 +242,7 @@ void describe('Setup API Tests', { timeout: 30000 }, async () => {
         let validToken: string;
 
         before(async () => {
-            clearDataFiles();
+            await resetDb();
 
             // Create first admin to get a valid token
             const adminData = {

@@ -11,7 +11,8 @@ import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
 import webPush from 'web-push';
-import { getAvailablePort } from './test-utils.js';
+import { getAvailablePort, resetDb } from './test-utils.js';
+import { closeConnection } from '../src/db/index.js';
 
 let PORT: number;
 let API_URL: string;
@@ -98,6 +99,7 @@ async function parseTRPC(response: Response): Promise<{ data?: unknown; error?: 
 
 await describe('Push Notifications API Tests (tRPC)', { timeout: 45000 }, async () => {
     before(async () => {
+        await resetDb();
         PORT = await getAvailablePort();
         API_URL = `http://localhost:${String(PORT)}`;
         process.env.PORT = String(PORT);
@@ -130,6 +132,7 @@ await describe('Push Notifications API Tests (tRPC)', { timeout: 45000 }, async 
                 });
             });
         }
+        await closeConnection();
     });
 
     await test('Setup: Create Teacher and Get Token', async (): Promise<void> => {

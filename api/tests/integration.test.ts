@@ -8,7 +8,8 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
-import { getAvailablePort } from './test-utils.js';
+import { getAvailablePort, resetDb } from './test-utils.js';
+import { closeConnection } from '../src/db/index.js';
 
 let PORT: number;
 let BASE_URL: string;
@@ -109,6 +110,7 @@ TIMEOUT.unref();
 
 await describe('Integration Tests (tRPC)', async () => {
     before(async () => {
+        await resetDb();
         PORT = await getAvailablePort();
         BASE_URL = `http://localhost:${String(PORT)}`;
         process.env.PORT = String(PORT);
@@ -118,11 +120,12 @@ await describe('Integration Tests (tRPC)', async () => {
         console.log(`Integration test server started on port ${String(PORT)}`);
     });
 
-    after(() => {
+    after(async () => {
         if (server !== undefined) {
             server.close();
             console.log('Integration test server closed');
         }
+        await closeConnection();
     });
 
     await describe('User Workflow', async () => {
@@ -222,7 +225,7 @@ await describe('Integration Tests (tRPC)', async () => {
             const submitRes = await trpcMutate('requests.create', {
                 domain: 'integration-test-' + String(Date.now()) + '.example.com',
                 reason: 'Integration test request',
-                requester_email: 'student@test.com'
+                requesterEmail: 'student@test.com'
             });
 
             assert.strictEqual(submitRes.status, 200, 'Request submission should succeed');

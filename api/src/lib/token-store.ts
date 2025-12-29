@@ -6,6 +6,7 @@
  */
 
 import jwt from 'jsonwebtoken';
+import crypto from 'node:crypto';
 import { eq, lt } from 'drizzle-orm';
 import { db, tokens } from '../db/index.js';
 import type { ITokenStore } from '../types/storage.js';
@@ -19,28 +20,38 @@ interface DecodedTokenBase {
 }
 
 // =============================================================================
+// Helper Functions
+// =============================================================================
+
+function hashToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+// =============================================================================
 // Token Store Implementation
 // =============================================================================
 
 export async function blacklistToken(token: string, expiresAt: Date): Promise<void> {
-    const decoded = jwt.decode(token) as DecodedTokenBase & { userId?: string } | null;
-    const userId = decoded?.userId ?? 'unknown';
+    const decoded = jwt.decode(token) as DecodedTokenBase & { sub?: string } | null;
+    const userId = decoded?.sub ?? 'unknown';
 
-    // Use first 16 chars of token as ID (unique enough)
-    const id = token.substring(0, 16);
+    const tokenHash = hashToken(token);
+    // Use first 32 chars of hash as ID (deterministic and unique enough)
+    const id = tokenHash.substring(0, 32);
 
     await db.insert(tokens)
         .values({
             id,
             userId,
-            tokenHash: token,
+            tokenHash,
             expiresAt,
         })
         .onConflictDoNothing();
 }
 
 export async function isBlacklisted(token: string): Promise<boolean> {
-    const id = token.substring(0, 16);
+    const tokenHash = hashToken(token);
+    const id = tokenHash.substring(0, 32);
 
     const result = await db.select()
         .from(tokens)

@@ -72,7 +72,7 @@ export async function testConnection(): Promise<boolean> {
 /**
  * Close the pool (for testing/shutdown)
  */
-export async function close(): Promise<void> {
+export async function closeConnection(): Promise<void> {
     await pool.end();
     console.log('Database pool closed');
 }

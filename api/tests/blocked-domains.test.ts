@@ -10,7 +10,8 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
-import { getAvailablePort } from './test-utils.js';
+import { getAvailablePort, resetDb } from './test-utils.js';
+import { closeConnection } from '../src/db/index.js';
 
 let PORT: number;
 let API_URL: string;
@@ -93,6 +94,7 @@ async function parseTRPC(response: Response): Promise<{ data?: unknown; error?: 
 
 await describe('Blocked Domains Tests - US3 (tRPC)', { timeout: 45000 }, async () => {
     before(async () => {
+        await resetDb();
         PORT = await getAvailablePort();
         API_URL = `http://localhost:${String(PORT)}`;
         process.env.PORT = String(PORT);
@@ -120,6 +122,7 @@ await describe('Blocked Domains Tests - US3 (tRPC)', { timeout: 45000 }, async (
                 });
             });
         }
+        await closeConnection();
     });
 
     await test('Setup: Create Teacher with Role', async (): Promise<void> => {
@@ -238,7 +241,7 @@ await describe('Blocked Domains Tests - US3 (tRPC)', { timeout: 45000 }, async (
             const response = await trpcMutate('requests.create', {
                 domain: testDomain,
                 reason: 'Test request for blocked domain',
-                requester_email: 'student@test.com'
+                requesterEmail: 'student@test.com'
             });
 
             if (response.status === 200) {
@@ -257,7 +260,7 @@ await describe('Blocked Domains Tests - US3 (tRPC)', { timeout: 45000 }, async (
             const token = teacherToken ?? '';
             const response = await trpcMutate('requests.approve', {
                 id: pendingRequestId,
-                group_id: TEACHER_GROUP
+                groupId: TEACHER_GROUP
             }, { 'Authorization': `Bearer ${token}` });
 
             // Either success (200) or forbidden (403) depending on domain
@@ -274,7 +277,7 @@ await describe('Blocked Domains Tests - US3 (tRPC)', { timeout: 45000 }, async (
             const response = await trpcMutate('requests.create', {
                 domain: safeDomain,
                 reason: 'Test request for safe domain',
-                requester_email: 'student-safe@test.com'
+                requesterEmail: 'student-safe@test.com'
             });
 
             if (response.status === 200) {
@@ -293,7 +296,7 @@ await describe('Blocked Domains Tests - US3 (tRPC)', { timeout: 45000 }, async (
             const token = teacherToken ?? '';
             const response = await trpcMutate('requests.approve', {
                 id: nonBlockedRequestId,
-                group_id: TEACHER_GROUP
+                groupId: TEACHER_GROUP
             }, { 'Authorization': `Bearer ${token}` });
 
             assert.ok(

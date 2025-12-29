@@ -20,7 +20,7 @@ import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
 import { getAvailablePort } from './test-utils.js';
-import db from '../src/lib/db.js';
+import { closeConnection } from '../src/db/index.js';
 
 let PORT: number;
 let API_URL: string;
@@ -109,7 +109,9 @@ await describe('Whitelist Request API Tests (tRPC)', { timeout: 30000 }, async (
                 });
             });
         }
-        await db.close();
+        // Close database pool
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await closeConnection();
     });
 
     await describe('Health Check', async () => {

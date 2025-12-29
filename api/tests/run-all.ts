@@ -18,6 +18,7 @@ const currentDirPath = path.dirname(currentFilePath);
 const testFiles: readonly string[] = [
     'tests/api.test.ts',
     'tests/auth.test.ts',
+    'tests/drizzle.test.ts',
     'tests/roles.test.ts',
     'tests/blocked-domains.test.ts',
     'tests/classrooms.test.ts',

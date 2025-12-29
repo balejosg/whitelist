@@ -28,7 +28,7 @@ import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
 import { getAvailablePort } from './test-utils.js';
-import db from '../src/lib/db.js';
+import { closeConnection } from '../src/db/index.js';
 
 let PORT: number;
 let API_URL: string;
@@ -115,7 +115,8 @@ await describe('Authentication & User Management API Tests (tRPC)', { timeout: 3
             });
         }
         // Close database pool
-        await db.close();
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await closeConnection();
     });
 
     // ============================================
@@ -337,6 +338,31 @@ await describe('Authentication & User Management API Tests (tRPC)', { timeout: 3
         await test('users.listTeachers should require admin authentication', async () => {
             const response = await trpcQuery('users.listTeachers');
             assert.strictEqual(response.status, 401);
+        });
+    });
+
+    // ============================================
+    // Logout Tests
+    // ============================================
+    await describe('tRPC auth.logout - Logout', async () => {
+        let accessToken: string;
+
+        before(async () => {
+            const email = `logout-test-${String(Date.now())}@example.com`;
+            const pwd = 'SecurePassword123!';
+            await trpcMutate('auth.register', { email, password: pwd, name: 'Logout User' });
+            const login = await trpcMutate('auth.login', { email, password: pwd });
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+            const json = await login.json() as any;
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+            accessToken = json.result.data.accessToken;
+        });
+
+        await test('should logout successfully', async () => {
+            if (!accessToken) return;
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            const response = await trpcMutate('auth.logout', {}, { 'Authorization': `Bearer ${accessToken}` });
+            assert.strictEqual(response.status, 200, 'Logout should return 200');
         });
     });
 });

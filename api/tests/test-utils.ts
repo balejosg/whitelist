@@ -33,6 +33,38 @@ export async function getAvailablePort(): Promise<number> {
     });
 }
 
+
+import { db } from '../src/db/index.js';
+import { sql } from 'drizzle-orm';
+
+/**
+ * Reset database by truncating all tables
+ * Useful for test isolation
+ */
+export async function resetDb(): Promise<void> {
+    const tables = [
+        'users',
+        'roles',
+        'tokens',
+        'classrooms',
+        'schedules', // Was classroom_schedules
+        'requests',  // Was whitelist_requests
+        'machines',
+        'settings'
+    ];
+
+    for (const table of tables) {
+        await db.execute(sql.raw(`TRUNCATE TABLE "${table}" CASCADE`));
+    }
+
+    // Insert legacy_admin user for FK constraints (required for tests using ADMIN_TOKEN)
+    await db.execute(sql.raw(`
+        INSERT INTO users (id, email, name, password_hash)
+        VALUES ('legacy_admin', 'admin@openpath.dev', 'Legacy Admin', 'placeholder')
+        ON CONFLICT (id) DO NOTHING
+    `));
+}
+
 // Unique identifier for this test run - used for email generation
 export const TEST_RUN_ID = `${String(Date.now())}-${Math.random().toString(36).slice(2, 8)}`;
 

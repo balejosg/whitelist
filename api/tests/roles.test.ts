@@ -10,8 +10,8 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
-import { getAvailablePort } from './test-utils.js';
-import db from '../src/lib/db.js';
+import { getAvailablePort, resetDb } from './test-utils.js';
+import { closeConnection } from '../src/db/index.js';
 
 let PORT: number;
 let API_URL: string;
@@ -58,18 +58,18 @@ interface UserResult {
     id: string;
     email: string;
     name: string;
-    roles?: { id: string; role: string; groupIds: string[] }[];
+    roles?: { id: string; role: string; groups: string[] }[];
 }
 
 interface RoleResult {
     id: string;
     role: string;
-    groupIds: string[];
+    groups: string[];
 }
 
 interface TeacherResult {
     userId: string;
-    groupIds: string[];
+    groups: string[];
 }
 
 async function parseTRPC(response: Response): Promise<{ data?: unknown; error?: string; code?: string }> {
@@ -85,6 +85,8 @@ async function parseTRPC(response: Response): Promise<{ data?: unknown; error?: 
 
 await describe('Role Management E2E Tests (tRPC)', { timeout: 45000 }, async () => {
     before(async () => {
+        await resetDb();
+
         PORT = await getAvailablePort();
         API_URL = `http://localhost:${String(PORT)}`;
         process.env.PORT = String(PORT);
@@ -113,7 +115,8 @@ await describe('Role Management E2E Tests (tRPC)', { timeout: 45000 }, async () 
             });
         }
         // Close database pool
-        await db.close();
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await closeConnection();
     });
 
     await test('Setup: Create Teacher User', async (): Promise<void> => {
@@ -144,7 +147,7 @@ await describe('Role Management E2E Tests (tRPC)', { timeout: 45000 }, async () 
         const res = await parseTRPC(response);
         const data = res.data as RoleResult;
         assert.strictEqual(data.role, 'teacher');
-        assert.deepStrictEqual(data.groupIds, ['ciencias-3eso', 'matematicas-4eso']);
+        assert.deepStrictEqual(data.groups, ['ciencias-3eso', 'matematicas-4eso']);
     });
 
     await test('should assign teacher role without groups (optional)', async (): Promise<void> => {
@@ -193,7 +196,7 @@ await describe('Role Management E2E Tests (tRPC)', { timeout: 45000 }, async () 
 
         const teacherRole = data.roles.find(r => r.role === 'teacher');
         assert.ok(teacherRole !== undefined);
-        assert.ok(teacherRole.groupIds.includes('ciencias-3eso'));
+        assert.ok(teacherRole.groups.includes('ciencias-3eso'));
     });
 
     await test('users.updateRole - Update Role Groups (skipped)', async (): Promise<void> => {

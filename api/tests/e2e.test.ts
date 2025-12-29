@@ -19,9 +19,11 @@ import {
     trpcQuery as _trpcQuery,
     parseTRPC,
     getAvailablePort,
+    resetDb,
     type AuthResult,
     type RequestResult
 } from './test-utils.js';
+import { closeConnection } from '../src/db/index.js';
 
 let PORT: number;
 let API_URL: string;
@@ -57,6 +59,9 @@ console.log(`E2E Test Run ID: ${TEST_RUN_ID}`);
 
 await describe('E2E: Teacher Role Workflow (tRPC)', { timeout: 75000 }, async () => {
     before(async () => {
+        // Reset DB logic
+        await resetDb();
+
         PORT = await getAvailablePort();
         API_URL = `http://localhost:${String(PORT)}`;
         process.env.PORT = String(PORT);
@@ -86,6 +91,8 @@ await describe('E2E: Teacher Role Workflow (tRPC)', { timeout: 75000 }, async ()
                 });
             });
         }
+
+        await closeConnection();
 
         if (testDataDir) {
             fs.rmSync(testDataDir, { recursive: true, force: true });
@@ -223,8 +230,8 @@ await describe('E2E: Teacher Role Workflow (tRPC)', { timeout: 75000 }, async ()
             const response = await trpcMutate('requests.create', {
                 domain: TEST_DOMAIN,
                 reason: 'I need this for homework',
-                requester_email: 'student@test.com',
-                group_id: TEACHER_GROUP
+                requesterEmail: 'student@test.com',
+                groupId: TEACHER_GROUP
             });
 
             assert.strictEqual(response.status, 200);
@@ -239,7 +246,7 @@ await describe('E2E: Teacher Role Workflow (tRPC)', { timeout: 75000 }, async ()
             const token = teacherToken ?? '';
             const response = await trpcMutate('requests.approve', {
                 id: requestId,
-                group_id: TEACHER_GROUP
+                groupId: TEACHER_GROUP
             }, { 'Authorization': `Bearer ${token}` });
 
             assert.ok([200, 400].includes(response.status));
