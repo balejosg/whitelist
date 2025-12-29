@@ -30,7 +30,10 @@ jobs:
       
       - name: Build shared package
         run: npm run build --workspace=@openpath/shared
-      
+
+      - name: Build api package (for type exports)
+        run: npm run build --workspace=@openpath/api
+
       - name: Verify Strict Compliance (Lint & Type Check)
         run: npm run verify
       
