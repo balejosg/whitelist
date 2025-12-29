@@ -2,9 +2,6 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Instalar dependencias del sistema para compilación
-RUN apk add --no-cache python3 make g++
-
 # Copy root package files and workspace package files
 COPY package*.json ./
 COPY dashboard/package*.json ./dashboard/
@@ -30,9 +27,6 @@ RUN npm run build
 FROM node:20-alpine
 
 WORKDIR /app
-
-# Instalar dependencias runtime para bcrypt
-RUN apk add --no-cache python3 make g++
 
 # Copy package files
 COPY package*.json ./

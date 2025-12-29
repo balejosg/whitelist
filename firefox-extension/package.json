@@ -14,10 +14,9 @@
     },
     "devDependencies": {
         "@types/webextension-polyfill": "^0.12.1",
-        "@typescript-eslint/eslint-plugin": "^8.50.1",
-        "@typescript-eslint/parser": "^8.50.1",
-        "eslint": "^9.39.2",
+        "eslint": "^9.17.0",
         "typescript": "^5.7.2",
+        "typescript-eslint": "^8.20.0",
         "webextension-polyfill": "^0.12.0"
     },
     "engines": {

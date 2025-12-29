@@ -22,7 +22,7 @@ export async function getAvailablePort(): Promise<number> {
         const server = createServer();
         server.listen(0, () => {
             const addr = server.address();
-            if (addr && typeof addr === 'object') {
+            if (addr !== null && typeof addr === 'object') {
                 const port = addr.port;
                 server.close(() => { resolve(port); });
             } else {

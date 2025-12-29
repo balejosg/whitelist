@@ -362,7 +362,7 @@ if (swaggerUi && getSwaggerSpec) {
         customCss: '.swagger-ui .topbar { display: none }',
         customSiteTitle: 'OpenPath API Documentation'
     }));
-    app.get('/api-docs.json', (_req: Request, res: Response) => {
+    app.get('/api-docs.json', (_req: Request, res: Response): void => {
         res.setHeader('Content-Type', 'application/json');
         res.send(getSwaggerSpec());
     });
@@ -466,7 +466,7 @@ const isMainModule = import.meta.url === `file://${process.argv[1] ?? ''}`;
 if (isMainModule) {
     const serverStartTime = new Date();
     server = app.listen(PORT, HOST, () => {
-        void (async () => {
+        void (async (): Promise<void> => {
             logger.info('Server started', {
                 host: HOST,
                 port: String(PORT),

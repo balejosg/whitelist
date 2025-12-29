@@ -2,6 +2,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Install system dependencies for native modules (bcrypt)
+RUN apk add --no-cache python3 make g++
+
 # Copy root package files and workspace package files
 COPY package*.json ./
 COPY api/package*.json ./api/
@@ -28,8 +31,8 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+# Install dumb-init and build tools for native modules (bcrypt)
+RUN apk add --no-cache dumb-init python3 make g++
 
 # Copy package files
 COPY package*.json ./

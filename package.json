@@ -9,6 +9,7 @@
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix",
     "lint:shell": "shellcheck linux/lib/*.sh linux/scripts/**/*.sh",
+    "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
     "test": "npm run test:shell && npm run test:api",
     "test:shell": "cd tests && bats *.bats",
     "test:api": "cd api && npm test",
