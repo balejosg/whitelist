@@ -414,7 +414,8 @@ jobs:
             set -e
             
             # Create directory if it doesn't exist
-            mkdir -p ${{ secrets.DEPLOY_PATH || '/opt/openpath' }}
+            sudo mkdir -p ${{ secrets.DEPLOY_PATH || '/opt/openpath' }}
+            sudo chown -R $USER:$USER ${{ secrets.DEPLOY_PATH || '/opt/openpath' }}
 
             # Navigate to deployment directory
             cd ${{ secrets.DEPLOY_PATH || '/opt/openpath' }}
