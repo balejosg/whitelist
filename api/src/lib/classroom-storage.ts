@@ -29,7 +29,7 @@ interface ClassroomWithCount {
     machineCount: number;
 }
 
-interface WhitelistUrlResult {
+export interface WhitelistUrlResult {
     url: string;
     groupId: string;
     classroomId: string;
@@ -37,7 +37,7 @@ interface WhitelistUrlResult {
     source: 'manual' | 'schedule' | 'default';
 }
 
-interface ClassroomStats {
+export interface ClassroomStats {
     classrooms: number;
     machines: number;
     classroomsWithActiveGroup: number;

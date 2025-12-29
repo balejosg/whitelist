@@ -154,7 +154,10 @@ jobs:
       
       - name: Install dependencies
         run: npm ci
-      
+
+      - name: Build shared package
+        run: npm run build --workspace=@openpath/shared
+
       - name: Run linting
         run: npm run lint --workspace=@openpath/api
       
@@ -223,10 +226,13 @@ jobs:
       
       - name: Build shared package
         run: npm run build --workspace=@openpath/shared
-      
+
+      - name: Build api package (for type exports)
+        run: npm run build --workspace=@openpath/api
+
       - name: Run linting
         run: npm run lint --workspace=openpath-spa
-      
+
       - name: TypeScript type-check
         run: npm run typecheck --workspace=openpath-spa
 

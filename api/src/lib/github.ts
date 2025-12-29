@@ -36,7 +36,7 @@ interface GitHubRequestBody {
     sha?: string;
 }
 
-interface WhitelistFile {
+export interface WhitelistFile {
     name: string;
     path: string;
 }
@@ -46,7 +46,7 @@ interface AddDomainResult {
     message: string;
 }
 
-interface BlockedCheckResult {
+export interface BlockedCheckResult {
     blocked: boolean;
     matchedRule: string | null;
 }

@@ -25,7 +25,7 @@ interface RoleStats {
     students: number;
 }
 
-interface TeacherInfo {
+export interface TeacherInfo {
     userId: string;
     groupIds: string[];
     createdAt: string;

@@ -28,7 +28,7 @@ interface TokenPayload {
     type: 'access' | 'refresh';
 }
 
-interface TokensResult {
+export interface TokensResult {
     accessToken: string;
     refreshToken: string;
     expiresIn: string;
