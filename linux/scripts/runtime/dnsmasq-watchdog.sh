@@ -228,11 +228,11 @@ report_health_to_api() {
 {
     "hostname": "$hostname",
     "status": "$status",
-    "dnsmasq_running": $(check_dnsmasq_running && echo "true" || echo "false"),
-    "dns_resolving": $(check_dns_resolving && echo "true" || echo "false"),
-    "fail_count": $(get_fail_count),
+    "dnsmasqRunning": $(check_dnsmasq_running && echo "true" || echo "false"),
+    "dnsResolving": $(check_dns_resolving && echo "true" || echo "false"),
+    "failCount": $(get_fail_count),
     "actions": "$actions",
-    "version": "${VERSION:-3.5}"
+    "version": "${VERSION:-1.0.4}"
 }
 EOF
 )

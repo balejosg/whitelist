@@ -33,7 +33,7 @@
 
 set -e
 
-VERSION="3.5"
+VERSION="1.0.4"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Directorios de instalación

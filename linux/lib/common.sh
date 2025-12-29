@@ -22,7 +22,7 @@
 ################################################################################
 
 # System version
-VERSION="3.5"
+VERSION="1.0.4"
 
 # Directories and files
 INSTALL_DIR="/usr/local/lib/openpath"
