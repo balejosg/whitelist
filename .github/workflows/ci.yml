@@ -397,7 +397,7 @@ jobs:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: [build-docker-api]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip deploy]')
     
     steps:
       - name: Checkout code
@@ -571,7 +571,7 @@ jobs:
              [[ "${{ needs.test-spa.result }}" == "failure" ]] || \
              [[ "${{ needs.build-docker.result }}" == "failure" ]] || \
              [[ "${{ needs.build-docker-api.result }}" == "failure" ]] || \
-             [[ "${{ needs.deploy.result }}" == "failure" ]]; then
+             ([[ "${{ needs.deploy.result }}" == "failure" ]] && [[ "${{ needs.deploy.result }}" != "skipped" ]]); then
             echo "❌ CI Failed"
             exit 1
           fi
