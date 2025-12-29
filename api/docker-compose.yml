@@ -10,6 +10,24 @@
 version: '3.8'
 
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: openpath-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-openpath}
+      POSTGRES_USER: ${DB_USER:-openpath}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-openpath_dev}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-openpath}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   api:
     build:
       context: .
@@ -22,6 +40,11 @@ services:
       - NODE_ENV=${NODE_ENV:-production}
       - PORT=3000
       - HOST=0.0.0.0
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-openpath}
+      - DB_USER=${DB_USER:-openpath}
+      - DB_PASSWORD=${DB_PASSWORD:-openpath_dev}
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-24h}
       - JWT_REFRESH_EXPIRES_IN=${JWT_REFRESH_EXPIRES_IN:-7d}
@@ -40,9 +63,10 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - SLOW_REQUEST_THRESHOLD_MS=${SLOW_REQUEST_THRESHOLD_MS:-1000}
       - REDIS_URL=${REDIS_URL:-}
+    depends_on:
+      db:
+        condition: service_healthy
     volumes:
-      # Persist data directory for JSON file storage
-      - api-data:/app/data
       # Persist logs
       - api-logs:/app/logs
     healthcheck:
@@ -57,22 +81,6 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # Optional: Redis for distributed token blacklist
-  # Uncomment if you need session persistence across restarts
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: openpath-redis
-  #   restart: unless-stopped
-  #   volumes:
-  #     - redis-data:/data
-  #   command: redis-server --appendonly yes
-  #   healthcheck:
-  #     test: ["CMD", "redis-cli", "ping"]
-  #     interval: 10s
-  #     timeout: 3s
-  #     retries: 3
-
 volumes:
-  api-data:
+  postgres_data:
   api-logs:
-  # redis-data:

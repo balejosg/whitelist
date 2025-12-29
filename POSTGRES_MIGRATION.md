@@ -101,7 +101,7 @@ DB_POOL_MAX=20
 
 ### SSL Connections (Production)
 
-For production databases with SSL/TLS, update `api/src/lib/db.ts` to add SSL configuration:
+For production databases with SSL/TLS, update `api/src/db/index.ts` to add SSL configuration:
 
 ```typescript
 const config = {

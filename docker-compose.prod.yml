@@ -61,10 +61,6 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=8080
-      - VITE_API_URL=${API_URL:-http://localhost:3000}
-      # Note: VITE_API_URL is build-time for Vite, but dashboard is static?
-      # If dashboard is served by node server (dist/server.js usually), it might use runtime env?
-      # Checking dashboard/Dockerfile...
       - API_URL=${API_URL:-http://localhost:3000}
     depends_on:
       - api

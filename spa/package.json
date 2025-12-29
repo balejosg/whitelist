@@ -30,7 +30,7 @@
         "@openpath/api": "file:../api"
     },
     "engines": {
-        "node": ">=18.0.0"
+        "node": ">=20.0.0"
     },
     "dependencies": {
         "@trpc/client": "^11.8.1"

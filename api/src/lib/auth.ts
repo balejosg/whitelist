@@ -107,7 +107,7 @@ export function generateAccessToken(user: User, roles: RoleInfo[] = []): string 
 
     return jwt.sign(payload, JWT_SECRET, {
         expiresIn: JWT_EXPIRES_IN,
-        issuer: 'whitelist-api'
+        issuer: 'openpath-api'
     } as SignOptions);
 }
 
@@ -122,7 +122,7 @@ export function generateRefreshToken(user: User): string {
 
     return jwt.sign(payload, JWT_SECRET, {
         expiresIn: JWT_REFRESH_EXPIRES_IN,
-        issuer: 'whitelist-api'
+        issuer: 'openpath-api'
     } as SignOptions);
 }
 
@@ -154,7 +154,7 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
         }
 
         const decoded = jwt.verify(token, JWT_SECRET, {
-            issuer: 'whitelist-api'
+            issuer: 'openpath-api'
         }) as JWTPayload;
 
         return decoded;

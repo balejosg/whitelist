@@ -9,7 +9,7 @@ This is a **Node.js (TypeScript)** server designed to run on your home network. 
 ## Architecture
 
 ```
-Firefox Extension → Home Server (API/tRPC) → GitHub Repository
+Firefox Extension → OpenPath API (PostgreSQL) → GitHub Repository
                          ↓
                     Admin Dashboard (SPA)
 ```
@@ -19,8 +19,12 @@ Firefox Extension → Home Server (API/tRPC) → GitHub Repository
 ### 1. Install dependencies
 
 ```bash
-cd api
+# Install all dependencies from root
 npm install
+
+# Or build shared package first
+npm run build --workspace=@openpath/shared
+cd api && npm install
 ```
 
 ### 2. Configure environment
@@ -232,13 +236,7 @@ pm2 startup
 ### Option C: Docker
 
 ```bash
-docker build -t openpath-api .
-docker run -d \
-  -p 3000:3000 \
-  -v $(pwd)/data:/app/data \
-  --env-file .env \
-  --restart unless-stopped \
-  openpath-api
+docker compose up -d
 ```
 
 ### Option D: Systemd service

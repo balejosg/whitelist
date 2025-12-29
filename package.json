@@ -10,16 +10,18 @@
     "lint:fix": "eslint . --fix",
     "lint:shell": "shellcheck linux/lib/*.sh linux/scripts/**/*.sh",
     "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
-    "test": "npm run test:shell && npm run test:api",
+    "test": "npm run test:shell && npm run test:api && npm run test:dashboard && npm run test:spa",
     "test:shell": "cd tests && bats *.bats",
-    "test:api": "cd api && npm test",
+    "test:api": "npm test --workspace=@openpath/api",
+    "test:dashboard": "npm test --workspace=dashboard",
+    "test:spa": "npm test --workspace=openpath-spa",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "verify": "npm run typecheck && npm run lint --workspaces --if-present"
   },
   "devDependencies": {
     "eslint": "^9.17.0",
     "@eslint/js": "^9.17.0",
-    "typescript-eslint": "^8.18.0",
+    "typescript-eslint": "^8.20.0",
     "husky": "^9.1.7",
     "lint-staged": "^15.2.10"
   },
@@ -29,11 +31,11 @@
     ]
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/brunomcr/openpath.git"
+    "url": "git+https://github.com/balejosg/openpath.git"
   },
   "keywords": [
     "dns",

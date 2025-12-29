@@ -31,7 +31,7 @@ npm run deploy
 
 ### 3. Actualizar SPA
 
-En `spa/js/oauth.js`, actualiza `WORKER_URL` con la URL de tu Worker desplegado.
+En `spa/src/auth.ts`, actualiza `WORKER_URL` con la URL de tu Worker desplegado.
 
 ### 4. Redesplegar SPA
 

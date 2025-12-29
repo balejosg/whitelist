@@ -44,10 +44,11 @@ COPY --from=builder /app/shared/dist ./shared/dist
 RUN mkdir -p /app/dashboard/data
 
 # Puerto
-EXPOSE 3000
+EXPOSE 8080
 
 # Variables de entorno
 ENV NODE_ENV=production
+ENV PORT=8080
 ENV DATA_DIR=/app/dashboard/data
 
 # Ejecutar

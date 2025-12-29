@@ -76,7 +76,7 @@ function githubRequest<T>(
                 'Authorization': `Bearer ${token}`,
                 'Accept': 'application/vnd.github.v3+json',
                 'Content-Type': 'application/json',
-                'User-Agent': 'whitelist-request-api/1.0'
+                'User-Agent': 'openpath-api/1.0'
             }
         };
 

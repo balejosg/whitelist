@@ -48,7 +48,7 @@ npm start
 
 ## Acceso
 
-- URL: `http://localhost:3000`
+- URL: `http://localhost:8080`
 - Usuario: `admin`
 - Contraseña: `admin123` (o la configurada en `ADMIN_PASSWORD`)
 
@@ -94,7 +94,7 @@ O modifica `/etc/openpath/whitelist-url.conf` con la nueva URL.
 
 | Variable | Descripción | Default |
 |----------|-------------|---------|
-| `PORT` | Puerto del servidor | 3000 |
+| `PORT` | Puerto del servidor | 8080 |
 | `ADMIN_PASSWORD` | Contraseña inicial del admin | admin123 |
 | `SESSION_SECRET` | Secreto para sesiones | auto-generado |
 | `DATA_DIR` | Directorio de datos | ./data |
@@ -103,16 +103,13 @@ O modifica `/etc/openpath/whitelist-url.conf` con la nueva URL.
 
 ```
 dashboard/
-├── server/
-│   ├── index.js       # Servidor Express
-│   └── db.js          # Base de datos SQLite
+├── src/
+│   ├── index.ts       # Servidor Express
+│   └── ...
 ├── public/
 │   ├── index.html     # SPA
 │   ├── css/style.css  # Estilos
 │   └── js/app.js      # JavaScript
-├── data/              # Datos persistentes
-│   ├── whitelist.db   # Base de datos
-│   └── export/        # Ficheros TXT generados
 ├── Dockerfile
 └── docker-compose.yml
 ```
@@ -130,7 +127,7 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/.../privkey.pem;
     
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
@@ -142,9 +139,9 @@ server {
 Si ya tienes DuckDNS configurado:
 
 ```bash
-# Exponer puerto 3000 en el router
+# Exponer puerto 8080 en el router
 # Actualizar URL en clientes:
-http://tu-subdominio.duckdns.org:3000/export/informatica-3.txt
+http://tu-subdominio.duckdns.org:8080/export/informatica-3.txt
 ```
 
 ## Migrar desde GitHub
@@ -156,4 +153,4 @@ http://tu-subdominio.duckdns.org:3000/export/informatica-3.txt
 
 ## Licencia
 
-MIT
+AGPL-3.0-or-later

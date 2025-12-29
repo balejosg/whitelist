@@ -113,7 +113,12 @@ jobs:
             
             # Install dependencies
             echo "📦 Installing dependencies..."
-            npm ci --omit=dev
+            npm ci
+            
+            # Build shared and api
+            echo "🏗️ Building project..."
+            npm run build --workspace=@openpath/shared
+            npm run build --workspace=@openpath/api
             
             # Restart service
             echo "🔄 Restarting API service..."
