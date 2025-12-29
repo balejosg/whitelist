@@ -2,35 +2,36 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install system dependencies for native modules (bcrypt)
+# Install system dependencies
 RUN apk add --no-cache python3 make g++
 
-# Copy root package files and workspace package files
+# Copy root package files
 COPY package*.json ./
 COPY api/package*.json ./api/
 COPY shared/package*.json ./shared/
+COPY dashboard/package*.json ./dashboard/
 COPY spa/package*.json ./spa/
+COPY auth-worker/package*.json ./auth-worker/
+COPY firefox-extension/package*.json ./firefox-extension/
 
-# Install all dependencies
+# Install dependencies
 RUN npm ci
 
 # Copy source code
 COPY api ./api
 COPY shared ./shared
-COPY spa ./spa
+COPY dashboard ./dashboard
 
-# Build shared package first
+# Build shared first
 RUN cd shared && npm run build
 
-# Build API (needed for SPA types)
+# Build API (dashboard depends on api types)
 WORKDIR /app/api
 RUN npm run build
 WORKDIR /app
 
-# Build SPA
-RUN cd spa && npm run build
-
-
+# Build Dashboard
+RUN cd dashboard && npm run build
 
 # -----------------------------------------------------------------------------
 # Production Stage
@@ -39,44 +40,37 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dumb-init and build tools for native modules (bcrypt)
-RUN apk add --no-cache dumb-init python3 make g++
+# Install system utils
+RUN apk add --no-cache dumb-init
 
 # Copy package files
 COPY package*.json ./
 COPY api/package*.json ./api/
 COPY shared/package*.json ./shared/
+COPY dashboard/package*.json ./dashboard/
 
-# Install production dependencies only
+# Install production dependencies
 RUN npm ci --only=production && npm cache clean --force
 
-# Copy built artifacts from builder stage
+# Copy built artifacts
 COPY --from=builder /app/api/dist ./api/dist
 COPY --from=builder /app/shared/dist ./shared/dist
-COPY --from=builder /app/spa ./spa
+COPY --from=builder /app/dashboard/dist ./dashboard/dist
 
-# Copy database schema (needed for migration)
-# We place it in a location where migrate.js expects it: ../src/db/schema.sql relative to dist/scripts/
-COPY api/src/db/schema.sql ./api/dist/src/db/schema.sql
-
-# Create non-root user
+# Create user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 -G nodejs && \
     chown -R nodejs:nodejs /app
 
 USER nodejs
 
-# Expose port
 EXPOSE 3000
 
-# Health check (API is strictly JSON, but /health might return 200 OK)
-# Assuming wget works on localhost
+# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
-# Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start the compiled application
-WORKDIR /app/api
-CMD ["node", "dist/src/server.js"]
+WORKDIR /app/dashboard
+CMD ["node", "dist/index.js"]
