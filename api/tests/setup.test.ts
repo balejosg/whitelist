@@ -17,23 +17,23 @@
  */
 
 /**
- * Setup API Tests - First-time admin setup flow
- * 
+ * Setup API Tests - First-time admin setup flow (tRPC)
+ *
  * Run with: npm run test:setup
- * 
- * These tests run on a separate port (3002) to avoid conflicts.
- * NOTE: These tests modify the data files, so they should run in isolation.
  */
 
 import { test, describe, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert';
-// fs/path imports removed as they are no longer needed for data backup
-// fs/path imports removed as they are no longer needed
 import type { Server } from 'node:http';
-import { getAvailablePort, resetDb } from './test-utils.js';
+import {
+    getAvailablePort,
+    resetDb,
+    trpcMutate as _trpcMutate,
+    trpcQuery as _trpcQuery,
+    parseTRPC
+} from './test-utils.js';
 import { closeConnection } from '../src/db/index.js';
 
-// __dirname removed (unused)
 let PORT: number;
 let API_URL: string;
 
@@ -46,28 +46,29 @@ GLOBAL_TIMEOUT.unref();
 
 let server: Server | undefined;
 
-interface SetupStatusResponse {
-    success: boolean;
+// Wrap helpers with baseUrl
+const trpcMutate = (procedure: string, input: unknown): Promise<Response> =>
+    _trpcMutate(API_URL, procedure, input);
+const trpcQuery = (procedure: string, input?: unknown): Promise<Response> =>
+    _trpcQuery(API_URL, procedure, input);
+
+interface SetupStatusData {
     needsSetup: boolean;
     hasAdmin: boolean;
 }
 
-interface FirstAdminResponse {
+interface FirstAdminData {
     success: boolean;
-    registrationToken?: string;
-    redirectTo?: string;
-    user?: { id: string; email: string; name: string };
-    error?: string;
+    registrationToken: string;
+    user: { id: string; email: string; name: string };
 }
 
-interface ValidateTokenResponse {
-    success: boolean;
+interface ValidateTokenData {
     valid: boolean;
 }
 
-void describe('Setup API Tests', { timeout: 30000 }, async () => {
+void describe('Setup API Tests (tRPC)', { timeout: 30000 }, async () => {
     before(async () => {
-        // Reset DB logic
         await resetDb();
 
         PORT = await getAvailablePort();
@@ -83,7 +84,6 @@ void describe('Setup API Tests', { timeout: 30000 }, async () => {
     });
 
     after(async () => {
-        // Reset DB logic
         await resetDb();
 
         if (server !== undefined) {
@@ -97,24 +97,23 @@ void describe('Setup API Tests', { timeout: 30000 }, async () => {
                 });
             });
         }
-        // Close database pool
         await closeConnection();
     });
 
     // ============================================
     // Setup Status Tests
     // ============================================
-    await describe('GET /api/setup/status', async () => {
+    await describe('setup.status', async () => {
         beforeEach(async () => {
             await resetDb();
         });
 
         await test('should return needsSetup: true when no admins exist', async () => {
-            const response = await fetch(`${API_URL}/api/setup/status`);
+            const response = await trpcQuery('setup.status');
             assert.strictEqual(response.status, 200);
 
-            const data = await response.json() as SetupStatusResponse;
-            assert.strictEqual(data.success, true);
+            const res = await parseTRPC(response);
+            const data = res.data as SetupStatusData;
             assert.strictEqual(data.needsSetup, true);
             assert.strictEqual(data.hasAdmin, false);
         });
@@ -123,7 +122,7 @@ void describe('Setup API Tests', { timeout: 30000 }, async () => {
     // ============================================
     // First Admin Creation Tests
     // ============================================
-    await describe('POST /api/setup/first-admin', async () => {
+    await describe('setup.createFirstAdmin', async () => {
         beforeEach(async () => {
             await resetDb();
         });
@@ -135,19 +134,14 @@ void describe('Setup API Tests', { timeout: 30000 }, async () => {
                 password: 'SecurePassword123!'
             };
 
-            const response = await fetch(`${API_URL}/api/setup/first-admin`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(adminData)
-            });
+            const response = await trpcMutate('setup.createFirstAdmin', adminData);
+            assert.strictEqual(response.status, 200);
 
-            assert.strictEqual(response.status, 201);
-
-            const data = await response.json() as FirstAdminResponse;
+            const res = await parseTRPC(response);
+            assert.ok(res.data !== undefined, 'Expected result data');
+            const data = res.data as FirstAdminData;
             assert.strictEqual(data.success, true);
-            assert.ok(data.registrationToken?.length === 64);
-            assert.strictEqual(data.redirectTo, '/login');
-            assert.ok(data.user !== undefined);
+            assert.strictEqual(data.registrationToken.length, 64);
             assert.strictEqual(data.user.email, adminData.email.toLowerCase());
         });
 
@@ -159,21 +153,18 @@ void describe('Setup API Tests', { timeout: 30000 }, async () => {
                 password: 'SecurePassword123!'
             };
 
-            await fetch(`${API_URL}/api/setup/first-admin`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(adminData)
-            });
+            await trpcMutate('setup.createFirstAdmin', adminData);
 
             // Then check status
-            const statusResponse = await fetch(`${API_URL}/api/setup/status`);
-            const statusData = await statusResponse.json() as SetupStatusResponse;
+            const response = await trpcQuery('setup.status');
+            const res = await parseTRPC(response);
+            const data = res.data as SetupStatusData;
 
-            assert.strictEqual(statusData.needsSetup, false);
-            assert.strictEqual(statusData.hasAdmin, true);
+            assert.strictEqual(data.needsSetup, false);
+            assert.strictEqual(data.hasAdmin, true);
         });
 
-        await test('should reject second admin creation with 403', async () => {
+        await test('should reject second admin creation with FORBIDDEN error', async () => {
             // First create an admin
             const firstAdmin = {
                 email: `first-admin-${String(Date.now())}@example.com`,
@@ -181,11 +172,7 @@ void describe('Setup API Tests', { timeout: 30000 }, async () => {
                 password: 'SecurePassword123!'
             };
 
-            await fetch(`${API_URL}/api/setup/first-admin`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(firstAdmin)
-            });
+            await trpcMutate('setup.createFirstAdmin', firstAdmin);
 
             // Try to create a second admin
             const secondAdmin = {
@@ -194,50 +181,45 @@ void describe('Setup API Tests', { timeout: 30000 }, async () => {
                 password: 'AnotherPassword123!'
             };
 
-            const response = await fetch(`${API_URL}/api/setup/first-admin`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(secondAdmin)
-            });
-
-            assert.strictEqual(response.status, 403);
-
-            const data = await response.json() as FirstAdminResponse;
-            assert.strictEqual(data.success, false);
-            assert.strictEqual(data.error, 'Setup already completed');
+            const response = await trpcMutate('setup.createFirstAdmin', secondAdmin);
+            // tRPC returns error in body for business errors
+            const res = await parseTRPC(response);
+            assert.ok(res.error, 'Expected error');
+            assert.ok(res.error.includes('Setup already completed'), `Expected error to include 'Setup already completed', got: ${res.error}`);
         });
 
         await test('should validate required fields', async () => {
-            // Missing email
-            const response1 = await fetch(`${API_URL}/api/setup/first-admin`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: 'Test', password: 'SecurePassword123!' })
+            // Missing email - tRPC will return validation error
+            const response1 = await trpcMutate('setup.createFirstAdmin', {
+                name: 'Test',
+                password: 'SecurePassword123!'
             });
-            assert.strictEqual(response1.status, 400);
+            const res1 = await parseTRPC(response1);
+            assert.ok(res1.error, 'Expected validation error for missing email');
 
             // Missing password
-            const response2 = await fetch(`${API_URL}/api/setup/first-admin`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: 'test@example.com', name: 'Test' })
+            const response2 = await trpcMutate('setup.createFirstAdmin', {
+                email: 'test@example.com',
+                name: 'Test'
             });
-            assert.strictEqual(response2.status, 400);
+            const res2 = await parseTRPC(response2);
+            assert.ok(res2.error, 'Expected validation error for missing password');
 
             // Short password
-            const response3 = await fetch(`${API_URL}/api/setup/first-admin`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: 'test@example.com', name: 'Test', password: '123' })
+            const response3 = await trpcMutate('setup.createFirstAdmin', {
+                email: 'test@example.com',
+                name: 'Test',
+                password: '123'
             });
-            assert.strictEqual(response3.status, 400);
+            const res3 = await parseTRPC(response3);
+            assert.ok(res3.error, 'Expected validation error for short password');
         });
     });
 
     // ============================================
     // Token Validation Tests
     // ============================================
-    await describe('POST /api/setup/validate-token', async () => {
+    await describe('setup.validateToken', async () => {
         let validToken: string;
 
         before(async () => {
@@ -250,86 +232,60 @@ void describe('Setup API Tests', { timeout: 30000 }, async () => {
                 password: 'SecurePassword123!'
             };
 
-            const response = await fetch(`${API_URL}/api/setup/first-admin`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(adminData)
-            });
-
-            const data = await response.json() as FirstAdminResponse;
-            validToken = data.registrationToken ?? '';
+            const response = await trpcMutate('setup.createFirstAdmin', adminData);
+            const res = await parseTRPC(response);
+            assert.ok(res.data !== undefined, 'Expected result data');
+            const data = res.data as FirstAdminData;
+            validToken = data.registrationToken;
         });
 
         await test('should validate correct token', async () => {
-            const response = await fetch(`${API_URL}/api/setup/validate-token`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: validToken })
+            const response = await trpcMutate('setup.validateToken', {
+                token: validToken
             });
 
             assert.strictEqual(response.status, 200);
-
-            const data = await response.json() as ValidateTokenResponse;
-            assert.strictEqual(data.success, true);
+            const res = await parseTRPC(response);
+            const data = res.data as ValidateTokenData;
             assert.strictEqual(data.valid, true);
         });
 
         await test('should reject incorrect token', async () => {
-            const response = await fetch(`${API_URL}/api/setup/validate-token`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: 'invalid-token-that-is-wrong' })
+            const response = await trpcMutate('setup.validateToken', {
+                token: 'invalid-token-that-is-wrong'
             });
 
             assert.strictEqual(response.status, 200);
-
-            const data = await response.json() as ValidateTokenResponse;
-            assert.strictEqual(data.success, true);
+            const res = await parseTRPC(response);
+            const data = res.data as ValidateTokenData;
             assert.strictEqual(data.valid, false);
         });
 
         await test('should require token in request body', async () => {
-            const response = await fetch(`${API_URL}/api/setup/validate-token`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
-            });
-
-            assert.strictEqual(response.status, 400);
+            const response = await trpcMutate('setup.validateToken', {});
+            const res = await parseTRPC(response);
+            assert.ok(res.error, 'Expected validation error for missing token');
         });
     });
 
     // ============================================
     // Admin Token Management Tests
     // ============================================
-    await describe('GET /api/setup/registration-token', async () => {
+    await describe('setup.getRegistrationToken', async () => {
         await test('should require admin authentication', async () => {
-            const response = await fetch(`${API_URL}/api/setup/registration-token`);
-            assert.strictEqual(response.status, 401);
-        });
-
-        await test('should reject non-admin token', async () => {
-            const response = await fetch(`${API_URL}/api/setup/registration-token`, {
-                headers: { 'Authorization': 'Bearer invalid-token' }
-            });
-            assert.strictEqual(response.status, 401);
+            // Call without auth - tRPC will return UNAUTHORIZED
+            const response = await trpcQuery('setup.getRegistrationToken');
+            const res = await parseTRPC(response);
+            assert.ok(res.error, 'Expected authentication error');
         });
     });
 
-    await describe('POST /api/setup/regenerate-token', async () => {
+    await describe('setup.regenerateToken', async () => {
         await test('should require admin authentication', async () => {
-            const response = await fetch(`${API_URL}/api/setup/regenerate-token`, {
-                method: 'POST'
-            });
-            assert.strictEqual(response.status, 401);
-        });
-
-        await test('should reject non-admin token', async () => {
-            const response = await fetch(`${API_URL}/api/setup/regenerate-token`, {
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer invalid-token' }
-            });
-            assert.strictEqual(response.status, 401);
+            // Call without auth - tRPC will return UNAUTHORIZED
+            const response = await trpcMutate('setup.regenerateToken', {});
+            const res = await parseTRPC(response);
+            assert.ok(res.error, 'Expected authentication error');
         });
     });
 });

@@ -102,18 +102,16 @@ await describe('E2E: Teacher Role Workflow (tRPC)', { timeout: 75000 }, async ()
 
     await describe('Step 1: Setup Admin User', async () => {
         await test('should create first admin via setup endpoint', async (): Promise<void> => {
-            const response = await fetch(`${API_URL}/api/setup/first-admin`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: ADMIN_EMAIL,
-                    password: ADMIN_PASSWORD,
-                    name: 'María Admin'
-                })
+            const response = await trpcMutate('setup.createFirstAdmin', {
+                email: ADMIN_EMAIL,
+                password: ADMIN_PASSWORD,
+                name: 'María Admin'
             });
 
             // In isolated DATA_DIR this should always be the first admin
-            assert.strictEqual(response.status, 201);
+            assert.strictEqual(response.status, 200);
+            const res = await parseTRPC(response);
+            assert.ok(res.data !== undefined, 'Expected result data');
         });
 
         await test('should login as admin', async (): Promise<void> => {

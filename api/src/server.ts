@@ -38,7 +38,7 @@
  */
 
 import express from 'express';
-import type { Request, Response, ErrorRequestHandler, NextFunction } from 'express';
+import type { Request, Response, ErrorRequestHandler } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import path from 'node:path';
@@ -54,10 +54,6 @@ import { requestIdMiddleware, errorTrackingMiddleware } from './lib/error-tracki
 
 import * as roleStorage from './lib/role-storage.js';
 import * as userStorage from './lib/user-storage.js';
-import * as setupStorage from './lib/setup-storage.js';
-import * as auth from './lib/auth.js';
-import * as classroomStorage from './lib/classroom-storage.js';
-import * as healthReports from './lib/health-reports.js';
 
 // Swagger/OpenAPI (optional - only load if dependencies installed)
 let swaggerUi: typeof import('swagger-ui-express') | undefined;
@@ -176,7 +172,6 @@ const publicRequestLimiter = rateLimit({
 // Apply auth rate limiter to auth endpoints
 app.use('/trpc/auth.login', authLimiter);
 app.use('/trpc/auth.register', authLimiter);
-app.use('/api/setup/first-admin', authLimiter);
 
 // Apply public request limiter to domain request creation
 app.use('/trpc/requests.create', publicRequestLimiter);
@@ -199,237 +194,6 @@ app.get('/health', (_req, res) => {
     res.json({ status: 'ok', service: 'openpath-api' });
 });
 
-// =============================================================================
-// Legacy/Compatibility REST Endpoints
-// =============================================================================
-
-function parseBearerToken(req: Request): string | null {
-    const header = req.header('authorization');
-    if (!header) return null;
-    const match = /^Bearer\s+(.+)$/i.exec(header);
-    return match ? match[1] ?? null : null;
-}
-
-async function requireAdmin(req: Request, res: Response): Promise<auth.DecodedWithRoles | null> {
-    const token = parseBearerToken(req);
-    if (!token) {
-        res.status(401).json({ success: false, error: 'Authentication required' });
-        return null;
-    }
-
-    let decoded = await auth.verifyAccessToken(token);
-
-    // Fallback to legacy admin token
-    if (!decoded && process.env.ADMIN_TOKEN !== undefined && process.env.ADMIN_TOKEN !== '' && token === process.env.ADMIN_TOKEN) {
-        decoded = auth.createLegacyAdminPayload();
-    }
-
-    if (!decoded || !auth.isAdminToken(decoded)) {
-        res.status(401).json({ success: false, error: 'Invalid or missing admin token' });
-        return null;
-    }
-
-    return decoded;
-}
-
-function requireSharedSecret(req: Request, res: Response): boolean {
-    const secret = process.env.SHARED_SECRET;
-    if (secret === undefined || secret === '') {
-        return true; // If not set, allow (matching trpc logic)
-    }
-
-    const token = parseBearerToken(req);
-    if (!token || token !== secret) {
-        res.status(401).json({ success: false, error: 'Invalid or missing shared secret' });
-        return false;
-    }
-
-    return true;
-}
-
-function asyncRoute(
-    handler: (req: Request, res: Response, next: NextFunction) => Promise<void>
-): (req: Request, res: Response, next: NextFunction) => void {
-    return (req, res, next) => {
-        void handler(req, res, next).catch(next);
-    };
-}
-
-// Setup REST API (used by setup.html and existing clients)
-app.get('/api/setup/status', asyncRoute(async (_req: Request, res: Response) => {
-    const hasAdmin = await roleStorage.hasAnyAdmins();
-    res.status(200).json({
-        success: true,
-        needsSetup: !hasAdmin,
-        hasAdmin,
-    });
-}));
-
-app.post('/api/setup/first-admin', asyncRoute(async (req: Request, res: Response) => {
-    if (await roleStorage.hasAnyAdmins()) {
-        res.status(403).json({ success: false, error: 'Setup already completed' });
-        return;
-    }
-
-    const { email, name, password } = (req.body ?? {}) as { email?: unknown; name?: unknown; password?: unknown };
-
-    if (typeof email !== 'string' || typeof name !== 'string' || typeof password !== 'string') {
-        res.status(400).json({ success: false, error: 'Missing required fields' });
-        return;
-    }
-
-    if (!email.includes('@') || name.trim() === '' || password.length < 8) {
-        res.status(400).json({ success: false, error: 'Invalid fields' });
-        return;
-    }
-
-    if (await userStorage.emailExists(email)) {
-        res.status(409).json({ success: false, error: 'Email already registered' });
-        return;
-    }
-
-    const user = await userStorage.createUser({ email, name, password });
-    await roleStorage.assignRole({
-        userId: user.id,
-        role: 'admin',
-        groupIds: [],
-        createdBy: user.id,
-    });
-
-    const registrationToken = setupStorage.generateRegistrationToken();
-    await setupStorage.saveSetupData({
-        registrationToken,
-        setupCompletedAt: new Date().toISOString(),
-        setupByUserId: user.id,
-    });
-
-    res.status(201).json({
-        success: true,
-        registrationToken,
-        redirectTo: '/login',
-        user: { id: user.id, email: user.email, name: user.name },
-    });
-}));
-
-app.post('/api/setup/validate-token', asyncRoute(async (req: Request, res: Response) => {
-    const { token } = (req.body ?? {}) as { token?: unknown };
-    if (typeof token !== 'string' || token.trim() === '') {
-        res.status(400).json({ success: false, error: 'Token required' });
-        return;
-    }
-    res.status(200).json({ success: true, valid: await setupStorage.validateRegistrationToken(token) });
-}));
-
-app.get('/api/setup/registration-token', asyncRoute(async (req: Request, res: Response) => {
-    const decoded = await requireAdmin(req, res);
-    if (!decoded) return;
-
-    const token = await setupStorage.getRegistrationToken();
-    if (!token) {
-        res.status(404).json({ success: false, error: 'Setup not completed' });
-        return;
-    }
-    res.status(200).json({ success: true, registrationToken: token });
-}));
-app.post('/api/setup/regenerate-token', asyncRoute(async (req: Request, res: Response) => {
-    const decoded = await requireAdmin(req, res);
-    if (!decoded) return;
-
-    const token = await setupStorage.regenerateRegistrationToken();
-    if (!token) {
-        res.status(404).json({ success: false, error: 'Setup not completed' });
-        return;
-    }
-    res.status(200).json({ success: true, registrationToken: token });
-}));
-
-// =============================================================================
-// Classroom/Machine compatibility endpoints for Linux clients
-// =============================================================================
-
-app.post('/api/classrooms/machines/register', asyncRoute(async (req: Request, res: Response) => {
-    if (!requireSharedSecret(req, res)) return;
-
-    const { hostname, classroom_id, classroom_name, version } = (req.body ?? {}) as {
-        hostname?: unknown;
-        classroom_id?: unknown;
-        classroom_name?: unknown;
-        version?: unknown;
-    };
-
-    if (typeof hostname !== 'string' || hostname.trim() === '') {
-        res.status(400).json({ success: false, error: 'Hostname required' });
-        return;
-    }
-
-    let finalClassroomId = typeof classroom_id === 'string' ? classroom_id : undefined;
-
-    if (!finalClassroomId && typeof classroom_name === 'string' && classroom_name !== '') {
-        const classroom = await classroomStorage.getClassroomByName(classroom_name);
-        if (classroom) finalClassroomId = classroom.id;
-    }
-
-    if (!finalClassroomId) {
-        res.status(400).json({ success: false, error: 'Valid classroom_id or classroom_name is required' });
-        return;
-    }
-
-    const machine = await classroomStorage.registerMachine({
-        hostname,
-        classroomId: finalClassroomId,
-        ...(typeof version === 'string' ? { version } : {}),
-    });
-
-    res.status(200).json({ success: true, machine });
-}));
-
-app.get('/api/classrooms/machines/:hostname/whitelist-url', asyncRoute(async (req: Request, res: Response) => {
-    if (!requireSharedSecret(req, res)) return;
-
-    const hostname = req.params.hostname ?? '';
-    if (hostname === '') {
-        res.status(400).json({ success: false, error: 'Hostname required' });
-        return;
-    }
-    await classroomStorage.updateMachineLastSeen(hostname);
-    const result = await classroomStorage.getWhitelistUrlForMachine(hostname);
-
-    if (!result) {
-        res.status(404).json({ success: false, error: 'Machine not found or no group configured' });
-        return;
-    }
-
-    res.status(200).json({ success: true, ...result });
-}));
-app.post('/api/health-reports', asyncRoute(async (req: Request, res: Response) => {
-    if (!requireSharedSecret(req, res)) return;
-
-    const { hostname, status, dnsmasqRunning, dnsResolving, failCount, actions, version } = (req.body ?? {}) as {
-        hostname?: unknown;
-        status?: unknown;
-        dnsmasqRunning?: unknown;
-        dnsResolving?: unknown;
-        failCount?: unknown;
-        actions?: unknown;
-        version?: unknown;
-    };
-
-    if (typeof hostname !== 'string' || hostname.trim() === '') {
-        res.status(400).json({ success: false, error: 'Hostname required' });
-        return;
-    }
-
-    await healthReports.saveHealthReport(hostname, {
-        status: typeof status === 'string' ? status : 'unknown',
-        dnsmasqRunning: typeof dnsmasqRunning === 'boolean' ? dnsmasqRunning : null,
-        dnsResolving: typeof dnsResolving === 'boolean' ? dnsResolving : null,
-        failCount: typeof failCount === 'number' ? failCount : 0,
-        actions: typeof actions === 'string' ? actions : '',
-        version: typeof version === 'string' ? version : 'unknown',
-    });
-
-    res.status(200).json({ success: true, message: 'Health report received' });
-}));
 // Swagger/OpenAPI documentation
 if (swaggerUi && getSwaggerSpec) {
     app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(getSwaggerSpec(), {

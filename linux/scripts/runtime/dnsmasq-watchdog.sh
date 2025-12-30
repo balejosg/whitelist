@@ -205,27 +205,29 @@ EOF
     [ "$status" = "OK" ] || [ "$status" = "RECOVERED" ]
 }
 
-# Report health status to central monitoring API
+# Report health status to central monitoring API (using tRPC)
 report_health_to_api() {
     local status="$1"
     local actions="$2"
-    
+
     # Read API URL from config
     local api_url_file="$CONFIG_DIR/health-api-url.conf"
     local shared_secret_file="$CONFIG_DIR/health-api-secret.conf"
-    
+
     if [ ! -f "$api_url_file" ]; then
         log_debug "[WATCHDOG] No health API configured (create $api_url_file)"
         return 0
     fi
-    
+
     local api_url=$(cat "$api_url_file")
     local shared_secret=""
     [ -f "$shared_secret_file" ] && shared_secret=$(cat "$shared_secret_file")
-    
+
     local hostname=$(hostname)
+
+    # Build tRPC payload with json wrapper
     local payload=$(cat << EOF
-{
+{"json": {
     "hostname": "$hostname",
     "status": "$status",
     "dnsmasqRunning": $(check_dnsmasq_running && echo "true" || echo "false"),
@@ -233,15 +235,15 @@ report_health_to_api() {
     "failCount": $(get_fail_count),
     "actions": "$actions",
     "version": "${VERSION:-1.0.4}"
-}
+}}
 EOF
 )
-    
-    # Send report (fire and forget, don't block watchdog)
+
+    # Send report to tRPC endpoint (fire and forget, don't block watchdog)
     local auth_header=""
     [ -n "$shared_secret" ] && auth_header="-H \"Authorization: Bearer $shared_secret\""
-    
-    timeout 5 curl -s -X POST "$api_url/api/health-reports" \
+
+    timeout 5 curl -s -X POST "$api_url/trpc/healthReports.submit" \
         -H "Content-Type: application/json" \
         $auth_header \
         -d "$payload" >/dev/null 2>&1 &

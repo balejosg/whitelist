@@ -1,17 +1,11 @@
 import { z } from 'zod';
 import { router, publicProcedure, adminProcedure } from '../trpc.js';
 import { TRPCError } from '@trpc/server';
-import * as roleStorage from '../../lib/role-storage.js';
-import * as userStorage from '../../lib/user-storage.js';
-import * as setupStorage from '../../lib/setup-storage.js';
+import { SetupService } from '../../services/index.js';
 
 export const setupRouter = router({
     status: publicProcedure.query(async () => {
-        const hasAdmins = await roleStorage.hasAnyAdmins();
-        return {
-            needsSetup: !hasAdmins,
-            hasAdmin: hasAdmins,
-        };
+        return SetupService.getStatus();
     }),
 
     createFirstAdmin: publicProcedure
@@ -21,52 +15,42 @@ export const setupRouter = router({
             password: z.string().min(8),
         }))
         .mutation(async ({ input }) => {
-            if (await roleStorage.hasAnyAdmins()) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'Setup already completed' });
+            const result = await SetupService.createFirstAdmin(input);
+
+            if (!result.ok) {
+                const errorMap: Record<string, 'FORBIDDEN' | 'CONFLICT' | 'BAD_REQUEST'> = {
+                    'SETUP_ALREADY_COMPLETED': 'FORBIDDEN',
+                    'EMAIL_EXISTS': 'CONFLICT',
+                    'INVALID_INPUT': 'BAD_REQUEST',
+                };
+                throw new TRPCError({
+                    code: errorMap[result.error.code] ?? 'BAD_REQUEST',
+                    message: result.error.message
+                });
             }
 
-            if (await userStorage.emailExists(input.email)) {
-                throw new TRPCError({ code: 'CONFLICT', message: 'Email already registered' });
-            }
-
-            const user = await userStorage.createUser(input);
-
-            await roleStorage.assignRole({
-                userId: user.id,
-                role: 'admin',
-                groupIds: [],
-                createdBy: user.id,
-            });
-
-            const registrationToken = setupStorage.generateRegistrationToken();
-            await setupStorage.saveSetupData({
-                registrationToken,
-                setupCompletedAt: new Date().toISOString(),
-                setupByUserId: user.id,
-            });
-
-            return {
-                success: true,
-                registrationToken,
-                user: { id: user.id, email: user.email, name: user.name },
-            };
+            return result.data;
         }),
 
     validateToken: publicProcedure
         .input(z.object({ token: z.string() }))
         .mutation(async ({ input }) => {
-            return { valid: await setupStorage.validateRegistrationToken(input.token) };
+            return SetupService.validateToken(input.token);
         }),
 
     getRegistrationToken: adminProcedure.query(async () => {
-        const token = await setupStorage.getRegistrationToken();
-        if (token === null || token === '') throw new TRPCError({ code: 'NOT_FOUND', message: 'Setup not completed' });
-        return { registrationToken: token };
+        const result = await SetupService.getRegistrationToken();
+        if (!result.ok) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: result.error.message });
+        }
+        return result.data;
     }),
 
     regenerateToken: adminProcedure.mutation(async () => {
-        const newToken = await setupStorage.regenerateRegistrationToken();
-        if (newToken === null || newToken === '') throw new TRPCError({ code: 'NOT_FOUND', message: 'Setup not completed' });
-        return { registrationToken: newToken };
+        const result = await SetupService.regenerateToken();
+        if (!result.ok) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: result.error.message });
+        }
+        return result.data;
     }),
 });

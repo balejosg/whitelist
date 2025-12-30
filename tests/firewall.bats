@@ -14,17 +14,20 @@ setup() {
     mkdir -p "$CONFIG_DIR"
     mkdir -p "$INSTALL_DIR/lib"
     mkdir -p "$TEST_TMP_DIR/iptables"
-    
+
     # Copy libs
     cp "$PROJECT_DIR/linux/lib/"*.sh "$INSTALL_DIR/lib/" 2>/dev/null || true
-    
+
     # Source the library (with mocked dependencies)
     source "$PROJECT_DIR/linux/lib/common.sh"
-    
-    # Mock log function
+
+    # Mock log functions
     log() { echo "$1"; }
-    export -f log
-    
+    log_debug() { echo "[DEBUG] $1"; }
+    log_warn() { echo "[WARN] $1"; }
+    log_error() { echo "[ERROR] $1"; }
+    export -f log log_debug log_warn log_error
+
     # Mock validate_ip to return success for valid IPs
     validate_ip() {
         local ip="$1"
@@ -235,8 +238,9 @@ EOF
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
 
-    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    # Override save_firewall_rules and verify_firewall_rules AFTER sourcing
     save_firewall_rules() { return 0; }
+    verify_firewall_rules() { return 0; }
 
     activate_firewall
 
@@ -261,8 +265,9 @@ EOF
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
 
-    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    # Override save_firewall_rules and verify_firewall_rules AFTER sourcing
     save_firewall_rules() { return 0; }
+    verify_firewall_rules() { return 0; }
 
     activate_firewall
 
@@ -289,8 +294,9 @@ EOF
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
 
-    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    # Override save_firewall_rules and verify_firewall_rules AFTER sourcing
     save_firewall_rules() { return 0; }
+    verify_firewall_rules() { return 0; }
 
     activate_firewall
 
@@ -316,8 +322,9 @@ EOF
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
 
-    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    # Override save_firewall_rules and verify_firewall_rules AFTER sourcing
     save_firewall_rules() { return 0; }
+    verify_firewall_rules() { return 0; }
 
     activate_firewall
 
@@ -345,8 +352,9 @@ EOF
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
 
-    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    # Override save_firewall_rules and verify_firewall_rules AFTER sourcing
     save_firewall_rules() { return 0; }
+    verify_firewall_rules() { return 0; }
 
     activate_firewall
 
@@ -373,8 +381,9 @@ EOF
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
 
-    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    # Override save_firewall_rules and verify_firewall_rules AFTER sourcing
     save_firewall_rules() { return 0; }
+    verify_firewall_rules() { return 0; }
 
     activate_firewall
 
@@ -400,8 +409,9 @@ EOF
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
 
-    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    # Override save_firewall_rules and verify_firewall_rules AFTER sourcing
     save_firewall_rules() { return 0; }
+    verify_firewall_rules() { return 0; }
 
     activate_firewall
 
@@ -427,8 +437,9 @@ EOF
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
 
-    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    # Override save_firewall_rules and verify_firewall_rules AFTER sourcing
     save_firewall_rules() { return 0; }
+    verify_firewall_rules() { return 0; }
 
     activate_firewall
 
@@ -455,8 +466,9 @@ EOF
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
 
-    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    # Override save_firewall_rules and verify_firewall_rules AFTER sourcing
     save_firewall_rules() { return 0; }
+    verify_firewall_rules() { return 0; }
 
     activate_firewall
 
@@ -486,8 +498,9 @@ EOF
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
 
-    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    # Override save_firewall_rules and verify_firewall_rules AFTER sourcing
     save_firewall_rules() { return 0; }
+    verify_firewall_rules() { return 0; }
 
     activate_firewall
 
@@ -508,8 +521,9 @@ EOF
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
 
-    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    # Override save_firewall_rules and verify_firewall_rules AFTER sourcing
     save_firewall_rules() { return 0; }
+    verify_firewall_rules() { return 0; }
 
     deactivate_firewall
 
@@ -527,10 +541,165 @@ EOF
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
 
-    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    # Override save_firewall_rules and verify_firewall_rules AFTER sourcing
     save_firewall_rules() { return 0; }
+    verify_firewall_rules() { return 0; }
 
     deactivate_firewall
 
     grep -q "\-P OUTPUT ACCEPT" "$iptables_log"
+}
+
+# ============== Tests de verify_firewall_rules ==============
+
+@test "verify_firewall_rules passes with all critical rules present" {
+    # Mock iptables to return complete firewall rules
+    iptables() {
+        cat << 'EOF'
+Chain OUTPUT (policy DROP)
+target     prot opt source    destination
+ACCEPT     all  --  anywhere  anywhere    /* lo */
+ACCEPT     all  --  anywhere  anywhere    state RELATED,ESTABLISHED
+ACCEPT     udp  --  anywhere  127.0.0.1   udp dpt:53
+ACCEPT     tcp  --  anywhere  127.0.0.1   tcp dpt:53
+ACCEPT     udp  --  anywhere  8.8.8.8     udp dpt:53
+DROP       udp  --  anywhere  anywhere    udp dpt:53
+DROP       tcp  --  anywhere  anywhere    tcp dpt:53
+DROP       all  --  anywhere  anywhere
+EOF
+        return 0
+    }
+    export -f iptables
+
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    run verify_firewall_rules
+    [ "$status" -eq 0 ]
+}
+
+@test "verify_firewall_rules fails when loopback rule missing" {
+    # Mock iptables without loopback rule
+    iptables() {
+        cat << 'EOF'
+Chain OUTPUT (policy DROP)
+target     prot opt source    destination
+ACCEPT     udp  --  anywhere  127.0.0.1   udp dpt:53
+DROP       udp  --  anywhere  anywhere    udp dpt:53
+DROP       tcp  --  anywhere  anywhere    tcp dpt:53
+DROP       all  --  anywhere  anywhere
+EOF
+        return 0
+    }
+    export -f iptables
+
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    run verify_firewall_rules
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Missing firewall rule"* ]]
+}
+
+@test "verify_firewall_rules fails when DNS DROP rules missing" {
+    # Mock iptables without DNS DROP rules (only general DROP, not dpt:53)
+    iptables() {
+        cat << 'EOF'
+Chain OUTPUT (policy DROP)
+target     prot opt source    destination
+ACCEPT     all  --  anywhere  anywhere    /* lo */
+ACCEPT     udp  --  anywhere  127.0.0.1   udp dpt:53
+ACCEPT     tcp  --  anywhere  127.0.0.1   tcp dpt:53
+DROP       all  --  anywhere  anywhere
+EOF
+        return 0
+    }
+    export -f iptables
+
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    run verify_firewall_rules
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"DNS DROP"* ]]
+}
+
+@test "verify_firewall_rules fails when iptables command fails" {
+    # Mock iptables to fail
+    iptables() {
+        return 1
+    }
+    export -f iptables
+
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    run verify_firewall_rules
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Cannot read firewall rules"* ]]
+}
+
+# ============== Tests de helper functions ==============
+
+@test "add_critical_rule returns success when command succeeds" {
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    # Test with a command that succeeds
+    run add_critical_rule "Test rule" true
+    [ "$status" -eq 0 ]
+}
+
+@test "add_critical_rule returns failure when command fails" {
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    # Test with a command that fails
+    run add_critical_rule "Test rule" false
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"FAILED [CRITICAL]"* ]]
+}
+
+@test "add_important_rule returns success even when command fails" {
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    # Test with a command that fails - should still return 0
+    run add_important_rule "Test rule" false
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"FAILED [IMPORTANT]"* ]]
+}
+
+@test "add_optional_rule returns success when command fails" {
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    # Test with a command that fails - should return 0 and log debug
+    run add_optional_rule "Test rule" false
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"SKIPPED [OPTIONAL]"* ]]
+}
+
+@test "activate_firewall returns failure when critical rule fails" {
+    local call_count=0
+
+    # Mock iptables to fail on a specific critical rule
+    iptables() {
+        call_count=$((call_count + 1))
+        # Fail on the loopback rule (second call after flush)
+        if [ "$call_count" -eq 2 ]; then
+            return 1
+        fi
+        return 0
+    }
+    export -f iptables
+
+    ip() {
+        echo "default via 192.168.1.1 dev eth0"
+    }
+    export -f ip
+
+    export PRIMARY_DNS="8.8.8.8"
+
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    # Override save_firewall_rules and verify_firewall_rules
+    save_firewall_rules() { return 0; }
+    verify_firewall_rules() { return 0; }
+
+    run activate_firewall
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"CRITICAL"* ]]
 }
