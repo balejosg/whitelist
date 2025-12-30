@@ -3,8 +3,6 @@
  * Tests for the extension's popup script functions
  */
 
-/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
-
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
 

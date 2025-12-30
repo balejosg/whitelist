@@ -3,8 +3,6 @@
  * Tests for the extension's background script functions
  */
 
-/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
-
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert';
 import { mockBrowser, resetMockState, getBadgeForTab } from './mocks/browser.js';
@@ -268,8 +266,9 @@ void describe('Blocked Domains State', () => {
 
         state.addBlockedDomain(1, 'example.com', 'NS_ERROR_UNKNOWN_HOST');
 
-        assert.ok(state.blockedDomains[1] !== undefined);
-        assert.strictEqual(state.blockedDomains[1]?.size, 1);
+        const tabDomains = state.blockedDomains[1];
+        assert.ok(tabDomains !== undefined);
+        assert.strictEqual(tabDomains.size, 1);
     });
 
     void test('addBlockedDomain should add hostname to existing tab', () => {
@@ -312,8 +311,9 @@ void describe('Blocked Domains State', () => {
         await new Promise(resolve => setTimeout(resolve, 10));
 
         const badge = getBadgeForTab(1);
-        assert.strictEqual(badge?.text, '1');
-        assert.strictEqual(badge?.color, '#FF0000');
+        assert.ok(badge !== undefined);
+        assert.strictEqual(badge.text, '1');
+        assert.strictEqual(badge.color, '#FF0000');
     });
 
     void test('clearBlockedDomains should remove all domains for tab', () => {
