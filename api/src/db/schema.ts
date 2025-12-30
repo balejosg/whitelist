@@ -47,6 +47,7 @@ export const roles = pgTable('roles', {
     createdBy: varchar('created_by', { length: 50 }).references(() => users.id),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
 }, (table) => [
     unique('roles_user_id_key').on(table.userId),
 ]);

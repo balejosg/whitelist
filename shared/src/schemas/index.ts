@@ -84,13 +84,12 @@ export const Machine = z.object({
 export const Schedule = z.object({
     id: z.string(),
     classroomId: z.string(),
-    dayOfWeek: z.number().min(0).max(6),
+    dayOfWeek: z.number().min(1).max(5), // 1=Mon, 5=Fri (weekdays only)
     startTime: z.string(),
     endTime: z.string(),
     groupId: z.string(),
     teacherId: z.string(),
-    subject: z.string().optional(),
-    active: z.boolean().optional(),
+    recurrence: z.string().optional().default('weekly'),
     createdAt: z.string(),
     updatedAt: z.string().optional(),
 });
@@ -98,9 +97,12 @@ export const Schedule = z.object({
 export const HealthReport = z.object({
     id: z.string(),
     hostname: z.string(),
-    classroomId: z.string(),
     status: HealthStatus,
-    details: z.record(z.unknown()),
+    dnsmasqRunning: z.number().nullable().optional(), // 1=true, 0=false, null=unknown
+    dnsResolving: z.number().nullable().optional(),   // 1=true, 0=false, null=unknown
+    failCount: z.number().default(0),
+    actions: z.string().nullable().optional(),
+    version: z.string().nullable().optional(),
     reportedAt: z.string(),
 });
 
@@ -205,12 +207,12 @@ export const CreateClassroomDTO = z.object({
 
 export const CreateScheduleDTO = z.object({
     classroomId: z.string(),
-    dayOfWeek: z.number().min(0).max(6),
+    dayOfWeek: z.number().min(1).max(5), // 1=Mon, 5=Fri (weekdays only)
     startTime: z.string(),
     endTime: z.string(),
     groupId: z.string(),
     teacherId: z.string(),
-    subject: z.string().optional(),
+    recurrence: z.string().optional(),
 });
 
 export const PushSubscriptionKeys = z.object({
