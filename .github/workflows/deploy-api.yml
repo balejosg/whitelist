@@ -15,8 +15,4 @@ jobs:
     uses: ./.github/workflows/reusable-deploy.yml
     with:
       environment: production
-    secrets:
-      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+    secrets: inherit

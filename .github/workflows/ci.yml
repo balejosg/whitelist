@@ -52,7 +52,6 @@ jobs:
       test-type: web
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ============================================
   # Job 3: Test Bash Scripts
@@ -73,7 +72,6 @@ jobs:
       test-type: api
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ============================================
   # Job 5: Test SPA (Lint & Type Check)
@@ -95,6 +93,7 @@ jobs:
       image-name: dashboard
       dockerfile: ./dashboard/Dockerfile
       push: ${{ github.event_name != 'pull_request' }}
+    secrets: inherit
 
   # ============================================
   # Job 7: Build Docker Image (API)
@@ -107,6 +106,7 @@ jobs:
       image-name: api
       dockerfile: ./api/Dockerfile
       push: ${{ github.event_name != 'pull_request' }}
+    secrets: inherit
 
   # ============================================
   # Job 8: Deploy to Production
@@ -118,11 +118,7 @@ jobs:
     uses: ./.github/workflows/reusable-deploy.yml
     with:
       environment: production
-    secrets:
-      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+    secrets: inherit
 
   # ============================================
   # Summary Job
