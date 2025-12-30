@@ -68,7 +68,7 @@ function createMockPort(name: string): MockPort {
             mockState.messages.push(message);
         },
         disconnect: () => {
-            disconnectListeners.forEach(cb => cb(port));
+            disconnectListeners.forEach(cb => { cb(port); });
         }
     };
 
@@ -81,27 +81,29 @@ function createMockPort(name: string): MockPort {
 
 export const mockBrowser = {
     browserAction: {
-        setBadgeText: async (options: { text: string; tabId: number }): Promise<void> => {
+        setBadgeText: (options: { text: string; tabId: number }): Promise<void> => {
             const current = mockState.badges.get(options.tabId) ?? { text: '', color: '' };
             mockState.badges.set(options.tabId, { ...current, text: options.text });
+            return Promise.resolve();
         },
-        setBadgeBackgroundColor: async (options: { color: string; tabId: number }): Promise<void> => {
+        setBadgeBackgroundColor: (options: { color: string; tabId: number }): Promise<void> => {
             const current = mockState.badges.get(options.tabId) ?? { text: '', color: '' };
             mockState.badges.set(options.tabId, { ...current, color: options.color });
+            return Promise.resolve();
         }
     },
 
     runtime: {
         lastError: null as Error | null,
 
-        sendMessage: async (message: unknown): Promise<unknown> => {
+        sendMessage: (message: unknown): Promise<unknown> => {
             mockState.messages.push(message);
-            return { success: true };
+            return Promise.resolve({ success: true });
         },
 
-        sendNativeMessage: async (_hostName: string, message: unknown): Promise<unknown> => {
+        sendNativeMessage: (_hostName: string, message: unknown): Promise<unknown> => {
             mockState.messages.push(message);
-            return { success: true };
+            return Promise.resolve({ success: true });
         },
 
         connectNative: (hostName: string): MockPort => {
@@ -120,8 +122,8 @@ export const mockBrowser = {
     },
 
     tabs: {
-        query: async (_queryInfo: { active?: boolean; currentWindow?: boolean }): Promise<{ id: number; url?: string }[]> => {
-            return [{ id: 1, url: 'https://example.com/page' }];
+        query: (_queryInfo: { active?: boolean; currentWindow?: boolean }): Promise<{ id: number; url?: string }[]> => {
+            return Promise.resolve([{ id: 1, url: 'https://example.com/page' }]);
         },
 
         onRemoved: {

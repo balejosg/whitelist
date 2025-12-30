@@ -3,6 +3,8 @@
  * Tests for the extension's popup script functions
  */
 
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
 
@@ -57,11 +59,11 @@ function escapeHtml(text: string): string {
  * Generate token from hostname using crypto (mock for testing)
  * Note: actual implementation uses crypto.subtle.digest
  */
-async function generateToken(hostname: string, secret: string): Promise<string> {
+function generateToken(hostname: string, secret: string): Promise<string> {
     // Simplified mock - in real code this uses SHA-256
     const data = hostname + secret;
     // Return base64-like string for testing purposes
-    return Buffer.from(data).toString('base64');
+    return Promise.resolve(Buffer.from(data).toString('base64'));
 }
 
 // =============================================================================
@@ -212,7 +214,7 @@ void describe('escapeHtml()', () => {
 
     void test("should escape ' character", () => {
         const result = escapeHtml("it's");
-        assert.strictEqual(result, "it&#39;s");
+        assert.strictEqual(result, 'it&#39;s');
     });
 
     void test('should escape multiple characters', () => {
@@ -293,7 +295,6 @@ void describe('generateToken()', () => {
 void describe('Error Display Integration', () => {
     void test('should format typical DNS block scenario', () => {
         // Simulates what popup would display for a blocked domain
-        const hostname = 'blocked-ads.example.com';
         const errors = ['NS_ERROR_UNKNOWN_HOST'];
         const origin = 'https://main-site.com/article';
 
