@@ -203,6 +203,15 @@ jobs:
       - name: Build TypeScript
         run: npm run build --workspace=@openpath/api
       
+      - name: Apply Drizzle Schema Changes
+        run: npm run drizzle:push --workspace=@openpath/api
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: openpath
+          DB_USER: openpath
+          DB_PASSWORD: openpath_dev
+
       - name: Run Database Migrations
         run: npm run db:migrate --workspace=@openpath/api
         env:
