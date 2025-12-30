@@ -26,22 +26,59 @@
 # =============================================================================
 
 # Validate domain name format to prevent injection attacks
-# Only allows: alphanumeric, dots, hyphens (standard DNS characters)
+# Enhanced validation matching shared/src/schemas/index.ts DomainSchema
 # Returns 0 if valid, 1 if invalid
 validate_domain() {
     local domain="$1"
+    local check_domain="$domain"
+
     # Empty domain is invalid
     [ -z "$domain" ] && return 1
+
+    # Min length 4 characters (a.bc)
+    [ ${#domain} -lt 4 ] && return 1
+
     # Max length 253 characters (DNS limit)
     [ ${#domain} -gt 253 ] && return 1
-    # Must match DNS naming rules: alphanumeric, dots, hyphens
-    # Cannot start or end with hyphen or dot
-    # Cannot have consecutive dots
-    if [[ "$domain" =~ ^[a-zA-Z0-9]([a-zA-Z0-9\.\-]*[a-zA-Z0-9])?$ ]] && \
-       [[ ! "$domain" =~ \.\. ]]; then
-        return 0
+
+    # Support wildcard prefix for whitelist patterns
+    if [[ "$domain" == \*.* ]]; then
+        check_domain="${domain:2}"
     fi
-    return 1
+
+    # Cannot have consecutive dots
+    [[ "$check_domain" =~ \.\. ]] && return 1
+
+    # Validate each label
+    IFS='.' read -ra labels <<< "$check_domain"
+    local num_labels=${#labels[@]}
+
+    # Must have at least 2 labels (domain.tld)
+    [ "$num_labels" -lt 2 ] && return 1
+
+    for i in "${!labels[@]}"; do
+        local label="${labels[$i]}"
+        local is_tld=$((i == num_labels - 1))
+
+        # Each label max 63 chars
+        [ ${#label} -gt 63 ] && return 1
+        [ ${#label} -lt 1 ] && return 1
+
+        # Cannot start or end with hyphen
+        [[ "$label" == -* ]] && return 1
+        [[ "$label" == *- ]] && return 1
+
+        if [ "$is_tld" -eq 1 ]; then
+            # TLD: letters only, 2-63 chars
+            [ ${#label} -lt 2 ] && return 1
+            [[ ! "$label" =~ ^[a-zA-Z]+$ ]] && return 1
+        else
+            # Regular label: alphanumeric and hyphens
+            [[ ! "$label" =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$ ]] && return 1
+        fi
+    done
+
+    return 0
 }
 
 # Sanitize domain - remove any potentially dangerous characters
@@ -127,7 +164,7 @@ configure_upstream_dns() {
     cat > /run/dnsmasq/resolv.conf << EOF
 # DNS upstream para dnsmasq
 nameserver $PRIMARY_DNS
-nameserver 8.8.8.8
+nameserver ${FALLBACK_DNS_SECONDARY:-8.8.4.4}
 EOF
     
     log "✓ Upstream DNS configured: $PRIMARY_DNS"
@@ -135,32 +172,40 @@ EOF
 
 # Create DNS upstream initialization script
 create_dns_init_script() {
-    cat > "$SCRIPTS_DIR/dnsmasq-init-resolv.sh" << 'EOF'
+    # Write with variable substitution for fallback DNS values
+    local fallback_primary="${FALLBACK_DNS_PRIMARY:-8.8.8.8}"
+    local fallback_secondary="${FALLBACK_DNS_SECONDARY:-8.8.4.4}"
+
+    cat > "$SCRIPTS_DIR/dnsmasq-init-resolv.sh" << EOF
 #!/bin/bash
 # Regenerate /run/dnsmasq/resolv.conf on each boot
+
+# Configurable fallback DNS (baked in at install time)
+FALLBACK_DNS_PRIMARY="${fallback_primary}"
+FALLBACK_DNS_SECONDARY="${fallback_secondary}"
 
 mkdir -p /run/dnsmasq
 
 # Read saved DNS
 if [ -f /var/lib/openpath/original-dns.conf ]; then
-    PRIMARY_DNS=$(cat /var/lib/openpath/original-dns.conf | head -1)
+    PRIMARY_DNS=\$(cat /var/lib/openpath/original-dns.conf | head -1)
 else
     # Detect via NetworkManager
     if command -v nmcli >/dev/null 2>&1; then
-        PRIMARY_DNS=$(nmcli dev show 2>/dev/null | grep -i "IP4.DNS\[1\]" | awk '{print $2}' | head -1)
+        PRIMARY_DNS=\$(nmcli dev show 2>/dev/null | grep -i "IP4.DNS\[1\]" | awk '{print \$2}' | head -1)
     fi
     # Fallback to gateway
-    [ -z "$PRIMARY_DNS" ] && PRIMARY_DNS=$(ip route | grep default | awk '{print $3}' | head -1)
+    [ -z "\$PRIMARY_DNS" ] && PRIMARY_DNS=\$(ip route | grep default | awk '{print \$3}' | head -1)
     # Absolute fallback
-    [ -z "$PRIMARY_DNS" ] && PRIMARY_DNS="8.8.8.8"
+    [ -z "\$PRIMARY_DNS" ] && PRIMARY_DNS="\$FALLBACK_DNS_PRIMARY"
 fi
 
 cat > /run/dnsmasq/resolv.conf << DNSEOF
-nameserver $PRIMARY_DNS
-nameserver 8.8.8.8
+nameserver \$PRIMARY_DNS
+nameserver \$FALLBACK_DNS_SECONDARY
 DNSEOF
 
-echo "dnsmasq-init-resolv: DNS upstream configurado a $PRIMARY_DNS"
+echo "dnsmasq-init-resolv: DNS upstream configurado a \$PRIMARY_DNS"
 EOF
     chmod +x "$SCRIPTS_DIR/dnsmasq-init-resolv.sh"
 }

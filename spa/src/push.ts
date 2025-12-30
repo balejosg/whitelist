@@ -123,6 +123,9 @@ export const PushManager = {
         const applicationServerKey = this.urlBase64ToUint8Array(vapidKey);
 
         // Subscribe
+        // Type assertion needed: TypeScript 5.x has strict ArrayBuffer vs SharedArrayBuffer
+        // generics in Uint8Array. At runtime, Uint8Array IS a valid BufferSource.
+        // This is a known TypeScript limitation, not a code issue.
         const subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: applicationServerKey as unknown as BufferSource

@@ -11,6 +11,7 @@ import * as github from '../../lib/github.js';
 import * as push from '../../lib/push.js';
 import * as auth from '../../lib/auth.js';
 import { stripUndefined } from '../../lib/utils.js';
+import logger from '../../lib/logger.js';
 
 export const requestsRouter = router({
     // Public: Create request
@@ -30,7 +31,14 @@ export const requestsRouter = router({
             }) as CreateRequestData;
 
             const request = await storage.createRequest(createData);
-            void push.notifyTeachersOfNewRequest(request).catch(console.error);
+            // Notify teachers asynchronously (non-blocking)
+            push.notifyTeachersOfNewRequest(request).catch((error: unknown) => {
+                logger.error('Failed to notify teachers of new request', {
+                    requestId: request.id,
+                    domain: request.domain,
+                    error: error instanceof Error ? error.message : String(error)
+                });
+            });
             return request;
         }),
 
@@ -131,7 +139,13 @@ export const requestsRouter = router({
             const file = await github.getFileContent('blocked-subdomains.txt');
             const lines = file.content.split('\n');
             return lines.map(l => l.trim()).filter(l => l !== '' && !l.startsWith('#'));
-        } catch {
+        } catch (error) {
+            // File not found is expected (no blocked domains configured)
+            // Log other errors for debugging
+            const message = error instanceof Error ? error.message : String(error);
+            if (!message.includes('Not Found')) {
+                logger.warn('Failed to fetch blocked subdomains', { error: message });
+            }
             return [];
         }
     }),

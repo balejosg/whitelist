@@ -53,7 +53,8 @@ export async function loadDashboard(): Promise<void> {
                         totalBlocked += group.stats.blocked_subdomains + group.stats.blocked_paths;
                     }
                 }
-            } catch {
+            } catch (error) {
+                console.warn(`Failed to load stats for group "${group.name}":`, error);
                 group.stats = { whitelist: 0, blocked_subdomains: 0, blocked_paths: 0 };
                 group.enabled = true;
             }

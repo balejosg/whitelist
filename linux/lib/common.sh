@@ -22,7 +22,17 @@
 ################################################################################
 
 # System version
-VERSION="1.0.4"
+VERSION="3.5"
+
+# Source configurable defaults (must be early, before other variables)
+# Try installed location first, then source directory
+if [ -f "/usr/local/lib/openpath/lib/defaults.conf" ]; then
+    # shellcheck source=defaults.conf
+    source "/usr/local/lib/openpath/lib/defaults.conf"
+elif [ -f "$(dirname "${BASH_SOURCE[0]}")/defaults.conf" ]; then
+    # shellcheck source=defaults.conf
+    source "$(dirname "${BASH_SOURCE[0]}")/defaults.conf"
+fi
 
 # Directories and files
 INSTALL_DIR="/usr/local/lib/openpath"
@@ -55,8 +65,9 @@ CONFIG_DIR="$VAR_STATE_DIR"
 FIREFOX_POLICIES="/etc/firefox/policies/policies.json"
 CHROMIUM_POLICIES_BASE="/etc/chromium/policies/managed"
 
-# Default URL
-DEFAULT_WHITELIST_URL="https://raw.githubusercontent.com/LasEncinasIT/Whitelist-por-aula/refs/heads/main/Informatica%203.txt"
+# Default URL (can be overridden by defaults.conf or environment)
+# Keep as fallback if defaults.conf not loaded
+DEFAULT_WHITELIST_URL="${DEFAULT_WHITELIST_URL:-https://raw.githubusercontent.com/LasEncinasIT/Whitelist-por-aula/refs/heads/main/Informatica%203.txt}"
 
 # Global variables (initialized at runtime)
 PRIMARY_DNS=""
@@ -142,9 +153,9 @@ detect_primary_dns() {
         echo "$gw"
         return 0
     fi
-    
-    # 5. Fallback to Google DNS
-    echo "8.8.8.8"
+
+    # 5. Fallback to configurable DNS (default: Google DNS)
+    echo "${FALLBACK_DNS_PRIMARY:-8.8.8.8}"
 }
 
 # Validate IP address
@@ -173,8 +184,9 @@ check_internet() {
 # =============================================================================
 
 # URL and expected response for captive portal detection
-CAPTIVE_PORTAL_CHECK_URL="http://detectportal.firefox.com/success.txt"
-CAPTIVE_PORTAL_EXPECTED="success"
+# Configurable via defaults.conf or environment variables
+CAPTIVE_PORTAL_CHECK_URL="${CAPTIVE_PORTAL_URL:-http://detectportal.firefox.com/success.txt}"
+CAPTIVE_PORTAL_CHECK_EXPECTED="${CAPTIVE_PORTAL_EXPECTED:-success}"
 
 # Check if there's a captive portal (not authenticated)
 # Returns 0 if captive portal detected (needs auth)
@@ -183,7 +195,7 @@ check_captive_portal() {
     local response
     response=$(timeout 5 curl -s -L "$CAPTIVE_PORTAL_CHECK_URL" 2>/dev/null | tr -d '\n\r')
 
-    if [ "$response" = "$CAPTIVE_PORTAL_EXPECTED" ]; then
+    if [ "$response" = "$CAPTIVE_PORTAL_CHECK_EXPECTED" ]; then
         return 1  # NO captive portal (authenticated)
     else
         return 0  # Captive portal detected (needs auth)
@@ -197,7 +209,7 @@ is_network_authenticated() {
     local response
     response=$(timeout 5 curl -s -L "$CAPTIVE_PORTAL_CHECK_URL" 2>/dev/null | tr -d '\n\r')
 
-    [ "$response" = "$CAPTIVE_PORTAL_EXPECTED" ]
+    [ "$response" = "$CAPTIVE_PORTAL_CHECK_EXPECTED" ]
 }
 
 # Parse whitelist file sections

@@ -4,14 +4,18 @@ import type { OAuthCallbackResult, User } from './types/index.js';
  * OAuth Manager
  * Handles GitHub OAuth flow for OpenPath SPA
  */
+
+// Default OAuth worker URL (can be overridden via localStorage)
+const DEFAULT_OAUTH_WORKER_URL = 'https://openpath-oauth.bruno-alejosgomez.workers.dev';
+
 export const OAuth = {
-    // Cloudflare Worker URL for OAuth
-    WORKER_URL: 'https://openpath-oauth.bruno-alejosgomez.workers.dev', // Move to config?
-    // Using hardcoded for now matching JS.
+    // OAuth worker URL - configurable via localStorage for custom deployments
+    // Override by setting localStorage.setItem('openpath-oauth-worker', 'https://your-worker.example.com')
+    get WORKER_URL(): string {
+        return localStorage.getItem('openpath-oauth-worker') ?? DEFAULT_OAUTH_WORKER_URL;
+    },
 
-    ACCESS_TOKEN_KEY: 'openpath-oauth-token', // Used 'STORAGE_KEY' in JS. Use variable or literal.
-
-    // JS used 'STORAGE_KEY' property.
+    // Storage key for OAuth token
     STORAGE_KEY: 'openpath-oauth-token',
 
     login(): void {
@@ -57,7 +61,7 @@ export const OAuth = {
 
     logout(): void {
         localStorage.removeItem(this.STORAGE_KEY);
-        // Also remove config?
+        // Clear saved config (owner/repo) since it may contain user-specific settings
         localStorage.removeItem('openpath-spa-config');
     },
 

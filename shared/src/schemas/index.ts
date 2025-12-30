@@ -176,8 +176,32 @@ export interface PaginatedResponse<T> extends APIResponseType<T[]> {
 // DTO Schemas
 // =============================================================================
 
+// Enhanced domain validation regex:
+// - Each label: 1-63 chars, alphanumeric with hyphens (not at start/end)
+// - TLD: 2-63 chars, letters only
+// - Total length: max 253 chars (validated separately via refine)
+// - Supports wildcards (*.domain.com) for whitelist patterns
+const DOMAIN_REGEX = /^(?:\*\.)?(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}$/;
+
+export const DomainSchema = z.string()
+    .min(4, 'Domain too short')
+    .max(253, 'Domain exceeds maximum length of 253 characters')
+    .regex(DOMAIN_REGEX, 'Invalid domain format')
+    .refine(
+        (domain) => !domain.includes('..'),
+        'Domain cannot contain consecutive dots'
+    )
+    .refine(
+        (domain) => {
+            // Validate each label length (max 63 chars)
+            const labels = domain.replace(/^\*\./, '').split('.');
+            return labels.every(label => label.length <= 63);
+        },
+        'Each domain label must be 63 characters or less'
+    );
+
 export const CreateRequestDTO = z.object({
-    domain: z.string().regex(/^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/),
+    domain: DomainSchema,
     reason: z.string().optional(),
     requesterEmail: z.string().email().optional(),
     groupId: z.string().optional(),

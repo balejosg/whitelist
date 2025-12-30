@@ -205,10 +205,333 @@ EOF
         builtin command "$@"
     }
     export -f command
-    
+
     source "$PROJECT_DIR/linux/lib/firewall.sh"
-    
+
     run flush_connections
     [ "$status" -eq 0 ]
     [[ "$output" == *"conntrack not available"* ]]
+}
+
+# ============== Tests de activate_firewall ==============
+
+@test "activate_firewall adds loopback rule" {
+    local iptables_log="$TEST_TMP_DIR/iptables.log"
+
+    # Mock iptables to log calls
+    iptables() {
+        echo "$*" >> "$iptables_log"
+        return 0
+    }
+    export -f iptables
+
+    # Mock ip for gateway detection
+    ip() {
+        echo "default via 192.168.1.1 dev eth0"
+    }
+    export -f ip
+
+    # Mock iptables-save
+    iptables-save() { return 0; }
+    export -f iptables-save
+
+    export PRIMARY_DNS="8.8.8.8"
+
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    activate_firewall
+
+    grep -q "\-A OUTPUT \-o lo \-j ACCEPT" "$iptables_log"
+}
+
+@test "activate_firewall adds DNS blocking rules" {
+    local iptables_log="$TEST_TMP_DIR/iptables.log"
+
+    iptables() {
+        echo "$*" >> "$iptables_log"
+        return 0
+    }
+    export -f iptables
+
+    ip() {
+        echo "default via 192.168.1.1 dev eth0"
+    }
+    export -f ip
+
+    iptables-save() { return 0; }
+    export -f iptables-save
+
+    export PRIMARY_DNS="8.8.8.8"
+
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    activate_firewall
+
+    # Check DNS DROP rules are present
+    grep -q "\-A OUTPUT \-p udp \-\-dport 53 \-j DROP" "$iptables_log"
+    grep -q "\-A OUTPUT \-p tcp \-\-dport 53 \-j DROP" "$iptables_log"
+}
+
+@test "activate_firewall adds DoT blocking rule" {
+    local iptables_log="$TEST_TMP_DIR/iptables.log"
+
+    iptables() {
+        echo "$*" >> "$iptables_log"
+        return 0
+    }
+    export -f iptables
+
+    ip() {
+        echo "default via 192.168.1.1 dev eth0"
+    }
+    export -f ip
+
+    iptables-save() { return 0; }
+    export -f iptables-save
+
+    export PRIMARY_DNS="8.8.8.8"
+
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    activate_firewall
+
+    # Check DNS-over-TLS (DoT) blocking
+    grep -q "\-A OUTPUT \-p tcp \-\-dport 853 \-j DROP" "$iptables_log"
+}
+
+@test "activate_firewall adds VPN blocking rules" {
+    local iptables_log="$TEST_TMP_DIR/iptables.log"
+
+    iptables() {
+        echo "$*" >> "$iptables_log"
+        return 0
+    }
+    export -f iptables
+
+    ip() {
+        echo "default via 192.168.1.1 dev eth0"
+    }
+    export -f ip
+
+    iptables-save() { return 0; }
+    export -f iptables-save
+
+    export PRIMARY_DNS="8.8.8.8"
+
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    activate_firewall
+
+    # Check VPN blocking rules
+    grep -q "\-\-dport 1194 \-j DROP" "$iptables_log"   # OpenVPN
+    grep -q "\-\-dport 51820 \-j DROP" "$iptables_log"  # WireGuard
+    grep -q "\-\-dport 1723 \-j DROP" "$iptables_log"   # PPTP
+}
+
+@test "activate_firewall adds Tor blocking rules" {
+    local iptables_log="$TEST_TMP_DIR/iptables.log"
+
+    iptables() {
+        echo "$*" >> "$iptables_log"
+        return 0
+    }
+    export -f iptables
+
+    ip() {
+        echo "default via 192.168.1.1 dev eth0"
+    }
+    export -f ip
+
+    iptables-save() { return 0; }
+    export -f iptables-save
+
+    export PRIMARY_DNS="8.8.8.8"
+
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    activate_firewall
+
+    # Check Tor blocking rules
+    grep -q "\-\-dport 9001 \-j DROP" "$iptables_log"
+    grep -q "\-\-dport 9030 \-j DROP" "$iptables_log"
+}
+
+@test "activate_firewall allows localhost DNS" {
+    local iptables_log="$TEST_TMP_DIR/iptables.log"
+
+    iptables() {
+        echo "$*" >> "$iptables_log"
+        return 0
+    }
+    export -f iptables
+
+    ip() {
+        echo "default via 192.168.1.1 dev eth0"
+    }
+    export -f ip
+
+    iptables-save() { return 0; }
+    export -f iptables-save
+
+    export PRIMARY_DNS="8.8.8.8"
+
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    activate_firewall
+
+    # Check localhost DNS is allowed
+    grep -q "\-d 127.0.0.1 \-\-dport 53 \-j ACCEPT" "$iptables_log"
+}
+
+@test "activate_firewall allows upstream DNS" {
+    local iptables_log="$TEST_TMP_DIR/iptables.log"
+
+    iptables() {
+        echo "$*" >> "$iptables_log"
+        return 0
+    }
+    export -f iptables
+
+    ip() {
+        echo "default via 192.168.1.1 dev eth0"
+    }
+    export -f ip
+
+    iptables-save() { return 0; }
+    export -f iptables-save
+
+    export PRIMARY_DNS="8.8.8.8"
+
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    activate_firewall
+
+    # Check upstream DNS is allowed
+    grep -q "\-d 8.8.8.8 \-\-dport 53 \-j ACCEPT" "$iptables_log"
+}
+
+@test "activate_firewall allows HTTP/HTTPS" {
+    local iptables_log="$TEST_TMP_DIR/iptables.log"
+
+    iptables() {
+        echo "$*" >> "$iptables_log"
+        return 0
+    }
+    export -f iptables
+
+    ip() {
+        echo "default via 192.168.1.1 dev eth0"
+    }
+    export -f ip
+
+    iptables-save() { return 0; }
+    export -f iptables-save
+
+    export PRIMARY_DNS="8.8.8.8"
+
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    activate_firewall
+
+    # Check HTTP/HTTPS allowed
+    grep -q "\-\-dport 80 \-j ACCEPT" "$iptables_log"
+    grep -q "\-\-dport 443 \-j ACCEPT" "$iptables_log"
+}
+
+@test "activate_firewall allows private networks" {
+    local iptables_log="$TEST_TMP_DIR/iptables.log"
+
+    iptables() {
+        echo "$*" >> "$iptables_log"
+        return 0
+    }
+    export -f iptables
+
+    ip() {
+        echo "default via 192.168.1.1 dev eth0"
+    }
+    export -f ip
+
+    iptables-save() { return 0; }
+    export -f iptables-save
+
+    export PRIMARY_DNS="8.8.8.8"
+
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    activate_firewall
+
+    # Check private network ranges allowed
+    grep -q "\-d 10.0.0.0/8 \-j ACCEPT" "$iptables_log"
+    grep -q "\-d 172.16.0.0/12 \-j ACCEPT" "$iptables_log"
+    grep -q "\-d 192.168.0.0/16 \-j ACCEPT" "$iptables_log"
+}
+
+@test "activate_firewall uses fallback DNS for invalid PRIMARY_DNS" {
+    local iptables_log="$TEST_TMP_DIR/iptables.log"
+
+    iptables() {
+        echo "$*" >> "$iptables_log"
+        return 0
+    }
+    export -f iptables
+
+    ip() {
+        echo "default via 192.168.1.1 dev eth0"
+    }
+    export -f ip
+
+    iptables-save() { return 0; }
+    export -f iptables-save
+
+    # Set invalid DNS
+    export PRIMARY_DNS="not-an-ip"
+    export FALLBACK_DNS_PRIMARY="1.1.1.1"
+
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    activate_firewall
+
+    # Should use fallback DNS
+    grep -q "\-d 1.1.1.1 \-\-dport 53 \-j ACCEPT" "$iptables_log"
+}
+
+# ============== Tests de deactivate_firewall ==============
+
+@test "deactivate_firewall flushes OUTPUT chain" {
+    local iptables_log="$TEST_TMP_DIR/iptables.log"
+
+    iptables() {
+        echo "$*" >> "$iptables_log"
+        return 0
+    }
+    export -f iptables
+
+    iptables-save() { return 0; }
+    export -f iptables-save
+
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    deactivate_firewall
+
+    grep -q "\-F OUTPUT" "$iptables_log"
+}
+
+@test "deactivate_firewall sets policy to ACCEPT" {
+    local iptables_log="$TEST_TMP_DIR/iptables.log"
+
+    iptables() {
+        echo "$*" >> "$iptables_log"
+        return 0
+    }
+    export -f iptables
+
+    iptables-save() { return 0; }
+    export -f iptables-save
+
+    source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    deactivate_firewall
+
+    grep -q "\-P OUTPUT ACCEPT" "$iptables_log"
 }

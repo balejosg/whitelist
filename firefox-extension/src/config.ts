@@ -58,7 +58,12 @@ const DEFAULT_CONFIG: Config = {
 
     // Auto-inclusion settings
     AUTO_INCLUDE_ENABLED: true,
-    SHARED_SECRET: 'openpath-secret-2024'  // Change in production
+
+    // Shared secret for machine auto-registration
+    // SECURITY: This MUST be configured via browser.storage.sync in production
+    // Set via extension options page or programmatically before enabling auto-include
+    // Default empty string disables auto-registration until properly configured
+    SHARED_SECRET: ''
 };
 
 // Runtime config (merged with stored settings)
@@ -117,19 +122,14 @@ function getAllApiUrls(): string[] {
     return [CONFIG.REQUEST_API_URL, ...CONFIG.FALLBACK_API_URLS].filter(Boolean);
 }
 
+// Window interface is extended in types.d.ts for type-safe global access
+
 // Make config available globally
 if (typeof window !== 'undefined') {
-    const win = window as unknown as { 
-        OPENPATH_CONFIG: Config; 
-        loadOpenPathConfig: () => Promise<Config>; 
-        saveOpenPathConfig: (c: Partial<Config>) => Promise<void>;
-        getApiUrl: () => string;
-        getAllApiUrls: () => string[];
-    };
-    win.OPENPATH_CONFIG = CONFIG;
-    win.loadOpenPathConfig = loadConfig;
-    win.saveOpenPathConfig = saveConfig;
-    win.getApiUrl = getApiUrl;
-    win.getAllApiUrls = getAllApiUrls;
+    window.OPENPATH_CONFIG = CONFIG;
+    window.loadOpenPathConfig = loadConfig;
+    window.saveOpenPathConfig = saveConfig;
+    window.getApiUrl = getApiUrl;
+    window.getAllApiUrls = getAllApiUrls;
 }
 

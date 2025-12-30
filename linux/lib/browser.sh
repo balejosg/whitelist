@@ -22,13 +22,14 @@
 ################################################################################
 
 # Calculate hash of current policies
+# Uses sha256sum for consistency with openpath-update.sh
 get_policies_hash() {
     local hash=""
     if [ -f "$FIREFOX_POLICIES" ]; then
-        hash="${hash}$(md5sum "$FIREFOX_POLICIES" 2>/dev/null | cut -d' ' -f1)"
+        hash="${hash}$(sha256sum "$FIREFOX_POLICIES" 2>/dev/null | cut -d' ' -f1)"
     fi
     # Add hash of blocked_paths to detect WebsiteFilter changes
-    hash="${hash}$(echo "${BLOCKED_PATHS[*]}" | md5sum | cut -d' ' -f1)"
+    hash="${hash}$(echo "${BLOCKED_PATHS[*]}" | sha256sum | cut -d' ' -f1)"
     echo "$hash"
 }
 
@@ -75,7 +76,8 @@ if os.path.exists(policies_file):
     try:
         with open(policies_file, 'r') as f:
             policies = json.load(f)
-    except:
+    except Exception as e:
+        print(f"Warning: Failed to read existing policies: {e}", file=sys.stderr)
         policies = {"policies": {}}
 else:
     policies = {"policies": {}}
@@ -165,7 +167,8 @@ if os.path.exists(policies_file):
     try:
         with open(policies_file, 'r') as f:
             policies = json.load(f)
-    except:
+    except Exception as e:
+        print(f"Warning: Failed to read existing policies: {e}", file=sys.stderr)
         policies = {"policies": {}}
 else:
     policies = {"policies": {}}
@@ -471,7 +474,8 @@ if os.path.exists(policies_file):
     try:
         with open(policies_file, 'r') as f:
             policies = json.load(f)
-    except:
+    except Exception as e:
+        print(f"Warning: Failed to read existing policies: {e}", file=sys.stderr)
         policies = {"policies": {}}
 else:
     policies = {"policies": {}}
@@ -590,8 +594,8 @@ if os.path.exists(policies_file):
         
         with open(policies_file, 'w') as f:
             json.dump(policies, f, indent=2)
-    except:
-        pass
+    except Exception as e:
+        print(f"Warning: Failed to update Firefox policies during extension removal: {e}", file=sys.stderr)
 PYEOF
     fi
     

@@ -6,12 +6,55 @@
  */
 
 import https from 'node:https';
+import logger from './logger.js';
 
 // =============================================================================
 // Constants
 // =============================================================================
 
 const GITHUB_API = 'api.github.com';
+
+// GitHub username/repo validation regex:
+// - 1-39 chars for username, alphanumeric and single hyphens (not at start/end)
+// - 1-100 chars for repo, alphanumeric, hyphens, underscores, dots
+const GITHUB_OWNER_REGEX = /^[a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9])){0,38}$/;
+const GITHUB_REPO_REGEX = /^[a-zA-Z0-9._-]{1,100}$/;
+
+/**
+ * Validates GitHub owner and repo configuration.
+ * Prevents path traversal attacks and validates format.
+ * @throws {Error} if validation fails
+ */
+function validateGitHubConfig(): { owner: string; repo: string; branch: string } {
+    const owner = process.env.GITHUB_OWNER ?? '';
+    const repo = process.env.GITHUB_REPO ?? '';
+    const branch = process.env.GITHUB_BRANCH ?? 'main';
+
+    if (owner === '') {
+        throw new Error('GITHUB_OWNER not configured');
+    }
+
+    if (repo === '') {
+        throw new Error('GITHUB_REPO not configured');
+    }
+
+    // Validate owner format (prevents path traversal like '../../../etc')
+    if (!GITHUB_OWNER_REGEX.test(owner)) {
+        throw new Error(`Invalid GITHUB_OWNER format: ${owner}`);
+    }
+
+    // Validate repo format
+    if (!GITHUB_REPO_REGEX.test(repo)) {
+        throw new Error(`Invalid GITHUB_REPO format: ${repo}`);
+    }
+
+    // Validate branch (no path traversal)
+    if (branch.includes('..') || branch.includes('/')) {
+        throw new Error(`Invalid GITHUB_BRANCH format: ${branch}`);
+    }
+
+    return { owner, repo, branch };
+}
 
 // =============================================================================
 // Types
@@ -111,9 +154,7 @@ function githubRequest<T>(
 }
 
 export async function getFileContent(filePath: string): Promise<{ content: string; sha: string }> {
-    const owner = process.env.GITHUB_OWNER ?? '';
-    const repo = process.env.GITHUB_REPO ?? '';
-    const branch = process.env.GITHUB_BRANCH ?? 'main';
+    const { owner, repo, branch } = validateGitHubConfig();
 
     const endpoint = `/repos/${owner}/${repo}/contents/${encodeURIComponent(filePath)}?ref=${branch}`;
 
@@ -137,9 +178,7 @@ export async function updateFile(
     message: string,
     sha: string | null = null
 ): Promise<unknown> {
-    const owner = process.env.GITHUB_OWNER ?? '';
-    const repo = process.env.GITHUB_REPO ?? '';
-    const branch = process.env.GITHUB_BRANCH ?? 'main';
+    const { owner, repo, branch } = validateGitHubConfig();
 
     const endpoint = `/repos/${owner}/${repo}/contents/${encodeURIComponent(filePath)}`;
 
@@ -171,7 +210,7 @@ export async function addDomainToWhitelist(
             currentContent = file.content;
             sha = file.sha;
         } catch {
-            console.log(`File ${filePath} not found, creating new`);
+            logger.info('Whitelist file not found, creating new', { filePath });
         }
 
         const lines = currentContent.split('\n');
@@ -232,7 +271,7 @@ export async function addDomainToWhitelist(
 
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to add domain to whitelist';
-        console.error('Error adding domain to whitelist:', error);
+        logger.error('Error adding domain to whitelist', { domain, groupId, error: error instanceof Error ? error.message : String(error) });
         return {
             success: false,
             message
@@ -242,9 +281,7 @@ export async function addDomainToWhitelist(
 
 export async function listWhitelistFiles(): Promise<WhitelistFile[]> {
     try {
-        const owner = process.env.GITHUB_OWNER ?? '';
-        const repo = process.env.GITHUB_REPO ?? '';
-        const branch = process.env.GITHUB_BRANCH ?? 'main';
+        const { owner, repo, branch } = validateGitHubConfig();
 
         const endpoint = `/repos/${owner}/${repo}/contents/?ref=${branch}`;
         const response = await githubRequest<GitHubListItem[]>('GET', endpoint);
@@ -257,7 +294,7 @@ export async function listWhitelistFiles(): Promise<WhitelistFile[]> {
             }));
 
     } catch (error) {
-        console.error('Error listing whitelist files:', error);
+        logger.error('Error listing whitelist files', { error: error instanceof Error ? error.message : String(error) });
         return [];
     }
 }
@@ -278,7 +315,7 @@ export async function isDomainInWhitelist(domain: string, groupId: string): Prom
         });
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        console.error(`Error checking domain in whitelist: ${message}`);
+        logger.error('Error checking domain in whitelist', { domain, groupId, error: message });
         return false;
     }
 }
@@ -312,7 +349,7 @@ export async function isDomainBlocked(domain: string): Promise<BlockedCheckResul
 
         return { blocked: false, matchedRule: null };
     } catch {
-        console.log('No blocked-subdomains.txt found, no domains blocked');
+        logger.debug('No blocked-subdomains.txt found, no domains blocked');
         return { blocked: false, matchedRule: null };
     }
 }

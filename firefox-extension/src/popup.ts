@@ -387,14 +387,13 @@ function hideVerifyResults(): void {
 // Initialization
 // =============================================================================
 
-// Access global config from config.js
-// Get config from window object explicitly typed
-interface WindowWithConfig extends Window {
-    OPENPATH_CONFIG: Config;
+// Access global config from config.js (loaded before popup.ts via manifest)
+// Window interface is extended in types.d.ts for type-safe access
+// Runtime check ensures CONFIG is defined - throws if not
+if (window.OPENPATH_CONFIG === undefined) {
+    throw new Error('OpenPath config not loaded - config.js must be loaded first');
 }
-const CONFIG = (window as unknown as WindowWithConfig).OPENPATH_CONFIG;
-// loadConfig unused here, logic is inside background or handled via messages
-// const loadConfig = (window as any).loadOpenPathConfig as () => Promise<Config>;
+const CONFIG: Config = window.OPENPATH_CONFIG;
 
 /**
  * Check if the request API is available

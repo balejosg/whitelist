@@ -27,8 +27,8 @@ activate_firewall() {
     
     # Validate primary DNS IP
     if ! validate_ip "$PRIMARY_DNS"; then
-        log "⚠ DNS primario '$PRIMARY_DNS' inválido - usando 8.8.8.8"
-        PRIMARY_DNS="8.8.8.8"
+        log "⚠ DNS primario '$PRIMARY_DNS' inválido - usando fallback"
+        PRIMARY_DNS="${FALLBACK_DNS_PRIMARY:-8.8.8.8}"
     fi
     
     # Detect gateway

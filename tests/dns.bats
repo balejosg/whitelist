@@ -237,14 +237,175 @@ github.com"
         return 1
     }
     export -f dig
-    
+
     timeout() {
         return 1
     }
     export -f timeout
-    
+
     source "$PROJECT_DIR/linux/lib/dns.sh"
-    
+
     run verify_dns
     [ "$status" -eq 1 ]
+}
+
+# ============== Tests de validate_domain ==============
+
+@test "validate_domain rejects empty string" {
+    source "$PROJECT_DIR/linux/lib/dns.sh"
+
+    run validate_domain ""
+    [ "$status" -eq 1 ]
+}
+
+@test "validate_domain rejects domain too short" {
+    source "$PROJECT_DIR/linux/lib/dns.sh"
+
+    run validate_domain "a.b"
+    [ "$status" -eq 1 ]
+}
+
+@test "validate_domain rejects domain exceeding 253 chars" {
+    source "$PROJECT_DIR/linux/lib/dns.sh"
+
+    # Create a domain that's 254 characters (63.63.63.63 pattern repeated)
+    local long_domain=""
+    for i in {1..4}; do
+        long_domain+="$(printf 'a%.0s' {1..63})."
+    done
+    long_domain+="com"
+
+    run validate_domain "$long_domain"
+    [ "$status" -eq 1 ]
+}
+
+@test "validate_domain rejects domain starting with hyphen in label" {
+    source "$PROJECT_DIR/linux/lib/dns.sh"
+
+    run validate_domain "-example.com"
+    [ "$status" -eq 1 ]
+}
+
+@test "validate_domain rejects domain ending with hyphen in label" {
+    source "$PROJECT_DIR/linux/lib/dns.sh"
+
+    run validate_domain "example-.com"
+    [ "$status" -eq 1 ]
+}
+
+@test "validate_domain rejects domain with consecutive dots" {
+    source "$PROJECT_DIR/linux/lib/dns.sh"
+
+    run validate_domain "example..com"
+    [ "$status" -eq 1 ]
+}
+
+@test "validate_domain rejects domain with single label" {
+    source "$PROJECT_DIR/linux/lib/dns.sh"
+
+    run validate_domain "localhost"
+    [ "$status" -eq 1 ]
+}
+
+@test "validate_domain rejects TLD with numbers" {
+    source "$PROJECT_DIR/linux/lib/dns.sh"
+
+    run validate_domain "example.c0m"
+    [ "$status" -eq 1 ]
+}
+
+@test "validate_domain rejects TLD too short" {
+    source "$PROJECT_DIR/linux/lib/dns.sh"
+
+    run validate_domain "example.c"
+    [ "$status" -eq 1 ]
+}
+
+@test "validate_domain rejects label exceeding 63 chars" {
+    source "$PROJECT_DIR/linux/lib/dns.sh"
+
+    # Create a label that's 64 characters
+    local long_label="$(printf 'a%.0s' {1..64})"
+
+    run validate_domain "${long_label}.com"
+    [ "$status" -eq 1 ]
+}
+
+@test "validate_domain accepts valid simple domain" {
+    source "$PROJECT_DIR/linux/lib/dns.sh"
+
+    run validate_domain "example.com"
+    [ "$status" -eq 0 ]
+}
+
+@test "validate_domain accepts valid subdomain" {
+    source "$PROJECT_DIR/linux/lib/dns.sh"
+
+    run validate_domain "www.example.com"
+    [ "$status" -eq 0 ]
+}
+
+@test "validate_domain accepts valid deep subdomain" {
+    source "$PROJECT_DIR/linux/lib/dns.sh"
+
+    run validate_domain "a.b.c.d.example.com"
+    [ "$status" -eq 0 ]
+}
+
+@test "validate_domain accepts wildcard domain" {
+    source "$PROJECT_DIR/linux/lib/dns.sh"
+
+    run validate_domain "*.example.com"
+    [ "$status" -eq 0 ]
+}
+
+@test "validate_domain accepts domain with hyphens in middle" {
+    source "$PROJECT_DIR/linux/lib/dns.sh"
+
+    run validate_domain "my-example-site.com"
+    [ "$status" -eq 0 ]
+}
+
+@test "validate_domain accepts domain with numbers in labels" {
+    source "$PROJECT_DIR/linux/lib/dns.sh"
+
+    run validate_domain "abc123.example.com"
+    [ "$status" -eq 0 ]
+}
+
+@test "validate_domain accepts valid long TLD" {
+    source "$PROJECT_DIR/linux/lib/dns.sh"
+
+    run validate_domain "example.technology"
+    [ "$status" -eq 0 ]
+}
+
+# ============== Tests de sanitize_domain ==============
+
+@test "sanitize_domain removes special characters" {
+    source "$PROJECT_DIR/linux/lib/dns.sh"
+
+    run sanitize_domain "example<script>.com"
+    [ "$output" = "examplescript.com" ]
+}
+
+@test "sanitize_domain preserves valid characters" {
+    source "$PROJECT_DIR/linux/lib/dns.sh"
+
+    run sanitize_domain "my-example.com"
+    [ "$output" = "my-example.com" ]
+}
+
+@test "sanitize_domain removes spaces" {
+    source "$PROJECT_DIR/linux/lib/dns.sh"
+
+    run sanitize_domain "example .com"
+    [ "$output" = "example.com" ]
+}
+
+@test "sanitize_domain removes shell metacharacters" {
+    source "$PROJECT_DIR/linux/lib/dns.sh"
+
+    run sanitize_domain 'example$(rm -rf /).com'
+    [ "$output" = "examplerm-rf.com" ]
 }

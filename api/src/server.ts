@@ -108,10 +108,15 @@ const DEFAULT_CORS_ORIGINS = process.env.NODE_ENV === 'production'
     ? 'https://balejosg.github.io'
     : 'http://localhost:3000,http://localhost:5500,http://127.0.0.1:3000';
 
-const corsOrigins = process.env.CORS_ORIGINS ?? DEFAULT_CORS_ORIGINS;
+let corsOrigins = process.env.CORS_ORIGINS ?? DEFAULT_CORS_ORIGINS;
 
+// Security fix: Force safe default in production if CORS is set to wildcard
 if (corsOrigins === '*' && process.env.NODE_ENV === 'production') {
-    console.warn('⚠️  SECURITY WARNING: CORS_ORIGINS is set to "*" in production.');
+    logger.warn('CORS_ORIGINS="*" in production - forcing safe default', {
+        configured: '*',
+        forced: DEFAULT_CORS_ORIGINS
+    });
+    corsOrigins = DEFAULT_CORS_ORIGINS;
 }
 
 app.use(cors({
@@ -135,6 +140,41 @@ const globalLimiter = rateLimit({
     skip: (req) => req.path === '/health'
 });
 app.use(globalLimiter);
+
+// Endpoint-specific rate limiters for sensitive operations
+const authLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10, // 10 auth attempts per minute
+    message: {
+        success: false,
+        error: 'Too many authentication attempts, please try again later',
+        code: 'AUTH_RATE_LIMITED'
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => req.ip ?? 'unknown'
+});
+
+const publicRequestLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 5, // 5 domain requests per minute per IP
+    message: {
+        success: false,
+        error: 'Too many domain requests, please try again later',
+        code: 'REQUEST_RATE_LIMITED'
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => req.ip ?? 'unknown'
+});
+
+// Apply auth rate limiter to auth endpoints
+app.use('/trpc/auth.login', authLimiter);
+app.use('/trpc/auth.register', authLimiter);
+app.use('/api/setup/first-admin', authLimiter);
+
+// Apply public request limiter to domain request creation
+app.use('/trpc/requests.create', publicRequestLimiter);
 
 // JSON body parser
 app.use(express.json({ limit: '10kb' }));
