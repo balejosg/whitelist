@@ -126,7 +126,7 @@ app.use(cors({
     credentials: true
 }));
 
-// Global rate limiter
+// Global rate limiter (skipped in test environment for rapid test execution)
 const globalLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: parseInt(process.env.RATE_LIMIT_MAX ?? '200', 10),
@@ -137,11 +137,14 @@ const globalLimiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
-    skip: (req) => req.path === '/health'
+    skip: (req) => req.path === '/health' || process.env.NODE_ENV === 'test'
 });
 app.use(globalLimiter);
 
 // Endpoint-specific rate limiters for sensitive operations
+// Skip in test environment to allow rapid test execution
+const isTest = process.env.NODE_ENV === 'test';
+
 const authLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 10, // 10 auth attempts per minute
@@ -152,7 +155,8 @@ const authLimiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => req.ip ?? 'unknown'
+    keyGenerator: (req) => req.ip ?? 'unknown',
+    skip: () => isTest
 });
 
 const publicRequestLimiter = rateLimit({
@@ -165,7 +169,8 @@ const publicRequestLimiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => req.ip ?? 'unknown'
+    keyGenerator: (req) => req.ip ?? 'unknown',
+    skip: () => isTest
 });
 
 // Apply auth rate limiter to auth endpoints

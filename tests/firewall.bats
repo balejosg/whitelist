@@ -231,9 +231,9 @@ EOF
     }
     export -f ip
 
-    # Mock iptables-save
-    iptables-save() { return 0; }
-    export -f iptables-save
+    # Mock save_firewall_rules to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
+    export -f save_firewall_rules
 
     export PRIMARY_DNS="8.8.8.8"
 
@@ -258,8 +258,9 @@ EOF
     }
     export -f ip
 
-    iptables-save() { return 0; }
-    export -f iptables-save
+    # Mock save_firewall_rules to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
+    export -f save_firewall_rules
 
     export PRIMARY_DNS="8.8.8.8"
 
@@ -286,8 +287,9 @@ EOF
     }
     export -f ip
 
-    iptables-save() { return 0; }
-    export -f iptables-save
+    # Mock save_firewall_rules to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
+    export -f save_firewall_rules
 
     export PRIMARY_DNS="8.8.8.8"
 
@@ -313,8 +315,9 @@ EOF
     }
     export -f ip
 
-    iptables-save() { return 0; }
-    export -f iptables-save
+    # Mock save_firewall_rules to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
+    export -f save_firewall_rules
 
     export PRIMARY_DNS="8.8.8.8"
 
@@ -342,8 +345,9 @@ EOF
     }
     export -f ip
 
-    iptables-save() { return 0; }
-    export -f iptables-save
+    # Mock save_firewall_rules to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
+    export -f save_firewall_rules
 
     export PRIMARY_DNS="8.8.8.8"
 
@@ -370,8 +374,9 @@ EOF
     }
     export -f ip
 
-    iptables-save() { return 0; }
-    export -f iptables-save
+    # Mock save_firewall_rules to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
+    export -f save_firewall_rules
 
     export PRIMARY_DNS="8.8.8.8"
 
@@ -397,8 +402,9 @@ EOF
     }
     export -f ip
 
-    iptables-save() { return 0; }
-    export -f iptables-save
+    # Mock save_firewall_rules to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
+    export -f save_firewall_rules
 
     export PRIMARY_DNS="8.8.8.8"
 
@@ -424,8 +430,9 @@ EOF
     }
     export -f ip
 
-    iptables-save() { return 0; }
-    export -f iptables-save
+    # Mock save_firewall_rules to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
+    export -f save_firewall_rules
 
     export PRIMARY_DNS="8.8.8.8"
 
@@ -452,8 +459,9 @@ EOF
     }
     export -f ip
 
-    iptables-save() { return 0; }
-    export -f iptables-save
+    # Mock save_firewall_rules to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
+    export -f save_firewall_rules
 
     export PRIMARY_DNS="8.8.8.8"
 
@@ -481,8 +489,9 @@ EOF
     }
     export -f ip
 
-    iptables-save() { return 0; }
-    export -f iptables-save
+    # Mock save_firewall_rules to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
+    export -f save_firewall_rules
 
     # Set invalid DNS
     export PRIMARY_DNS="not-an-ip"
@@ -507,8 +516,9 @@ EOF
     }
     export -f iptables
 
-    iptables-save() { return 0; }
-    export -f iptables-save
+    # Mock save_firewall_rules to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
+    export -f save_firewall_rules
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
 
@@ -526,8 +536,9 @@ EOF
     }
     export -f iptables
 
-    iptables-save() { return 0; }
-    export -f iptables-save
+    # Mock save_firewall_rules to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
+    export -f save_firewall_rules
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
 
