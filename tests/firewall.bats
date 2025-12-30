@@ -231,13 +231,12 @@ EOF
     }
     export -f ip
 
-    # Mock save_firewall_rules to avoid permission issues on CI
-    save_firewall_rules() { return 0; }
-    export -f save_firewall_rules
-
     export PRIMARY_DNS="8.8.8.8"
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
 
     activate_firewall
 
@@ -258,13 +257,12 @@ EOF
     }
     export -f ip
 
-    # Mock save_firewall_rules to avoid permission issues on CI
-    save_firewall_rules() { return 0; }
-    export -f save_firewall_rules
-
     export PRIMARY_DNS="8.8.8.8"
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
 
     activate_firewall
 
@@ -287,13 +285,12 @@ EOF
     }
     export -f ip
 
-    # Mock save_firewall_rules to avoid permission issues on CI
-    save_firewall_rules() { return 0; }
-    export -f save_firewall_rules
-
     export PRIMARY_DNS="8.8.8.8"
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
 
     activate_firewall
 
@@ -315,13 +312,12 @@ EOF
     }
     export -f ip
 
-    # Mock save_firewall_rules to avoid permission issues on CI
-    save_firewall_rules() { return 0; }
-    export -f save_firewall_rules
-
     export PRIMARY_DNS="8.8.8.8"
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
 
     activate_firewall
 
@@ -345,13 +341,12 @@ EOF
     }
     export -f ip
 
-    # Mock save_firewall_rules to avoid permission issues on CI
-    save_firewall_rules() { return 0; }
-    export -f save_firewall_rules
-
     export PRIMARY_DNS="8.8.8.8"
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
 
     activate_firewall
 
@@ -374,13 +369,12 @@ EOF
     }
     export -f ip
 
-    # Mock save_firewall_rules to avoid permission issues on CI
-    save_firewall_rules() { return 0; }
-    export -f save_firewall_rules
-
     export PRIMARY_DNS="8.8.8.8"
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
 
     activate_firewall
 
@@ -402,13 +396,12 @@ EOF
     }
     export -f ip
 
-    # Mock save_firewall_rules to avoid permission issues on CI
-    save_firewall_rules() { return 0; }
-    export -f save_firewall_rules
-
     export PRIMARY_DNS="8.8.8.8"
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
 
     activate_firewall
 
@@ -430,13 +423,12 @@ EOF
     }
     export -f ip
 
-    # Mock save_firewall_rules to avoid permission issues on CI
-    save_firewall_rules() { return 0; }
-    export -f save_firewall_rules
-
     export PRIMARY_DNS="8.8.8.8"
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
 
     activate_firewall
 
@@ -459,13 +451,12 @@ EOF
     }
     export -f ip
 
-    # Mock save_firewall_rules to avoid permission issues on CI
-    save_firewall_rules() { return 0; }
-    export -f save_firewall_rules
-
     export PRIMARY_DNS="8.8.8.8"
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
 
     activate_firewall
 
@@ -489,15 +480,14 @@ EOF
     }
     export -f ip
 
-    # Mock save_firewall_rules to avoid permission issues on CI
-    save_firewall_rules() { return 0; }
-    export -f save_firewall_rules
-
     # Set invalid DNS
     export PRIMARY_DNS="not-an-ip"
     export FALLBACK_DNS_PRIMARY="1.1.1.1"
 
     source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
 
     activate_firewall
 
@@ -516,11 +506,10 @@ EOF
     }
     export -f iptables
 
-    # Mock save_firewall_rules to avoid permission issues on CI
-    save_firewall_rules() { return 0; }
-    export -f save_firewall_rules
-
     source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
 
     deactivate_firewall
 
@@ -536,11 +525,10 @@ EOF
     }
     export -f iptables
 
-    # Mock save_firewall_rules to avoid permission issues on CI
-    save_firewall_rules() { return 0; }
-    export -f save_firewall_rules
-
     source "$PROJECT_DIR/linux/lib/firewall.sh"
+
+    # Override save_firewall_rules AFTER sourcing to avoid permission issues on CI
+    save_firewall_rules() { return 0; }
 
     deactivate_firewall
 
