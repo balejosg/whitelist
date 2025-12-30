@@ -192,7 +192,7 @@ export const UpdateRequestStatusDTO = z.object({
 export const CreateUserDTO = z.object({
     email: z.string().email(),
     name: z.string().min(1),
-    password: z.string().min(8),
+    password: z.string().min(8).max(128),
 });
 
 export const LoginDTO = z.object({

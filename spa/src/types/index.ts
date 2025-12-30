@@ -14,15 +14,15 @@ export type {
     MachineStatus,
     DomainRequest,
     RoleInfo,
-    APIResponse,
+    APIResponseType as APIResponse,
     PaginatedResponse,
-} from '@openpath/api';
+} from '@openpath/shared';
 
 // =============================================================================
 // SPA-Specific Entity Extensions (frontend-only fields)
 // =============================================================================
 
-import type { UserRole, RoleInfo, MachineStatus, DomainRequest, APIResponse } from '@openpath/api';
+import type { UserRole, RoleInfo, MachineStatus, DomainRequest, APIResponseType as APIResponse } from '@openpath/shared';
 
 export interface UserRoleInfo {
     id: string;
@@ -407,7 +407,7 @@ export interface RequestsAPIInstance {
     init(url: string, token?: string): void;
     isConfigured(): boolean;
     healthCheck(): Promise<boolean>;
-    getRequests(status?: import('@openpath/api').RequestStatus): Promise<RequestsResponse>;
+    getRequests(status?: import('@openpath/shared').RequestStatus): Promise<RequestsResponse>;
     getPendingRequests(): Promise<RequestsResponse>;
     createRequest(data: { domain: string; reason?: string }): Promise<APIResponse<DomainRequest>>;
     approveRequest(id: string, groupId?: string, token?: string): Promise<APIResponse<DomainRequest>>;

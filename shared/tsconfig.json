@@ -6,7 +6,7 @@
         "declaration": true,
         "outDir": "dist",
         "strict": true,
-        "skipLibCheck": false,
+        "skipLibCheck": true,
         "esModuleInterop": true
     },
     "include": [

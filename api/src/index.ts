@@ -1,37 +1,34 @@
 export type { AppRouter } from './trpc/routers/index.js';
-export * from './db/schema.js';
-// Export non-conflicting types from types/index.ts
-// Entity types are already exported from db/schema.js via Drizzle inference
+
+// Drizzle tables (for queries)
+export {
+    users, roles, requests, classrooms, machines, schedules,
+    tokens, settings, pushSubscriptions, healthReports,
+    whitelistGroups, whitelistRules, dashboardUsers,
+} from './db/schema.js';
+
+// Drizzle inferred types for DB operations
 export type {
-    // Domain enum types
-    RequestStatus,
-    RequestPriority,
-    UserRole,
-    MachineStatus,
-    // Entity types not in Drizzle schema
-    DomainRequest,
-    // JWT types
-    RoleInfo,
+    User, Role, Request, Classroom, Machine, Schedule,
+    Token, Setting, PushSubscription, HealthReport,
+    WhitelistGroup, WhitelistRule, DashboardUser,
+    NewUser, NewRole, NewRequest, NewClassroom, NewMachine,
+    NewSchedule, NewToken, NewSetting, NewPushSubscription,
+    NewHealthReport, NewWhitelistGroup, NewWhitelistRule,
+} from './db/schema.js';
+
+// Re-export domain types from shared (single source of truth)
+export * from '@openpath/shared';
+
+// API-specific types (Express, JWT, Config)
+export type {
     JWTPayload,
     DecodedToken,
-    // API response types
-    APIResponse,
-    APIResponseType,
-    PaginatedResponse,
-    StatsResponse,
-    // DTO types
-    CreateRequestDTO,
-    UpdateRequestStatusDTO,
-    CreateUserDTO,
-    LoginDTO,
-    LoginResponse,
-    CreateClassroomDTO,
-    CreateScheduleDTO,
-    // Express types
     AuthenticatedRequest,
     RequestWithGroups,
     Middleware,
     AuthMiddleware,
-    // Config types
     Config,
+    LoginResponse,
+    StatsResponse,
 } from './types/index.js';

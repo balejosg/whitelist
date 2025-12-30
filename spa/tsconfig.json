@@ -16,7 +16,7 @@
         "outDir": "./dist/js",
         "declaration": false,
         "sourceMap": true,
-        "noImplicitAny": false,
+        "noImplicitAny": true,
         "strictNullChecks": true,
         "strictFunctionTypes": true,
         "strictBindCallApply": true,

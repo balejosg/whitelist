@@ -9,7 +9,7 @@
         ],
         "strict": true,
         "esModuleInterop": true,
-        "skipLibCheck": false,
+        "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "outDir": "./dist",
         "rootDir": "./src",
