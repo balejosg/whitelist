@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { router, publicProcedure, protectedProcedure, teacherProcedure, adminProcedure } from '../trpc.js';
-import { RequestStatus, RequestPriority } from '@openpath/shared';
+import {
+    RequestStatusSchema,
+    CreateRequestDTOSchema,
+} from '../../types/index.js';
 import { TRPCError } from '@trpc/server';
 import { CreateRequestData } from '../../types/storage.js';
 import * as storage from '../../lib/storage.js';
@@ -12,13 +15,7 @@ import { stripUndefined } from '../../lib/utils.js';
 export const requestsRouter = router({
     // Public: Create request
     create: publicProcedure
-        .input(z.object({
-            domain: z.string().regex(/^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/),
-            reason: z.string().optional(),
-            requesterEmail: z.string().email().optional(),
-            groupId: z.string().optional(),
-            priority: RequestPriority.optional(),
-        }))
+        .input(CreateRequestDTOSchema)
         .mutation(async ({ input }) => {
             if (await storage.hasPendingRequest(input.domain)) {
                 throw new TRPCError({ code: 'CONFLICT', message: 'Pending request exists' });
@@ -48,7 +45,7 @@ export const requestsRouter = router({
 
     // Protected: List requests (filtered by user's groups)
     list: protectedProcedure
-        .input(z.object({ status: RequestStatus.optional() }))
+        .input(z.object({ status: RequestStatusSchema.optional() }))
         .query(async ({ input, ctx }) => {
             let requests = await storage.getAllRequests(input.status ?? null);
             const groups = auth.getApprovalGroups(ctx.user);

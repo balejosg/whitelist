@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { router, adminProcedure, sharedSecretProcedure } from '../trpc.js';
 import { TRPCError } from '@trpc/server';
+import { CreateClassroomDTOSchema } from '../../types/index.js';
 import { CreateClassroomData, UpdateClassroomData } from '../../types/storage.js';
 import * as classroomStorage from '../../lib/classroom-storage.js';
 import { stripUndefined } from '../../lib/utils.js';
@@ -54,9 +55,7 @@ export const classroomsRouter = router({
         }),
 
     create: adminProcedure
-        .input(z.object({
-            name: z.string().min(1),
-            displayName: z.string().optional(),
+        .input(CreateClassroomDTOSchema.extend({
             defaultGroupId: z.string().optional(),
         }))
         .mutation(async ({ input }) => {

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc.js';
 import { TRPCError } from '@trpc/server';
+import { CreateScheduleDTOSchema } from '../../types/index.js';
 import * as scheduleStorage from '../../lib/schedule-storage.js';
 import * as classroomStorage from '../../lib/classroom-storage.js';
 import * as auth from '../../lib/auth.js';
@@ -36,13 +37,7 @@ export const schedulesRouter = router({
     }),
 
     create: protectedProcedure
-        .input(z.object({
-            classroomId: z.string(),
-            groupId: z.string(),
-            dayOfWeek: z.number().min(0).max(6), // 0-6
-            startTime: z.string().regex(/^\d{2}:\d{2}$/),
-            endTime: z.string().regex(/^\d{2}:\d{2}$/),
-        }))
+        .input(CreateScheduleDTOSchema.omit({ teacherId: true }))
         .mutation(async ({ input, ctx }) => {
             const classroom = await classroomStorage.getClassroomById(input.classroomId);
             if (!classroom) throw new TRPCError({ code: 'NOT_FOUND', message: 'Classroom not found' });

@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { router, adminProcedure } from '../trpc.js';
-import { UserRole } from '@openpath/shared';
+import {
+    UserRoleSchema,
+    CreateUserDTOSchema,
+} from '../../types/index.js';
 import { TRPCError } from '@trpc/server';
 import * as userStorage from '../../lib/user-storage.js';
 import * as roleStorage from '../../lib/role-storage.js';
@@ -23,11 +26,8 @@ export const usersRouter = router({
         }),
 
     create: adminProcedure
-        .input(z.object({
-            email: z.string().email(),
-            name: z.string(),
-            password: z.string().min(8),
-            role: UserRole.optional(),
+        .input(CreateUserDTOSchema.extend({
+            role: UserRoleSchema.optional(),
             groupIds: z.array(z.string()).optional(),
         }))
         .mutation(async ({ input, ctx }) => {
@@ -76,7 +76,7 @@ export const usersRouter = router({
     assignRole: adminProcedure
         .input(z.object({
             userId: z.string(),
-            role: UserRole,
+            role: UserRoleSchema,
             groupIds: z.array(z.string()).default([]),
         }))
         .mutation(async ({ input, ctx }) => {

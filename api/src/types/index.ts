@@ -33,6 +33,7 @@ export {
     LoginDTO as LoginDTOSchema,
     CreateClassroomDTO as CreateClassroomDTOSchema,
     CreateScheduleDTO as CreateScheduleDTOSchema,
+    CreatePushSubscriptionDTO as CreatePushSubscriptionDTOSchema,
 } from '@openpath/shared';
 
 export type {
@@ -59,6 +60,8 @@ export type {
     LoginDTO,
     CreateClassroomDTO,
     CreateScheduleDTO,
+    PushSubscriptionKeys,
+    CreatePushSubscriptionDTO,
     // Response types
     APIResponseType,
     PaginatedResponse,

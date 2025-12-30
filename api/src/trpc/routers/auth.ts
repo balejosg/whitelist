@@ -4,22 +4,15 @@ import { TRPCError } from '@trpc/server';
 import * as userStorage from '../../lib/user-storage.js';
 import * as roleStorage from '../../lib/role-storage.js';
 import * as auth from '../../lib/auth.js';
-import type { UserRole } from '../../types/index.js';
-
-const loginInput = z.object({
-    email: z.string().email(),
-    password: z.string().min(8),
-});
-
-const registerInput = z.object({
-    email: z.string().email(),
-    name: z.string().min(1),
-    password: z.string().min(8),
-});
+import {
+    UserRole,
+    LoginDTOSchema,
+    CreateUserDTOSchema,
+} from '../../types/index.js';
 
 export const authRouter = router({
     register: publicProcedure
-        .input(registerInput)
+        .input(CreateUserDTOSchema)
         .mutation(async ({ input }) => {
             if (await userStorage.emailExists(input.email)) {
                 throw new TRPCError({ code: 'CONFLICT', message: 'Email already registered' });
@@ -29,7 +22,7 @@ export const authRouter = router({
         }),
 
     login: publicProcedure
-        .input(loginInput)
+        .input(LoginDTOSchema)
         .mutation(async ({ input }) => {
             const user = await userStorage.verifyPasswordByEmail(input.email, input.password);
             if (!user) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid credentials' });

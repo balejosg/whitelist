@@ -16,10 +16,22 @@ import type {
     Classroom,
     Machine,
     Schedule,
-    PushSubscription
+    PushSubscription,
+    CreateRequestDTO,
+    CreateUserDTO,
+    CreateClassroomDTO,
+    CreateScheduleDTO,
+    CreatePushSubscriptionDTO,
 } from './index.js';
 
-// Re-export all types as named exports
+// Local type aliases for internal use (resolves scope errors)
+export type CreateRequestData = CreateRequestDTO;
+export type CreateUserData = CreateUserDTO;
+export type CreateClassroomData = CreateClassroomDTO;
+export type CreateScheduleData = CreateScheduleDTO;
+export type CreatePushSubscriptionData = CreatePushSubscriptionDTO;
+
+// Re-export all types as named exports for external consumers
 export type {
     DomainRequest,
     RequestStatus,
@@ -38,16 +50,6 @@ export type {
 // Request Storage
 // =============================================================================
 
-/**
- * Data for creating a new request
- */
-export interface CreateRequestData {
-    domain: string;
-    reason?: string | undefined;
-    requesterEmail?: string | undefined;
-    groupId?: string | undefined;
-    priority?: RequestPriority | undefined;
-}
 
 /**
  * Request statistics
@@ -82,14 +84,6 @@ export interface IRequestStorage {
 // User Storage
 // =============================================================================
 
-/**
- * Data for creating a new user
- */
-export interface CreateUserData {
-    email: string;
-    name: string;
-    password: string;
-}
 
 /**
  * Data for updating a user
@@ -145,13 +139,6 @@ export interface IRoleStorage {
 // Classroom Storage
 // =============================================================================
 
-/**
- * Data for creating a classroom
- */
-export interface CreateClassroomData {
-    name: string;
-    displayName?: string;
-}
 
 /**
  * Data for updating a classroom
@@ -181,18 +168,6 @@ export interface IClassroomStorage {
 // Schedule Storage
 // =============================================================================
 
-/**
- * Data for creating a schedule
- */
-export interface CreateScheduleData {
-    classroomId: string;
-    dayOfWeek: 0 | 1 | 2 | 3 | 4 | 5 | 6;
-    startTime: string;
-    endTime: string;
-    groupId: string;
-    teacherId: string;
-    subject: string;
-}
 
 /**
  * Data for updating a schedule
@@ -255,14 +230,6 @@ export interface ITokenStore {
 /**
  * Data for creating a push subscription
  */
-export interface CreatePushSubscriptionData {
-    userId: string;
-    endpoint: string;
-    keys: {
-        p256dh: string;
-        auth: string;
-    };
-}
 
 /**
  * Push subscription storage interface

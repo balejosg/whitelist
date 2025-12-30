@@ -175,7 +175,7 @@ export interface PaginatedResponse<T> extends APIResponseType<T[]> {
 // =============================================================================
 
 export const CreateRequestDTO = z.object({
-    domain: z.string().min(1),
+    domain: z.string().regex(/^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/),
     reason: z.string().optional(),
     requesterEmail: z.string().email().optional(),
     groupId: z.string().optional(),
@@ -209,7 +209,19 @@ export const CreateScheduleDTO = z.object({
     startTime: z.string(),
     endTime: z.string(),
     groupId: z.string(),
+    teacherId: z.string(),
     subject: z.string().optional(),
+});
+
+export const PushSubscriptionKeys = z.object({
+    p256dh: z.string(),
+    auth: z.string(),
+});
+
+export const CreatePushSubscriptionDTO = z.object({
+    endpoint: z.string(),
+    keys: PushSubscriptionKeys,
+    userAgent: z.string().optional(),
 });
 
 // DTO Types
@@ -219,4 +231,6 @@ export type CreateUserDTO = z.infer<typeof CreateUserDTO>;
 export type LoginDTO = z.infer<typeof LoginDTO>;
 export type CreateClassroomDTO = z.infer<typeof CreateClassroomDTO>;
 export type CreateScheduleDTO = z.infer<typeof CreateScheduleDTO>;
+export type PushSubscriptionKeys = z.infer<typeof PushSubscriptionKeys>;
+export type CreatePushSubscriptionDTO = z.infer<typeof CreatePushSubscriptionDTO>;
 
