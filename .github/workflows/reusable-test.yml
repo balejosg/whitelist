@@ -1,0 +1,139 @@
+name: Reusable Test Workflow
+
+on:
+  workflow_call:
+    inputs:
+      test-type:
+        description: 'Type of test to run (api, web, spa, bash)'
+        required: true
+        type: string
+      node-version:
+        description: 'Node.js version'
+        required: false
+        type: string
+        default: '20'
+      run-coverage:
+        description: 'Upload coverage report'
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      CODECOV_TOKEN:
+        required: false
+      GITHUB_TOKEN:
+        required: false
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: ${{ (inputs.test-type == 'api' || inputs.test-type == 'web') && 'postgres:16' || '' }}
+        env:
+          POSTGRES_USER: openpath
+          POSTGRES_PASSWORD: openpath_dev
+          POSTGRES_DB: openpath
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Node.js setup for non-bash tests
+      - name: Setup Node.js
+        if: inputs.test-type != 'bash'
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Build workspaces
+        if: inputs.test-type != 'bash'
+        uses: ./.github/actions/build-workspaces
+        with:
+          build-shared: 'true'
+          build-api: 'true'
+
+      # Bash tests setup
+      - name: Install BATS
+        if: inputs.test-type == 'bash'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats
+
+      # Run database migrations for API/Web tests
+      - name: Run database migrations
+        if: inputs.test-type == 'api' || inputs.test-type == 'web'
+        run: |
+          npm run drizzle:push --workspace=@openpath/api
+          npm run db:migrate --workspace=@openpath/api
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: openpath
+          DB_USER: openpath
+          DB_PASSWORD: openpath_dev
+
+      # API Tests
+      - name: Run API tests
+        if: inputs.test-type == 'api'
+        run: npm run test:coverage --workspace=@openpath/api
+        env:
+          NODE_ENV: test
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: openpath
+          DB_USER: openpath
+          DB_PASSWORD: openpath_dev
+          JWT_SECRET: test-jwt-secret-for-ci-testing
+          ADMIN_TOKEN: test-admin-token-for-ci
+          SHARED_SECRET: test-shared-secret-for-ci
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Web/Dashboard Tests
+      - name: Run Web tests
+        if: inputs.test-type == 'web'
+        run: npm test --workspace=dashboard
+        env:
+          DATABASE_URL: postgresql://openpath:openpath_dev@localhost:5432/openpath
+          NODE_ENV: test
+
+      # SPA Tests (lint + typecheck only)
+      - name: Run SPA lint
+        if: inputs.test-type == 'spa'
+        run: npm run lint --workspace=openpath-spa
+
+      - name: Run SPA typecheck
+        if: inputs.test-type == 'spa'
+        run: npm run typecheck --workspace=openpath-spa
+
+      # Bash Tests
+      - name: Run Bash tests
+        if: inputs.test-type == 'bash'
+        run: cd tests && bats *.bats
+
+      # Coverage upload
+      - name: Upload coverage to Codecov
+        if: inputs.run-coverage && (inputs.test-type == 'api' || inputs.test-type == 'web')
+        uses: codecov/codecov-action@v5
+        with:
+          files: ${{ inputs.test-type == 'api' && 'api/coverage/lcov.info' || 'dashboard/coverage/lcov.info' }}
+          flags: ${{ inputs.test-type }}
+          name: ${{ inputs.test-type }}-coverage
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload coverage artifact
+        if: inputs.run-coverage && (inputs.test-type == 'api' || inputs.test-type == 'web')
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ inputs.test-type }}
+          path: ${{ inputs.test-type == 'api' && 'api/coverage/' || 'dashboard/coverage/' }}
+          retention-days: 7

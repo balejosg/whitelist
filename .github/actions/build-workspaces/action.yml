@@ -1,0 +1,52 @@
+name: 'Build Workspaces'
+description: 'Build monorepo workspaces in correct dependency order'
+
+inputs:
+  build-shared:
+    description: 'Build @openpath/shared package'
+    required: false
+    default: 'true'
+  build-api:
+    description: 'Build @openpath/api package (for type exports)'
+    required: false
+    default: 'true'
+  build-spa:
+    description: 'Build openpath-spa package'
+    required: false
+    default: 'false'
+  build-dashboard:
+    description: 'Build @openpath/dashboard package'
+    required: false
+    default: 'false'
+  build-extension:
+    description: 'Build openpath-firefox-extension package'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Build shared package
+      if: inputs.build-shared == 'true'
+      shell: bash
+      run: npm run build --workspace=@openpath/shared
+
+    - name: Build API package
+      if: inputs.build-api == 'true'
+      shell: bash
+      run: npm run build --workspace=@openpath/api
+
+    - name: Build SPA
+      if: inputs.build-spa == 'true'
+      shell: bash
+      run: npm run build --workspace=openpath-spa
+
+    - name: Build Dashboard
+      if: inputs.build-dashboard == 'true'
+      shell: bash
+      run: npm run build --workspace=@openpath/dashboard
+
+    - name: Build Firefox Extension
+      if: inputs.build-extension == 'true'
+      shell: bash
+      run: npm run build --workspace=openpath-firefox-extension

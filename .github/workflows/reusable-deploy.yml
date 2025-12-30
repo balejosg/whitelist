@@ -1,0 +1,154 @@
+name: Reusable Deployment
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Target environment (staging or production)'
+        required: true
+        type: string
+      deploy-timeout:
+        description: 'SSH connection timeout'
+        required: false
+        type: string
+        default: '60s'
+      command-timeout:
+        description: 'Command execution timeout'
+        required: false
+        type: string
+        default: '15m'
+    secrets:
+      DEPLOY_HOST:
+        required: true
+      DEPLOY_USER:
+        required: true
+      DEPLOY_SSH_KEY:
+        required: true
+      DEPLOY_PORT:
+        required: false
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Resolve deploy host
+        id: resolve
+        run: |
+          HOST="${{ secrets.DEPLOY_HOST }}"
+          PORT="${{ secrets.DEPLOY_PORT }}"
+          PORT="${PORT:-22}"
+
+          if [ -z "$HOST" ]; then
+            echo "DEPLOY_HOST not configured. Skipping deployment."
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Try to resolve hostname
+          MAX_RETRIES=3
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "DNS resolution attempt $i of $MAX_RETRIES..."
+            IP=$(getent hosts "$HOST" 2>/dev/null | awk '{print $1}' | head -1)
+
+            if [ -z "$IP" ]; then
+              IP=$(dig +short "$HOST" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+            fi
+
+            if [ -n "$IP" ]; then
+              echo "Resolved $HOST to $IP"
+              echo "ip=$IP" >> $GITHUB_OUTPUT
+              echo "port=$PORT" >> $GITHUB_OUTPUT
+              echo "skip=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            sleep 5
+          done
+
+          echo "Could not resolve $HOST"
+          echo "skip=true" >> $GITHUB_OUTPUT
+
+      - name: Deploy via SSH
+        if: steps.resolve.outputs.skip != 'true'
+        uses: appleboy/ssh-action@v1.2.4
+        with:
+          host: ${{ steps.resolve.outputs.ip }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ steps.resolve.outputs.port }}
+          timeout: ${{ inputs.deploy-timeout }}
+          command_timeout: ${{ inputs.command-timeout }}
+          script: |
+            set -e
+            echo "Starting deployment to ${{ inputs.environment }}..."
+
+            DEPLOY_DIR="${HOME}/whitelist"
+            cd "$DEPLOY_DIR"
+
+            # Backup current version
+            echo "Creating backup..."
+            cp -r api api.backup 2>/dev/null || true
+
+            # Fix permissions before reset
+            chmod -R u+w api/data 2>/dev/null || true
+
+            # Pull latest changes
+            echo "Pulling latest changes..."
+            git fetch origin main
+            git checkout -- . 2>/dev/null || true
+            git clean -fd 2>/dev/null || true
+            git reset --hard origin/main
+
+            cd api
+            mkdir -p data
+            chmod 755 data
+
+            # Install dependencies
+            echo "Installing dependencies..."
+            npm ci
+
+            # Build shared and api
+            echo "Building project..."
+            npm run build --workspace=@openpath/shared
+            npm run build --workspace=@openpath/api
+
+            # Restart service
+            echo "Restarting API service..."
+            if command -v rc-service >/dev/null 2>&1; then
+              rc-service openpath-api restart
+            elif command -v systemctl >/dev/null 2>&1; then
+              systemctl restart openpath-api
+            fi
+
+            # Verify health
+            sleep 3
+            if curl -f http://localhost:3000/health > /dev/null 2>&1; then
+              echo "Deployment successful!"
+              cd "$DEPLOY_DIR" && rm -rf api.backup
+            else
+              echo "Deployment failed! Rolling back..."
+              cd "$DEPLOY_DIR"
+              rm -rf api
+              mv api.backup api
+              if command -v rc-service >/dev/null 2>&1; then
+                rc-service openpath-api restart
+              elif command -v systemctl >/dev/null 2>&1; then
+                systemctl restart openpath-api
+              fi
+              echo "Rolled back"
+              exit 1
+            fi
+
+            echo "Deployment completed at $(date)"
+
+      - name: Report skip
+        if: steps.resolve.outputs.skip == 'true'
+        run: |
+          echo "::warning::Deployment skipped - could not resolve or connect to deploy host"

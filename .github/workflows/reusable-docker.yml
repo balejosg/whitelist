@@ -1,0 +1,79 @@
+name: Reusable Docker Build
+
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        description: 'Image name (e.g., api, dashboard)'
+        required: true
+        type: string
+      dockerfile:
+        description: 'Path to Dockerfile'
+        required: true
+        type: string
+      context:
+        description: 'Build context path'
+        required: false
+        type: string
+        default: '.'
+      platforms:
+        description: 'Target platforms'
+        required: false
+        type: string
+        default: 'linux/amd64'
+      push:
+        description: 'Whether to push the image'
+        required: false
+        type: boolean
+        default: false
+    outputs:
+      tags:
+        description: 'Generated image tags'
+        value: ${{ jobs.build.outputs.tags }}
+      digest:
+        description: 'Image digest'
+        value: ${{ jobs.build.outputs.digest }}
+
+jobs:
+  build:
+    name: Build ${{ inputs.image-name }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      tags: ${{ steps.docker.outputs.tags }}
+      digest: ${{ steps.docker.outputs.digest }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        if: inputs.push
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        id: docker
+        uses: ./.github/actions/docker-build
+        with:
+          image-name: ${{ inputs.image-name }}
+          dockerfile: ${{ inputs.dockerfile }}
+          context: ${{ inputs.context }}
+          platforms: ${{ inputs.platforms }}
+          push: ${{ inputs.push }}
+
+      - name: Image summary
+        if: inputs.push
+        run: |
+          echo "## Docker Image Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** ghcr.io/${{ github.repository }}/${{ inputs.image-name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags:**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.docker.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY

@@ -55,17 +55,14 @@ jobs:
           git push origin "${{ steps.vars.outputs.tag }}" || echo "Tag already exists or push failed, continuing..."
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './package-lock.json'
-
-      - name: Install dependencies
-        run: npm ci
+        uses: ./.github/actions/setup-node
 
       - name: Build Firefox Extension
-        run: npm run build --workspace=openpath-firefox-extension
+        uses: ./.github/actions/build-workspaces
+        with:
+          build-shared: 'false'
+          build-api: 'false'
+          build-extension: 'true'
 
       - name: Validate package contents
         run: |

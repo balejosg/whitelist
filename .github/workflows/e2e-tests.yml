@@ -31,19 +31,17 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm ci
-      
+        uses: ./.github/actions/setup-node
+
       - name: Build Firefox Extension
-        run: npm run build --workspace=openpath-firefox-extension
-      
+        uses: ./.github/actions/build-workspaces
+        with:
+          build-shared: 'false'
+          build-api: 'false'
+          build-extension: 'true'
+
       - name: Build Docker image
         run: |
           echo "🐳 Building systemd-enabled E2E test Docker image..."
@@ -132,7 +130,6 @@ jobs:
           docker stop whitelist-test 2>/dev/null || true
           docker rm -f whitelist-test 2>/dev/null || true
           echo "✓ Whitelist update test completed"
-        continue-on-error: true
       
       - name: Debug on failure
         if: failure()
@@ -312,7 +309,6 @@ jobs:
           } else {
               Write-Host "⚠ Acrylic hosts file not found, skipping sinkhole test"
           }
-        continue-on-error: true
       
       - name: Test Whitelist Update
         shell: pwsh
@@ -345,8 +341,7 @@ jobs:
           
           # Cleanup
           Remove-Item $testFile -ErrorAction SilentlyContinue
-        continue-on-error: true
-      
+
       - name: Test Firewall module
         shell: pwsh
         run: |

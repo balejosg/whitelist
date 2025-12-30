@@ -13,40 +13,25 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './package-lock.json'
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Build shared package
-        run: npm run build --workspace=@openpath/shared
 
-      - name: Build api package (for type exports)
-        run: npm run build --workspace=@openpath/api
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-node
+
+      - name: Build workspaces
+        uses: ./.github/actions/build-workspaces
 
       - name: Verify Strict Compliance (Lint & Type Check)
         run: npm run verify
-      
-      # - name: Check for Suppressions
-      #   run: |
-      #     ! grep -rE "eslint-disable|@ts-ignore|@ts-expect-error|biome-ignore" . --exclude-dir="node_modules" --exclude-dir="dist" --exclude-dir="build" --exclude-dir="coverage" --exclude=".github/workflows/ci.yml"
-      #     echo "✓ No suppressions found"
-      
+
       - name: Shellcheck
         run: |
           find linux -name '*.sh' -type f | xargs shellcheck --severity=warning || true
-          echo "✓ Shellcheck passed"
-      
+          echo "Shellcheck completed"
+
       - name: Lint Markdown files
         uses: DavidAnson/markdownlint-cli2-action@v16
         with:
@@ -61,506 +46,83 @@ jobs:
   # Job 2: Test Web Application
   # ============================================
   test-web:
-    name: Web API Tests
-    runs-on: ubuntu-latest
-    
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: openpath
-          POSTGRES_PASSWORD: openpath_dev
-          POSTGRES_DB: openpath
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './package-lock.json'
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Build shared package
-        run: npm run build --workspace=@openpath/shared
-
-      - name: Build api package (for type exports)
-        run: npm run build --workspace=@openpath/api
-
-      - name: Run Database Migrations
-        run: npm run db:migrate --workspace=@openpath/api
-        env:
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_NAME: openpath
-          DB_USER: openpath
-          DB_PASSWORD: openpath_dev
-
-      - name: Run linting
-        run: npm run lint --workspace=dashboard
-      
-      - name: Run tests
-        run: npm test --workspace=dashboard
-        env:
-          DATABASE_URL: postgresql://openpath:openpath_dev@localhost:5432/openpath
-          NODE_ENV: test
-      
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          files: dashboard/coverage/lcov.info
-          flags: dashboard
-          name: dashboard-coverage
-          fail_ci_if_error: false
-          token: ${{ secrets.CODECOV_TOKEN }}
-      
-      - name: Upload coverage
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverage-report
-          path: dashboard/coverage/
-          retention-days: 7
+    name: Web Tests
+    uses: ./.github/workflows/reusable-test.yml
+    with:
+      test-type: web
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ============================================
   # Job 3: Test Bash Scripts
   # ============================================
   test-bash:
-    name: Bash Tests (bats)
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Install bats
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y bats
-      
-      - name: Run bats tests
-        run: |
-          cd tests
-          bats *.bats
+    name: Bash Tests
+    uses: ./.github/workflows/reusable-test.yml
+    with:
+      test-type: bash
 
   # ============================================
   # Job 4: Test Request API
   # ============================================
   test-api:
-    name: Request API Tests
-    runs-on: ubuntu-latest
-    
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: openpath
-          POSTGRES_PASSWORD: openpath_dev
-          POSTGRES_DB: openpath
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './package-lock.json'
-      
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build shared package
-        run: npm run build --workspace=@openpath/shared
-
-      - name: Run linting
-        run: npm run lint --workspace=@openpath/api
-      
-      - name: TypeScript type-check
-        run: npm run typecheck --workspace=@openpath/api
-      
-      - name: Build TypeScript
-        run: npm run build --workspace=@openpath/api
-      
-      - name: Apply Drizzle Schema Changes
-        run: npm run drizzle:push --workspace=@openpath/api
-        env:
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_NAME: openpath
-          DB_USER: openpath
-          DB_PASSWORD: openpath_dev
-
-      - name: Run Database Migrations
-        run: npm run db:migrate --workspace=@openpath/api
-        env:
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_NAME: openpath
-          DB_USER: openpath
-          DB_PASSWORD: openpath_dev
-
-      - name: Run tests with coverage
-        run: npm run test:coverage --workspace=@openpath/api
-        env:
-          NODE_ENV: test
-          JWT_SECRET: test-jwt-secret-for-ci-testing
-          ADMIN_TOKEN: test-admin-token-for-ci
-          SHARED_SECRET: test-shared-secret-for-ci
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_NAME: openpath
-          DB_USER: openpath
-          DB_PASSWORD: openpath_dev
-      
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          files: api/coverage/lcov.info
-          flags: api
-          name: api-coverage
-          fail_ci_if_error: false
-          token: ${{ secrets.CODECOV_TOKEN }}
+    name: API Tests
+    uses: ./.github/workflows/reusable-test.yml
+    with:
+      test-type: api
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ============================================
   # Job 5: Test SPA (Lint & Type Check)
   # ============================================
   test-spa:
-    name: SPA Lint & Type Check
-    runs-on: ubuntu-latest
-    
-    # Remove defaults to allow root-level commands
-    # defaults:
-    #   run:
-    #     working-directory: spa
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './package-lock.json'
-      
-      - name: Install dependencies (Root)
-        run: npm ci
-      
-      - name: Build shared package
-        run: npm run build --workspace=@openpath/shared
-
-      - name: Build api package (for type exports)
-        run: npm run build --workspace=@openpath/api
-
-      - name: Run linting
-        run: npm run lint --workspace=openpath-spa
-
-      - name: TypeScript type-check
-        run: npm run typecheck --workspace=openpath-spa
+    name: SPA Tests
+    uses: ./.github/workflows/reusable-test.yml
+    with:
+      test-type: spa
 
   # ============================================
-  # Job 6: Build Docker Image
+  # Job 6: Build Docker Image (Dashboard)
   # ============================================
   build-docker:
-    name: Build Docker
-    runs-on: ubuntu-latest
+    name: Build Dashboard Docker
     needs: [lint, test-web]
-    permissions:
-      contents: read
-      packages: write
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      
-      - name: Login to GitHub Container Registry
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}/dashboard
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix=sha-
-            type=raw,value=latest,enable={{is_default_branch}}
-      
-      - name: Build and push dashboard image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./dashboard/Dockerfile
-          platforms: linux/amd64
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      
-      - name: Image digest
-        if: github.event_name != 'pull_request'
-        run: |
-          echo "## 🐳 Docker Image Published" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Repository:** ghcr.io/${{ github.repository }}/dashboard" >> $GITHUB_STEP_SUMMARY
-          echo "**Tags:**" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+    uses: ./.github/workflows/reusable-docker.yml
+    with:
+      image-name: dashboard
+      dockerfile: ./dashboard/Dockerfile
+      push: ${{ github.event_name != 'pull_request' }}
 
   # ============================================
-  # Job 7: Build Docker Image for API
+  # Job 7: Build Docker Image (API)
   # ============================================
   build-docker-api:
-    name: Build Docker API
-    runs-on: ubuntu-latest
+    name: Build API Docker
     needs: [lint, test-api]
-    permissions:
-      contents: read
-      packages: write
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      
-      - name: Login to GitHub Container Registry
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}/api
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=sha,prefix=sha-
-            type=raw,value=latest,enable={{is_default_branch}}
-      
-      - name: Build and push api image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./api/Dockerfile
-          platforms: linux/amd64
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+    uses: ./.github/workflows/reusable-docker.yml
+    with:
+      image-name: api
+      dockerfile: ./api/Dockerfile
+      push: ${{ github.event_name != 'pull_request' }}
 
   # ============================================
   # Job 8: Deploy to Production
   # ============================================
   deploy:
     name: Deploy to Production
-    runs-on: ubuntu-latest
     needs: [build-docker-api]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip deploy]')
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.2.4
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_PORT || 22 }}
-          script: |
-            set -e
-            export PATH=$PATH:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
-            
-            DEPLOY_DIR="${{ secrets.DEPLOY_PATH || '$HOME/openpath' }}"
-            # Expand $HOME if present
-            DEPLOY_DIR=$(eval echo "$DEPLOY_DIR")
-            
-            echo "🚀 Deploying to $DEPLOY_DIR..."
-            mkdir -p "$DEPLOY_DIR"
-            cd "$DEPLOY_DIR"
-
-            # Check for docker or podman
-            DOCKER_CMD=""
-            if command -v docker >/dev/null 2>&1; then
-              DOCKER_CMD="docker"
-            elif command -v podman >/dev/null 2>&1; then
-              DOCKER_CMD="podman"
-              echo "Using podman instead of docker"
-            fi
-
-            if [ -n "$DOCKER_CMD" ]; then
-              echo "🐳 Using container-based deployment ($DOCKER_CMD)..."
-              # Login to GitHub Container Registry
-              echo "${{ secrets.GITHUB_TOKEN }}" | $DOCKER_CMD login ghcr.io -u ${{ github.actor }} --password-stdin
-
-              # Pull latest images
-              $DOCKER_CMD pull ghcr.io/${{ github.repository }}/api:latest
-
-              # Create docker-compose.prod.yml
-              echo "version: '3.8'
-              
-              services:
-                db:
-                  image: postgres:16-alpine
-                  container_name: openpath-postgres
-                  restart: unless-stopped
-                  environment:
-                    POSTGRES_DB: \${DB_NAME:-openpath}
-                    POSTGRES_USER: \${DB_USER:-openpath}
-                    POSTGRES_PASSWORD: \${DB_PASSWORD}
-                  volumes:
-                    - postgres_data:/var/lib/postgresql/data
-                  healthcheck:
-                    test: [\"CMD-SHELL\", \"pg_isready -U \${DB_USER:-openpath}\"]
-                    interval: 10s
-                    timeout: 5s
-                    retries: 5
-                  networks:
-                    - openpath-network
-              
-                api:
-                  image: ghcr.io/${{ github.repository }}/api:latest
-                  container_name: openpath-api
-                  restart: unless-stopped
-                  ports:
-                    - \"\${API_PORT:-3000}:3000\"
-                  environment:
-                    - NODE_ENV=production
-                    - PORT=3000
-                    - DB_HOST=db
-                    - DB_PORT=5432
-                    - DB_NAME=\${DB_NAME:-openpath}
-                    - DB_USER=\${DB_USER:-openpath}
-                    - DB_PASSWORD=\${DB_PASSWORD}
-                    - JWT_SECRET=\${JWT_SECRET}
-                    - ADMIN_TOKEN=\${ADMIN_TOKEN}
-                    - SHARED_SECRET=\${SHARED_SECRET}
-                    - CORS_ORIGINS=\${CORS_ORIGINS}
-                  depends_on:
-                    db:
-                      condition: service_healthy
-                  networks:
-                    - openpath-network
-              
-              volumes:
-                postgres_data:
-              
-              networks:
-                openpath-network:
-                  name: openpath-network" > docker-compose.prod.yml
-              
-              # Strip leading spaces from the generated file
-              sed -i 's/^              //' docker-compose.prod.yml
-
-              # Check for docker-compose or docker compose
-              COMPOSE_CMD="$DOCKER_CMD compose"
-              if ! $DOCKER_CMD compose version >/dev/null 2>&1; then
-                if command -v docker-compose >/dev/null 2>&1; then
-                  COMPOSE_CMD="docker-compose"
-                else
-                  echo "❌ docker compose not available"
-                  exit 1
-                fi
-              fi
-
-              # Run database migrations if needed
-              $COMPOSE_CMD -f docker-compose.prod.yml up -d db
-              sleep 10  # Wait for PostgreSQL to be ready
-
-              # Deploy API with zero-downtime (recreate only api container)
-              $COMPOSE_CMD -f docker-compose.prod.yml up -d --force-recreate api
-
-              # Run migrations
-              $COMPOSE_CMD -f docker-compose.prod.yml exec -T api npm run db:migrate || true
-
-              # Clean up old images
-              $DOCKER_CMD image prune -f
-            else
-              echo "⚠️ No container runtime found. Falling back to native deployment..."
-              
-              # Check for git and npm
-              if ! command -v git >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
-                echo "❌ git or npm not found. Cannot deploy natively."
-                exit 1
-              fi
-
-              # Clone or pull
-              if [ ! -d ".git" ]; then
-                git clone https://github.com/${{ github.repository }}.git .
-              else
-                git fetch origin main
-                git reset --hard origin/main
-              fi
-
-              # Install and build
-              npm ci
-              npm run build --workspace=@openpath/shared
-              npm run build --workspace=@openpath/api
-              
-              # Restart service if it exists
-              if command -v rc-service >/dev/null 2>&1; then
-                rc-service openpath-api restart || echo "⚠️ Could not restart openpath-api service"
-              elif command -v systemctl >/dev/null 2>&1; then
-                systemctl restart openpath-api || echo "⚠️ Could not restart openpath-api service"
-              else
-                echo "⚠️ No service manager found. Please restart the API manually."
-              fi
-            fi
-
-            echo "✅ Deployment completed successfully"
+    uses: ./.github/workflows/reusable-deploy.yml
+    with:
+      environment: production
+    secrets:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
 
   # ============================================
   # Summary Job
@@ -568,9 +130,9 @@ jobs:
   ci-success:
     name: CI Success
     runs-on: ubuntu-latest
-    needs: [lint, test-web, test-bash, test-api, test-spa, build-docker, build-docker-api, deploy]
+    needs: [lint, test-web, test-bash, test-api, test-spa, build-docker, build-docker-api]
     if: always()
-    
+
     steps:
       - name: Check all jobs
         run: |
@@ -580,9 +142,8 @@ jobs:
              [[ "${{ needs.test-api.result }}" == "failure" ]] || \
              [[ "${{ needs.test-spa.result }}" == "failure" ]] || \
              [[ "${{ needs.build-docker.result }}" == "failure" ]] || \
-             [[ "${{ needs.build-docker-api.result }}" == "failure" ]] || \
-             ([[ "${{ needs.deploy.result }}" == "failure" ]] && [[ "${{ needs.deploy.result }}" != "skipped" ]]); then
-            echo "❌ CI Failed"
+             [[ "${{ needs.build-docker-api.result }}" == "failure" ]]; then
+            echo "CI Failed"
             exit 1
           fi
-          echo "✅ All CI checks passed"
+          echo "All CI checks passed"

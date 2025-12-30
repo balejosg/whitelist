@@ -25,17 +25,16 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: ./.github/actions/setup-node
         with:
           node-version: '22'
-          cache: 'npm'
 
-      - name: Install dependencies and build
-        run: |
-          echo "📦 Installing dependencies..."
-          npm ci
-          echo "🔨 Building TypeScript..."
-          npm run build -w firefox-extension
+      - name: Build Firefox Extension
+        uses: ./.github/actions/build-workspaces
+        with:
+          build-shared: 'false'
+          build-api: 'false'
+          build-extension: 'true'
 
       - name: Extract version and prepare variables
         id: vars

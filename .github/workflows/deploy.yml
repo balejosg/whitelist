@@ -27,25 +27,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: ./.github/actions/setup-node
+
+      - name: Build workspaces
+        uses: ./.github/actions/build-workspaces
         with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './package-lock.json'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build shared package
-        run: npm run build --workspace=@openpath/shared
-
-      - name: Build api package (for type exports)
-        run: npm run build --workspace=@openpath/api
-
-      - name: Build SPA
-        run: npm run build --workspace=openpath-spa
+          build-spa: 'true'
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
