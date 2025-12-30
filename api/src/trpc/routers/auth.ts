@@ -14,43 +14,53 @@ export const authRouter = router({
     register: publicProcedure
         .input(CreateUserDTOSchema)
         .mutation(async ({ input }) => {
-            if (await userStorage.emailExists(input.email)) {
-                throw new TRPCError({ code: 'CONFLICT', message: 'Email already registered' });
+            try {
+                if (await userStorage.emailExists(input.email)) {
+                    throw new TRPCError({ code: 'CONFLICT', message: 'Email already registered' });
+                }
+                const user = await userStorage.createUser(input);
+                return { user: { id: user.id, email: user.email, name: user.name } };
+            } catch (error) {
+                console.error('auth.register error:', error);
+                throw error;
             }
-            const user = await userStorage.createUser(input);
-            return { user: { id: user.id, email: user.email, name: user.name } };
         }),
 
     login: publicProcedure
         .input(LoginDTOSchema)
         .mutation(async ({ input }) => {
-            const user = await userStorage.verifyPasswordByEmail(input.email, input.password);
-            if (!user) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid credentials' });
-            if (!user.isActive) throw new TRPCError({ code: 'FORBIDDEN', message: 'Account inactive' });
+            try {
+                const user = await userStorage.verifyPasswordByEmail(input.email, input.password);
+                if (!user) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid credentials' });
+                if (!user.isActive) throw new TRPCError({ code: 'FORBIDDEN', message: 'Account inactive' });
 
-            const roles = await roleStorage.getUserRoles(user.id);
-            // Map roles to camelCase for frontend
-            const mappedRoles = roles.map(r => ({
-                id: r.id,
-                userId: r.userId,
-                role: r.role as UserRole,
-                groupIds: r.groupIds ?? [],
-                createdAt: r.createdAt?.toISOString() ?? new Date().toISOString(),
-                updatedAt: r.updatedAt?.toISOString() ?? new Date().toISOString(),
-                createdBy: r.createdBy,
-                revokedAt: null
-            }));
+                const roles = await roleStorage.getUserRoles(user.id);
+                // Map roles to camelCase for frontend
+                const mappedRoles = roles.map(r => ({
+                    id: r.id,
+                    userId: r.userId,
+                    role: r.role as UserRole,
+                    groupIds: r.groupIds ?? [],
+                    createdAt: r.createdAt?.toISOString() ?? new Date().toISOString(),
+                    updatedAt: r.updatedAt?.toISOString() ?? new Date().toISOString(),
+                    createdBy: r.createdBy,
+                    revokedAt: null
+                }));
 
-            const tokens = auth.generateTokens(user, roles.map(r => ({ role: r.role as 'admin' | 'teacher' | 'student', groupIds: r.groupIds ?? [] })));
-            return {
-                ...tokens,
-                user: {
-                    id: user.id,
-                    email: user.email,
-                    name: user.name,
-                    roles: mappedRoles
-                }
-            };
+                const tokens = auth.generateTokens(user, roles.map(r => ({ role: r.role as 'admin' | 'teacher' | 'student', groupIds: r.groupIds ?? [] })));
+                return {
+                    ...tokens,
+                    user: {
+                        id: user.id,
+                        email: user.email,
+                        name: user.name,
+                        roles: mappedRoles
+                    }
+                };
+            } catch (error) {
+                console.error('auth.login error:', error);
+                throw error;
+            }
         }),
 
     refresh: publicProcedure
