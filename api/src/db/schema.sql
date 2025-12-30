@@ -1,4 +1,4 @@
-CREATE TABLE "classrooms" (
+CREATE TABLE IF NOT EXISTS "classrooms" (
 	"id" varchar(50) PRIMARY KEY NOT NULL,
 	"name" varchar(100) NOT NULL,
 	"display_name" varchar(255) NOT NULL,
@@ -9,7 +9,7 @@ CREATE TABLE "classrooms" (
 	CONSTRAINT "classrooms_name_unique" UNIQUE("name")
 );
 --> statement-breakpoint
-CREATE TABLE "dashboard_users" (
+CREATE TABLE IF NOT EXISTS "dashboard_users" (
 	"id" varchar(50) PRIMARY KEY NOT NULL,
 	"username" varchar(100) NOT NULL,
 	"password_hash" varchar(255) NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE "dashboard_users" (
 	CONSTRAINT "dashboard_users_username_unique" UNIQUE("username")
 );
 --> statement-breakpoint
-CREATE TABLE "health_reports" (
+CREATE TABLE IF NOT EXISTS "health_reports" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"hostname" varchar(255) NOT NULL,
 	"status" varchar(50) NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE "health_reports" (
 	"reported_at" timestamp with time zone DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE "machines" (
+CREATE TABLE IF NOT EXISTS "machines" (
 	"id" varchar(50) PRIMARY KEY NOT NULL,
 	"hostname" varchar(255) NOT NULL,
 	"classroom_id" varchar(50),
@@ -42,7 +42,7 @@ CREATE TABLE "machines" (
 	CONSTRAINT "machines_hostname_unique" UNIQUE("hostname")
 );
 --> statement-breakpoint
-CREATE TABLE "push_subscriptions" (
+CREATE TABLE IF NOT EXISTS "push_subscriptions" (
 	"id" varchar(50) PRIMARY KEY NOT NULL,
 	"user_id" varchar(50) NOT NULL,
 	"group_ids" text[] NOT NULL,
@@ -54,7 +54,7 @@ CREATE TABLE "push_subscriptions" (
 	CONSTRAINT "push_subscriptions_endpoint_unique" UNIQUE("endpoint")
 );
 --> statement-breakpoint
-CREATE TABLE "requests" (
+CREATE TABLE IF NOT EXISTS "requests" (
 	"id" varchar(50) PRIMARY KEY NOT NULL,
 	"domain" varchar(255) NOT NULL,
 	"reason" text,
@@ -69,18 +69,18 @@ CREATE TABLE "requests" (
 	"resolution_note" text
 );
 --> statement-breakpoint
-CREATE TABLE "roles" (
+CREATE TABLE IF NOT EXISTS "roles" (
 	"id" varchar(50) PRIMARY KEY NOT NULL,
 	"user_id" varchar(50) NOT NULL,
 	"role" varchar(20) NOT NULL,
-	"groups" text[],
+	"group_ids" text[],
 	"created_by" varchar(50),
 	"created_at" timestamp with time zone DEFAULT now(),
 	"updated_at" timestamp with time zone DEFAULT now(),
 	CONSTRAINT "roles_user_id_key" UNIQUE("user_id")
 );
 --> statement-breakpoint
-CREATE TABLE "schedules" (
+CREATE TABLE IF NOT EXISTS "schedules" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"classroom_id" varchar(50) NOT NULL,
 	"teacher_id" varchar(50) NOT NULL,
@@ -93,14 +93,14 @@ CREATE TABLE "schedules" (
 	"updated_at" timestamp with time zone DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE "settings" (
+CREATE TABLE IF NOT EXISTS "settings" (
 	"key" varchar(100) PRIMARY KEY NOT NULL,
 	"value" text NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now(),
 	"updated_at" timestamp with time zone DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE "tokens" (
+CREATE TABLE IF NOT EXISTS "tokens" (
 	"id" varchar(50) PRIMARY KEY NOT NULL,
 	"user_id" varchar(50) NOT NULL,
 	"token_hash" varchar(255) NOT NULL,
@@ -108,7 +108,7 @@ CREATE TABLE "tokens" (
 	"created_at" timestamp with time zone DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE "users" (
+CREATE TABLE IF NOT EXISTS "users" (
 	"id" varchar(50) PRIMARY KEY NOT NULL,
 	"email" varchar(255) NOT NULL,
 	"name" varchar(255) NOT NULL,
@@ -120,7 +120,7 @@ CREATE TABLE "users" (
 	CONSTRAINT "users_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint
-CREATE TABLE "whitelist_groups" (
+CREATE TABLE IF NOT EXISTS "whitelist_groups" (
 	"id" varchar(50) PRIMARY KEY NOT NULL,
 	"name" varchar(100) NOT NULL,
 	"display_name" varchar(255) NOT NULL,
@@ -130,7 +130,7 @@ CREATE TABLE "whitelist_groups" (
 	CONSTRAINT "whitelist_groups_name_unique" UNIQUE("name")
 );
 --> statement-breakpoint
-CREATE TABLE "whitelist_rules" (
+CREATE TABLE IF NOT EXISTS "whitelist_rules" (
 	"id" varchar(50) PRIMARY KEY NOT NULL,
 	"group_id" varchar(50) NOT NULL,
 	"type" varchar(50) NOT NULL,

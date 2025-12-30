@@ -123,11 +123,11 @@ async function migrateRoles(): Promise<void> {
     console.log(`📦 Migrating ${data.roles.length} roles...`);
     for (const role of data.roles) {
         await db.query(
-            `INSERT INTO roles (id, user_id, role, groups, created_by, created_at, updated_at)
+            `INSERT INTO roles (id, user_id, role, group_ids, created_by, created_at, updated_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7)
              ON CONFLICT (user_id) DO UPDATE SET
                 role = EXCLUDED.role,
-                groups = EXCLUDED.groups,
+                group_ids = EXCLUDED.group_ids,
                 updated_at = EXCLUDED.updated_at`,
             [role.id, role.user_id, role.role, role.groups, role.created_by, role.created_at, role.updated_at]
         );
