@@ -94,7 +94,7 @@ Read docs/IMPLEMENTATION-GUIDE.md section "Gap 1: Console Logging"
 
 Tasks:
 1. Create spa/src/lib/logger.ts (browser logger - see guide for pattern)
-2. Replace all console.* calls in spa/src/*.ts with logger
+2. Replace all console.\* calls in spa/src/\*.ts with logger
 3. Run: npm run verify
 
 Do NOT use Winston for browser code. Use the simple wrapper pattern in the guide.
