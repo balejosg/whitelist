@@ -1,4 +1,5 @@
 #!/bin/bash
+set -o pipefail
 
 # OpenPath - Strict Internet Access Control
 # Copyright (C) 2025 OpenPath Authors
@@ -39,21 +40,24 @@ CAPTIVE_PORTAL_DETECTED=false
 # NOTE: is_network_authenticated() and check_captive_portal() are now
 # defined in common.sh to avoid code duplication with openpath-update.sh
 
-# Modificar firewall con lock
+# Modificar firewall con lock (with timeout to prevent deadlock)
 modify_firewall_locked() {
     local action="$1"
-    
+
     exec 200>"$LOCK_FILE"
-    flock 200
-    
+    if ! timeout 30 flock -x 200; then
+        log "[CAPTIVE] Could not acquire lock after 30s - skipping firewall modification"
+        return 1
+    fi
+
     PRIMARY_DNS=$(detect_primary_dns)
-    
+
     if [ "$action" = "activate" ]; then
         activate_firewall
     else
         deactivate_firewall
     fi
-    
+
     flock -u 200
 }
 

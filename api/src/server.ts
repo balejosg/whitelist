@@ -54,6 +54,7 @@ import { requestIdMiddleware, errorTrackingMiddleware } from './lib/error-tracki
 
 import * as roleStorage from './lib/role-storage.js';
 import * as userStorage from './lib/user-storage.js';
+import { cleanupBlacklist } from './lib/auth.js';
 
 // Swagger/OpenAPI (optional - only load if dependencies installed)
 let swaggerUi: typeof import('swagger-ui-express') | undefined;
@@ -309,6 +310,14 @@ if (isMainModule) {
     const serverStartTime = new Date();
     server = app.listen(PORT, HOST, () => {
         void (async (): Promise<void> => {
+            // SECURITY: Clean up expired blacklisted tokens on startup
+            try {
+                await cleanupBlacklist();
+                logger.info('Token blacklist cleanup completed');
+            } catch (error) {
+                logger.warn('Token blacklist cleanup failed', { error: error instanceof Error ? error.message : String(error) });
+            }
+
             logger.info('Server started', {
                 host: HOST,
                 port: String(PORT),

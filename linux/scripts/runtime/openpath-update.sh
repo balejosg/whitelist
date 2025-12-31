@@ -1,4 +1,5 @@
 #!/bin/bash
+set -o pipefail
 
 # OpenPath - Strict Internet Access Control
 # Copyright (C) 2025 OpenPath Authors
@@ -36,11 +37,11 @@ cleanup_lock() {
 }
 trap cleanup_lock EXIT
 
-# Obtener lock exclusivo (evita race conditions con captive-portal-detector)
+# Obtener lock exclusivo con timeout (evita race conditions con captive-portal-detector)
 exec 200>"$LOCK_FILE"
-if ! flock -n 200; then
-    echo "Otra instancia está ejecutándose, saliendo..."
-    exit 0
+if ! timeout 30 flock -x 200; then
+    echo "Could not acquire lock after 30s - another process may be stuck"
+    exit 1
 fi
 
 # Cargar librerías

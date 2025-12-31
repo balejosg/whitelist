@@ -158,14 +158,9 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
         }) as JWTPayload;
 
         return decoded;
-    } catch (error) {
-        if (error instanceof Error) {
-            if (error.name === 'TokenExpiredError') {
-                console.log('Token expired');
-            } else if (error.name === 'JsonWebTokenError') {
-                console.log('Invalid token:', error.message);
-            }
-        }
+    } catch {
+        // SECURITY: Silent fail on token verification - don't log detailed errors
+        // to prevent timing attacks and information disclosure
         return null;
     }
 }

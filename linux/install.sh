@@ -101,10 +101,13 @@ done
 
 # Auto-generate API secret if classroom mode is configured but no secret provided
 if [ -n "$CLASSROOM_NAME" ] && [ -n "$API_URL" ] && [ -z "$HEALTH_API_SECRET" ]; then
-    # Generate a random 32-character secret
+    # SECURITY: Disable trace before secret handling to prevent leaking in logs
+    { set +x; } 2>/dev/null
+    # Generate a random 32-character secret using cryptographic entropy
     HEALTH_API_SECRET=$(head -c 24 /dev/urandom | base64 | tr -d '/+=' | head -c 32)
-    echo "🔑 API Secret generado automáticamente para modo Aula"
-    echo "   Guarde este secret si necesita reinstalar: $HEALTH_API_SECRET"
+    echo "🔑 API Secret generated automatically for Classroom mode"
+    echo "   Secret will be saved to /etc/openpath/api-secret.conf"
+    echo "   ACTION: Backup this file securely for reinstallation"
 fi
 
 # Validate registration token in classroom mode

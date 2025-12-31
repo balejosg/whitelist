@@ -1,4 +1,5 @@
 #!/bin/bash
+set -o pipefail
 
 # OpenPath - Strict Internet Access Control
 # Copyright (C) 2025 OpenPath Authors
@@ -44,6 +45,16 @@ validate_domain() {
     # Support wildcard prefix for whitelist patterns
     if [[ "$domain" == \*.* ]]; then
         check_domain="${domain:2}"
+    fi
+
+    # Reject bare wildcards (*.  without domain)
+    if [[ "$domain" == "*." ]] || [[ "$domain" == "*" ]]; then
+        return 1
+    fi
+
+    # Reject .local TLD (mDNS conflicts cause local network issues)
+    if [[ "$domain" =~ \.local$ ]]; then
+        return 1
     fi
 
     # Cannot have consecutive dots
