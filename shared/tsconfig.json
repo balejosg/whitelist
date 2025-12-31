@@ -5,6 +5,7 @@
         "moduleResolution": "NodeNext",
         "declaration": true,
         "outDir": "dist",
+        "rootDir": "src",
         "strict": true,
         "exactOptionalPropertyTypes": true,
         "noUncheckedIndexedAccess": true,
@@ -13,7 +14,9 @@
         "esModuleInterop": true
     },
     "include": [
-        "src/**/*",
-        "tests/**/*"
+        "src/**/*"
+    ],
+    "exclude": [
+        "tests"
     ]
 }
