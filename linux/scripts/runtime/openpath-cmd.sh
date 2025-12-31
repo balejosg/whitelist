@@ -18,7 +18,7 @@
 
 ################################################################################
 # openpath - Comando unificado de gestión
-# Parte del sistema OpenPath DNS v3.4
+# Parte del sistema OpenPath DNS v3.5
 ################################################################################
 
 # Cargar librerías
@@ -160,13 +160,102 @@ cmd_check() {
     echo ""
 }
 
-# Health check
+# Comprehensive health check
 cmd_health() {
-    /usr/local/bin/dnsmasq-watchdog.sh
+    local failed=0
+
+    echo -e "${BLUE}═══════════════════════════════════════════════════${NC}"
+    echo -e "${BLUE}  OpenPath Health Check v$VERSION${NC}"
+    echo -e "${BLUE}═══════════════════════════════════════════════════${NC}"
     echo ""
-    if [ -f "$CONFIG_DIR/health-status" ]; then
-        cat "$CONFIG_DIR/health-status"
+
+    # DNS resolution test
+    echo -e "${YELLOW}DNS Resolution:${NC}"
+    if timeout 3 dig @127.0.0.1 google.com +short >/dev/null 2>&1; then
+        echo -e "  Whitelisted domain (google.com): ${GREEN}✓ resolves${NC}"
+    else
+        echo -e "  Whitelisted domain (google.com): ${RED}✗ FAILED${NC}"
+        failed=1
     fi
+
+    # DNS blocking test (non-whitelisted domain should NOT resolve)
+    if ! timeout 3 dig @127.0.0.1 blocked-test.invalid +short 2>/dev/null | grep -q .; then
+        echo -e "  Blocked domain (blocked-test.invalid): ${GREEN}✓ blocked${NC}"
+    else
+        echo -e "  Blocked domain (blocked-test.invalid): ${RED}✗ NOT BLOCKED${NC}"
+        failed=1
+    fi
+    echo ""
+
+    # Firewall test
+    echo -e "${YELLOW}Firewall:${NC}"
+    if iptables -L OUTPUT -n 2>/dev/null | grep -q "dpt:53"; then
+        echo -e "  DNS blocking rules: ${GREEN}✓ active${NC}"
+    else
+        echo -e "  DNS blocking rules: ${RED}✗ MISSING${NC}"
+        failed=1
+    fi
+
+    if iptables -L OUTPUT -n 2>/dev/null | grep -q "ACCEPT.*lo"; then
+        echo -e "  Loopback rule: ${GREEN}✓ present${NC}"
+    else
+        echo -e "  Loopback rule: ${YELLOW}⚠ not found${NC}"
+    fi
+    echo ""
+
+    # Services test
+    echo -e "${YELLOW}Services:${NC}"
+    for svc in dnsmasq openpath-dnsmasq.timer dnsmasq-watchdog.timer captive-portal-detector; do
+        if systemctl is-active --quiet "$svc" 2>/dev/null; then
+            echo -e "  $svc: ${GREEN}✓ running${NC}"
+        else
+            echo -e "  $svc: ${RED}✗ NOT running${NC}"
+            failed=1
+        fi
+    done
+    echo ""
+
+    # Whitelist freshness
+    echo -e "${YELLOW}Whitelist:${NC}"
+    if [ -f "$WHITELIST_FILE" ]; then
+        local age=$(($(date +%s) - $(stat -c %Y "$WHITELIST_FILE")))
+        local domains=$(grep -v "^#" "$WHITELIST_FILE" 2>/dev/null | grep -v "^$" | wc -l)
+        echo "  Domains: $domains"
+        if [ "$age" -lt 600 ]; then
+            echo -e "  Freshness: ${GREEN}✓ fresh (${age}s old)${NC}"
+        else
+            echo -e "  Freshness: ${YELLOW}⚠ stale (${age}s old)${NC}"
+        fi
+    else
+        echo -e "  File: ${RED}✗ MISSING${NC}"
+        failed=1
+    fi
+    echo ""
+
+    # Browser policies check
+    echo -e "${YELLOW}Browser Policies:${NC}"
+    if [ -f "$FIREFOX_POLICIES" ]; then
+        echo -e "  Firefox policies: ${GREEN}✓ present${NC}"
+    else
+        echo -e "  Firefox policies: ${YELLOW}⚠ not found${NC}"
+    fi
+    if ls /etc/chromium/policies/managed/openpath.json /etc/chromium-browser/policies/managed/openpath.json /etc/google-chrome/policies/managed/openpath.json 2>/dev/null | head -1 | grep -q .; then
+        echo -e "  Chromium policies: ${GREEN}✓ present${NC}"
+    else
+        echo -e "  Chromium policies: ${YELLOW}⚠ not found${NC}"
+    fi
+    echo ""
+
+    # Final result
+    echo -e "${BLUE}═══════════════════════════════════════════════════${NC}"
+    if [ "$failed" -eq 0 ]; then
+        echo -e "  Overall status: ${GREEN}✓ HEALTHY${NC}"
+    else
+        echo -e "  Overall status: ${RED}✗ ISSUES DETECTED${NC}"
+    fi
+    echo -e "${BLUE}═══════════════════════════════════════════════════${NC}"
+
+    return $failed
 }
 
 # Forzar aplicación
