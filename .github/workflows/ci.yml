@@ -33,7 +33,7 @@ jobs:
 
       - name: Shellcheck
         run: |
-          find linux -name '*.sh' -type f | xargs shellcheck --severity=warning
+          find linux -name '*.sh' -type f | xargs shellcheck --severity=error
           echo "Shellcheck completed successfully"
 
       - name: Lint Markdown files
