@@ -7,6 +7,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
+import logger from './logger.js';
 
 // =============================================================================
 // Types
@@ -104,7 +105,7 @@ export function logError(
         logEntry.userEmail = req.user.email;
     }
 
-    console.error(JSON.stringify(logEntry));
+    logger.error('Request error', logEntry);
     return logEntry;
 }
 

@@ -8,6 +8,7 @@
  */
 
 import type { Request, Response, NextFunction } from 'express';
+import logger from './logger.js';
 
 // =============================================================================
 // Types
@@ -168,11 +169,11 @@ export function errorHandler(
     res: Response,
     _next: NextFunction
 ): void {
-    // Log error
-    console.error(`[${new Date().toISOString()}] ${err.name}: ${err.message}`);
-    if (process.env.NODE_ENV === 'development') {
-        console.error(err.stack);
-    }
+    // Log error using Winston
+    logger.error(`${err.name}: ${err.message}`, {
+        errorName: err.name,
+        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
 
     // Handle APIError instances
     if (err instanceof APIError) {

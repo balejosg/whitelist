@@ -4,6 +4,7 @@ import { TRPCError } from '@trpc/server';
 import * as userStorage from '../../lib/user-storage.js';
 import * as roleStorage from '../../lib/role-storage.js';
 import * as auth from '../../lib/auth.js';
+import logger from '../../lib/logger.js';
 import {
     UserRole,
     LoginDTOSchema,
@@ -21,7 +22,7 @@ export const authRouter = router({
                 const user = await userStorage.createUser(input);
                 return { user: { id: user.id, email: user.email, name: user.name } };
             } catch (error) {
-                console.error('auth.register error:', error);
+                logger.error('auth.register error', { error: error instanceof Error ? error.message : String(error) });
                 throw error;
             }
         }),
@@ -58,7 +59,7 @@ export const authRouter = router({
                     }
                 };
             } catch (error) {
-                console.error('auth.login error:', error);
+                logger.error('auth.login error', { error: error instanceof Error ? error.message : String(error) });
                 throw error;
             }
         }),
