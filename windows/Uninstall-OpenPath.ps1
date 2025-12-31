@@ -14,6 +14,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+# PSScriptAnalyzer: Write-Host is intentional for interactive uninstaller
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '')]
+
 #Requires -RunAsAdministrator
 <#
 .SYNOPSIS

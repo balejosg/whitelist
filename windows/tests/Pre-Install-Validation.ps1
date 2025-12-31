@@ -3,10 +3,11 @@
 # Copyright (C) 2025 OpenPath Authors
 #
 # Validates Windows environment before OpenPath installation
-
-param(
-    [switch]$Verbose
-)
+#
+# PSScriptAnalyzer suppressions for interactive validation scripts:
+# - Write-Host is intentional for colored user feedback
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '')]
+param()
 
 $script:errors = 0
 $script:warnings = 0

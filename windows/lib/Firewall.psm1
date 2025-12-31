@@ -16,6 +16,7 @@ function Set-OpenPathFirewall {
     .PARAMETER AcrylicPath
         Path to Acrylic DNS Proxy installation
     #>
+    [CmdletBinding(SupportsShouldProcess)]
     param(
         [string]$UpstreamDNS = "8.8.8.8",
         [string]$AcrylicPath = "${env:ProgramFiles(x86)}\Acrylic DNS Proxy"
@@ -148,6 +149,8 @@ function Remove-OpenPathFirewall {
     .SYNOPSIS
         Removes all whitelist firewall rules
     #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
     Write-OpenPathLog "Removing openpath firewall rules..."
     
     try {

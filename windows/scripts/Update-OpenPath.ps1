@@ -52,7 +52,7 @@ try {
         Remove-OpenPathFirewall
         
         # Remove browser policies
-        Remove-BrowserPolicies
+        Remove-BrowserPolicy
         
         Write-OpenPathLog "System in fail-open mode"
         exit 0
@@ -62,7 +62,7 @@ try {
     $whitelist.Whitelist | Set-Content "$OpenPathRoot\data\whitelist.txt" -Encoding UTF8
     
     # Update Acrylic DNS hosts
-    Update-AcrylicHosts -WhitelistedDomains $whitelist.Whitelist -BlockedSubdomains $whitelist.BlockedSubdomains
+    Update-AcrylicHost -WhitelistedDomains $whitelist.Whitelist -BlockedSubdomains $whitelist.BlockedSubdomains
     
     # Restart Acrylic to apply changes
     Restart-AcrylicService
@@ -75,7 +75,7 @@ try {
     
     # Configure browser policies (if enabled)
     if ($config.enableBrowserPolicies) {
-        Set-AllBrowserPolicies -BlockedPaths $whitelist.BlockedPaths
+        Set-AllBrowserPolicy -BlockedPaths $whitelist.BlockedPaths
     }
     
     Write-OpenPathLog "=== OpenPath update completed successfully ==="

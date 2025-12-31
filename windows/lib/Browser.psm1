@@ -5,13 +5,14 @@
 $modulePath = Split-Path $PSScriptRoot -Parent
 Import-Module "$modulePath\lib\Common.psm1" -Force -ErrorAction SilentlyContinue
 
-function Set-FirefoxPolicies {
+function Set-FirefoxPolicy {
     <#
     .SYNOPSIS
         Configures Firefox policies including search engines and blocked paths
     .PARAMETER BlockedPaths
         Array of paths/URLs to block
     #>
+    [CmdletBinding(SupportsShouldProcess)]
     param(
         [string[]]$BlockedPaths = @()
     )
@@ -104,13 +105,14 @@ function Set-FirefoxPolicies {
     return $policiesSet
 }
 
-function Set-ChromePolicies {
+function Set-ChromePolicy {
     <#
     .SYNOPSIS
         Configures Chrome/Edge policies via Registry
     .PARAMETER BlockedPaths
         Array of paths/URLs to block
     #>
+    [CmdletBinding(SupportsShouldProcess)]
     param(
         [string[]]$BlockedPaths = @()
     )
@@ -163,11 +165,13 @@ function Set-ChromePolicies {
     return $true
 }
 
-function Remove-BrowserPolicies {
+function Remove-BrowserPolicy {
     <#
     .SYNOPSIS
         Removes all whitelist browser policies
     #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
     Write-OpenPathLog "Removing browser policies..."
     
     # Firefox
@@ -197,25 +201,26 @@ function Remove-BrowserPolicies {
     Write-OpenPathLog "Browser policies removed"
 }
 
-function Set-AllBrowserPolicies {
+function Set-AllBrowserPolicy {
     <#
     .SYNOPSIS
         Sets policies for all supported browsers
     .PARAMETER BlockedPaths
         Array of paths/URLs to block
     #>
+    [CmdletBinding(SupportsShouldProcess)]
     param(
         [string[]]$BlockedPaths = @()
     )
-    
-    Set-FirefoxPolicies -BlockedPaths $BlockedPaths
-    Set-ChromePolicies -BlockedPaths $BlockedPaths
+
+    Set-FirefoxPolicy -BlockedPaths $BlockedPaths
+    Set-ChromePolicy -BlockedPaths $BlockedPaths
 }
 
 # Export module members
 Export-ModuleMember -Function @(
-    'Set-FirefoxPolicies',
-    'Set-ChromePolicies',
-    'Remove-BrowserPolicies',
-    'Set-AllBrowserPolicies'
+    'Set-FirefoxPolicy',
+    'Set-ChromePolicy',
+    'Remove-BrowserPolicy',
+    'Set-AllBrowserPolicy'
 )

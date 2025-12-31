@@ -14,6 +14,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+# PSScriptAnalyzer: Write-Host is intentional for interactive installer
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '')]
+
 #Requires -RunAsAdministrator
 <#
 .SYNOPSIS
@@ -141,7 +144,7 @@ Write-Host "  DNS configurado a 127.0.0.1" -ForegroundColor Green
 
 # Step 6: Register scheduled tasks
 Write-Host "[6/7] Registrando tareas programadas..." -ForegroundColor Yellow
-Register-OpenPathTasks -UpdateIntervalMinutes 5 -WatchdogIntervalMinutes 1
+Register-OpenPathTask -UpdateIntervalMinutes 5 -WatchdogIntervalMinutes 1
 Write-Host "  Tareas registradas" -ForegroundColor Green
 
 # Step 7: First update

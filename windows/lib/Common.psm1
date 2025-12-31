@@ -45,12 +45,12 @@ function Write-OpenPathLog {
     
     # Append to log file
     Add-Content -Path $script:LogPath -Value $logEntry -Encoding UTF8
-    
-    # Also write to console with color
+
+    # Also write to console with appropriate stream
     switch ($Level) {
-        "ERROR" { Write-Host $logEntry -ForegroundColor Red }
-        "WARN"  { Write-Host $logEntry -ForegroundColor Yellow }
-        default { Write-Host $logEntry }
+        "ERROR" { Write-Error $logEntry -ErrorAction Continue }
+        "WARN"  { Write-Warning $logEntry }
+        default { Write-Information $logEntry -InformationAction Continue }
     }
 }
 
@@ -76,18 +76,21 @@ function Set-OpenPathConfig {
     .PARAMETER Config
         Configuration object to save
     #>
+    [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory = $true)]
         [PSCustomObject]$Config
     )
-    
+
     $configDir = Split-Path $script:ConfigPath -Parent
     if (-not (Test-Path $configDir)) {
         New-Item -ItemType Directory -Path $configDir -Force | Out-Null
     }
-    
-    $Config | ConvertTo-Json -Depth 10 | Set-Content $script:ConfigPath -Encoding UTF8
-    Write-OpenPathLog "Configuration saved"
+
+    if ($PSCmdlet.ShouldProcess($script:ConfigPath, "Save configuration")) {
+        $Config | ConvertTo-Json -Depth 10 | Set-Content $script:ConfigPath -Encoding UTF8
+        Write-OpenPathLog "Configuration saved"
+    }
 }
 
 function Get-PrimaryDNS {
@@ -181,8 +184,10 @@ function Test-InternetConnection {
     .SYNOPSIS
         Tests if there is an active internet connection
     #>
+    # Use Google's public DNS server for connectivity test
+    $testServer = '8.8.8.8'
     try {
-        $result = Test-NetConnection -ComputerName "8.8.8.8" -Port 53 -WarningAction SilentlyContinue
+        $result = Test-NetConnection -ComputerName $testServer -Port 53 -WarningAction SilentlyContinue
         return $result.TcpTestSucceeded
     }
     catch {

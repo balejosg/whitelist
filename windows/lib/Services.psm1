@@ -7,11 +7,12 @@ Import-Module "$modulePath\lib\Common.psm1" -Force -ErrorAction SilentlyContinue
 
 $script:TaskPrefix = "OpenPath"
 
-function Register-OpenPathTasks {
+function Register-OpenPathTask {
     <#
     .SYNOPSIS
         Registers all scheduled tasks for whitelist system
     #>
+    [CmdletBinding(SupportsShouldProcess)]
     param(
         [int]$UpdateIntervalMinutes = 5,
         [int]$WatchdogIntervalMinutes = 1
@@ -79,11 +80,13 @@ function Register-OpenPathTasks {
     return $true
 }
 
-function Unregister-OpenPathTasks {
+function Unregister-OpenPathTask {
     <#
     .SYNOPSIS
         Removes all whitelist scheduled tasks
     #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
     Write-OpenPathLog "Removing scheduled tasks..."
     
     $tasks = Get-ScheduledTask -TaskName "$script:TaskPrefix-*" -ErrorAction SilentlyContinue
@@ -146,32 +149,36 @@ function Start-OpenPathTask {
     }
 }
 
-function Enable-OpenPathTasks {
+function Enable-OpenPathTask {
     <#
     .SYNOPSIS
         Enables all whitelist scheduled tasks
     #>
-    Get-ScheduledTask -TaskName "$script:TaskPrefix-*" -ErrorAction SilentlyContinue | 
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
+    Get-ScheduledTask -TaskName "$script:TaskPrefix-*" -ErrorAction SilentlyContinue |
         Enable-ScheduledTask | Out-Null
     Write-OpenPathLog "All openpath tasks enabled"
 }
 
-function Disable-OpenPathTasks {
+function Disable-OpenPathTask {
     <#
     .SYNOPSIS
         Disables all whitelist scheduled tasks
     #>
-    Get-ScheduledTask -TaskName "$script:TaskPrefix-*" -ErrorAction SilentlyContinue | 
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
+    Get-ScheduledTask -TaskName "$script:TaskPrefix-*" -ErrorAction SilentlyContinue |
         Disable-ScheduledTask | Out-Null
     Write-OpenPathLog "All openpath tasks disabled"
 }
 
 # Export module members
 Export-ModuleMember -Function @(
-    'Register-OpenPathTasks',
-    'Unregister-OpenPathTasks',
+    'Register-OpenPathTask',
+    'Unregister-OpenPathTask',
     'Get-OpenPathTaskStatus',
     'Start-OpenPathTask',
-    'Enable-OpenPathTasks',
-    'Disable-OpenPathTasks'
+    'Enable-OpenPathTask',
+    'Disable-OpenPathTask'
 )

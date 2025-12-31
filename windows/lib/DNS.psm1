@@ -18,7 +18,10 @@ function Get-AcrylicPath {
             return $config.acrylicPath
         }
     }
-    catch {}
+    catch {
+        # Config file doesn't exist or is invalid - fall through to default paths
+        Write-Debug "Config not available: $_"
+    }
     
     if (Test-Path $defaultPath) {
         return $defaultPath
@@ -49,6 +52,7 @@ function Install-AcrylicDNS {
     .PARAMETER Force
         Force reinstallation even if already installed
     #>
+    [CmdletBinding(SupportsShouldProcess)]
     param(
         [switch]$Force
     )
@@ -120,7 +124,7 @@ function Install-AcrylicDNS {
     }
 }
 
-function Update-AcrylicHosts {
+function Update-AcrylicHost {
     <#
     .SYNOPSIS
         Generates AcrylicHosts.txt with whitelist configuration
@@ -129,10 +133,11 @@ function Update-AcrylicHosts {
     .PARAMETER BlockedSubdomains
         Array of subdomains to explicitly block
     #>
+    [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory = $true)]
         [string[]]$WhitelistedDomains,
-        
+
         [string[]]$BlockedSubdomains = @()
     )
     
@@ -232,6 +237,8 @@ function Set-AcrylicConfiguration {
     .SYNOPSIS
         Configures AcrylicConfiguration.ini with optimal settings
     #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
     $acrylicPath = Get-AcrylicPath
     if (-not $acrylicPath) {
         return $false
@@ -292,6 +299,8 @@ function Set-LocalDNS {
     .SYNOPSIS
         Configures all active network adapters to use 127.0.0.1 as DNS
     #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
     Write-OpenPathLog "Configuring local DNS..."
     
     $adapters = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' }
@@ -316,6 +325,8 @@ function Restore-OriginalDNS {
     .SYNOPSIS
         Restores network adapters to automatic DNS
     #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
     Write-OpenPathLog "Restoring original DNS settings..."
     
     $adapters = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' }
@@ -338,6 +349,8 @@ function Restart-AcrylicService {
     .SYNOPSIS
         Restarts the Acrylic DNS Proxy service
     #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
     Write-OpenPathLog "Restarting Acrylic service..."
     
     $serviceName = "AcrylicDNSProxySvc"
@@ -483,7 +496,7 @@ Export-ModuleMember -Function @(
     'Get-AcrylicPath',
     'Test-AcrylicInstalled',
     'Install-AcrylicDNS',
-    'Update-AcrylicHosts',
+    'Update-AcrylicHost',
     'Set-AcrylicConfiguration',
     'Set-LocalDNS',
     'Restore-OriginalDNS',
