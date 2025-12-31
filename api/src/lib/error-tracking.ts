@@ -43,6 +43,7 @@ interface LogEntry {
     };
     userId?: string;
     userEmail?: string;
+    [key: string]: unknown;
 }
 
 interface ErrorResponseBase {
