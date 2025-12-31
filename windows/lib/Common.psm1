@@ -2,7 +2,7 @@
 # Provides shared functions for all openpath components
 
 # PSScriptAnalyzer: Test-AdminPrivileges is a valid noun form (privileges is a valid singular concept)
-[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Target = 'Test-AdminPrivileges')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Scope = 'Function', Target = 'Test-AdminPrivileges')]
 param()
 
 # Configuration paths
