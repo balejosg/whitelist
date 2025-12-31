@@ -28,7 +28,7 @@
     "test:security": "PORT=3004 node --import tsx --test --test-force-exit tests/security.test.ts",
     "test:frontend": "node --test ../spa/tests/frontend.test.js",
     "test:all": "node --import tsx tests/run-all.ts",
-    "test:coverage": "node --experimental-test-coverage --import tsx --test --test-force-exit --test-concurrency=1 tests/*.test.ts",
+    "test:coverage": "c8 node --import tsx --test --test-force-exit --test-concurrency=1 tests/*.test.ts",
     "coverage": "npm run test:coverage",
     "test:load": "k6 run tests/load/load-test.js",
     "lint": "eslint . --max-warnings=0",
@@ -73,6 +73,15 @@
     "web-push": "^3.6.7",
     "winston": "^3.11.0",
     "zod": "^3.25.76"
+  },
+  "c8": {
+    "check-coverage": true,
+    "lines": 70,
+    "functions": 70,
+    "branches": 60,
+    "reporter": ["text", "lcov"],
+    "include": ["src/**/*.ts"],
+    "exclude": ["src/types/**", "src/db/migrations/**"]
   },
   "devDependencies": {
     "@stryker-mutator/core": "^9.4.0",

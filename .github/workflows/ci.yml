@@ -33,8 +33,8 @@ jobs:
 
       - name: Shellcheck
         run: |
-          find linux -name '*.sh' -type f | xargs shellcheck --severity=warning || true
-          echo "Shellcheck completed"
+          find linux -name '*.sh' -type f | xargs shellcheck --severity=warning
+          echo "Shellcheck completed successfully"
 
       - name: Lint Markdown files
         uses: DavidAnson/markdownlint-cli2-action@v16
@@ -47,7 +47,24 @@ jobs:
           config: '.markdownlint.json'
 
   # ============================================
-  # Job 2: Test Web Application
+  # Job 2: Security Audit
+  # ============================================
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-node
+
+      - name: NPM Audit (API)
+        run: npm audit --audit-level=moderate --workspace=@openpath/api
+
+  # ============================================
+  # Job 3: Test Web Application
   # ============================================
   test-web:
     name: Web Tests
@@ -130,13 +147,14 @@ jobs:
   ci-success:
     name: CI Success
     runs-on: ubuntu-latest
-    needs: [lint, test-web, test-bash, test-api, test-spa, build-docker, build-docker-api]
+    needs: [lint, security, test-web, test-bash, test-api, test-spa, build-docker, build-docker-api]
     if: always()
 
     steps:
       - name: Check all jobs
         run: |
           if [[ "${{ needs.lint.result }}" == "failure" ]] || \
+             [[ "${{ needs.security.result }}" == "failure" ]] || \
              [[ "${{ needs.test-web.result }}" == "failure" ]] || \
              [[ "${{ needs.test-bash.result }}" == "failure" ]] || \
              [[ "${{ needs.test-api.result }}" == "failure" ]] || \
