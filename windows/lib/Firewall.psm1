@@ -21,17 +21,21 @@ function Set-OpenPathFirewall {
         [string]$UpstreamDNS = "8.8.8.8",
         [string]$AcrylicPath = "${env:ProgramFiles(x86)}\Acrylic DNS Proxy"
     )
-    
+
     if (-not (Test-AdminPrivileges)) {
         Write-OpenPathLog "Administrator privileges required for firewall configuration" -Level ERROR
         return $false
     }
-    
+
+    if (-not $PSCmdlet.ShouldProcess("Windows Firewall", "Configure OpenPath firewall rules")) {
+        return $false
+    }
+
     Write-OpenPathLog "Configuring Windows Firewall..."
-    
+
     # Remove existing rules first
     Remove-OpenPathFirewall
-    
+
     try {
         # 1. Allow loopback DNS (for applications -> Acrylic)
         New-NetFirewallRule -DisplayName "$script:RulePrefix-Allow-Loopback-UDP" `
@@ -151,12 +155,17 @@ function Remove-OpenPathFirewall {
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param()
+
+    if (-not $PSCmdlet.ShouldProcess("Windows Firewall", "Remove OpenPath firewall rules")) {
+        return $false
+    }
+
     Write-OpenPathLog "Removing openpath firewall rules..."
-    
+
     try {
-        Get-NetFirewallRule -DisplayName "$script:RulePrefix-*" -ErrorAction SilentlyContinue | 
+        Get-NetFirewallRule -DisplayName "$script:RulePrefix-*" -ErrorAction SilentlyContinue |
             Remove-NetFirewallRule -ErrorAction SilentlyContinue
-        
+
         Write-OpenPathLog "Firewall rules removed"
         return $true
     }

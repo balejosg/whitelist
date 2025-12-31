@@ -16,7 +16,11 @@ function Set-FirefoxPolicy {
     param(
         [string[]]$BlockedPaths = @()
     )
-    
+
+    if (-not $PSCmdlet.ShouldProcess("Firefox", "Configure browser policies")) {
+        return $false
+    }
+
     Write-OpenPathLog "Configuring Firefox policies..."
     
     # Firefox policy locations
@@ -116,7 +120,11 @@ function Set-ChromePolicy {
     param(
         [string[]]$BlockedPaths = @()
     )
-    
+
+    if (-not $PSCmdlet.ShouldProcess("Chrome/Edge", "Configure browser policies via Registry")) {
+        return $false
+    }
+
     Write-OpenPathLog "Configuring Chrome/Edge policies..."
     
     # Policy registry paths
@@ -172,6 +180,11 @@ function Remove-BrowserPolicy {
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param()
+
+    if (-not $PSCmdlet.ShouldProcess("All browsers", "Remove OpenPath browser policies")) {
+        return
+    }
+
     Write-OpenPathLog "Removing browser policies..."
     
     # Firefox
@@ -212,6 +225,10 @@ function Set-AllBrowserPolicy {
     param(
         [string[]]$BlockedPaths = @()
     )
+
+    if (-not $PSCmdlet.ShouldProcess("All browsers", "Configure browser policies")) {
+        return
+    }
 
     Set-FirefoxPolicy -BlockedPaths $BlockedPaths
     Set-ChromePolicy -BlockedPaths $BlockedPaths

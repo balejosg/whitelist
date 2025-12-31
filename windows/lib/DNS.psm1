@@ -56,12 +56,16 @@ function Install-AcrylicDNS {
     param(
         [switch]$Force
     )
-    
+
     if ((Test-AcrylicInstalled) -and -not $Force) {
         Write-OpenPathLog "Acrylic DNS Proxy already installed"
         return $true
     }
-    
+
+    if (-not $PSCmdlet.ShouldProcess("Acrylic DNS Proxy", "Install")) {
+        return $false
+    }
+
     Write-OpenPathLog "Installing Acrylic DNS Proxy..."
     
     $installerUrl = "https://sourceforge.net/projects/acrylic/files/Acrylic/2.1.1/Acrylic-Portable.zip/download"
@@ -140,15 +144,19 @@ function Update-AcrylicHost {
 
         [string[]]$BlockedSubdomains = @()
     )
-    
+
     $acrylicPath = Get-AcrylicPath
     if (-not $acrylicPath) {
         Write-OpenPathLog "Acrylic not found" -Level ERROR
         return $false
     }
-    
+
+    if (-not $PSCmdlet.ShouldProcess("AcrylicHosts.txt", "Update whitelist configuration")) {
+        return $false
+    }
+
     $hostsPath = "$acrylicPath\AcrylicHosts.txt"
-    
+
     try {
         $config = Get-OpenPathConfig
         $upstream = $config.primaryDNS
@@ -156,7 +164,7 @@ function Update-AcrylicHost {
     catch {
         $upstream = "8.8.8.8"
     }
-    
+
     Write-OpenPathLog "Generating AcrylicHosts.txt with $($WhitelistedDomains.Count) domains..."
     
     $content = @"
@@ -239,13 +247,18 @@ function Set-AcrylicConfiguration {
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param()
+
     $acrylicPath = Get-AcrylicPath
     if (-not $acrylicPath) {
         return $false
     }
-    
+
+    if (-not $PSCmdlet.ShouldProcess("AcrylicConfiguration.ini", "Configure Acrylic settings")) {
+        return $false
+    }
+
     $configPath = "$acrylicPath\AcrylicConfiguration.ini"
-    
+
     try {
         $config = Get-OpenPathConfig
         $upstream = $config.primaryDNS
@@ -253,7 +266,7 @@ function Set-AcrylicConfiguration {
     catch {
         $upstream = "8.8.8.8"
     }
-    
+
     Write-OpenPathLog "Configuring Acrylic..."
     
     # Read existing config or create new
@@ -301,8 +314,13 @@ function Set-LocalDNS {
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param()
+
+    if (-not $PSCmdlet.ShouldProcess("Network adapters", "Set DNS to 127.0.0.1")) {
+        return
+    }
+
     Write-OpenPathLog "Configuring local DNS..."
-    
+
     $adapters = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' }
     
     foreach ($adapter in $adapters) {
@@ -327,8 +345,13 @@ function Restore-OriginalDNS {
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param()
+
+    if (-not $PSCmdlet.ShouldProcess("Network adapters", "Reset DNS to automatic")) {
+        return
+    }
+
     Write-OpenPathLog "Restoring original DNS settings..."
-    
+
     $adapters = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' }
     
     foreach ($adapter in $adapters) {
@@ -351,8 +374,13 @@ function Restart-AcrylicService {
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param()
+
+    if (-not $PSCmdlet.ShouldProcess("Acrylic DNS Proxy service", "Restart")) {
+        return $false
+    }
+
     Write-OpenPathLog "Restarting Acrylic service..."
-    
+
     $serviceName = "AcrylicDNSProxySvc"
     
     try {

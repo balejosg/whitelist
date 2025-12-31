@@ -1,11 +1,23 @@
 # OpenPath Windows Pester Tests
 # Tests for all PowerShell modules
 
+# PSScriptAnalyzer: Test-FunctionExists ends with "s" but "Exists" is not a plural noun
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '')]
+param()
+
 # Helper function to safely check if a function exists
 # Must be at script scope (outside BeforeAll) for -Skip evaluation during discovery
 function Test-FunctionExists {
     param([string]$FunctionName)
-    return (Get-Command -Name $FunctionName -ErrorAction SilentlyContinue) -ne $null
+    return $null -ne (Get-Command -Name $FunctionName -ErrorAction SilentlyContinue)
+}
+
+# Helper to check admin privileges safely during discovery
+function Test-IsAdmin {
+    if (Test-FunctionExists 'Test-AdminPrivileges') {
+        return Test-AdminPrivileges
+    }
+    return $false
 }
 
 # Import modules at script scope for discovery-time availability
@@ -136,7 +148,7 @@ Describe "Browser Module" {
     }
 
     Context "Set-ChromePolicy" {
-        It "Does not throw with empty blocked paths" -Skip:(-not ((Test-FunctionExists 'Set-ChromePolicy') -and (Test-AdminPrivileges))) {
+        It "Does not throw with empty blocked paths" -Skip:(-not ((Test-FunctionExists 'Set-ChromePolicy') -and (Test-IsAdmin))) {
             { Set-ChromePolicy -BlockedPaths @() } | Should -Not -Throw
         }
     }
@@ -157,7 +169,7 @@ Describe "Services Module" {
     }
 
     Context "Register-OpenPathTask" {
-        It "Accepts custom interval parameters" -Skip:(-not ((Test-FunctionExists 'Register-OpenPathTask') -and (Test-AdminPrivileges))) {
+        It "Accepts custom interval parameters" -Skip:(-not ((Test-FunctionExists 'Register-OpenPathTask') -and (Test-IsAdmin))) {
             # Just verify the function signature works
             { Register-OpenPathTask -UpdateIntervalMinutes 10 -WatchdogIntervalMinutes 2 -WhatIf } | Should -Not -Throw
         }

@@ -17,9 +17,13 @@ function Register-OpenPathTask {
         [int]$UpdateIntervalMinutes = 5,
         [int]$WatchdogIntervalMinutes = 1
     )
-    
+
+    if (-not $PSCmdlet.ShouldProcess("Task Scheduler", "Register OpenPath scheduled tasks")) {
+        return $false
+    }
+
     Write-OpenPathLog "Registering scheduled tasks..."
-    
+
     $openPathRoot = "C:\OpenPath"
     
     # Task 1: Update OpenPath (every 5 minutes)
@@ -87,8 +91,13 @@ function Unregister-OpenPathTask {
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param()
+
+    if (-not $PSCmdlet.ShouldProcess("Task Scheduler", "Remove OpenPath scheduled tasks")) {
+        return
+    }
+
     Write-OpenPathLog "Removing scheduled tasks..."
-    
+
     $tasks = Get-ScheduledTask -TaskName "$script:TaskPrefix-*" -ErrorAction SilentlyContinue
     
     foreach ($task in $tasks) {
@@ -156,6 +165,11 @@ function Enable-OpenPathTask {
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param()
+
+    if (-not $PSCmdlet.ShouldProcess("Task Scheduler", "Enable OpenPath scheduled tasks")) {
+        return
+    }
+
     Get-ScheduledTask -TaskName "$script:TaskPrefix-*" -ErrorAction SilentlyContinue |
         Enable-ScheduledTask | Out-Null
     Write-OpenPathLog "All openpath tasks enabled"
@@ -168,6 +182,11 @@ function Disable-OpenPathTask {
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param()
+
+    if (-not $PSCmdlet.ShouldProcess("Task Scheduler", "Disable OpenPath scheduled tasks")) {
+        return
+    }
+
     Get-ScheduledTask -TaskName "$script:TaskPrefix-*" -ErrorAction SilentlyContinue |
         Disable-ScheduledTask | Out-Null
     Write-OpenPathLog "All openpath tasks disabled"
