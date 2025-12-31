@@ -420,7 +420,6 @@ fi
 # ============================================================================
 # REGISTRAR MÁQUINA EN AULA (si está configurado el modo Aula)
 # ============================================================================
-# shellcheck disable=SC2034  # Used for status reporting
 MACHINE_REGISTERED=""
 if [ -n "$CLASSROOM_NAME" ] && [ -n "$API_URL" ]; then
     echo ""
@@ -459,6 +458,9 @@ echo "  - dnsmasq: $(systemctl is-active dnsmasq)"
 echo "  - Timer: $(systemctl is-active openpath-dnsmasq.timer)"
 echo "  - Watchdog: $(systemctl is-active dnsmasq-watchdog.timer)"
 echo "  - Smoke Tests: $SMOKE_STATUS"
+if [ -n "$MACHINE_REGISTERED" ]; then
+    echo "  - Registro Aula: $MACHINE_REGISTERED"
+fi
 echo ""
 echo "Configuración:"
 echo "  - Whitelist: $WHITELIST_URL"

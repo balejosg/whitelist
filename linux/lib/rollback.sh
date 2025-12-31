@@ -53,7 +53,6 @@ get_current_checkpoint() {
 # Usage: save_checkpoint [optional_label]
 save_checkpoint() {
     local label="${1:-auto}"
-    # shellcheck disable=SC2034  # timestamp reserved for future metadata
     local timestamp
     timestamp=$(date +%Y%m%d-%H%M%S)
     local current
@@ -79,10 +78,11 @@ save_checkpoint() {
         fi
     done
     
-    # Save metadata
+    # Save metadata (using timestamp variable for checkpoint identification)
     cat > "$checkpoint_path/metadata.json" << EOF
 {
     "timestamp": "$(date -Iseconds)",
+    "timestamp_id": "$timestamp",
     "label": "$label",
     "files_saved": $saved,
     "version": "${VERSION:-3.5}"
