@@ -30,7 +30,7 @@ export const WhitelistParser = {
         let currentSection: keyof GroupData | null = null;
 
         // Check if disabled
-        if (lines[0] && lines[0].trim() === '#DESACTIVADO') {
+        if (lines[0]?.trim() === '#DESACTIVADO') {
             result.enabled = false;
         }
 
