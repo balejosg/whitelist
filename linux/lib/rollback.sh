@@ -53,9 +53,9 @@ get_current_checkpoint() {
 # Usage: save_checkpoint [optional_label]
 save_checkpoint() {
     local label="${1:-auto}"
+    # shellcheck disable=SC2034  # timestamp reserved for future metadata
     local timestamp
     timestamp=$(date +%Y%m%d-%H%M%S)
-    # shellcheck disable=SC2034  # timestamp used for logging/metadata
     local current
     current=$(get_current_checkpoint)
     local next=$(( (current + 1) % MAX_CHECKPOINTS ))

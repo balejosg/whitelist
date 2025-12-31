@@ -47,26 +47,26 @@ ETC_CONFIG_DIR="${ETC_CONFIG_DIR:-/etc/openpath}"
 VAR_STATE_DIR="${VAR_STATE_DIR:-/var/lib/openpath}"
 LOG_FILE="${LOG_FILE:-/var/log/openpath.log}"
 
-# Configuration files (in /etc/, preserved on upgrade)
-WHITELIST_URL_CONF="$ETC_CONFIG_DIR/whitelist-url.conf"
-HEALTH_API_URL_CONF="$ETC_CONFIG_DIR/health-api-url.conf"
-HEALTH_API_SECRET_CONF="$ETC_CONFIG_DIR/health-api-secret.conf"
-ORIGINAL_DNS_FILE="$ETC_CONFIG_DIR/original-dns.conf"
+# Configuration files (in /etc/, preserved on upgrade) - exported for use by other scripts
+export WHITELIST_URL_CONF="$ETC_CONFIG_DIR/whitelist-url.conf"
+export HEALTH_API_URL_CONF="$ETC_CONFIG_DIR/health-api-url.conf"
+export HEALTH_API_SECRET_CONF="$ETC_CONFIG_DIR/health-api-secret.conf"
+export ORIGINAL_DNS_FILE="$ETC_CONFIG_DIR/original-dns.conf"
 
-# State/cache files (in /var/lib/, regenerated)
+# State/cache files (in /var/lib/, regenerated) - exported for use by other scripts
 # Use default if not set (allows override for testing)
-DNSMASQ_CONF="${DNSMASQ_CONF:-/etc/dnsmasq.d/openpath.conf}"
-DNSMASQ_CONF_HASH="$VAR_STATE_DIR/dnsmasq.hash"
-BROWSER_POLICIES_HASH="$VAR_STATE_DIR/browser-policies.hash"
-SYSTEM_DISABLED_FLAG="$VAR_STATE_DIR/system-disabled.flag"
-WHITELIST_FILE="$VAR_STATE_DIR/whitelist.txt"
+export DNSMASQ_CONF="${DNSMASQ_CONF:-/etc/dnsmasq.d/openpath.conf}"
+export DNSMASQ_CONF_HASH="$VAR_STATE_DIR/dnsmasq.hash"
+export BROWSER_POLICIES_HASH="$VAR_STATE_DIR/browser-policies.hash"
+export SYSTEM_DISABLED_FLAG="$VAR_STATE_DIR/system-disabled.flag"
+export WHITELIST_FILE="$VAR_STATE_DIR/whitelist.txt"
 
 # Legacy compatibility (for migration) - exported for use by other scripts
 export CONFIG_DIR="$VAR_STATE_DIR"
 
-# Browser policies
-FIREFOX_POLICIES="/etc/firefox/policies/policies.json"
-CHROMIUM_POLICIES_BASE="/etc/chromium/policies/managed"
+# Browser policies - exported for use by other scripts
+export FIREFOX_POLICIES="/etc/firefox/policies/policies.json"
+export CHROMIUM_POLICIES_BASE="/etc/chromium/policies/managed"
 
 # Default URL (can be overridden by defaults.conf or environment)
 # Keep as fallback if defaults.conf not loaded
@@ -277,9 +277,10 @@ check_root() {
 # Load all libraries
 load_libraries() {
     local lib_dir="${1:-$INSTALL_DIR/lib}"
-    
+
     for lib in dns.sh firewall.sh browser.sh services.sh; do
         if [ -f "$lib_dir/$lib" ]; then
+            # shellcheck disable=SC1090  # Dynamic source path is intentional
             source "$lib_dir/$lib"
         fi
     done

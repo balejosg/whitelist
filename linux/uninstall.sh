@@ -126,7 +126,7 @@ systemctl start systemd-resolved 2>/dev/null || true
 
 # Esperar a que systemd-resolved cree el stub (máx 10 segundos)
 echo "  Esperando a systemd-resolved..."
-for i in $(seq 1 10); do
+for _ in $(seq 1 10); do
     if [ -f /run/systemd/resolve/stub-resolv.conf ]; then
         echo "  ✓ systemd-resolved activo"
         break
@@ -292,7 +292,6 @@ if [ "$CONN_OK" = true ] && [ "$DNS_OK" = false ]; then
         echo "  Reconfigurado a systemd-resolved"
     else
         # systemd-resolved no funciona, usar gateway directamente
-        local FALLBACK_DNS
         FALLBACK_DNS=$(get_fallback_dns)
         cat > /etc/resolv.conf << EOF
 nameserver $FALLBACK_DNS

@@ -70,6 +70,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --unattended)
+            # shellcheck disable=SC2034  # Used in confirmation prompts
             UNATTENDED=true
             shift
             ;;
@@ -419,6 +420,7 @@ fi
 # ============================================================================
 # REGISTRAR MÁQUINA EN AULA (si está configurado el modo Aula)
 # ============================================================================
+# shellcheck disable=SC2034  # Used for status reporting
 MACHINE_REGISTERED=""
 if [ -n "$CLASSROOM_NAME" ] && [ -n "$API_URL" ]; then
     echo ""
