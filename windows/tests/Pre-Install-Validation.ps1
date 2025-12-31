@@ -6,7 +6,9 @@
 #
 # PSScriptAnalyzer suppressions for interactive validation scripts:
 # - Write-Host is intentional for colored user feedback
+# - BOM not required for UTF-8 (files are already UTF-8 without BOM)
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseBOMForUnicodeEncodedFile', '')]
 param()
 
 $script:errors = 0

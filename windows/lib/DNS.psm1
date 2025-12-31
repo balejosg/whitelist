@@ -425,6 +425,13 @@ function Start-AcrylicService {
     .SYNOPSIS
         Starts the Acrylic DNS Proxy service
     #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
+
+    if (-not $PSCmdlet.ShouldProcess("Acrylic DNS Proxy service", "Start")) {
+        return $false
+    }
+
     $acrylicPath = Get-AcrylicPath
     if (-not $acrylicPath) {
         return $false
@@ -461,6 +468,13 @@ function Stop-AcrylicService {
     .SYNOPSIS
         Stops the Acrylic DNS Proxy service
     #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
+
+    if (-not $PSCmdlet.ShouldProcess("Acrylic DNS Proxy service", "Stop")) {
+        return $false
+    }
+
     try {
         $service = Get-Service -DisplayName "*Acrylic*" -ErrorAction SilentlyContinue | Select-Object -First 1
         

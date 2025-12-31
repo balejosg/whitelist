@@ -14,8 +14,11 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# PSScriptAnalyzer: Write-Host is intentional for interactive uninstaller
+# PSScriptAnalyzer suppressions:
+# - Write-Host is intentional for interactive uninstaller
+# - BOM not required for UTF-8 (files are already UTF-8 without BOM)
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseBOMForUnicodeEncodedFile', '')]
 
 #Requires -RunAsAdministrator
 <#

@@ -140,13 +140,18 @@ function Start-OpenPathTask {
     .PARAMETER TaskType
         Type of task: Update, Watchdog, or Startup
     #>
+    [CmdletBinding(SupportsShouldProcess)]
     param(
         [ValidateSet("Update", "Watchdog", "Startup")]
         [string]$TaskType = "Update"
     )
-    
+
     $taskName = "$script:TaskPrefix-$TaskType"
-    
+
+    if (-not $PSCmdlet.ShouldProcess($taskName, "Start scheduled task")) {
+        return $false
+    }
+
     try {
         Start-ScheduledTask -TaskName $taskName
         Write-OpenPathLog "Started task: $taskName"
