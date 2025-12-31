@@ -12,7 +12,6 @@
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "outDir": "./dist",
-        "rootDir": "./src",
         "declaration": false,
         "sourceMap": true,
         "noImplicitAny": true,
@@ -26,17 +25,19 @@
         "noImplicitReturns": true,
         "noFallthroughCasesInSwitch": true,
         "noUncheckedIndexedAccess": true,
+        "exactOptionalPropertyTypes": true,
+        "strictPropertyInitialization": true,
         "types": [
             "webextension-polyfill",
             "node"
         ]
     },
     "include": [
-        "src/**/*"
+        "src/**/*",
+        "tests/**/*"
     ],
     "exclude": [
         "node_modules",
-        "dist",
-        "tests"
+        "dist"
     ]
 }

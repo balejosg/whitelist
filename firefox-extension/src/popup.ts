@@ -26,6 +26,7 @@
  */
 
 import { Browser } from 'webextension-polyfill';
+import { logger } from './lib/logger.js';
 
 // Declare browser globally available
 declare const browser: Browser;
@@ -236,7 +237,7 @@ async function loadBlockedDomains(): Promise<void> {
         blockedDomainsData = response.domains ?? {};
         renderDomainsList(blockedDomainsData);
     } catch (error) {
-        console.error('[Popup] Error al obtener dominios:', error);
+        logger.error('[Popup] Error al obtener dominios', { error: error instanceof Error ? error.message : String(error) });
         renderDomainsList({});
     }
 }
@@ -278,7 +279,7 @@ async function clearDomains(): Promise<void> {
         hideVerifyResults();
         showToast('🗑️ Lista limpiada');
     } catch (error) {
-        console.error('[Popup] Error al limpiar:', error);
+        logger.error('[Popup] Error al limpiar', { error: error instanceof Error ? error.message : String(error) });
     }
 }
 
@@ -303,7 +304,7 @@ async function checkNativeAvailable(): Promise<boolean> {
 
         return nativeAvailable;
     } catch (error) {
-        console.error('[Popup] Error checking native availability:', error);
+        logger.error('[Popup] Error checking native availability', { error: error instanceof Error ? error.message : String(error) });
         return false;
     }
 }
@@ -339,7 +340,7 @@ async function verifyDomainsWithNative(): Promise<void> {
             showToast(`❌ Error: ${data.error ?? 'Desconocido'}`);
         }
     } catch (error) {
-        console.error('[Popup] Error verificando dominios:', error);
+        logger.error('[Popup] Error verificando dominios', { error: error instanceof Error ? error.message : String(error) });
         showToast('❌ Error al verificar dominios');
     } finally {
         btnVerify.disabled = false;
@@ -422,7 +423,7 @@ async function checkRequestApiAvailable(): Promise<boolean> {
     } catch (error) {
         clearTimeout(timeout);
         if (CONFIG.DEBUG_MODE) {
-            console.log('[Popup] Request API not available:', error instanceof Error ? error.message : String(error));
+            logger.debug('[Popup] Request API not available', { error: error instanceof Error ? error.message : String(error) });
         }
     }
 
@@ -577,7 +578,7 @@ async function submitDomainRequest(): Promise<void> {
                     showToast('✅ Dominio añadido');
                 }
             } catch (updateError) {
-                console.warn('Whitelist update failed:', updateError);
+                logger.warn('Whitelist update failed', { error: updateError instanceof Error ? updateError.message : String(updateError) });
                 showToast('✅ Dominio añadido');
             }
 
@@ -604,7 +605,7 @@ async function submitDomainRequest(): Promise<void> {
         showToast('❌ Error al enviar');
 
         if (CONFIG.DEBUG_MODE) {
-            console.error('[Popup] Request error:', err);
+            logger.error('[Popup] Request error', { error: err.message });
         }
     } finally {
         btnSubmitRequest.disabled = false;
@@ -669,7 +670,7 @@ async function init(): Promise<void> {
         }
 
     } catch (error) {
-        console.error('[Popup] Error de inicialización:', error);
+        logger.error('[Popup] Error de inicialización', { error: error instanceof Error ? error.message : String(error) });
         tabDomainEl.textContent = 'Error';
     }
 }

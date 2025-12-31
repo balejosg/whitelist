@@ -13,6 +13,7 @@
  */
 
 import { Browser, WebRequest, Runtime, WebNavigation } from 'webextension-polyfill';
+import { logger } from './lib/logger.js';
 
 declare const browser: Browser;
 
@@ -169,16 +170,16 @@ async function connectNativeHost(): Promise<boolean> {
             nativePort = browser.runtime.connectNative(NATIVE_HOST_NAME);
 
             nativePort.onDisconnect.addListener((_port: Runtime.Port) => {
-                console.log('[Monitor] Native host desconectado:', browser.runtime.lastError);
+                logger.info('[Monitor] Native host desconectado', { lastError: browser.runtime.lastError });
 
                 nativePort = null;
             });
 
 
-            console.log('[Monitor] Native host conectado');
+            logger.info('[Monitor] Native host conectado');
             resolve(true);
         } catch (error) {
-            console.error('[Monitor] Error conectando Native host:', error);
+            logger.error('[Monitor] Error conectando Native host', { error: error instanceof Error ? error.message : String(error) });
 
             resolve(false);
         }
@@ -211,7 +212,7 @@ async function sendNativeMessage(message: unknown): Promise<unknown> {
 
                 resolve(response);
             } catch (error) {
-                console.error('[Monitor] Error en Native Messaging:', error);
+                logger.error('[Monitor] Error en Native Messaging', { error: error instanceof Error ? error.message : String(error) });
                 reject(error instanceof Error ? error : new Error(String(error)));
             }
         };
@@ -289,7 +290,7 @@ browser.webRequest.onErrorOccurred.addListener(
             return;
         }
 
-        console.log(`[Monitor] Bloqueado: ${hostname} (${details.error})`);
+        logger.info(`[Monitor] Bloqueado: ${hostname}`, { error: details.error });
         addBlockedDomain(details.tabId, hostname, details.error, details.originUrl ?? details.documentUrl);
     },
     { urls: ['<all_urls>'] }
@@ -303,7 +304,7 @@ browser.webNavigation.onBeforeNavigate.addListener(
     (details: WebNavigation.OnBeforeNavigateDetailsType) => {
         // Solo limpiar para navegación principal (no iframes)
         if (details.frameId === 0) {
-            console.log(`[Monitor] Limpiando bloqueos para tab ${details.tabId.toString()}`);
+            logger.debug(`[Monitor] Limpiando bloqueos para tab ${details.tabId.toString()}`);
             clearBlockedDomains(details.tabId);
         }
     }
@@ -317,7 +318,7 @@ browser.tabs.onRemoved.addListener(
     (tabId: number) => {
         if (blockedDomains[tabId]) {
             Reflect.deleteProperty(blockedDomains, tabId);
-            console.log(`[Monitor] Tab ${tabId.toString()} cerrada, datos eliminados`);
+            logger.debug(`[Monitor] Tab ${tabId.toString()} cerrada, datos eliminados`);
         }
     }
 );
@@ -389,4 +390,4 @@ browser.runtime.onMessage.addListener(
     }
 );
 
-console.log('[Monitor de Bloqueos] Background script v1.1.0 cargado');
+logger.info('[Monitor de Bloqueos] Background script v1.1.0 cargado');

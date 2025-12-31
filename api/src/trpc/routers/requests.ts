@@ -14,7 +14,15 @@ import { stripUndefined } from '../../lib/utils.js';
 import logger from '../../lib/logger.js';
 
 export const requestsRouter = router({
-    // Public: Create request
+    /**
+     * Create a new domain access request.
+     * Public endpoint, requires valid email.
+     *
+     * @param input.domain - Domain to request
+     * @param input.reason - Reason for request
+     * @param input.requesterEmail - Email of requester
+     * @param input.groupId - Target group ID
+     */
     create: publicProcedure
         .input(CreateRequestDTOSchema)
         .mutation(async ({ input }) => {
@@ -42,7 +50,12 @@ export const requestsRouter = router({
             return request;
         }),
 
-    // Public: Get status
+    /**
+     * Get request status by ID.
+     * Public endpoint for polling status.
+     *
+     * @param input.id - Request ID
+     */
     getStatus: publicProcedure
         .input(z.object({ id: z.string() }))
         .query(async ({ input }) => {
@@ -51,7 +64,14 @@ export const requestsRouter = router({
             return { id: request.id, domain: request.domain, status: request.status };
         }),
 
-    // Protected: List requests (filtered by user's groups)
+    /**
+     * List all requests.
+     * Protected endpoint.
+     * Teachers see only requests for their assigned groups.
+     * Admins see all requests.
+     *
+     * @param input.status - Filter by status (pending, approved, rejected)
+     */
     list: protectedProcedure
         .input(z.object({ status: RequestStatusSchema.optional() }))
         .query(async ({ input, ctx }) => {
@@ -63,7 +83,12 @@ export const requestsRouter = router({
             return requests;
         }),
 
-    // Protected: Get request details
+    /**
+     * Get full request details by ID.
+     * Protected endpoint. Enforces group access control.
+     *
+     * @param input.id - Request ID
+     */
     get: protectedProcedure
         .input(z.object({ id: z.string() }))
         .query(async ({ input, ctx }) => {
@@ -78,7 +103,14 @@ export const requestsRouter = router({
             return request;
         }),
 
-    // Teacher+: Approve
+    /**
+     * Approve a request.
+     * Teacher/Admin endpoint.
+     * Adds domain to whitelist via GitHub API.
+     *
+     * @param input.id - Request ID
+     * @param input.groupId - Optional group ID override
+     */
     approve: teacherProcedure
         .input(z.object({ id: z.string(), groupId: z.string().optional() }))
         .mutation(async ({ input, ctx }) => {

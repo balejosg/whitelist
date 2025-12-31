@@ -1,4 +1,5 @@
 import type { GitHubAPIInstance, GitHubFile } from './types/index.js';
+import { logger } from './lib/logger.js';
 
 /**
  * GitHub REST API Client
@@ -36,7 +37,7 @@ export class GitHubAPI implements GitHubAPIInstance {
         if (!response.ok) {
             interface ErrorResponse { message?: string }
             const errorData: ErrorResponse = await response.json().catch((parseError: unknown) => {
-                console.warn('Failed to parse GitHub API error response:', parseError);
+                logger.warn('Failed to parse GitHub API error response', { error: parseError instanceof Error ? parseError.message : String(parseError) });
                 return {};
             }) as ErrorResponse;
             const message: string = errorData.message ?? `Error ${response.status.toString()}`;
@@ -71,7 +72,7 @@ export class GitHubAPI implements GitHubAPIInstance {
             const content = atob(data.content.replace(/\n/g, ''));
             return { path, content, sha: data.sha, encoding: data.encoding };
         } catch (error) {
-            console.error('Error getting file:', error);
+            logger.error('Error getting file', { error: error instanceof Error ? error.message : String(error) });
             return null; // Interface expects null on failure?
         }
     }
@@ -106,7 +107,7 @@ export class GitHubAPI implements GitHubAPIInstance {
             });
             return true;
         } catch (error) {
-            console.error('Error updating file:', error);
+            logger.error('Error updating file', { error: error instanceof Error ? error.message : String(error) });
             return false;
         }
     }
@@ -135,7 +136,7 @@ export class GitHubAPI implements GitHubAPIInstance {
                     sha: item.sha
                 }));
         } catch (error) {
-            console.error('Error listing files:', error);
+            logger.error('Error listing files', { error: error instanceof Error ? error.message : String(error) });
             return [];
         }
     }
@@ -165,7 +166,7 @@ export class GitHubAPI implements GitHubAPIInstance {
             });
             return true;
         } catch (error) {
-            console.error('Error deleting file:', error);
+            logger.error('Error deleting file', { error: error instanceof Error ? error.message : String(error) });
             return false;
         }
     }

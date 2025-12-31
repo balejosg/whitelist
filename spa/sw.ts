@@ -59,8 +59,8 @@ getSW().addEventListener('push', (event: PushEvent) => {
 
     const options: NotificationOptions & { actions?: { action: string; title: string }[] } = {
         body: data.body,
-        icon: data.icon,
-        badge: data.badge,
+        ...(data.icon ? { icon: data.icon } : {}),
+        ...(data.badge ? { badge: data.badge } : {}),
         data: data.data,
         tag: data.data?.requestId ?? 'openpath-notification',
         requireInteraction: true,

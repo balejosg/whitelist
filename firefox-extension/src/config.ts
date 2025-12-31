@@ -23,6 +23,8 @@
  * Use the extension options page to configure.
  */
 
+import { logger } from './lib/logger.js';
+
 // We use global declarations because this file is loaded via manifest scripts
 // and not bundled.
 
@@ -84,7 +86,7 @@ async function loadConfig(): Promise<Config> {
             }
         }
     } catch (error) {
-        console.warn('[Config] Failed to load stored config:', error);
+        logger.warn('[Config] Failed to load stored config', { error: error instanceof Error ? error.message : String(error) });
     }
     return CONFIG;
 }
@@ -101,7 +103,7 @@ async function saveConfig(newConfig: Partial<Config>): Promise<void> {
             await browser.storage.sync.set({ config: CONFIG });
         }
     } catch (error) {
-        console.error('[Config] Failed to save config:', error);
+        logger.error('[Config] Failed to save config', { error: error instanceof Error ? error.message : String(error) });
         throw error;
     }
 }

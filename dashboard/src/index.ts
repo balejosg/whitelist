@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
 import * as db from './db.js';
 import type { User } from './db.js';
+import { logger } from './lib/logger.js';
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -87,7 +88,7 @@ app.post('/api/auth/login', asyncHandler(async (req: Request, res: Response): Pr
 app.post('/api/auth/logout', (req: Request, res: Response): void => {
     req.session.destroy((err) => {
         if (err) {
-            console.error('Logout error:', err);
+            logger.error('Logout error', { error: err instanceof Error ? err.message : String(err) });
             res.status(500).json({ error: 'Error logging out' });
         } else {
             res.json({ success: true });
@@ -166,7 +167,12 @@ app.post('/api/groups', requireAuth, asyncHandler(async (req: Request, res: Resp
 }));
 
 app.get('/api/groups/:id', requireAuth, asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const group = await db.getGroupById(req.params.id);
+    const id = req.params.id;
+    if (!id) {
+        res.status(400).json({ error: 'ID requerido' });
+        return;
+    }
+    const group = await db.getGroupById(id);
     if (!group) {
         res.status(404).json({ error: 'Grupo no encontrado' });
         return;
@@ -175,38 +181,58 @@ app.get('/api/groups/:id', requireAuth, asyncHandler(async (req: Request, res: R
 }));
 
 app.put('/api/groups/:id', requireAuth, asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const id = req.params.id;
+    if (!id) {
+        res.status(400).json({ error: 'ID requerido' });
+        return;
+    }
     const { displayName, enabled } = req.body as Record<string, unknown>;
     if (typeof displayName !== 'string') {
         res.status(400).json({ error: 'Invalid details' });
         return;
     }
-    await db.updateGroup(req.params.id, displayName, !!enabled);
-    await db.exportGroupToFile(req.params.id);
+    await db.updateGroup(id, displayName, !!enabled);
+    await db.exportGroupToFile(id);
     res.json({ success: true });
 }));
 
 app.delete('/api/groups/:id', requireAuth, asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    await db.deleteGroup(req.params.id);
+    const id = req.params.id;
+    if (!id) {
+        res.status(400).json({ error: 'ID requerido' });
+        return;
+    }
+    await db.deleteGroup(id);
     res.json({ success: true });
 }));
 
 // ============== Rules Routes ==============
 
 app.get('/api/groups/:groupId/rules', requireAuth, asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const groupId = req.params.groupId;
+    if (!groupId) {
+        res.status(400).json({ error: 'Group ID requerido' });
+        return;
+    }
     const { type } = req.query;
-    const rules = await db.getRulesByGroup(req.params.groupId, (type as db.Rule['type'] | undefined) ?? null);
+    const rules = await db.getRulesByGroup(groupId, (type as db.Rule['type'] | undefined) ?? null);
     res.json(rules);
 }));
 
 app.post('/api/groups/:groupId/rules', requireAuth, asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const groupId = req.params.groupId;
+    if (!groupId) {
+        res.status(400).json({ error: 'Group ID requerido' });
+        return;
+    }
     const { type, value, comment } = req.body as Record<string, unknown>;
     if (!type || !value || typeof type !== 'string' || typeof value !== 'string') {
         res.status(400).json({ error: 'Tipo y valor requeridos' });
         return;
     }
-    const result = await db.createRule(req.params.groupId, type as db.Rule['type'], value, comment as string | null);
+    const result = await db.createRule(groupId, type as db.Rule['type'], value, comment as string | null);
     if (result.success) {
-        await db.exportGroupToFile(req.params.groupId);
+        await db.exportGroupToFile(groupId);
         res.json({ success: true, id: result.id });
     } else {
         res.status(400).json({ error: result.error });
@@ -214,25 +240,40 @@ app.post('/api/groups/:groupId/rules', requireAuth, asyncHandler(async (req: Req
 }));
 
 app.post('/api/groups/:groupId/rules/bulk', requireAuth, asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const groupId = req.params.groupId;
+    if (!groupId) {
+        res.status(400).json({ error: 'Group ID requerido' });
+        return;
+    }
     const { type, values } = req.body as Record<string, unknown>;
     if (!type || !values || !Array.isArray(values)) {
         res.status(400).json({ error: 'Tipo y valores requeridos' });
         return;
     }
-    const count = await db.bulkCreateRules(req.params.groupId, type as db.Rule['type'], values as string[]);
-    await db.exportGroupToFile(req.params.groupId);
+    const count = await db.bulkCreateRules(groupId, type as db.Rule['type'], values as string[]);
+    await db.exportGroupToFile(groupId);
     res.json({ success: true, count });
 }));
 
 app.delete('/api/rules/:id', requireAuth, asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    await db.deleteRule(req.params.id);
+    const id = req.params.id;
+    if (!id) {
+        res.status(400).json({ error: 'ID requerido' });
+        return;
+    }
+    await db.deleteRule(id);
     res.json({ success: true });
 }));
 
 // ============== Public Export (for dnsmasq clients) ==============
 
 app.get('/export/:name.txt', asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const group = await db.getGroupByName(req.params.name);
+    const name = req.params.name;
+    if (!name) {
+        res.status(400).send('Nombre requerido');
+        return;
+    }
+    const group = await db.getGroupByName(name);
     if (!group) {
         res.status(404).send('Grupo no encontrado');
         return;
@@ -253,7 +294,7 @@ app.get('*', (_req: Request, res: Response): void => {
 
 // Error handler
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-    console.error(err);
+    logger.error('Unhandled error', { error: err instanceof Error ? err.message : String(err) });
     res.status(500).json({ error: 'Error interno del servidor' });
 });
 
@@ -264,8 +305,8 @@ async function startServer(): Promise<void> {
 
     if (process.env.NODE_ENV !== 'test') {
         app.listen(PORT, () => {
-            console.log(`🛡️  OpenPath corriendo en http://localhost:${PORT.toString()}`);
-            console.log(`📁  Exportaciones en: ${db.EXPORT_DIR}`);
+            logger.info(`OpenPath corriendo en http://localhost:${PORT.toString()}`);
+            logger.info(`Exportaciones en: ${db.EXPORT_DIR}`);
 
             // Export all groups on startup
             void db.exportAllGroups();

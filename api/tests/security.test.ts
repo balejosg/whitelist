@@ -7,20 +7,31 @@
  */
 
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { it, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
+import jwt from 'jsonwebtoken';
 import { getAvailablePort } from './test-utils.js';
 
 let PORT: number;
 let API_URL: string;
+const JWT_SECRET = 'test-secret-123';
 
 let server: Server | undefined;
 
-async function request(path: string): Promise<{ status: number; headers: Headers; body: unknown }> {
-    const response = await fetch(`${API_URL}${path}`);
+async function request(path: string, options: RequestInit = {}): Promise<{ status: number; headers: Headers; body: any }> {
+    const response = await fetch(`${API_URL}${path}`, options);
     const headers = response.headers;
-    const body: unknown = await response.json();
+    let body: any = null;
+    try {
+        body = await response.json();
+    } catch {
+        // ignore JSON parse error
+    }
     return { status: response.status, headers, body };
 }
 
@@ -29,10 +40,20 @@ await describe('Security and Hardening Tests', async () => {
         PORT = await getAvailablePort();
         API_URL = `http://localhost:${String(PORT)}`;
         process.env.PORT = String(PORT);
+        process.env.JWT_SECRET = JWT_SECRET;
+        
+        // Force development env to enable rate limiting (it's skipped in test)
+        const originalEnv = process.env.NODE_ENV;
+        process.env.NODE_ENV = 'development';
+        
         const { app } = await import('../src/server.js');
         server = app.listen(PORT, () => {
             console.log(`Security test server started on port ${String(PORT)}`);
         });
+        
+        // Restore env (though config is already loaded)
+        process.env.NODE_ENV = originalEnv;
+        
         await new Promise(resolve => setTimeout(resolve, 1000));
     });
 
@@ -63,6 +84,109 @@ await describe('Security and Hardening Tests', async () => {
             const csp = headers.get('content-security-policy');
             assert.ok(csp !== null && csp !== '', 'CSP header should be present');
             assert.ok(csp.includes('default-src'), 'CSP should include default-src');
+        });
+    });
+
+    await describe('Authorization Boundaries', async () => {
+        await it('prevents students from approving requests', async (): Promise<void> => {
+            const domain = `student-test-${Date.now()}.com`;
+            // 1. Create a request
+            const createResp = await request('/trpc/requests.create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    domain,
+                    reason: 'test',
+                    requesterEmail: 'student@school.edu',
+                    groupId: 'group-a'
+                })
+            });
+            assert.strictEqual(createResp.status, 200);
+            const requestId = createResp.body.result.data.id;
+
+            // 2. Create student token
+            const studentToken = jwt.sign({
+                sub: 'student-1',
+                email: 'student@school.edu',
+                name: 'Student',
+                roles: [{ role: 'student', groupIds: ['group-a'] }],
+                type: 'access'
+            }, JWT_SECRET, { issuer: 'openpath-api', expiresIn: '1h' });
+
+            // 3. Attempt to approve
+            const approveResp = await request('/trpc/requests.approve', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${studentToken}`
+                },
+                body: JSON.stringify({
+                    id: requestId
+                })
+            });
+
+            // Should be Forbidden (403)
+            assert.strictEqual(approveResp.status, 403);
+        });
+
+        await it('prevents cross-group access', async (): Promise<void> => {
+            const domain = `group-b-test-${Date.now()}.com`;
+            // 1. Create a request for group-b
+            const createResp = await request('/trpc/requests.create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    domain,
+                    reason: 'test',
+                    requesterEmail: 'user@school.edu',
+                    groupId: 'group-b'
+                })
+            });
+            assert.strictEqual(createResp.status, 200);
+            const requestId = createResp.body.result.data.id;
+
+            // 2. Create teacher token for group-a
+            const teacherToken = jwt.sign({
+                sub: 'teacher-1',
+                email: 'teacher@school.edu',
+                name: 'Teacher',
+                roles: [{ role: 'teacher', groupIds: ['group-a'] }],
+                type: 'access'
+            }, JWT_SECRET, { issuer: 'openpath-api', expiresIn: '1h' });
+
+            // 3. Attempt to approve request in group-b
+            const approveResp = await request('/trpc/requests.approve', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${teacherToken}`
+                },
+                body: JSON.stringify({
+                    id: requestId
+                })
+            });
+
+            // Should be Forbidden (403)
+            assert.strictEqual(approveResp.status, 403);
+        });
+
+        await it('enforces rate limiting on auth endpoints', async (): Promise<void> => {
+            // Hit auth.login 11 times (limit is usually 10)
+            const promises = [];
+            for (let i = 0; i < 11; i++) {
+                promises.push(request('/trpc/auth.login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'rate@limit.com', password: 'password123'
+                    })
+                }));
+            }
+            
+            const responses = await Promise.all(promises);
+            // At least one should fail with 429
+            const blocked = responses.filter(r => r.status === 429);
+            assert.ok(blocked.length > 0, 'Should have blocked some requests');
         });
     });
 

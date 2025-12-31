@@ -2,7 +2,7 @@
 
 **Fecha**: 2025-12-21  
 **Estado**: Implementado  
-**Versión del Sistema**: 3.7
+**Versión del Sistema**: 4.1.0
 
 ---
 

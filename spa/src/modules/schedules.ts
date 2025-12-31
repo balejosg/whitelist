@@ -6,6 +6,7 @@
 import { Auth } from '../auth.js';
 import { trpc } from '../trpc.js';
 import { showToast } from '../utils.js';
+import { logger } from '../lib/logger.js';
 import type { Schedule, ScheduleSlot, ScheduleGroup } from '../types/index.js';
 
 export const SchedulesModule = {
@@ -38,7 +39,7 @@ export const SchedulesModule = {
             // Map tRPC result { name, path, sha } to ScheduleGroup { id, name }
             this.groups = rawGroups.map(g => ({ id: g.name, name: g.name }));
         } catch (e) {
-            console.warn('Failed to load groups:', e);
+            logger.warn('Failed to load groups', { error: e instanceof Error ? e.message : String(e) });
             this.groups = [];
         }
     },
@@ -56,7 +57,7 @@ export const SchedulesModule = {
             const result = await trpc.schedules.getByClassroom.query({ classroomId: this.currentClassroomId });
             this.schedules = result.schedules;
         } catch (e) {
-            console.error('Failed to load schedules', e);
+            logger.error('Failed to load schedules', { error: e instanceof Error ? e.message : String(e) });
             this.schedules = [];
         }
     },

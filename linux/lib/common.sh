@@ -19,11 +19,11 @@ set -o pipefail
 
 ################################################################################
 # common.sh - Common variables and functions
-# Part of the OpenPath DNS system v3.5
+# Part of the OpenPath DNS system v4.1.0
 ################################################################################
 
 # System version - exported for use by other scripts
-export VERSION="3.5"
+export VERSION="4.1.0"
 
 # Source configurable defaults (must be early, before other variables)
 # Try installed location first, then source directory

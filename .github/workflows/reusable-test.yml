@@ -98,7 +98,7 @@ jobs:
       # Web/Dashboard Tests
       - name: Run Web tests
         if: inputs.test-type == 'web'
-        run: npm test --workspace=dashboard
+        run: npm run test:coverage --workspace=@openpath/dashboard
         env:
           DATABASE_URL: postgresql://openpath:openpath_dev@localhost:5432/openpath
           NODE_ENV: test

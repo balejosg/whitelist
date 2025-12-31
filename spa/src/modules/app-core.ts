@@ -8,6 +8,7 @@ import { Config } from '../config.js';
 import { GitHubAPI } from '../github-api.js';
 import { SchedulesModule } from './schedules.js';
 import { trpc } from '../trpc.js';
+import { logger } from '../lib/logger.js';
 
 export async function init(): Promise<void> {
     // 1. Check for OAuth callback first
@@ -45,7 +46,7 @@ export async function init(): Promise<void> {
             if (user) setCurrentUser(user);
         }
     } catch (err) {
-        console.error('Failed to load user:', err);
+        logger.error('Failed to load user', { error: err instanceof Error ? err.message : String(err) });
         showScreen('login-screen');
         return;
     }
@@ -203,11 +204,11 @@ async function initScheduleSection(): Promise<void> {
         classrooms.forEach((c) => {
             const option = document.createElement('option');
             option.value = c.id;
-            option.textContent = c.displayName ?? c.name;
+            option.textContent = c.displayName || c.name;
             select.appendChild(option);
         });
     } catch (e) {
-        console.error('Failed to load classrooms for schedule:', e);
+        logger.error('Failed to load classrooms for schedule', { error: e instanceof Error ? e.message : String(e) });
     }
 
     // Handle classroom selection

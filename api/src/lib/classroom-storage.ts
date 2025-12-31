@@ -71,6 +71,11 @@ function toClassroomType(classroom: DBClassroom, machineList: DBMachine[] = []):
 // Classroom CRUD
 // =============================================================================
 
+/**
+ * Get all classrooms with their machine counts.
+ * 
+ * @returns Promise resolving to array of classrooms with counts
+ */
 export async function getAllClassrooms(): Promise<ClassroomWithCount[]> {
     const result = await db.select({
         id: classrooms.id,
@@ -117,6 +122,14 @@ export async function getClassroomByName(name: string): Promise<DBClassroom | nu
     return result[0] ?? null;
 }
 
+/**
+ * Create a new classroom.
+ * Generates a URL-safe name (slug) from the provided name.
+ * 
+ * @param classroomData - Data for the new classroom
+ * @returns Promise resolving to the created classroom record
+ * @throws {Error} If a classroom with the same generated slug already exists
+ */
 export async function createClassroom(
     classroomData: CreateClassroomData & { defaultGroupId?: string }
 ): Promise<DBClassroom> {
@@ -222,6 +235,13 @@ export async function getMachineByHostname(hostname: string): Promise<DBMachine 
     return result[0] ?? null;
 }
 
+/**
+ * Register a machine to a classroom.
+ * If the machine already exists, it is updated (moved to new classroom).
+ * 
+ * @param machineData - Machine registration data
+ * @returns Promise resolving to the machine record
+ */
 export async function registerMachine(machineData: {
     hostname: string;
     classroomId: string;
@@ -296,6 +316,16 @@ export async function removeMachinesByClassroom(classroomId: string): Promise<nu
     return result.rowCount ?? 0;
 }
 
+/**
+ * Get the correct whitelist URL for a machine based on its classroom state.
+ * Priority:
+ * 1. Active override group (if set by teacher)
+ * 2. Scheduled class group (if current time matches a schedule)
+ * 3. Default classroom group
+ * 
+ * @param hostname - Machine hostname
+ * @returns Promise resolving to whitelist result or null if machine/classroom not found
+ */
 export async function getWhitelistUrlForMachine(hostname: string): Promise<WhitelistUrlResult | null> {
     const machine = await getMachineByHostname(hostname);
     if (!machine) return null;

@@ -1,5 +1,6 @@
 import type { AuthAPI, AuthTokens, StoredUser, User, UserRole, APIResponse, RoleInfo } from './types/index.js';
 import { trpc } from './trpc.js';
+import { logger } from './lib/logger.js';
 
 /**
  * Authentication API Client
@@ -194,7 +195,7 @@ export const Auth: AuthAPI = {
             const refreshToken = this.getRefreshToken();
             await trpc.auth.logout.mutate({ refreshToken: refreshToken ?? undefined });
         } catch (e) {
-            console.warn('Logout API call failed:', e);
+            logger.warn('Logout API call failed', { error: e instanceof Error ? e.message : String(e) });
         }
         this.clearAuth();
     },

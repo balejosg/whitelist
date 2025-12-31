@@ -9,6 +9,7 @@
 import jwt, { type SignOptions } from 'jsonwebtoken';
 import crypto from 'node:crypto';
 import { getTokenStore } from './token-store.js';
+import { logger } from './logger.js';
 import type { User, UserRole, JWTPayload } from '../types/index.js';
 
 // =============================================================================
@@ -51,17 +52,10 @@ interface LegacyAdminPayload {
 const isProduction = process.env.NODE_ENV === 'production';
 
 if (isProduction && (process.env.JWT_SECRET === undefined || process.env.JWT_SECRET === '')) {
-    console.error('');
-    console.error('╔═══════════════════════════════════════════════════════════════╗');
-    console.error('║  FATAL SECURITY ERROR: JWT_SECRET not set in production!      ║');
-    console.error('║                                                               ║');
-    console.error('║  Generate a secure secret:                                    ║');
-    console.error('║  node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"');
-    console.error('║                                                               ║');
-    console.error('║  Then set it in your environment:                             ║');
-    console.error('║  export JWT_SECRET="your-generated-secret"                    ║');
-    console.error('╚═══════════════════════════════════════════════════════════════╝');
-    console.error('');
+    logger.error('FATAL SECURITY ERROR: JWT_SECRET not set in production', {
+        hint: 'Generate a secure secret with: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"',
+        action: 'Set JWT_SECRET environment variable before starting the server'
+    });
     process.exit(1);
 }
 
@@ -71,11 +65,10 @@ if (process.env.JWT_SECRET !== undefined && process.env.JWT_SECRET !== '') {
     JWT_SECRET = process.env.JWT_SECRET;
 } else {
     JWT_SECRET = crypto.randomBytes(32).toString('hex');
-    console.warn('');
-    console.warn('⚠️  WARNING: JWT_SECRET not set. Using random secret.');
-    console.warn('⚠️  All tokens will be invalidated on server restart.');
-    console.warn('⚠️  Set JWT_SECRET environment variable for persistent tokens.');
-    console.warn('');
+    logger.warn('JWT_SECRET not set - using random secret', {
+        consequence: 'All tokens will be invalidated on server restart',
+        action: 'Set JWT_SECRET environment variable for persistent tokens'
+    });
 }
 
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN ?? '24h';

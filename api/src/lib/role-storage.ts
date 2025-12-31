@@ -91,6 +91,13 @@ export async function hasAnyAdmins(): Promise<boolean> {
     return result.length > 0;
 }
 
+/**
+ * Check if a user has a specific role.
+ * 
+ * @param userId - User ID to check
+ * @param role - Role to check for
+ * @returns Promise resolving to true if user has the role
+ */
 export async function hasRole(userId: string, role: UserRole): Promise<boolean> {
     const result = await db.select({ id: roles.id })
         .from(roles)
@@ -104,6 +111,15 @@ export async function isAdmin(userId: string): Promise<boolean> {
     return hasRole(userId, 'admin');
 }
 
+/**
+ * Check if a user can approve requests for a specific group.
+ * Admins can approve for any group.
+ * Teachers can approve for groups they are assigned to.
+ * 
+ * @param userId - User ID to check
+ * @param groupId - Group ID to check access for
+ * @returns Promise resolving to true if user has permission
+ */
 export async function canApproveForGroup(userId: string, groupId: string): Promise<boolean> {
     // Check if user is admin (can approve any group)
     const adminCheck = await isAdmin(userId);
@@ -140,6 +156,13 @@ export async function getApprovalGroups(userId: string): Promise<string[] | 'all
     return result[0]?.groupIds ?? [];
 }
 
+/**
+ * Assign a role to a user.
+ * If the user already has the role, their group list is updated.
+ * 
+ * @param roleData - Role assignment data
+ * @returns Promise resolving to the created or updated role
+ */
 export async function assignRole(roleData: AssignRoleData & { createdBy?: string }): Promise<DBRole> {
     const { userId, role, groupIds, createdBy } = roleData;
 

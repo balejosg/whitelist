@@ -4,6 +4,7 @@ import { trpc } from '../trpc.js';
 import { showToast, escapeHtml } from '../utils.js';
 import { openModal, closeModal } from './ui.js';
 import { UserRole } from '../../../shared/src/index.js';
+import { logger } from '../lib/logger.js';
 import { z } from 'zod';
 
 type UserRoleType = z.infer<typeof UserRole>;
@@ -70,7 +71,7 @@ export async function loadUsers(): Promise<void> {
         if (countEl) countEl.textContent = users.length.toString();
 
     } catch (err: unknown) {
-        console.error('Error loading users:', err);
+        logger.error('Error loading users', { error: err instanceof Error ? err.message : String(err) });
         const message = err instanceof Error ? err.message : String(err);
         listEl.innerHTML = `<p class="error-message">Error loading users: ${message}</p>`;
     }

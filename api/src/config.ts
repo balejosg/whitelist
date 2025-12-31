@@ -1,0 +1,142 @@
+/**
+ * OpenPath API Configuration
+ *
+ * Centralized configuration management.
+ * All values can be overridden via environment variables.
+ */
+
+/**
+ * Parse an integer from environment with fallback
+ */
+function parseIntEnv(value: string | undefined, fallback: number): number {
+    if (!value) return fallback;
+    const parsed = parseInt(value, 10);
+    return isNaN(parsed) ? fallback : parsed;
+}
+
+/**
+ * Parse a comma-separated list from environment
+ */
+function parseListEnv(value: string | undefined, fallback: string[]): string[] {
+    if (!value) return fallback;
+    return value.split(',').map(s => s.trim()).filter(Boolean);
+}
+
+export const config = {
+    // ==========================================================================
+    // Server Configuration
+    // ==========================================================================
+
+    /** Server port */
+    port: parseIntEnv(process.env.PORT, 3000),
+
+    /** Server host binding */
+    host: process.env.HOST ?? '0.0.0.0',
+
+    /** Node environment */
+    nodeEnv: process.env.NODE_ENV ?? 'development',
+
+    /** Is production environment */
+    isProduction: process.env.NODE_ENV === 'production',
+
+    /** Is test environment */
+    isTest: process.env.NODE_ENV === 'test',
+
+    // ==========================================================================
+    // Security Configuration
+    // ==========================================================================
+
+    /** Bcrypt hashing rounds for password hashing */
+    bcryptRounds: parseIntEnv(process.env.BCRYPT_ROUNDS, 12),
+
+    /** JWT secret for token signing */
+    jwtSecret: process.env.JWT_SECRET ?? 'openpath-dev-secret-change-in-production',
+
+    /** JWT access token expiration */
+    jwtAccessExpiry: process.env.JWT_ACCESS_EXPIRY ?? '15m',
+
+    /** JWT refresh token expiration */
+    jwtRefreshExpiry: process.env.JWT_REFRESH_EXPIRY ?? '7d',
+
+    // ==========================================================================
+    // Rate Limiting
+    // ==========================================================================
+
+    /** Global rate limit window in milliseconds */
+    globalRateLimitWindowMs: parseIntEnv(process.env.RATE_LIMIT_WINDOW_MS, 60 * 1000),
+
+    /** Global rate limit max requests per window */
+    globalRateLimitMax: parseIntEnv(process.env.RATE_LIMIT_MAX, 200),
+
+    /** Auth rate limit window in milliseconds */
+    authRateLimitWindowMs: parseIntEnv(process.env.AUTH_RATE_LIMIT_WINDOW_MS, 60 * 1000),
+
+    /** Auth rate limit max requests per window */
+    authRateLimitMax: parseIntEnv(process.env.AUTH_RATE_LIMIT_MAX, 10),
+
+    // ==========================================================================
+    // CORS Configuration
+    // ==========================================================================
+
+    /** CORS allowed origins (comma-separated) */
+    corsAllowedOrigins: parseListEnv(
+        process.env.CORS_ORIGINS,
+        process.env.NODE_ENV === 'production'
+            ? ['https://balejosg.github.io']
+            : ['http://localhost:3000', 'http://localhost:5500', 'http://127.0.0.1:3000']
+    ),
+
+    // ==========================================================================
+    // Push Notifications
+    // ==========================================================================
+
+    /** VAPID public key for web push */
+    vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? '',
+
+    /** VAPID private key for web push */
+    vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? '',
+
+    /** VAPID subject (email or URL) */
+    vapidSubject: process.env.VAPID_SUBJECT ?? 'mailto:admin@openpath.local',
+
+    /** Push notification icon path */
+    pushIconPath: process.env.PUSH_ICON_PATH ?? '/icon-192.png',
+
+    /** Push notification badge path */
+    pushBadgePath: process.env.PUSH_BADGE_PATH ?? '/badge.png',
+
+    // ==========================================================================
+    // Database Configuration
+    // ==========================================================================
+
+    /** PostgreSQL connection URL */
+    databaseUrl: process.env.DATABASE_URL ?? 'postgres://openpath:openpath@localhost:5432/openpath',
+
+    // ==========================================================================
+    // GitHub Integration
+    // ==========================================================================
+
+    /** GitHub OAuth client ID */
+    githubClientId: process.env.GITHUB_CLIENT_ID ?? '',
+
+    /** GitHub OAuth client secret */
+    githubClientSecret: process.env.GITHUB_CLIENT_SECRET ?? '',
+
+    /** GitHub whitelist repository owner */
+    githubRepoOwner: process.env.GITHUB_REPO_OWNER ?? '',
+
+    /** GitHub whitelist repository name */
+    githubRepoName: process.env.GITHUB_REPO_NAME ?? '',
+
+    /** GitHub whitelist file path */
+    githubWhitelistPath: process.env.GITHUB_WHITELIST_PATH ?? 'grupos',
+
+    // ==========================================================================
+    // Logging
+    // ==========================================================================
+
+    /** Log level (debug, info, warn, error) */
+    logLevel: process.env.LOG_LEVEL ?? 'info',
+} as const;
+
+export type Config = typeof config;

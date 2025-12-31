@@ -20,7 +20,7 @@ export default defineConfig({
     retries: process.env.CI ? 2 : 0,
 
     // Opt out of parallel tests on CI - they can be flaky
-    workers: process.env.CI ? 1 : undefined,
+    ...(process.env.CI ? { workers: 1 } : {}),
 
     // Reporter
     reporter: process.env.CI ? 'github' : 'html',
@@ -54,10 +54,12 @@ export default defineConfig({
     ],
 
     // Run local server before tests (skip in CI where workflow starts it)
-    webServer: process.env.CI ? undefined : {
-        command: 'cd ../api && npm start',
-        url: 'http://localhost:3001/health',
-        reuseExistingServer: true,
-        timeout: 120 * 1000,
-    },
+    ...(process.env.CI ? {} : {
+        webServer: {
+            command: 'cd ../api && npm start',
+            url: 'http://localhost:3001/health',
+            reuseExistingServer: true,
+            timeout: 120 * 1000,
+        }
+    }),
 });

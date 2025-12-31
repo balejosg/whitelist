@@ -11,8 +11,7 @@ import { eq, sql, count } from 'drizzle-orm';
 import { db, users } from '../db/index.js';
 import type { User, SafeUser } from '../types/index.js';
 import type { IUserStorage, CreateUserData, UpdateUserData } from '../types/storage.js';
-
-const BCRYPT_ROUNDS = 12;
+import { config } from '../config.js';
 
 // =============================================================================
 // Types
@@ -106,8 +105,15 @@ export async function emailExists(email: string): Promise<boolean> {
     return result.length > 0;
 }
 
+/**
+ * Create a new user with hashed password.
+ * 
+ * @param userData - User creation data (email, name, password)
+ * @returns Promise resolving to the created user (without password hash)
+ * @throws {Error} If database insertion fails
+ */
 export async function createUser(userData: CreateUserData): Promise<SafeUser> {
-    const passwordHash = await bcrypt.hash(userData.password, BCRYPT_ROUNDS);
+    const passwordHash = await bcrypt.hash(userData.password, config.bcryptRounds);
     const id = `user_${uuidv4().slice(0, 8)}`;
 
     const [result] = await db.insert(users)
@@ -152,7 +158,7 @@ export async function updateUser(
         updateValues.name = updates.name.trim();
     }
     if (updates.password !== undefined) {
-        updateValues.passwordHash = await bcrypt.hash(updates.password, BCRYPT_ROUNDS);
+        updateValues.passwordHash = await bcrypt.hash(updates.password, config.bcryptRounds);
     }
 
     if (Object.keys(updateValues).length === 0) {
@@ -220,6 +226,13 @@ export async function verifyEmail(id: string): Promise<boolean> {
     return (result.rowCount ?? 0) > 0;
 }
 
+/**
+ * Verify a user's password.
+ * 
+ * @param user - User object containing password hash
+ * @param password - Plaintext password to check
+ * @returns Promise resolving to true if password matches, false otherwise
+ */
 export async function verifyPassword(
     user: User,
     password: string

@@ -7,6 +7,7 @@
  */
 
 import { Auth } from './auth.js';
+import { logger } from './lib/logger.js';
 
 interface SetupStatusResponse {
     needsSetup: boolean;
@@ -61,7 +62,7 @@ export async function checkStatus(): Promise<SetupStatus> {
         };
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.error('Setup status check failed:', error);
+        logger.error('Setup status check failed', { error: errorMessage });
         return { needsSetup: false, hasAdmin: true, error: errorMessage };
     }
 }

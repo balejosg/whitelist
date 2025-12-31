@@ -5,6 +5,7 @@ import { Config } from '../config.js';
 import { Auth } from '../auth.js';
 import { initRequestsSection } from './requests.js';
 import { WhitelistParser } from '../openpath-parser.js';
+import { logger } from '../lib/logger.js';
 // import type { GroupData } from '../types/index.js';
 
 export async function loadDashboard(): Promise<void> {
@@ -54,7 +55,7 @@ export async function loadDashboard(): Promise<void> {
                     }
                 }
             } catch (error) {
-                console.warn(`Failed to load stats for group "${group.name}":`, error);
+                logger.warn(`Failed to load stats for group "${group.name}"`, { error: error instanceof Error ? error.message : String(error) });
                 group.stats = { whitelist: 0, blocked_subdomains: 0, blocked_paths: 0 };
                 group.enabled = true;
             }
@@ -78,7 +79,7 @@ export async function loadDashboard(): Promise<void> {
         // Initialize requests section (home server API)
         await initRequestsSection();
     } catch (err) {
-        console.error('Dashboard error:', err);
+        logger.error('Dashboard error', { error: err instanceof Error ? err.message : String(err) });
         if (err instanceof Error) {
             showToast('Error cargando datos: ' + err.message, 'error');
         }

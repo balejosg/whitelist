@@ -31,7 +31,7 @@ const WhitelistParser = {
         const lines = content.split('\n');
         let currentSection: keyof GroupData | null = null;
 
-        if (lines[0] && lines[0].trim() === '#DESACTIVADO') {
+        if (lines[0]?.trim() === '#DESACTIVADO') {
             result.enabled = false;
         }
 

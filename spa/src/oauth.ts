@@ -1,4 +1,5 @@
 import type { OAuthCallbackResult, User } from './types/index.js';
+import { logger } from './lib/logger.js';
 
 /**
  * OAuth Manager
@@ -31,7 +32,7 @@ export const OAuth = {
         // Check for errors
         const error = params.get('error');
         if (error) {
-            console.error('OAuth error:', error);
+            logger.error('OAuth error', { error });
             return { error };
         }
 
@@ -86,7 +87,7 @@ export const OAuth = {
 
             return await response.json() as User;
         } catch (error) {
-            console.error('Error getting user:', error);
+            logger.error('Error getting user', { error: error instanceof Error ? error.message : String(error) });
             throw error;
         }
     },

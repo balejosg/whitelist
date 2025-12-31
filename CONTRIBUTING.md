@@ -14,7 +14,7 @@ Thank you for your interest in contributing to OpenPath! This document provides 
 
 ### Prerequisites
 
-- **Node.js** 18+ (for API development)
+- **Node.js** >= 20 (for API development)
 - **PowerShell** 5.1+ (for Windows client)
 - **Bash** 4+ (for Linux client)
 - **Docker** (optional, for containerized testing)
@@ -30,9 +30,8 @@ npm run dev
 ### Linux Client
 
 ```bash
-# Install test dependencies
+# Install BATS if needed (see tests/run-tests.sh)
 cd tests
-npm install
 
 # Run BATS tests
 bats *.bats
@@ -147,6 +146,26 @@ cd api
 npm test              # Unit tests
 npm run test:coverage # With coverage report
 npm run test:all      # All test suites
+```
+
+### Dashboard Tests
+
+Dashboard tests require a running PostgreSQL. You can start it with the repo compose DB service:
+
+```bash
+docker-compose up -d db
+```
+
+By default the compose DB uses:
+- DB: `openpath`
+- User: `openpath`
+- Password: `openpath_dev`
+- Port: `5432`
+
+Run dashboard tests with:
+
+```bash
+DATABASE_URL='postgresql://openpath:openpath_dev@localhost:5432/openpath' npm test --workspace=@openpath/dashboard
 ```
 
 ### Linux Tests (BATS)

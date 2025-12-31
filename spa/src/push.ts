@@ -1,4 +1,5 @@
 import { trpc } from './trpc.js';
+import { logger } from './lib/logger.js';
 
 declare global {
     interface Window {
@@ -45,10 +46,10 @@ export const PushManager = {
             const registration = await navigator.serviceWorker.register('/sw.js', {
                 scope: '/'
             });
-            console.warn('[Push] Service Worker registered:', registration.scope);
+            logger.info('[Push] Service Worker registered', { scope: registration.scope });
             return registration;
         } catch (error) {
-            console.error('[Push] Service Worker registration failed:', error);
+            logger.error('[Push] Service Worker registration failed', { error: error instanceof Error ? error.message : String(error) });
             throw error;
         }
     },
@@ -72,7 +73,7 @@ export const PushManager = {
         }
 
         const permission = await Notification.requestPermission();
-        console.warn('[Push] Permission result:', permission);
+        logger.info('[Push] Permission result', { permission });
         return permission;
     },
 
@@ -131,7 +132,7 @@ export const PushManager = {
             applicationServerKey: applicationServerKey as unknown as BufferSource
         });
 
-        console.warn('[Push] Subscribed:', subscription.endpoint);
+        logger.info('[Push] Subscribed', { endpoint: subscription.endpoint });
 
         // Send subscription to server
         // Convert PushSubscription to plain object for tRPC
@@ -156,7 +157,7 @@ export const PushManager = {
             }
         });
 
-        console.warn('[Push] Subscription registered on server');
+        logger.info('[Push] Subscription registered on server');
         return { success: true };
     },
 
@@ -190,10 +191,10 @@ export const PushManager = {
         try {
             await trpc.push.unsubscribe.mutate({ endpoint: subscription.endpoint });
         } catch (error) {
-            console.warn('[Push] Server unsubscribe failed:', error);
+            logger.warn('[Push] Server unsubscribe failed', { error: error instanceof Error ? error.message : String(error) });
         }
 
-        console.warn('[Push] Unsubscribed');
+        logger.info('[Push] Unsubscribed');
         return { success: true };
     },
 
@@ -203,7 +204,7 @@ export const PushManager = {
      */
     async init(): Promise<void> {
         if (!this.isSupported()) {
-            console.warn('[Push] Push notifications not supported');
+            logger.info('[Push] Push notifications not supported');
             return;
         }
 

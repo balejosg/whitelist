@@ -10,6 +10,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import * as schema from './schema.js';
 import * as relations from './relations.js';
+import { logger } from '../lib/logger.js';
 import 'dotenv/config';
 
 const { Pool } = pg;
@@ -31,7 +32,10 @@ const pool = new Pool({
 
 // Log pool errors
 pool.on('error', (err) => {
-    console.error('Unexpected error on idle database client', err);
+    logger.error('Unexpected error on idle database client', {
+        error: err.message,
+        stack: err.stack
+    });
 });
 
 // =============================================================================
@@ -61,10 +65,12 @@ export { pool };
 export async function testConnection(): Promise<boolean> {
     try {
         const result = await pool.query('SELECT NOW()');
-        console.log('✓ Database connection successful:', result.rows[0]);
+        logger.info('Database connection successful', { timestamp: result.rows[0] });
         return true;
     } catch (error) {
-        console.error('✗ Database connection failed:', error);
+        logger.error('Database connection failed', {
+            error: error instanceof Error ? error.message : String(error)
+        });
         return false;
     }
 }
@@ -74,5 +80,5 @@ export async function testConnection(): Promise<boolean> {
  */
 export async function closeConnection(): Promise<void> {
     await pool.end();
-    console.log('Database pool closed');
+    logger.info('Database pool closed');
 }

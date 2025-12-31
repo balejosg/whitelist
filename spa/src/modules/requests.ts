@@ -2,6 +2,7 @@ import { state } from './state.js';
 import { relativeTime, escapeHtml, showToast } from '../utils.js';
 import { trpc } from '../trpc.js';
 import { Auth } from '../auth.js';
+import { logger } from '../lib/logger.js';
 // import type { DomainRequest } from '../types/index.js';
 
 // Initialize requests section
@@ -109,7 +110,7 @@ export async function loadPendingRequests(): Promise<void> {
                         <span class="request-domain">${escapeHtml(req.domain)}</span>
                         <span class="request-time">${relativeTime(req.createdAt)}</span>
                         <span class="request-meta">
-                            ${escapeHtml(req.requesterEmail ?? 'Anonymous')} •
+                            ${escapeHtml(req.requesterEmail || 'Anonymous')} •
                             <span class="request-reason">${escapeHtml(req.reason)}</span>
                         </span>
                         ${req.groupId ? `<span class="request-group-tag">Grupo: ${escapeHtml(req.groupId)}</span>` : ''}
@@ -129,7 +130,7 @@ export async function loadPendingRequests(): Promise<void> {
         }).join('');
 
     } catch (err: unknown) {
-        console.error('Error loading requests:', err);
+        logger.error('Error loading requests', { error: err instanceof Error ? err.message : String(err) });
         const message = err instanceof Error ? err.message : String(err);
         listEl.innerHTML = `<p class="error-message">Error cargando solicitudes: ${message}</p>`;
     }

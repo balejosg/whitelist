@@ -11,7 +11,6 @@
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "outDir": "./dist",
-        "rootDir": "./src",
         "declaration": false,
         "sourceMap": true,
         "noImplicitAny": true,
@@ -25,12 +24,16 @@
         "noImplicitReturns": true,
         "noFallthroughCasesInSwitch": true,
         "noUncheckedIndexedAccess": true,
+        "exactOptionalPropertyTypes": true,
+        "strictPropertyInitialization": true,
         "types": [
-            "@cloudflare/workers-types"
+            "@cloudflare/workers-types",
+            "node"
         ]
     },
     "include": [
         "src/**/*",
+        "tests/**/*",
         "eslint.config.js"
     ],
     "exclude": [

@@ -18,6 +18,7 @@ import {
     type WhitelistGroup,
     type WhitelistRule,
 } from '@openpath/api';
+import { logger } from './lib/logger.js';
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -120,7 +121,6 @@ export async function getAllGroups(): Promise<Group[]> {
 export async function getGroupById(id: string | number): Promise<Group | undefined> {
     const stringId = String(id);
     const [group] = await db.select().from(whitelistGroups).where(eq(whitelistGroups.id, stringId));
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!group) return undefined;
 
     const rules = await db.select().from(whitelistRules).where(eq(whitelistRules.groupId, stringId));
@@ -134,7 +134,6 @@ export async function getGroupById(id: string | number): Promise<Group | undefin
 
 export async function getGroupByName(name: string): Promise<Group | undefined> {
     const [group] = await db.select().from(whitelistGroups).where(eq(whitelistGroups.name, name));
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!group) return undefined;
     return dbGroupToLegacy(group) as Group;
 }
@@ -214,7 +213,6 @@ export async function createRule(
             eq(whitelistRules.value, normalizedValue)
         ));
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (existing) {
         return { success: false, error: 'La regla ya existe' };
     }
@@ -258,7 +256,6 @@ export async function bulkCreateRules(
 
 export async function validateUser(username: string, password: string): Promise<{ id: string; username: string } | null> {
     const [user] = await db.select().from(dashboardUsers).where(eq(dashboardUsers.username, username));
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!user) return null;
 
     const isValid = await bcrypt.compare(password, user.passwordHash);
@@ -278,7 +275,6 @@ export async function changePassword(userId: string | number, newPassword: strin
 
 export async function ensureDefaultAdmin(): Promise<void> {
     const [existing] = await db.select().from(dashboardUsers).where(eq(dashboardUsers.username, 'admin'));
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!existing) {
         const hash = await bcrypt.hash(process.env.ADMIN_PASSWORD ?? 'admin123', 10);
         await db.insert(dashboardUsers).values({
@@ -390,10 +386,10 @@ export async function waitForDb(retries = 30, delay = 1000): Promise<void> {
             return;
         } catch (error) {
             if (i === retries - 1) {
-                console.error('Failed to connect to database after retries:', error);
+                logger.error('Failed to connect to database after retries', { error: error instanceof Error ? error.message : String(error) });
                 throw error;
             }
-            console.log(`Waiting for database... (${String(i + 1)}/${String(retries)})`);
+            logger.info(`Waiting for database... (${String(i + 1)}/${String(retries)})`);
             await new Promise(resolve => setTimeout(resolve, delay));
         }
     }

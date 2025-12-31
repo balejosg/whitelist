@@ -12,6 +12,8 @@ import { v4 as uuidv4 } from 'uuid';
 import webPush from 'web-push';
 import { db } from '../db/index.js';
 import { pushSubscriptions } from '../db/schema.js';
+import { logger } from './logger.js';
+import { config } from '../config.js';
 import type { DomainRequest } from '../types/index.js';
 
 // =============================================================================
@@ -61,31 +63,33 @@ interface NotificationResult {
 // Configuration
 // =============================================================================
 
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? '';
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY ?? '';
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY ?? '';
-
 const VAPID_CONFIGURED = (
-    VAPID_PUBLIC_KEY !== '' &&
-    VAPID_PRIVATE_KEY !== '' &&
-    VAPID_SUBJECT !== ''
+    config.vapidPublicKey !== '' &&
+    config.vapidPrivateKey !== '' &&
+    config.vapidSubject !== ''
 );
 
 if (VAPID_CONFIGURED) {
     webPush.setVapidDetails(
-        VAPID_SUBJECT,
-        VAPID_PUBLIC_KEY,
-        VAPID_PRIVATE_KEY
+        config.vapidSubject,
+        config.vapidPublicKey,
+        config.vapidPrivateKey
     );
 } else {
-    console.warn('⚠️  WARNING: VAPID keys not configured. Push notifications disabled.');
-    console.warn('   Generate keys with: npx web-push generate-vapid-keys');
+    logger.warn('VAPID keys not configured - push notifications disabled', {
+        hint: 'Generate keys with: npx web-push generate-vapid-keys'
+    });
 }
 
 // =============================================================================
 // Storage Functions (Postgres)
 // =============================================================================
 
+/**
+ * Convert database row to SubscriptionRecord.
+ * @param row - Database row from push_subscriptions table
+ * @returns SubscriptionRecord object
+ */
 function dbRowToRecord(row: typeof pushSubscriptions.$inferSelect): SubscriptionRecord {
     return {
         id: row.id,
@@ -104,6 +108,16 @@ function dbRowToRecord(row: typeof pushSubscriptions.$inferSelect): Subscription
     };
 }
 
+/**
+ * Save a push subscription for a user.
+ * Upserts based on endpoint to prevent duplicates.
+ * 
+ * @param userId - User ID owning the subscription
+ * @param groupIds - Array of group IDs the user subscribes to
+ * @param subscription - The Web Push subscription object from the browser
+ * @param userAgent - Optional User Agent string
+ * @returns Promise resolving to the saved subscription record
+ */
 export async function saveSubscription(
     userId: string,
     groupIds: string[],
@@ -136,6 +150,13 @@ export async function saveSubscription(
     };
 }
 
+/**
+ * Get all subscriptions for a specific group.
+ * Used to broadcast notifications to all teachers of a group.
+ * 
+ * @param groupId - Group ID to filter by
+ * @returns Promise resolving to array of subscriptions
+ */
 export async function getSubscriptionsForGroup(groupId: string): Promise<SubscriptionRecord[]> {
     const rows = await db.select().from(pushSubscriptions);
     // Filter by groupId (array contains)
@@ -144,6 +165,12 @@ export async function getSubscriptionsForGroup(groupId: string): Promise<Subscri
         .map(dbRowToRecord);
 }
 
+/**
+ * Get all subscriptions for a specific user.
+ * 
+ * @param userId - User ID to filter by
+ * @returns Promise resolving to array of subscriptions
+ */
 export async function getSubscriptionsForUser(userId: string): Promise<SubscriptionRecord[]> {
     const rows = await db.select()
         .from(pushSubscriptions)
@@ -151,6 +178,12 @@ export async function getSubscriptionsForUser(userId: string): Promise<Subscript
     return rows.map(dbRowToRecord);
 }
 
+/**
+ * Delete a subscription by its endpoint URL.
+ * 
+ * @param endpoint - The unique endpoint URL of the subscription
+ * @returns Promise resolving to true if deleted, false otherwise
+ */
 export async function deleteSubscriptionByEndpoint(endpoint: string): Promise<boolean> {
     const result = await db.delete(pushSubscriptions)
         .where(eq(pushSubscriptions.endpoint, endpoint))
@@ -158,6 +191,12 @@ export async function deleteSubscriptionByEndpoint(endpoint: string): Promise<bo
     return result.length > 0;
 }
 
+/**
+ * Delete a subscription by its ID.
+ * 
+ * @param id - The subscription ID
+ * @returns Promise resolving to true if deleted, false otherwise
+ */
 export async function deleteSubscriptionById(id: string): Promise<boolean> {
     const result = await db.delete(pushSubscriptions)
         .where(eq(pushSubscriptions.id, id))
@@ -169,6 +208,14 @@ export async function deleteSubscriptionById(id: string): Promise<boolean> {
 // Notification Functions
 // =============================================================================
 
+/**
+ * Notify all teachers associated with a group about a new domain request.
+ * Filters subscriptions to those relevant to the request's group.
+ * Handles automatic cleanup of expired (410 Gone) subscriptions.
+ * 
+ * @param request - The domain request object
+ * @returns Promise resolving to the result summary (sent, failed, total)
+ */
 export async function notifyTeachersOfNewRequest(
     request: DomainRequest
 ): Promise<NotificationResult> {
@@ -185,8 +232,8 @@ export async function notifyTeachersOfNewRequest(
     const payload: NotificationPayload = {
         title: '📨 Nueva solicitud',
         body: `Dominio: ${request.domain}`,
-        icon: '/icon-192.png',
-        badge: '/badge.png',
+        icon: config.pushIconPath,
+        badge: config.pushBadgePath,
         data: {
             requestId: request.id,
             domain: request.domain,
@@ -214,22 +261,40 @@ export async function notifyTeachersOfNewRequest(
                 const sub = subscriptions[i];
                 if (sub !== undefined) {
                     await deleteSubscriptionByEndpoint(sub.subscription.endpoint);
-                    console.log(`Removed expired push subscription: ${sub.id}`);
+                    logger.info('Removed expired push subscription', { subscriptionId: sub.id });
                 }
             } else {
-                console.error('Push notification failed:', reason?.message);
+                logger.error('Push notification failed', {
+                    error: reason?.message,
+                    requestId: request.id,
+                    subscriptionId: subscriptions[i]?.id
+                });
             }
         }
     }
 
-    console.log(`Push notifications sent: ${String(sent)}/${String(subscriptions.length)} for request ${request.id}`);
+    logger.info('Push notifications sent', {
+        sent,
+        total: subscriptions.length,
+        requestId: request.id
+    });
     return { sent, failed, total: subscriptions.length };
 }
 
+/**
+ * Get the VAPID public key for frontend use.
+ * 
+ * @returns The VAPID public key or null if not configured
+ */
 export function getVapidPublicKey(): string | null {
-    return process.env.VAPID_PUBLIC_KEY ?? null;
+    return config.vapidPublicKey || null;
 }
 
+/**
+ * Check if push notifications are enabled (VAPID keys configured).
+ * 
+ * @returns true if enabled, false otherwise
+ */
 export function isPushEnabled(): boolean {
     return VAPID_CONFIGURED;
 }

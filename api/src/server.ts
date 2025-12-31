@@ -49,6 +49,9 @@ import 'dotenv/config';
 // Structured logging with Winston
 import logger from './lib/logger.js';
 
+// Centralized configuration
+import { config } from './config.js';
+
 // Error tracking and request ID middleware
 import { requestIdMiddleware, errorTrackingMiddleware } from './lib/error-tracking.js';
 
@@ -101,23 +104,20 @@ app.use(helmet({
 // CORS Configuration
 // =============================================================================
 
-const DEFAULT_CORS_ORIGINS = process.env.NODE_ENV === 'production'
-    ? 'https://balejosg.github.io'
-    : 'http://localhost:3000,http://localhost:5500,http://127.0.0.1:3000';
-
-let corsOrigins = process.env.CORS_ORIGINS ?? DEFAULT_CORS_ORIGINS;
+const configCors = config.corsAllowedOrigins;
+let corsOrigins = configCors;
 
 // Security fix: Force safe default in production if CORS is set to wildcard
-if (corsOrigins === '*' && process.env.NODE_ENV === 'production') {
+if (config.isProduction && configCors.includes('*')) {
     logger.warn('CORS_ORIGINS="*" in production - forcing safe default', {
         configured: '*',
-        forced: DEFAULT_CORS_ORIGINS
+        forced: 'https://balejosg.github.io'
     });
-    corsOrigins = DEFAULT_CORS_ORIGINS;
+    corsOrigins = ['https://balejosg.github.io'];
 }
 
 app.use(cors({
-    origin: corsOrigins === '*' ? '*' : corsOrigins.split(',').map(o => o.trim()),
+    origin: corsOrigins.includes('*') ? '*' : corsOrigins,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'trpc-batch-mode'],
     credentials: true
@@ -125,8 +125,8 @@ app.use(cors({
 
 // Global rate limiter (skipped in test environment for rapid test execution)
 const globalLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: parseInt(process.env.RATE_LIMIT_MAX ?? '200', 10),
+    windowMs: config.globalRateLimitWindowMs,
+    max: config.globalRateLimitMax,
     message: {
         success: false,
         error: 'Too many requests from this IP, please try again later',
@@ -134,17 +134,16 @@ const globalLimiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
-    skip: (req) => req.path === '/health' || process.env.NODE_ENV === 'test'
+    skip: (req) => req.path === '/health' || config.isTest
 });
 app.use(globalLimiter);
 
 // Endpoint-specific rate limiters for sensitive operations
 // Skip in test environment to allow rapid test execution
-const isTest = process.env.NODE_ENV === 'test';
 
 const authLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 10, // 10 auth attempts per minute
+    windowMs: config.authRateLimitWindowMs,
+    max: config.authRateLimitMax,
     message: {
         success: false,
         error: 'Too many authentication attempts, please try again later',
@@ -153,7 +152,7 @@ const authLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => req.ip ?? 'unknown',
-    skip: () => isTest
+    skip: () => config.isTest
 });
 
 const publicRequestLimiter = rateLimit({
@@ -167,7 +166,7 @@ const publicRequestLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => req.ip ?? 'unknown',
-    skip: () => isTest
+    skip: () => config.isTest
 });
 
 // Apply auth rate limiter to auth endpoints
@@ -349,17 +348,17 @@ if (isMainModule) {
                 }
             }
 
-            console.log('');
-            console.log('╔═══════════════════════════════════════════════════════╗');
-            console.log('║       🛡️  OpenPath Request API Server                 ║');
-            console.log('╚═══════════════════════════════════════════════════════╝');
-            console.log(`  🚀 Server is running on http://${HOST}:${String(PORT)}`);
+            logger.info('');
+            logger.info('╔═══════════════════════════════════════════════════════╗');
+            logger.info('║       OpenPath Request API Server                     ║');
+            logger.info('╚═══════════════════════════════════════════════════════╝');
+            logger.info(`Server is running on http://${HOST}:${String(PORT)}`);
             if (swaggerUi) {
-                console.log(`  📜 API Documentation:  http://${HOST}:${String(PORT)}/docs`);
+                logger.info(`API Documentation: http://${HOST}:${String(PORT)}/docs`);
             }
-            console.log(`  👉 Health Check:        http://${HOST}:${String(PORT)}/health`);
-            console.log('─────────────────────────────────────────────────────────');
-            console.log('');
+            logger.info(`Health Check: http://${HOST}:${String(PORT)}/health`);
+            logger.info('─────────────────────────────────────────────────────────');
+            logger.info('');
         })();
     });
     if (process.env.ADMIN_TOKEN === undefined || process.env.ADMIN_TOKEN === '') {

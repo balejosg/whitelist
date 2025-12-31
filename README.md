@@ -1,5 +1,8 @@
 # OpenPath
 
+[![CI](https://github.com/balejosg/openpath/actions/workflows/ci.yml/badge.svg)](https://github.com/balejosg/openpath/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/balejosg/openpath/branch/main/graph/badge.svg)](https://codecov.io/gh/balejosg/openpath)
+
 **Strict Internet Access Control. Zero Administration Headaches.**
 
 OpenPath is a robust, "default-deny" internet access control system designed for classrooms, laboratories, and corporate environments. It blocks everything by default, allowing only explicitly approved domains.

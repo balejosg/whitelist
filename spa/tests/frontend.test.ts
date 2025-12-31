@@ -65,7 +65,7 @@ interface User {
 }
 
 interface AuthMock {
-    user?: User;
+    user: User | undefined;
     getUser(): User | undefined;
     isAdmin(): boolean;
     hasRole(role: string): boolean;

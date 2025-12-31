@@ -12,6 +12,14 @@ import {
 } from '../../types/index.js';
 
 export const authRouter = router({
+    /**
+     * Register a new user.
+     * Public endpoint.
+     *
+     * @param input.email - User email
+     * @param input.name - User full name
+     * @param input.password - User password
+     */
     register: publicProcedure
         .input(CreateUserDTOSchema)
         .mutation(async ({ input }) => {
@@ -27,6 +35,13 @@ export const authRouter = router({
             }
         }),
 
+    /**
+     * Log in user and return JWT tokens.
+     * Public endpoint.
+     *
+     * @param input.email - User email
+     * @param input.password - User password
+     */
     login: publicProcedure
         .input(LoginDTOSchema)
         .mutation(async ({ input }) => {
@@ -64,6 +79,12 @@ export const authRouter = router({
             }
         }),
 
+    /**
+     * Refresh access token using refresh token.
+     * Rotates refresh token (if enabled).
+     *
+     * @param input.refreshToken - Valid refresh token
+     */
     refresh: publicProcedure
         .input(z.object({ refreshToken: z.string() }))
         .mutation(async ({ input }) => {
@@ -78,6 +99,12 @@ export const authRouter = router({
             return auth.generateTokens(user, roles.map(r => ({ role: r.role as 'admin' | 'teacher' | 'student', groupIds: r.groupIds ?? [] })));
         }),
 
+    /**
+     * Logout user.
+     * Blacklists access/refresh tokens.
+     *
+     * @param input.refreshToken - Optional refresh token to invalidate
+     */
     logout: protectedProcedure
         .input(z.object({ refreshToken: z.string().optional() }))
         .mutation(async ({ input, ctx }) => {
@@ -87,6 +114,10 @@ export const authRouter = router({
             return { success: true };
         }),
 
+    /**
+     * Get current user profile.
+     * Protected endpoint.
+     */
     me: protectedProcedure.query(async ({ ctx }) => {
         const user = await userStorage.getUserById(ctx.user.sub);
         if (!user) throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });

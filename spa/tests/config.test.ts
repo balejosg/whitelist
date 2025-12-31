@@ -13,7 +13,7 @@ import type { SPAConfig } from '../src/types/index.js';
 // =============================================================================
 
 class MockLocalStorage {
-    private store: Map<string, string> = new Map();
+    private store = new Map<string, string>();
 
     getItem(key: string): string | null {
         return this.store.get(key) ?? null;

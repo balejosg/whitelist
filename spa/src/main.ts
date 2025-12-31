@@ -11,11 +11,12 @@ import { loadDashboard, renderRules, saveCurrentGroup, deleteGroup } from './mod
 import { Config } from './config.js';
 import { GitHubAPI } from './github-api.js';
 import { WhitelistParser } from './openpath-parser.js';
+import { logger } from './lib/logger.js';
 import type { GroupData } from './types/index.js';
 
 // Initialize application
 document.addEventListener('DOMContentLoaded', () => void (async () => {
-    console.warn('OpenPath SPA initializing...');
+    logger.info('OpenPath SPA initializing...');
 
     // Initialize UI listeners
     initTheme();
@@ -31,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => void (async () => {
     try {
         await PushManager.init();
     } catch (e) {
-        console.warn('Push init failed:', e);
+        logger.warn('Push init failed', { error: e instanceof Error ? e.message : String(e) });
     }
 })());
 
@@ -95,7 +96,7 @@ function initMainListeners() {
                 showToast('Notifications enabled! You will receive alerts when a student requests access.');
             }
         } catch (err: unknown) {
-            console.error('Push notification error:', err);
+            logger.error('Push notification error', { error: err instanceof Error ? err.message : String(err) });
             if (icon) icon.textContent = '🔕';
             if (err instanceof Error) {
                 if (err.message.includes('denied')) {

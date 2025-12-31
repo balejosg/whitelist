@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a **multi-platform DNS-based URL whitelist enforcement system** (v3.5) that uses DNS sinkhole technology to restrict network access to only whitelisted domains. It's designed for educational environments to control internet access on workstations.
+This is a **multi-platform DNS-based URL whitelist enforcement system** (v4.1.0) that uses DNS sinkhole technology to restrict network access to only whitelisted domains. It's designed for educational environments to control internet access on workstations.
 
 **Supported Platforms:**
 - **Linux**: Uses `dnsmasq` as DNS sinkhole with iptables firewall
@@ -76,20 +76,34 @@ All functionality is split into reusable libraries in `/usr/local/lib/openpath/l
 ### Home Server API (api)
 
 9. **Request API** (`api/`)
-   - Express.js REST API for domain requests
+   - Express.js + tRPC API for domain requests
    - Designed for home server deployment (Raspberry Pi, NAS, Docker)
-   - Endpoints:
-     - `POST /api/requests` - Submit domain request (public)
-     - `GET /api/requests` - List pending requests (admin)
-     - `POST /api/requests/:id/approve` - Approve and push to GitHub (admin)
-     - `POST /api/requests/:id/reject` - Reject request (admin)
-   - Uses JSON file storage (`data/requests.json`)
+   - tRPC routers: `auth`, `users`, `requests`, `classrooms`, `schedules`, `push`
+   - PostgreSQL database with Drizzle ORM
+   - JWT authentication with role-based access control
+   - Push notifications for teachers (Web Push API)
    - Integrates with GitHub API to push approved domains
    - Exposed via DuckDNS + port forwarding (or Cloudflare Tunnel)
 
+### Database Layer
+
+10. **PostgreSQL Database** (`api/src/db/`)
+    - Drizzle ORM for type-safe queries
+    - Schema in `api/src/db/schema.ts`
+    - Migrations via `drizzle-kit`
+    - Tables: users, roles, requests, classrooms, schedules, push_subscriptions
+
+### Classroom Management
+
+11. **Classroom System** (`api/src/trpc/routers/`)
+    - Classroom CRUD operations
+    - Schedule reservations (US2)
+    - Teacher delegation approval (US3)
+    - Push notifications for new requests (US5)
+
 ### Firefox Extension (firefox-extension)
 
-10. **Network Block Monitor**
+12. **Network Block Monitor**
     - Detects DNS/firewall blocks in real-time
     - Shows blocked domains per tab with badge count
     - Native Messaging integration for local whitelist verification
@@ -97,9 +111,9 @@ All functionality is split into reusable libraries in `/usr/local/lib/openpath/l
 
 ### Windows Implementation (windows)
 
-11. **Acrylic DNS Proxy** - Windows DNS sinkhole equivalent
-12. **Windows Firewall** - PowerShell-managed firewall rules
-13. **Task Scheduler** - Scheduled updates and watchdog
+13. **Acrylic DNS Proxy** - Windows DNS sinkhole equivalent
+14. **Windows Firewall** - PowerShell-managed firewall rules
+15. **Task Scheduler** - Scheduled updates and watchdog
 
 ## Installation Paths
 
@@ -125,7 +139,7 @@ All functionality is split into reusable libraries in `/usr/local/lib/openpath/l
 
 ### Building and Testing
 
-There is no build process. This is a bash-based system.
+There is no build process for the Linux agent (Bash). However, the TypeScript workspaces (api, spa, dashboard, etc.) DO require a build step (`npm run build`).
 
 **Install the system:**
 ```bash
@@ -327,12 +341,19 @@ If the order is reversed, the whitelist won't work. The `address=/#/` directive 
 
 ## Version History
 
-Current version: **3.5**
+Current version: **4.1.0**
+
+Key changes from v3.x:
+- PostgreSQL database (replaces JSON file storage)
+- tRPC API layer with type-safe routers
+- Classroom management system
+- Teacher delegation approval workflow
+- Push notifications for teachers
+- JWT authentication with RBAC
 
 Version is stored in:
-- `install.sh` - `VERSION="3.5"`
-- `lib/common.sh` - `VERSION="3.5"`
-- Comments in all major scripts
+- `lib/common.sh` - `VERSION="4.1.0"`
+- `CHANGELOG.md` - Full release history
 
 ## Testing
 
@@ -348,15 +369,48 @@ cd tests && bats *.bats
 - Linux: `tests/e2e/linux-e2e-tests.sh`
 - Windows: `tests/e2e/Windows-E2E.Tests.ps1`
 
-### Web API Tests
+### API Tests (TypeScript)
+```bash
+npm run test --workspace=@openpath/api           # All tests
+npm run test:coverage --workspace=@openpath/api  # With coverage
+npm run test:security --workspace=@openpath/api  # Security tests
+```
+
+### Dashboard Tests
 ```bash
 cd dashboard && npm test
 ```
 
 ### CI/CD
 Workflows in `.github/workflows/`:
-- `ci.yml` - BATS tests, web tests
-- `lint.yml` - ShellCheck and ESLint linting
+- `ci.yml` - BATS tests, web tests, Windows Pester tests
+- `lint.yml` - ShellCheck, ESLint, PSScriptAnalyzer linting
 - `e2e-tests.yml` - Full E2E on Linux/Windows
 - `deploy.yml` - GitHub Pages deployment
 - `deploy-api.yml` - API deployment
+
+## Quality Improvement Work
+
+**For AI assistants continuing quality work, see `docs/IMPLEMENTATION-GUIDE.md`**
+
+### Completed (Phase 0)
+- Winston logging in API (34 console calls migrated)
+- Windows CI integration (PSScriptAnalyzer + Pester)
+- Coverage infrastructure (Codecov + badges)
+- Version sync (4.1.0)
+
+### Remaining Gaps
+| Gap | Status | Priority |
+|-----|--------|----------|
+| Console logging (spa/extension/dashboard) | Not started | High |
+| Tests for shared/, auth-worker/ | Not started | Critical |
+| JSDoc documentation | Not started | Medium |
+| Config extraction | Not started | Medium |
+| tsconfig standardization | Not started | Low |
+| tRPC documentation | Not started | Low |
+
+### Verification
+```bash
+npm run verify    # Lint + typecheck + tests (all packages)
+cd tests && bats *.bats   # Shell tests
+```

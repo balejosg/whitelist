@@ -23,6 +23,8 @@ const testFiles: readonly string[] = [
     'tests/blocked-domains.test.ts',
     'tests/classrooms.test.ts',
     'tests/push.test.ts',
+    'tests/github.test.ts',
+    'tests/security.test.ts',
     'tests/integration.test.ts',
     'tests/e2e.test.ts'
 ];

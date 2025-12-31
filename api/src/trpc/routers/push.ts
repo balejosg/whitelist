@@ -3,6 +3,7 @@ import { router, publicProcedure, protectedProcedure } from '../trpc.js';
 import { TRPCError } from '@trpc/server';
 import * as push from '../../lib/push.js';
 import * as auth from '../../lib/auth.js';
+import { logger } from '../../lib/logger.js';
 
 export const pushRouter = router({
     // Backwards-compatible alias (older clients/tests)
@@ -85,7 +86,11 @@ export const pushRouter = router({
                     groupIds: record.groupIds,
                 };
             } catch (error) {
-                console.error('Error saving subscription:', error);
+                logger.error('Error saving subscription', {
+                    error: error instanceof Error ? error.message : String(error),
+                    userId: ctx.user.sub,
+                    endpoint: input.subscription.endpoint.substring(0, 50)
+                });
                 throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to save subscription' });
             }
         }),
