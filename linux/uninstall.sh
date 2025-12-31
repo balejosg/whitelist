@@ -203,7 +203,7 @@ rm -f /etc/opt/chrome/policies/managed/url-whitelist.json 2>/dev/null || true
 
 # Eliminar extensión de Firefox
 echo "  Eliminando extensión Firefox..."
-rm -rf /usr/share/mozilla/extensions/{ec8030f7-c20a-464f-9b0e-13a3a9e97384}/monitor-bloqueos@whitelist-system 2>/dev/null || true
+rm -rf "/usr/share/mozilla/extensions/{ec8030f7-c20a-464f-9b0e-13a3a9e97384}/monitor-bloqueos@whitelist-system" 2>/dev/null || true
 rm -f /usr/lib/mozilla/native-messaging-hosts/whitelist_native_host.json 2>/dev/null || true
 
 # Eliminar autoconfig de Firefox (restaurar verificación de firmas)
@@ -225,7 +225,8 @@ detect_captive_portal() {
     # Verificar si hay gateway accesible
     if [ -n "$GATEWAY" ] && ping -c 1 -W 2 "$GATEWAY" >/dev/null 2>&1; then
         # Intentar detectar portal cautivo via HTTP
-        local response=$(curl -s -m 5 -o /dev/null -w "%{http_code}" "http://detectportal.firefox.com/success.txt" 2>/dev/null)
+        local response
+        response=$(curl -s -m 5 -o /dev/null -w "%{http_code}" "http://detectportal.firefox.com/success.txt" 2>/dev/null)
         # 200 = sin portal (autenticado), 302/301/otros = portal cautivo
         if [ "$response" = "200" ]; then
             return 1  # No hay portal cautivo (o ya autenticado)
@@ -291,6 +292,7 @@ if [ "$CONN_OK" = true ] && [ "$DNS_OK" = false ]; then
         echo "  Reconfigurado a systemd-resolved"
     else
         # systemd-resolved no funciona, usar gateway directamente
+        local FALLBACK_DNS
         FALLBACK_DNS=$(get_fallback_dns)
         cat > /etc/resolv.conf << EOF
 nameserver $FALLBACK_DNS

@@ -83,7 +83,8 @@ test_port_53() {
     test_section "2/6" "Puerto 53"
     
     if ss -ulnp 2>/dev/null | grep -q ":53 "; then
-        local proc=$(ss -ulnp 2>/dev/null | grep ":53 " | grep -oP 'users:\(\("\K[^"]+')
+        local proc
+        proc=$(ss -ulnp 2>/dev/null | grep ":53 " | grep -oP 'users:\(\("\K[^"]+')
         test_pass "Puerto 53 UDP escuchando ($proc)"
     else
         # In Docker/CI environments, DNS may work via --dns flag without local port 53
@@ -100,7 +101,8 @@ test_dns_resolves_whitelisted() {
     local all_ok=true
     
     for domain in "${test_domains[@]}"; do
-        local result=$(timeout 3 dig @127.0.0.1 "$domain" +short 2>/dev/null | head -1)
+        local result
+        result=$(timeout 3 dig @127.0.0.1 "$domain" +short 2>/dev/null | head -1)
         if [ -n "$result" ]; then
             test_pass "$domain → $result"
         else
@@ -120,7 +122,8 @@ test_dns_blocks_unknown() {
     local all_ok=true
     
     for domain in "${blocked_domains[@]}"; do
-        local result=$(timeout 3 dig @127.0.0.1 "$domain" +short 2>/dev/null | head -1)
+        local result
+        result=$(timeout 3 dig @127.0.0.1 "$domain" +short 2>/dev/null | head -1)
         if [ -z "$result" ] || [ "$result" == "127.0.0.1" ] || [ "$result" == "0.0.0.0" ]; then
             test_pass "$domain bloqueado correctamente"
         else
@@ -141,7 +144,8 @@ test_firewall_rules() {
     fi
     
     # Verificar que hay reglas en OUTPUT
-    local rules_count=$(iptables -L OUTPUT -n 2>/dev/null | wc -l)
+    local rules_count
+    rules_count=$(iptables -L OUTPUT -n 2>/dev/null | wc -l)
     if [ "$rules_count" -gt 3 ]; then
         test_pass "Firewall configurado ($((rules_count - 2)) reglas en OUTPUT)"
     else
@@ -169,7 +173,8 @@ test_config_files() {
     fi
     
     if [ -f /var/lib/openpath/whitelist.txt ]; then
-        local count=$(grep -v "^#" /var/lib/openpath/whitelist.txt 2>/dev/null | grep -v "^$" | wc -l)
+        local count
+        count=$(grep -v "^#" /var/lib/openpath/whitelist.txt 2>/dev/null | grep -v "^$" | wc -l)
         test_pass "Whitelist descargada ($count dominios)"
     else
         test_warn "Whitelist no descargada aún (el timer lo hará)"

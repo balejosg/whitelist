@@ -44,7 +44,8 @@ get_fail_count() {
 }
 
 increment_fail_count() {
-    local count=$(get_fail_count)
+    local count
+    count=$(get_fail_count)
     echo $((count + 1)) > "$FAIL_COUNT_FILE"
 }
 
@@ -76,7 +77,8 @@ recover_upstream_dns() {
         "$SCRIPTS_DIR/dnsmasq-init-resolv.sh"
     else
         mkdir -p /run/dnsmasq
-        local dns=$(cat "$ORIGINAL_DNS_FILE" 2>/dev/null | head -1)
+        local dns
+        dns=$(cat "$ORIGINAL_DNS_FILE" 2>/dev/null | head -1)
         [ -z "$dns" ] && dns="8.8.8.8"
         echo "nameserver $dns" > /run/dnsmasq/resolv.conf
         echo "nameserver 8.8.8.8" >> /run/dnsmasq/resolv.conf
@@ -98,7 +100,8 @@ EOF
 main() {
     local status="OK"
     local actions=""
-    local fail_count=$(get_fail_count)
+    local fail_count
+    fail_count=$(get_fail_count)
     
     # Protección contra loop infinito de reinicios
     if [ "$fail_count" -ge "$MAX_CONSECUTIVE_FAILS" ]; then
@@ -220,14 +223,17 @@ report_health_to_api() {
         return 0
     fi
 
-    local api_url=$(cat "$api_url_file")
+    local api_url
+    api_url=$(cat "$api_url_file")
     local shared_secret=""
     [ -f "$shared_secret_file" ] && shared_secret=$(cat "$shared_secret_file")
 
-    local hostname=$(hostname)
+    local hostname
+    hostname=$(hostname)
 
     # Build tRPC payload with json wrapper
-    local payload=$(cat << EOF
+    local payload
+    payload=$(cat << EOF
 {"json": {
     "hostname": "$hostname",
     "status": "$status",
@@ -241,13 +247,17 @@ EOF
 )
 
     # Send report to tRPC endpoint (fire and forget, don't block watchdog)
-    local auth_header=""
-    [ -n "$shared_secret" ] && auth_header="-H \"Authorization: Bearer $shared_secret\""
-
-    timeout 5 curl -s -X POST "$api_url/trpc/healthReports.submit" \
-        -H "Content-Type: application/json" \
-        $auth_header \
-        -d "$payload" >/dev/null 2>&1 &
+    # Build curl command with optional auth header
+    if [ -n "$shared_secret" ]; then
+        timeout 5 curl -s -X POST "$api_url/trpc/healthReports.submit" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $shared_secret" \
+            -d "$payload" >/dev/null 2>&1 &
+    else
+        timeout 5 curl -s -X POST "$api_url/trpc/healthReports.submit" \
+            -H "Content-Type: application/json" \
+            -d "$payload" >/dev/null 2>&1 &
+    fi
 }
 
 # Attempt rollback before entering fail-open mode
@@ -255,7 +265,8 @@ attempt_rollback_recovery() {
     log "[WATCHDOG] Intentando restaurar desde checkpoint antes de entrar en modo fail-open..."
     
     if has_checkpoint; then
-        local prev=$(get_previous_checkpoint)
+        local prev
+        prev=$(get_previous_checkpoint)
         if [ -n "$prev" ]; then
             restore_checkpoint "$prev"
             sleep 3

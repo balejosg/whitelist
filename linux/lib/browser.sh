@@ -361,16 +361,18 @@ detect_firefox_dir() {
     )
     
     for dir in "${dirs[@]}"; do
-        if [ -d "$dir" ] && [ -f "$dir/firefox" -o -f "$dir/firefox-bin" ]; then
+        if [ -d "$dir" ] && { [ -f "$dir/firefox" ] || [ -f "$dir/firefox-bin" ]; }; then
             echo "$dir"
             return 0
         fi
     done
     
     # Fallback: find firefox binary and get its directory
-    local firefox_bin=$(which firefox-esr 2>/dev/null || which firefox 2>/dev/null)
+    local firefox_bin
+    firefox_bin=$(which firefox-esr 2>/dev/null || which firefox 2>/dev/null)
     if [ -n "$firefox_bin" ]; then
-        local real_path=$(readlink -f "$firefox_bin")
+        local real_path
+        real_path=$(readlink -f "$firefox_bin")
         dirname "$real_path"
         return 0
     fi
@@ -380,7 +382,8 @@ detect_firefox_dir() {
 
 # Generate Firefox autoconfig to disable signature requirements
 generate_firefox_autoconfig() {
-    local firefox_dir=$(detect_firefox_dir)
+    local firefox_dir
+    firefox_dir=$(detect_firefox_dir)
     
     if [ -z "$firefox_dir" ]; then
         log "⚠ Firefox not detected, skipping autoconfig"
@@ -605,7 +608,8 @@ PYEOF
     rm -f "/usr/local/lib/openpath/openpath-native-host.py" 2>/dev/null || true
     
     # Remove autoconfig
-    local firefox_dir=$(detect_firefox_dir 2>/dev/null)
+    local firefox_dir
+    firefox_dir=$(detect_firefox_dir 2>/dev/null)
     if [ -n "$firefox_dir" ]; then
         rm -f "$firefox_dir/defaults/pref/autoconfig.js" 2>/dev/null || true
         rm -f "$firefox_dir/mozilla.cfg" 2>/dev/null || true

@@ -136,7 +136,8 @@ configure_resolv_conf() {
     
     # Backup if symlink
     if [ -L /etc/resolv.conf ]; then
-        local target=$(readlink -f /etc/resolv.conf)
+        local target
+        target=$(readlink -f /etc/resolv.conf)
         echo "$target" > "$CONFIG_DIR/resolv.conf.symlink.backup"
         rm -f /etc/resolv.conf
     elif [ -f /etc/resolv.conf ]; then
@@ -330,7 +331,8 @@ EOF
 
 # Validate dnsmasq configuration
 validate_dnsmasq_config() {
-    local output=$(dnsmasq --test 2>&1)
+    local output
+    output=$(dnsmasq --test 2>&1)
     if echo "$output" | grep -qi "syntax check OK\|sintaxis correcta"; then
         return 0
     else
@@ -374,7 +376,8 @@ restore_dns() {
     chattr -i /etc/resolv.conf 2>/dev/null || true
     
     if [ -f "$CONFIG_DIR/resolv.conf.symlink.backup" ]; then
-        local target=$(cat "$CONFIG_DIR/resolv.conf.symlink.backup")
+        local target
+        target=$(cat "$CONFIG_DIR/resolv.conf.symlink.backup")
         ln -sf "$target" /etc/resolv.conf
     elif [ -f "$CONFIG_DIR/resolv.conf.backup" ]; then
         cp "$CONFIG_DIR/resolv.conf.backup" /etc/resolv.conf

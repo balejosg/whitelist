@@ -41,7 +41,7 @@ ROOT_COMMANDS="update health force enable disable restart"
 # Auto-elevar a root si el comando lo requiere
 auto_elevate() {
     local cmd="${1:-status}"
-    if [[ " $ROOT_COMMANDS " =~ " $cmd " ]] && [ "$EUID" -ne 0 ]; then
+    if [[ " $ROOT_COMMANDS " =~ \ $cmd\  ]] && [ "$EUID" -ne 0 ]; then
         exec sudo "$0" "$@"
     fi
 }
@@ -74,14 +74,16 @@ cmd_status() {
     fi
     
     if [ -f /run/dnsmasq/resolv.conf ]; then
-        local upstream=$(grep "^nameserver" /run/dnsmasq/resolv.conf | head -1 | awk '{print $2}')
+        local upstream
+        upstream=$(grep "^nameserver" /run/dnsmasq/resolv.conf | head -1 | awk '{print $2}')
         echo "  DNS upstream: $upstream"
     fi
     
     echo ""
     echo -e "${YELLOW}Whitelist:${NC}"
     if [ -f "$WHITELIST_FILE" ]; then
-        local domains=$(grep -v "^#" "$WHITELIST_FILE" 2>/dev/null | grep -v "^$" | wc -l)
+        local domains
+        domains=$(grep -v "^#" "$WHITELIST_FILE" 2>/dev/null | grep -v "^$" | wc -l)
         echo "  Dominios: $domains"
     fi
     echo ""
@@ -100,7 +102,8 @@ cmd_test() {
     
     for domain in google.com github.com duckduckgo.com; do
         echo -n "  $domain: "
-        local result=$(timeout 3 dig @127.0.0.1 "$domain" +short 2>/dev/null | head -1)
+        local result
+        result=$(timeout 3 dig @127.0.0.1 "$domain" +short 2>/dev/null | head -1)
         if [ -n "$result" ]; then
             echo -e "${GREEN}✓${NC} ($result)"
         else
@@ -151,7 +154,8 @@ cmd_check() {
     fi
     
     echo -n "  Resuelve: "
-    local result=$(timeout 3 dig @127.0.0.1 "$domain" +short 2>/dev/null | head -1)
+    local result
+    result=$(timeout 3 dig @127.0.0.1 "$domain" +short 2>/dev/null | head -1)
     if [ -n "$result" ]; then
         echo -e "${GREEN}✓${NC} → $result"
     else
@@ -218,8 +222,10 @@ cmd_health() {
     # Whitelist freshness
     echo -e "${YELLOW}Whitelist:${NC}"
     if [ -f "$WHITELIST_FILE" ]; then
-        local age=$(($(date +%s) - $(stat -c %Y "$WHITELIST_FILE")))
-        local domains=$(grep -v "^#" "$WHITELIST_FILE" 2>/dev/null | grep -v "^$" | wc -l)
+        local age
+        age=$(($(date +%s) - $(stat -c %Y "$WHITELIST_FILE")))
+        local domains
+        domains=$(grep -v "^#" "$WHITELIST_FILE" 2>/dev/null | grep -v "^$" | wc -l)
         echo "  Domains: $domains"
         if [ "$age" -lt 600 ]; then
             echo -e "  Freshness: ${GREEN}✓ fresh (${age}s old)${NC}"

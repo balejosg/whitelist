@@ -22,8 +22,8 @@ set -o pipefail
 # Part of the OpenPath DNS system v3.5
 ################################################################################
 
-# System version
-VERSION="3.5"
+# System version - exported for use by other scripts
+export VERSION="3.5"
 
 # Source configurable defaults (must be early, before other variables)
 # Try installed location first, then source directory
@@ -35,9 +35,9 @@ elif [ -f "$(dirname "${BASH_SOURCE[0]}")/defaults.conf" ]; then
     source "$(dirname "${BASH_SOURCE[0]}")/defaults.conf"
 fi
 
-# Directories and files
-INSTALL_DIR="/usr/local/lib/openpath"
-SCRIPTS_DIR="/usr/local/bin"
+# Directories and files - exported for use by other scripts
+export INSTALL_DIR="/usr/local/lib/openpath"
+export SCRIPTS_DIR="/usr/local/bin"
 
 # Debian FHS compliant paths:
 # - /etc/ for configuration (preserved on upgrade)
@@ -61,8 +61,8 @@ BROWSER_POLICIES_HASH="$VAR_STATE_DIR/browser-policies.hash"
 SYSTEM_DISABLED_FLAG="$VAR_STATE_DIR/system-disabled.flag"
 WHITELIST_FILE="$VAR_STATE_DIR/whitelist.txt"
 
-# Legacy compatibility (for migration)
-CONFIG_DIR="$VAR_STATE_DIR"
+# Legacy compatibility (for migration) - exported for use by other scripts
+export CONFIG_DIR="$VAR_STATE_DIR"
 
 # Browser policies
 FIREFOX_POLICIES="/etc/firefox/policies/policies.json"
@@ -72,10 +72,10 @@ CHROMIUM_POLICIES_BASE="/etc/chromium/policies/managed"
 # Keep as fallback if defaults.conf not loaded
 DEFAULT_WHITELIST_URL="${DEFAULT_WHITELIST_URL:-https://raw.githubusercontent.com/LasEncinasIT/Whitelist-por-aula/refs/heads/main/Informatica%203.txt}"
 
-# Global variables (initialized at runtime)
-PRIMARY_DNS=""
-GATEWAY_IP=""
-DNS_CHANGED=false
+# Global variables (initialized at runtime) - exported for use by other scripts
+export PRIMARY_DNS=""
+export GATEWAY_IP=""
+export DNS_CHANGED=false
 
 # Arrays for whitelist parsing
 WHITELIST_DOMAINS=()

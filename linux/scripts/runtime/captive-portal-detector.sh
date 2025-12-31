@@ -50,7 +50,9 @@ modify_firewall_locked() {
         return 1
     fi
 
+    # Set PRIMARY_DNS for firewall functions to use
     PRIMARY_DNS=$(detect_primary_dns)
+    export PRIMARY_DNS
 
     if [ "$action" = "activate" ]; then
         activate_firewall

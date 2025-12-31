@@ -53,8 +53,11 @@ get_current_checkpoint() {
 # Usage: save_checkpoint [optional_label]
 save_checkpoint() {
     local label="${1:-auto}"
-    local timestamp=$(date +%Y%m%d-%H%M%S)
-    local current=$(get_current_checkpoint)
+    local timestamp
+    timestamp=$(date +%Y%m%d-%H%M%S)
+    # shellcheck disable=SC2034  # timestamp used for logging/metadata
+    local current
+    current=$(get_current_checkpoint)
     local next=$(( (current + 1) % MAX_CHECKPOINTS ))
     local checkpoint_name="checkpoint-${next}"
     local checkpoint_path="$CHECKPOINT_DIR/$checkpoint_name"
@@ -69,7 +72,8 @@ save_checkpoint() {
     local saved=0
     for file in "${CHECKPOINT_FILES[@]}"; do
         if [ -f "$file" ]; then
-            local dest_dir="$checkpoint_path$(dirname "$file")"
+            local dest_dir
+            dest_dir="$checkpoint_path$(dirname "$file")"
             mkdir -p "$dest_dir"
             cp -p "$file" "$dest_dir/" 2>/dev/null && saved=$((saved + 1))
         fi
@@ -97,12 +101,13 @@ EOF
 restore_checkpoint() {
     local target="${1:-}"
     local checkpoint_path
-    
+
     if [ -n "$target" ]; then
         checkpoint_path="$CHECKPOINT_DIR/checkpoint-$target"
     else
         # Find most recent checkpoint
-        local current=$(get_current_checkpoint)
+        local current
+        current=$(get_current_checkpoint)
         checkpoint_path="$CHECKPOINT_DIR/checkpoint-$current"
     fi
     
@@ -121,7 +126,8 @@ restore_checkpoint() {
     for file in "${CHECKPOINT_FILES[@]}"; do
         local src="$checkpoint_path$file"
         if [ -f "$src" ]; then
-            local dest_dir=$(dirname "$file")
+            local dest_dir
+            dest_dir=$(dirname "$file")
             mkdir -p "$dest_dir"
             cp -p "$src" "$file" 2>/dev/null && restored=$((restored + 1))
         fi
@@ -142,9 +148,12 @@ list_checkpoints() {
     for i in $(seq 0 $((MAX_CHECKPOINTS - 1))); do
         local cp_path="$CHECKPOINT_DIR/checkpoint-$i"
         if [ -d "$cp_path" ] && [ -f "$cp_path/metadata.json" ]; then
-            local ts=$(grep -o '"timestamp": "[^"]*"' "$cp_path/metadata.json" | cut -d'"' -f4)
-            local label=$(grep -o '"label": "[^"]*"' "$cp_path/metadata.json" | cut -d'"' -f4)
-            local current=$(get_current_checkpoint)
+            local ts
+            ts=$(grep -o '"timestamp": "[^"]*"' "$cp_path/metadata.json" | cut -d'"' -f4)
+            local label
+            label=$(grep -o '"label": "[^"]*"' "$cp_path/metadata.json" | cut -d'"' -f4)
+            local current
+            current=$(get_current_checkpoint)
             local marker=""
             [ "$i" = "$current" ] && marker=" <- current"
             echo "  [$i] $ts ($label)$marker"
@@ -163,7 +172,8 @@ has_checkpoint() {
 
 # Get previous checkpoint (for rollback)
 get_previous_checkpoint() {
-    local current=$(get_current_checkpoint)
+    local current
+    current=$(get_current_checkpoint)
     local previous=$(( (current - 1 + MAX_CHECKPOINTS) % MAX_CHECKPOINTS ))
     
     if [ -d "$CHECKPOINT_DIR/checkpoint-$previous" ]; then

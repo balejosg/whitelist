@@ -320,7 +320,8 @@ flush_dns_cache() {
 
 # Check firewall status
 check_firewall_status() {
-    local rules=$(iptables -L OUTPUT -n 2>/dev/null | grep "DROP.*dpt:53" | wc -l)
+    local rules
+    rules=$(iptables -L OUTPUT -n 2>/dev/null | grep "DROP.*dpt:53" | wc -l)
     if [ "$rules" -ge 2 ]; then
         echo "active"
         return 0

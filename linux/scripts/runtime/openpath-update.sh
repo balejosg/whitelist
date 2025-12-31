@@ -56,19 +56,23 @@ source "$INSTALL_DIR/lib/rollback.sh"
 get_whitelist_url() {
     # Modo Aula: obtener URL dinámica desde API
     if [ -f "$ETC_CONFIG_DIR/api-url.conf" ] && [ -f "$ETC_CONFIG_DIR/classroom.conf" ]; then
-        local api_url=$(cat "$ETC_CONFIG_DIR/api-url.conf")
-        local hostname=$(hostname)
+        local api_url
+        api_url=$(cat "$ETC_CONFIG_DIR/api-url.conf")
+        local hostname
+        hostname=$(hostname)
         local secret=""
         if [ -f "$ETC_CONFIG_DIR/api-secret.conf" ]; then
             secret=$(cat "$ETC_CONFIG_DIR/api-secret.conf")
         fi
-        
-        local response=$(timeout 10 curl -s \
+
+        local response
+        response=$(timeout 10 curl -s \
             -H "Authorization: Bearer $secret" \
             "$api_url/api/classrooms/machines/$hostname/whitelist-url" 2>/dev/null)
-        
+
         if echo "$response" | grep -q '"success":true'; then
-            local dynamic_url=$(echo "$response" | grep -o '"url":"[^"]*"' | cut -d'"' -f4)
+            local dynamic_url
+            dynamic_url=$(echo "$response" | grep -o '"url":"[^"]*"' | cut -d'"' -f4)
             if [ -n "$dynamic_url" ]; then
                 log "Modo Aula: URL dinámica obtenida del API"
                 echo "$dynamic_url"
@@ -113,7 +117,8 @@ download_whitelist() {
 # Verificar desactivación remota
 check_emergency_disable() {
     if [ -f "$WHITELIST_FILE" ]; then
-        local first_line=$(grep -v '^[[:space:]]*$' "$WHITELIST_FILE" | head -n 1)
+        local first_line
+        first_line=$(grep -v '^[[:space:]]*$' "$WHITELIST_FILE" | head -n 1)
         if echo "$first_line" | grep -iq "^#.*DESACTIVADO"; then
             return 0
         fi
@@ -174,9 +179,11 @@ has_config_changed() {
     if [ ! -f "$DNSMASQ_CONF_HASH" ]; then
         return 0
     fi
-    
-    local new_hash=$(sha256sum "$DNSMASQ_CONF" 2>/dev/null | cut -d' ' -f1)
-    local old_hash=$(cat "$DNSMASQ_CONF_HASH" 2>/dev/null)
+
+    local new_hash
+    new_hash=$(sha256sum "$DNSMASQ_CONF" 2>/dev/null | cut -d' ' -f1)
+    local old_hash
+    old_hash=$(cat "$DNSMASQ_CONF_HASH" 2>/dev/null)
     
     [ "$new_hash" != "$old_hash" ]
 }
@@ -254,7 +261,8 @@ main() {
 
     # Verificar si las políticas de navegador cambiaron
     # Comparar contra hash guardado de ejecución anterior, no contra hash pre-regeneración
-    local new_policies_hash=$(get_policies_hash)
+    local new_policies_hash
+    new_policies_hash=$(get_policies_hash)
     local old_policies_hash=""
     if [ -f "$BROWSER_POLICIES_HASH" ]; then
         old_policies_hash=$(cat "$BROWSER_POLICIES_HASH" 2>/dev/null)
