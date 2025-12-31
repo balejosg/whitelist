@@ -42,9 +42,10 @@ SCRIPTS_DIR="/usr/local/bin"
 # Debian FHS compliant paths:
 # - /etc/ for configuration (preserved on upgrade)
 # - /var/lib/ for state/cache (can be regenerated)
-ETC_CONFIG_DIR="/etc/openpath"
-VAR_STATE_DIR="/var/lib/openpath"
-LOG_FILE="/var/log/openpath.log"
+# Use defaults if not set (allows override for testing)
+ETC_CONFIG_DIR="${ETC_CONFIG_DIR:-/etc/openpath}"
+VAR_STATE_DIR="${VAR_STATE_DIR:-/var/lib/openpath}"
+LOG_FILE="${LOG_FILE:-/var/log/openpath.log}"
 
 # Configuration files (in /etc/, preserved on upgrade)
 WHITELIST_URL_CONF="$ETC_CONFIG_DIR/whitelist-url.conf"
@@ -53,7 +54,8 @@ HEALTH_API_SECRET_CONF="$ETC_CONFIG_DIR/health-api-secret.conf"
 ORIGINAL_DNS_FILE="$ETC_CONFIG_DIR/original-dns.conf"
 
 # State/cache files (in /var/lib/, regenerated)
-DNSMASQ_CONF="/etc/dnsmasq.d/openpath.conf"
+# Use default if not set (allows override for testing)
+DNSMASQ_CONF="${DNSMASQ_CONF:-/etc/dnsmasq.d/openpath.conf}"
 DNSMASQ_CONF_HASH="$VAR_STATE_DIR/dnsmasq.hash"
 BROWSER_POLICIES_HASH="$VAR_STATE_DIR/browser-policies.hash"
 SYSTEM_DISABLED_FLAG="$VAR_STATE_DIR/system-disabled.flag"

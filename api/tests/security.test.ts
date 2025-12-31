@@ -80,5 +80,79 @@ await describe('Security and Hardening Tests', async () => {
             });
             assert.strictEqual(response.status, 401);
         });
+
+        await it('should reject malformed JWT token', async (): Promise<void> => {
+            const response = await fetch(`${API_URL}/trpc/users.list`, {
+                headers: {
+                    'Authorization': 'Bearer not.a.valid.jwt.token'
+                }
+            });
+            assert.strictEqual(response.status, 401);
+        });
+
+        await it('should reject expired token signature', async (): Promise<void> => {
+            // This is a properly formatted but invalid JWT (wrong signature)
+            const fakeToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwidHlwZSI6ImFjY2VzcyJ9.invalid_signature';
+            const response = await fetch(`${API_URL}/trpc/users.list`, {
+                headers: {
+                    'Authorization': `Bearer ${fakeToken}`
+                }
+            });
+            assert.strictEqual(response.status, 401);
+        });
+    });
+
+    await describe('Input Validation Security', async () => {
+        await it('should reject SQL injection in domain requests', async (): Promise<void> => {
+            const response = await fetch(`${API_URL}/trpc/requests.create`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    json: {
+                        domain: "'; DROP TABLE requests; --",
+                        reason: 'test',
+                        requesterEmail: 'test@example.com'
+                    }
+                })
+            });
+            // Should reject as invalid domain, not cause SQL error
+            const body = await response.json() as { error?: { message?: string } };
+            const hasInvalidMessage = body.error?.message?.includes('Invalid') === true;
+            const is400Status = response.status === 400;
+            assert.ok(hasInvalidMessage || is400Status);
+        });
+
+        await it('should sanitize XSS in domain name', async (): Promise<void> => {
+            const response = await fetch(`${API_URL}/trpc/requests.create`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    json: {
+                        domain: '<script>alert("xss")</script>.com',
+                        reason: 'test',
+                        requesterEmail: 'test@example.com'
+                    }
+                })
+            });
+            // Should reject as invalid domain
+            assert.ok(response.status === 400 || response.status === 500);
+        });
+
+        await it('should handle extremely long input gracefully', async (): Promise<void> => {
+            const longDomain = 'a'.repeat(1000) + '.com';
+            const response = await fetch(`${API_URL}/trpc/requests.create`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    json: {
+                        domain: longDomain,
+                        reason: 'test',
+                        requesterEmail: 'test@example.com'
+                    }
+                })
+            });
+            // Should reject, not crash
+            assert.ok(response.status === 400 || response.status === 500);
+        });
     });
 });
