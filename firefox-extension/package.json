@@ -8,7 +8,7 @@
     "scripts": {
         "clean": "rm -rf dist",
         "prebuild": "npm run clean",
-        "build": "tsc",
+        "build": "tsc -p tsconfig.build.json",
         "typecheck": "tsc --noEmit",
         "lint": "eslint . --max-warnings=0",
         "lint:fix": "eslint . --fix",
