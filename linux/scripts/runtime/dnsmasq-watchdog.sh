@@ -173,7 +173,13 @@ EOF
                     recover_upstream_dns
                     recover_resolv_conf
                     systemctl restart dnsmasq
-                    sleep 3
+                    # Esperar a que dnsmasq esté listo (máx 5 segundos)
+                    for _ in $(seq 1 5); do
+                        if check_dnsmasq_running; then
+                            break
+                        fi
+                        sleep 1
+                    done
                     if check_dnsmasq_running; then
                         log "[WATCHDOG] ✓ dnsmasq reiniciado"
                         status="RECOVERED"
@@ -269,7 +275,14 @@ attempt_rollback_recovery() {
         prev=$(get_previous_checkpoint)
         if [ -n "$prev" ]; then
             restore_checkpoint "$prev"
-            sleep 3
+            
+            # Esperar a que el sistema se asiente tras el rollback (máx 5 segundos)
+            for _ in $(seq 1 5); do
+                if check_dnsmasq_running && check_dns_resolving; then
+                    break
+                fi
+                sleep 1
+            done
             
             # Check if rollback fixed the issue
             if check_dnsmasq_running && check_dns_resolving; then

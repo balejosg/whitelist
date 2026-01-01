@@ -59,16 +59,21 @@ import * as roleStorage from './lib/role-storage.js';
 import * as userStorage from './lib/user-storage.js';
 import { cleanupBlacklist } from './lib/auth.js';
 
-// Swagger/OpenAPI (optional - only load if dependencies installed)
+// Swagger/OpenAPI (optional - only load if dependencies installed and enabled)
 let swaggerUi: typeof import('swagger-ui-express') | undefined;
 let getSwaggerSpec: (() => object) | undefined;
 
-try {
-    swaggerUi = await import('swagger-ui-express');
-    const swaggerModule = await import('./lib/swagger.js');
-    getSwaggerSpec = swaggerModule.getSwaggerSpec;
-} catch {
-    // Swagger dependencies not installed - skip
+if (config.enableSwagger) {
+    try {
+        swaggerUi = await import('swagger-ui-express');
+        const swaggerModule = await import('./lib/swagger.js');
+        getSwaggerSpec = swaggerModule.getSwaggerSpec;
+        logger.debug('Swagger documentation enabled');
+    } catch (err) {
+        logger.warn('Swagger dependencies not installed - skipping documentation', { error: err });
+    }
+} else {
+    logger.info('Swagger documentation disabled via configuration');
 }
 
 // ES module path resolution
@@ -134,12 +139,12 @@ const globalLimiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
-    skip: (req) => req.path === '/health' || config.isTest
+    skip: (req) => req.path === '/health' || (config.isTest && !config.enableRateLimitInTest)
 });
 app.use(globalLimiter);
 
 // Endpoint-specific rate limiters for sensitive operations
-// Skip in test environment to allow rapid test execution
+// Skip in test environment to allow rapid test execution unless enabled
 
 const authLimiter = rateLimit({
     windowMs: config.authRateLimitWindowMs,
@@ -152,7 +157,7 @@ const authLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => req.ip ?? 'unknown',
-    skip: () => config.isTest
+    skip: () => config.isTest && !config.enableRateLimitInTest
 });
 
 const publicRequestLimiter = rateLimit({
@@ -166,7 +171,7 @@ const publicRequestLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => req.ip ?? 'unknown',
-    skip: () => config.isTest
+    skip: () => config.isTest && !config.enableRateLimitInTest
 });
 
 // Apply auth rate limiter to auth endpoints
@@ -353,11 +358,12 @@ if (isMainModule) {
             logger.info('╔═══════════════════════════════════════════════════════╗');
             logger.info('║       OpenPath Request API Server                     ║');
             logger.info('╚═══════════════════════════════════════════════════════╝');
-            logger.info(`Server is running on http://${HOST}:${String(PORT)}`);
+            const baseUrl = config.publicUrl ?? `http://${HOST}:${String(PORT)}`;
+            logger.info(`Server is running on ${baseUrl}`);
             if (swaggerUi) {
-                logger.info(`API Documentation: http://${HOST}:${String(PORT)}/docs`);
+                logger.info(`API Documentation: ${baseUrl}/api-docs`);
             }
-            logger.info(`Health Check: http://${HOST}:${String(PORT)}/health`);
+            logger.info(`Health Check: ${baseUrl}/health`);
             logger.info('─────────────────────────────────────────────────────────');
             logger.info('');
         })();

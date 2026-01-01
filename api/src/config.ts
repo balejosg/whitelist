@@ -33,6 +33,9 @@ export const config = {
     /** Server host binding */
     host: process.env.HOST ?? '0.0.0.0',
 
+    /** Public URL (for logs and references) */
+    publicUrl: process.env.PUBLIC_URL,
+
     /** Node environment */
     nodeEnv: process.env.NODE_ENV ?? 'development',
 
@@ -41,6 +44,9 @@ export const config = {
 
     /** Is test environment */
     isTest: process.env.NODE_ENV === 'test',
+
+    /** Enable rate limiting even in test environment (defaults to false) */
+    enableRateLimitInTest: process.env.ENABLE_RATE_LIMIT_IN_TEST === 'true',
 
     // ==========================================================================
     // Security Configuration
@@ -137,6 +143,9 @@ export const config = {
 
     /** Log level (debug, info, warn, error) */
     logLevel: process.env.LOG_LEVEL ?? 'info',
+
+    /** Enable Swagger documentation (defaults to true in non-production) */
+    enableSwagger: (process.env.NODE_ENV !== 'production') && process.env.ENABLE_SWAGGER !== 'false',
 } as const;
 
 export type Config = typeof config;

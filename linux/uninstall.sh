@@ -54,20 +54,27 @@ systemctl stop captive-portal-detector.service 2>/dev/null || true
 systemctl stop dnsmasq 2>/dev/null || true
 systemctl disable dnsmasq 2>/dev/null || true
 
-# Esperar a que dnsmasq se detenga y matar procesos residuales
-sleep 2
-if pgrep -x dnsmasq >/dev/null 2>&1; then
-    echo "  Matando procesos dnsmasq residuales..."
-    pkill -9 dnsmasq 2>/dev/null || true
+# Esperar a que dnsmasq se detenga (máx 5 segundos)
+echo "  Esperando a que dnsmasq se detenga..."
+for _ in $(seq 1 5); do
+    if ! pgrep -x dnsmasq >/dev/null 2>&1; then
+        break
+    fi
     sleep 1
+done
+
+if pgrep -x dnsmasq >/dev/null 2>&1; then
+    echo "  Matando procesos dnsmasq residuales (SIGKILL)..."
+    pkill -9 dnsmasq 2>/dev/null || true
 fi
 
 # Verificar que el puerto 53 está libre
 if ss -tulpn 2>/dev/null | grep -q ":53 "; then
-    echo "  ⚠ Puerto 53 aún ocupado, forzando liberación..."
+    echo "  ⚠ Puerto 53 aún ocupado, intentando liberar..."
     fuser -k 53/udp 2>/dev/null || true
     fuser -k 53/tcp 2>/dev/null || true
-    sleep 1
+    # Breve espera para que el kernel libere el socket
+    sleep 0.5
 fi
 
 echo "[2/7] Deshabilitando servicios..."

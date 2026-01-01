@@ -1,4 +1,3 @@
-/* eslint-disable */
 /**
  * OpenPath - Database Migration Script
  * Migrates JSON data to PostgreSQL
@@ -11,8 +10,8 @@ import { pool } from '../src/db/index.js';
 
 // Adapter to match legacy db interface used in this script
 const db = {
-    query: (text: string, params?: unknown[]) => pool.query(text, params),
-    close: () => pool.end()
+    query: (text: string, params?: unknown[]): Promise<unknown> => pool.query(text, params),
+    close: (): Promise<void> => pool.end()
 };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -56,14 +55,14 @@ async function initializeSchema(): Promise<void> {
 // Load JSON Data
 // =============================================================================
 
-function loadJSON<T>(filename: string): T | null {
+function loadJSON(filename: string): unknown {
     const filepath = path.join(DATA_DIR, filename);
     if (!fs.existsSync(filepath)) {
         console.log(`⚠️  ${filename} not found, skipping...`);
         return null;
     }
-    const data = fs.readFileSync(filepath, 'utf-8');
-    return JSON.parse(data) as T;
+    const dataStr = fs.readFileSync(filepath, 'utf-8');
+    return JSON.parse(dataStr);
 }
 
 // =============================================================================
@@ -80,10 +79,10 @@ interface JSONUser {
 }
 
 async function migrateUsers(): Promise<void> {
-    const data = loadJSON<{ users: JSONUser[] }>('users.json');
-    if (!data || !data.users.length) return;
+    const data = loadJSON('users.json') as { users: JSONUser[] } | null;
+    if (!data?.users.length) return;
 
-    console.log(`📦 Migrating ${data.users.length} users...`);
+    console.log(`📦 Migrating ${String(data.users.length)} users...`);
     let migrated = 0;
     for (const user of data.users) {
         // Skip users without valid password hashes (test users)
@@ -99,7 +98,7 @@ async function migrateUsers(): Promise<void> {
         );
         migrated++;
     }
-    console.log(`✓ Users migrated (${migrated}/${data.users.length})`);
+    console.log(`✓ Users migrated (${String(migrated)}/${String(data.users.length)})`);
 }
 
 // =============================================================================
@@ -117,10 +116,10 @@ interface JSONRole {
 }
 
 async function migrateRoles(): Promise<void> {
-    const data = loadJSON<{ roles: JSONRole[] }>('roles.json');
-    if (!data || !data.roles.length) return;
+    const data = loadJSON('roles.json') as { roles: JSONRole[] } | null;
+    if (!data?.roles.length) return;
 
-    console.log(`📦 Migrating ${data.roles.length} roles...`);
+    console.log(`📦 Migrating ${String(data.roles.length)} roles...`);
     for (const role of data.roles) {
         await db.query(
             `INSERT INTO roles (id, user_id, role, group_ids, created_by, created_at, updated_at)
@@ -155,10 +154,10 @@ interface JSONRequest {
 }
 
 async function migrateRequests(): Promise<void> {
-    const data = loadJSON<{ requests: JSONRequest[] }>('requests.json');
-    if (!data || !data.requests.length) return;
+    const data = loadJSON('requests.json') as { requests: JSONRequest[] } | null;
+    if (!data?.requests.length) return;
 
-    console.log(`📦 Migrating ${data.requests.length} requests...`);
+    console.log(`📦 Migrating ${String(data.requests.length)} requests...`);
     for (const req of data.requests) {
         await db.query(
             `INSERT INTO requests (id, domain, reason, requester_email, group_id, priority, status, created_at, updated_at, resolved_at, resolved_by, resolution_note)
@@ -198,10 +197,10 @@ interface JSONClassroom {
 }
 
 async function migrateClassrooms(): Promise<void> {
-    const data = loadJSON<{ classrooms: JSONClassroom[] }>('classrooms.json');
-    if (!data || !data.classrooms.length) return;
+    const data = loadJSON('classrooms.json') as { classrooms: JSONClassroom[] } | null;
+    if (!data?.classrooms.length) return;
 
-    console.log(`📦 Migrating ${data.classrooms.length} classrooms...`);
+    console.log(`📦 Migrating ${String(data.classrooms.length)} classrooms...`);
     for (const classroom of data.classrooms) {
         await db.query(
             `INSERT INTO classrooms (id, name, display_name, default_group_id, active_group_id, created_at, updated_at)
@@ -236,10 +235,10 @@ interface JSONMachine {
 }
 
 async function migrateMachines(): Promise<void> {
-    const data = loadJSON<{ machines: JSONMachine[] }>('machines.json');
-    if (!data || !data.machines.length) return;
+    const data = loadJSON('machines.json') as { machines: JSONMachine[] } | null;
+    if (!data?.machines.length) return;
 
-    console.log(`📦 Migrating ${data.machines.length} machines...`);
+    console.log(`📦 Migrating ${String(data.machines.length)} machines...`);
     for (const machine of data.machines) {
         await db.query(
             `INSERT INTO machines (id, hostname, classroom_id, version, last_seen, created_at, updated_at)
@@ -277,10 +276,10 @@ interface JSONSchedule {
 }
 
 async function migrateSchedules(): Promise<void> {
-    const data = loadJSON<{ schedules: JSONSchedule[] }>('schedules.json');
-    if (!data || !data.schedules.length) return;
+    const data = loadJSON('schedules.json') as { schedules: JSONSchedule[] } | null;
+    if (!data?.schedules.length) return;
 
-    console.log(`📦 Migrating ${data.schedules.length} schedules...`);
+    console.log(`📦 Migrating ${String(data.schedules.length)} schedules...`);
     for (const schedule of data.schedules) {
         await db.query(
             `INSERT INTO schedules (id, classroom_id, teacher_id, group_id, day_of_week, start_time, end_time, recurrence, created_at, updated_at)
@@ -314,7 +313,7 @@ interface JSONSetup {
 }
 
 async function migrateSettings(): Promise<void> {
-    const data = loadJSON<JSONSetup>('setup.json');
+    const data = loadJSON('setup.json') as JSONSetup | null;
     if (!data) return;
 
     console.log('📦 Migrating settings...');

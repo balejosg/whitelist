@@ -268,20 +268,31 @@ force_browser_close() {
         fi
     done
     
-    # Wait for graceful shutdown
+    # Wait for graceful shutdown (max 5 seconds)
     if [ $closed -gt 0 ]; then
         log "Waiting for $closed browser(s) to close..."
-        sleep 3
+        local wait_retries=5
+        while [ $wait_retries -gt 0 ]; do
+            local still_running=0
+            for pattern in "firefox" "chromium" "chrome"; do
+                if pgrep -f "$pattern" >/dev/null 2>&1; then
+                    still_running=1
+                    break
+                fi
+            done
+            [ $still_running -eq 0 ] && break
+            sleep 1
+            wait_retries=$((wait_retries - 1))
+        done
         
         # SIGKILL for those that didn't respond
         for pattern in "firefox" "chromium" "chrome"; do
             if pgrep -f "$pattern" >/dev/null 2>&1; then
-                log "Forcing close: $pattern"
+                log "Forcing close (SIGKILL): $pattern"
                 pkill -9 -f "$pattern" 2>/dev/null || true
             fi
         done
         
-        sleep 1
         log "✓ Browsers closed"
     else
         log "No open browsers detected"
@@ -300,8 +311,13 @@ install_firefox_esr() {
         log "⚠ Firefox Snap detected - removing..."
         
         # Close any running Firefox first
+        pkill -TERM -f firefox 2>/dev/null || true
+        # Wait for close
+        for _ in $(seq 1 5); do
+            pgrep -f firefox >/dev/null 2>&1 || break
+            sleep 1
+        done
         pkill -9 -f firefox 2>/dev/null || true
-        sleep 2
         
         # Remove Snap Firefox
         snap remove --purge firefox 2>/dev/null || snap remove firefox 2>/dev/null || true

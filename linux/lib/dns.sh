@@ -350,11 +350,14 @@ restart_dnsmasq() {
     fi
     
     if timeout 30 systemctl restart dnsmasq; then
-        sleep 2
-        if systemctl is-active --quiet dnsmasq; then
-            log "✓ dnsmasq restarted successfully"
-            return 0
-        fi
+        # Wait for dnsmasq to be active (max 5 seconds)
+        for _ in $(seq 1 5); do
+            if systemctl is-active --quiet dnsmasq; then
+                log "✓ dnsmasq restarted successfully"
+                return 0
+            fi
+            sleep 1
+        done
     fi
     
     log "ERROR: Failed to restart dnsmasq"

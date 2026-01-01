@@ -334,7 +334,14 @@ cmd_restart() {
     systemctl restart dnsmasq-watchdog.timer
     systemctl restart captive-portal-detector.service 2>/dev/null || true
     
-    sleep 2
+    # Esperar a que dnsmasq esté listo (máx 5 segundos)
+    for _ in $(seq 1 5); do
+        if systemctl is-active --quiet dnsmasq; then
+            break
+        fi
+        sleep 1
+    done
+    
     cmd_status
 }
 

@@ -75,19 +75,21 @@ export async function saveHealthReport(
         .where(eq(machines.hostname, hostname));
 
     // Clean up old reports (keep only MAX_REPORTS_PER_HOST per host)
-    // Get IDs of reports to keep
-    const reportsToKeep = await db.select({ id: healthReports.id })
+    // Identify the oldest reportedAt we want to keep and delete anything older.
+    const reportsToKeep = await db.select({ reportedAt: healthReports.reportedAt })
         .from(healthReports)
         .where(eq(healthReports.hostname, hostname))
         .orderBy(desc(healthReports.reportedAt))
         .limit(MAX_REPORTS_PER_HOST);
 
-    const keepIds = reportsToKeep.map((r) => r.id);
+    if (reportsToKeep.length >= MAX_REPORTS_PER_HOST) {
+        const oldestReportToKeep = reportsToKeep[reportsToKeep.length - 1];
+        const oldestReportedAtToKeep = oldestReportToKeep?.reportedAt;
 
-    if (keepIds.length >= MAX_REPORTS_PER_HOST) {
-        // Delete older reports for this host
-        await db.delete(healthReports)
-            .where(sql`${healthReports.hostname} = ${hostname} AND ${healthReports.id} NOT IN (${sql.join(keepIds.map(id => sql`${id}`), sql`, `)})`);
+        if (oldestReportedAtToKeep) {
+            await db.delete(healthReports)
+                .where(sql`${healthReports.hostname} = ${hostname} AND ${healthReports.reportedAt} < ${oldestReportedAtToKeep}`);
+        }
     }
 }
 
@@ -101,14 +103,16 @@ export async function getAllReports(): Promise<ReportsData> {
     let latestTimestamp: Date | null = null;
 
     for (const report of reports) {
-        hosts[report.hostname] ??= {
-            reports: [],
-            lastSeen: null,
-            currentStatus: null,
-        };
+        let host = hosts[report.hostname];
+        if (!host) {
+            host = {
+                reports: [],
+                lastSeen: null,
+                currentStatus: null,
+            };
+            hosts[report.hostname] = host;
+        }
 
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const host = hosts[report.hostname]!;
         const timestamp = report.reportedAt?.toISOString() ?? new Date().toISOString();
 
         // First report for this host is the most recent (due to ordering)

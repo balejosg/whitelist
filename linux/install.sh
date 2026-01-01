@@ -341,7 +341,15 @@ EOF
 
 # Reiniciar dnsmasq
 systemctl restart dnsmasq
-sleep 2
+
+# Esperar a que dnsmasq esté listo (máx 5 segundos)
+echo "  Esperando a que dnsmasq esté activo..."
+for _ in $(seq 1 5); do
+    if systemctl is-active --quiet dnsmasq; then
+        break
+    fi
+    sleep 1
+done
 
 if systemctl is-active --quiet dnsmasq; then
     echo "✓ dnsmasq activo"
