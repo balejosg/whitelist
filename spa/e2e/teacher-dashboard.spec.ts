@@ -37,7 +37,7 @@ test.describe('Teacher Dashboard', () => {
 
         // Check if we navigated away from login or got an error
         const loginFormVisible = await page.locator('#email-login-form').isVisible();
-        const dashboardVisible = await page.locator('#dashboard').isVisible();
+        const dashboardVisible = await page.locator('#dashboard-screen').isVisible();
 
         // One of these should be true
         expect(loginFormVisible || dashboardVisible).toBe(true);

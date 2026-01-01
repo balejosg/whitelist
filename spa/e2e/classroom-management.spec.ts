@@ -54,7 +54,7 @@ test.describe('Classroom Management', () => {
 
         // Check if we navigated away from login or got an error
         const loginFormVisible = await page.locator('#email-login-form').isVisible();
-        const dashboardVisible = await page.locator('#dashboard').isVisible();
+        const dashboardVisible = await page.locator('#dashboard-screen').isVisible();
 
         // One of these should be true
         expect(loginFormVisible || dashboardVisible).toBe(true);
@@ -68,7 +68,7 @@ test.describe('Classroom Management', () => {
         expect(classroomsHeader).toBeGreaterThanOrEqual(0); // May be 0 if section hidden
 
         // New classroom button should exist
-        const newClassroomBtn = page.locator('#btn-new-classroom');
+        const newClassroomBtn = page.locator('#new-classroom-btn');
         await expect(newClassroomBtn).toBeAttached();
 
         // Classrooms list container should exist
@@ -79,7 +79,7 @@ test.describe('Classroom Management', () => {
     test('new classroom form should have required fields', async ({ page }) => {
         // Check modal form structure
         const nameInput = page.locator('#new-classroom-name');
-        const groupSelect = page.locator('#new-classroom-group');
+        const groupSelect = page.locator('#new-classroom-default-group');
 
         await expect(nameInput).toBeAttached();
         await expect(groupSelect).toBeAttached();
