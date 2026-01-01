@@ -1,16 +1,16 @@
 import { init, updateEditUI } from './modules/app-core.js';
-import { PushManager } from './push.js';
+import { pushManager } from './push.js';
 import { initUsersListeners } from './modules/users.js';
 import { initClassroomListeners } from './modules/classrooms.js';
 import { initModals, showScreen, openModal, closeModal, initTheme, toggleTheme } from './modules/ui.js';
-import { Auth } from './auth.js';
-import { OAuth } from './oauth.js';
-import { showToast } from './modules/utils.js';
+import { auth } from './auth.js';
+import { oauth } from './oauth.js';
+import { showToast } from './utils.js';
 import { state, setGithub, setCanEdit } from './modules/state.js';
 import { loadDashboard, renderRules, saveCurrentGroup, deleteGroup } from './modules/groups.js';
-import { Config } from './config.js';
+import { config } from './config.js';
 import { GitHubAPI } from './github-api.js';
-import { WhitelistParser } from './openpath-parser.js';
+import { whitelistParser } from './openpath-parser.js';
 import { logger } from './lib/logger.js';
 import type { GroupData } from './types/index.js';
 
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => void (async () => {
 
     // Initialize Push Notifications (if logged in)
     try {
-        await PushManager.init();
+        await pushManager.init();
     } catch (e) {
         logger.warn('Push init failed', { error: e instanceof Error ? e.message : String(e) });
     }
@@ -52,7 +52,7 @@ function initMainListeners() {
         btn.textContent = 'Authenticating...';
 
         try {
-            await Auth.login(emailInput.value, passwordInput.value);
+            await auth.login(emailInput.value, passwordInput.value);
             await init(); // Re-initialize the app
         } catch (err: unknown) {
             if (errorEl && err instanceof Error) errorEl.textContent = 'Error: ' + err.message;
@@ -64,12 +64,12 @@ function initMainListeners() {
 
     // GitHub login button
     document.getElementById('github-login-btn')?.addEventListener('click', () => {
-        OAuth.login();
+        oauth.login();
     });
 
     // Notifications button
     document.getElementById('notifications-btn')?.addEventListener('click', () => void (async () => {
-        if (!PushManager.isSupported()) {
+        if (!pushManager.isSupported()) {
             showToast('Your browser does not support push notifications', 'error');
             return;
         }
@@ -78,12 +78,12 @@ function initMainListeners() {
         const icon = document.getElementById('notifications-icon');
 
         try {
-            const subscription = await PushManager.getSubscription();
+            const subscription = await pushManager.getSubscription();
 
             if (subscription) {
                 // Already subscribed, offer to unsubscribe
                 if (confirm('Disable push notifications?')) {
-                    await PushManager.unsubscribe();
+                    await pushManager.unsubscribe();
                     if (icon) icon.textContent = '🔕';
                     showToast('Notifications disabled');
                 }
@@ -91,7 +91,7 @@ function initMainListeners() {
                 // Not subscribed, subscribe
                 btn.disabled = true;
                 if (icon) icon.textContent = '⏳';
-                await PushManager.subscribe();
+                await pushManager.subscribe();
                 if (icon) icon.textContent = '🔔';
                 showToast('Notifications enabled! You will receive alerts when a student requests access.');
             }
@@ -115,8 +115,8 @@ function initMainListeners() {
     // Logout
     document.getElementById('logout-btn')?.addEventListener('click', () => {
         if (confirm('Log out?')) {
-            OAuth.logout();
-            void Auth.logout();
+            oauth.logout();
+            void auth.logout();
             showScreen('login-screen');
         }
     });
@@ -139,7 +139,7 @@ function initMainListeners() {
 
         // Test connection
         try {
-            const token = OAuth.getToken();
+            const token = oauth.getToken();
             if (!token) throw new Error('No OAuth token');
 
             const api = new GitHubAPI(token, owner, repo, branch);
@@ -147,9 +147,9 @@ function initMainListeners() {
 
             // Update state
             setGithub(api);
-            Config.save({ owner, repo, branch, gruposDir, whitelistPath: gruposDir }); // whitelistPath logic
+            config.save({ owner, repo, branch, gruposDir, whitelistPath: gruposDir }); // whitelistPath logic
 
-            const canWrite = await OAuth.canWrite(owner, repo);
+            const canWrite = await oauth.canWrite(owner, repo);
             setCanEdit(canWrite);
 
             const userEl = document.getElementById('current-user');
@@ -177,10 +177,10 @@ function initMainListeners() {
     document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', () => {
             const rawType = (tab as HTMLElement).dataset.type;
-            // Map singular to plural keys for state
-            let type: 'whitelist' | 'blocked_subdomains' | 'blocked_paths' = 'whitelist';
-            if (rawType === 'blocked_subdomain') type = 'blocked_subdomains';
-            else if (rawType === 'blocked_path') type = 'blocked_paths';
+            // Map keys for state
+            let type: 'whitelist' | 'blockedSubdomains' | 'blockedPaths' = 'whitelist';
+            if (rawType === 'blockedSubdomains') type = 'blockedSubdomains';
+            else if (rawType === 'blockedPaths') type = 'blockedPaths';
 
             state.currentRuleType = type;
             document.querySelectorAll('.tab').forEach(t => { t.classList.remove('active'); });
@@ -309,17 +309,17 @@ function initMainListeners() {
             return;
         }
 
-        const config = Config.get();
-        const gruposDir = config.gruposDir ?? 'grupos';
+        const appConfig = config.get();
+        const gruposDir = appConfig.gruposDir ?? 'grupos';
         const path = `${gruposDir}/${name}.txt`;
 
         const initialData: GroupData = {
             enabled: true,
             whitelist: [],
-            blocked_subdomains: [],
-            blocked_paths: []
+            blockedSubdomains: [],
+            blockedPaths: []
         };
-        const content = WhitelistParser.serialize(initialData);
+        const content = whitelistParser.serialize(initialData);
 
         try {
             await state.github.updateFile(path, content, `Create group ${name}`, ''); // '' for new file

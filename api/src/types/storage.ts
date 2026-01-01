@@ -267,7 +267,6 @@ export interface IGitHubService {
         domains: string[],
         message: string
     ): Promise<boolean>;
-    isDomainInWhitelist(groupId: string, domain: string): Promise<boolean>;
     addDomainToWhitelist(
         groupId: string,
         domain: string,

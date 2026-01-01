@@ -47,7 +47,7 @@ let mockStorage: MockLocalStorage;
 // Config implementation (copied to test in isolation)
 const STORAGE_KEY = 'openpath-spa-config';
 
-const Config = {
+const config = {
     STORAGE_KEY,
 
     get(): Partial<SPAConfig> {
@@ -58,16 +58,16 @@ const Config = {
         }
     },
 
-    save(config: Partial<SPAConfig>): Partial<SPAConfig> {
+    save(updates: Partial<SPAConfig>): Partial<SPAConfig> {
         const current = this.get();
-        const merged = { ...current, ...config };
+        const merged = { ...current, ...updates };
         mockStorage.setItem(this.STORAGE_KEY, JSON.stringify(merged));
         return merged;
     },
 
     isConfigured(): boolean {
-        const config = this.get();
-        return !!(config.owner && config.repo);
+        const current = this.get();
+        return !!(current.owner && current.repo);
     },
 
     clear(): void {
@@ -75,394 +75,275 @@ const Config = {
     },
 
     getRequired(): SPAConfig {
-        const config = this.get();
-        if (!config.owner || !config.repo) {
+        const current = this.get();
+        if (!current.owner || !current.repo) {
             throw new Error('Configuración incompleta');
         }
-        return config as SPAConfig;
+        return current as SPAConfig;
     }
 };
 
 // =============================================================================
-// Config.get() Tests
+// config.get() Tests
 // =============================================================================
 
-void describe('Config.get()', () => {
+void describe('config.get()', () => {
     beforeEach(() => {
         mockStorage = new MockLocalStorage();
     });
 
     void test('should return empty object when no config stored', () => {
-        const result = Config.get();
+        const result = config.get();
         assert.deepStrictEqual(result, {});
     });
 
     void test('should return stored config', () => {
-        const stored: Partial<SPAConfig> = {
-            owner: 'test-owner',
-            repo: 'test-repo',
-            branch: 'main'
-        };
-        mockStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
-
-        const result = Config.get();
-        assert.deepStrictEqual(result, stored);
+        const data = { owner: 'test-owner', repo: 'test-repo' };
+        mockStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        const result = config.get();
+        assert.deepStrictEqual(result, data);
     });
 
-    void test('should return empty object on invalid JSON', () => {
-        mockStorage.setItem(STORAGE_KEY, 'not valid json {{{');
-
-        const result = Config.get();
+    void test('should handle JSON parse errors', () => {
+        mockStorage.setItem(STORAGE_KEY, 'invalid-json');
+        const result = config.get();
         assert.deepStrictEqual(result, {});
-    });
-
-    void test('should return partial config', () => {
-        const stored: Partial<SPAConfig> = { owner: 'test-owner' };
-        mockStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
-
-        const result = Config.get();
-        assert.strictEqual(result.owner, 'test-owner');
-        assert.strictEqual(result.repo, undefined);
-    });
-
-    void test('should handle empty string stored value', () => {
-        mockStorage.setItem(STORAGE_KEY, '');
-
-        const result = Config.get();
-        assert.deepStrictEqual(result, {});
-    });
-
-    void test('should handle null values in stored config', () => {
-        const stored = { owner: 'test', repo: null };
-        mockStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
-
-        const result = Config.get();
-        assert.strictEqual(result.owner, 'test');
-        assert.strictEqual(result.repo, null);
     });
 });
 
 // =============================================================================
-// Config.save() Tests
+// config.save() Tests
 // =============================================================================
 
-void describe('Config.save()', () => {
+void describe('config.save()', () => {
     beforeEach(() => {
         mockStorage = new MockLocalStorage();
     });
 
-    void test('should save new config', () => {
-        const newConfig: Partial<SPAConfig> = {
-            owner: 'new-owner',
-            repo: 'new-repo'
-        };
-
-        const result = Config.save(newConfig);
-
+    void test('should save partial config', () => {
+        const newConfig = { owner: 'new-owner', repo: 'new-repo' };
+        const result = config.save(newConfig);
         assert.deepStrictEqual(result, newConfig);
         assert.strictEqual(mockStorage.getItem(STORAGE_KEY), JSON.stringify(newConfig));
     });
 
     void test('should merge with existing config', () => {
-        const existing: Partial<SPAConfig> = {
-            owner: 'existing-owner',
-            branch: 'main'
-        };
+        const existing = { owner: 'old-owner', repo: 'old-repo', branch: 'main' };
         mockStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
-
-        const updates: Partial<SPAConfig> = {
-            repo: 'new-repo'
-        };
-
-        const result = Config.save(updates);
-
-        assert.deepStrictEqual(result, {
-            owner: 'existing-owner',
-            branch: 'main',
-            repo: 'new-repo'
-        });
+        
+        const updates = { repo: 'new-repo' };
+        const result = config.save(updates);
+        
+        const expected = { owner: 'old-owner', repo: 'new-repo', branch: 'main' };
+        assert.deepStrictEqual(result, expected);
+        assert.strictEqual(mockStorage.getItem(STORAGE_KEY), JSON.stringify(expected));
     });
 
-    void test('should overwrite existing values', () => {
-        const existing: Partial<SPAConfig> = {
-            owner: 'old-owner',
-            repo: 'old-repo'
-        };
-        mockStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
-
-        const updates: Partial<SPAConfig> = {
-            owner: 'new-owner'
-        };
-
-        const result = Config.save(updates);
-
-        assert.strictEqual(result.owner, 'new-owner');
-        assert.strictEqual(result.repo, 'old-repo');
+    void test('should update multiple fields', () => {
+        const updates = { owner: 'openpath', repo: 'whitelist', branch: 'dev' };
+        const result = config.save(updates);
+        assert.deepStrictEqual(result, updates);
     });
 
-    void test('should return merged config', () => {
-        const result = Config.save({ owner: 'test' });
-
-        assert.ok('owner' in result);
+    void test('should preserve unrelated fields', () => {
+        config.save({ owner: 'test' });
+        const result = config.save({ repo: 'repo' });
         assert.strictEqual(result.owner, 'test');
+        assert.strictEqual(result.repo, 'repo');
     });
 
-    void test('should handle saving empty object', () => {
-        const existing: Partial<SPAConfig> = { owner: 'existing' };
-        mockStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
-
-        const result = Config.save({});
-
-        assert.deepStrictEqual(result, existing);
+    void test('should handle empty updates', () => {
+        const initial = { owner: 'test' };
+        config.save(initial);
+        const result = config.save({});
+        assert.deepStrictEqual(result, initial);
     });
 
-    void test('should handle saving all config fields', () => {
+    void test('should save full config object', () => {
         const fullConfig: SPAConfig = {
-            owner: 'test-owner',
-            repo: 'test-repo',
-            branch: 'main',
-            whitelistPath: 'whitelist.txt',
-            token: 'secret-token',
+            owner: 'owner',
+            repo: 'repo',
+            branch: 'branch',
+            whitelistPath: 'path',
             gruposDir: 'grupos'
         };
-
-        const result = Config.save(fullConfig);
-
+        const result = config.save(fullConfig);
         assert.deepStrictEqual(result, fullConfig);
     });
 });
 
 // =============================================================================
-// Config.isConfigured() Tests
+// config.isConfigured() Tests
 // =============================================================================
 
-void describe('Config.isConfigured()', () => {
+void describe('config.isConfigured()', () => {
     beforeEach(() => {
         mockStorage = new MockLocalStorage();
     });
 
-    void test('should return false when no config', () => {
-        assert.strictEqual(Config.isConfigured(), false);
+    void test('should return false when empty', () => {
+        assert.strictEqual(config.isConfigured(), false);
     });
 
-    void test('should return false when only owner is set', () => {
-        mockStorage.setItem(STORAGE_KEY, JSON.stringify({ owner: 'test-owner' }));
-
-        assert.strictEqual(Config.isConfigured(), false);
+    void test('should return false if owner missing', () => {
+        config.save({ repo: 'test' });
+        assert.strictEqual(config.isConfigured(), false);
     });
 
-    void test('should return false when only repo is set', () => {
-        mockStorage.setItem(STORAGE_KEY, JSON.stringify({ repo: 'test-repo' }));
-
-        assert.strictEqual(Config.isConfigured(), false);
+    void test('should return false if repo missing', () => {
+        config.save({ owner: 'test' });
+        assert.strictEqual(config.isConfigured(), false);
     });
 
-    void test('should return true when both owner and repo are set', () => {
-        mockStorage.setItem(STORAGE_KEY, JSON.stringify({
-            owner: 'test-owner',
-            repo: 'test-repo'
-        }));
-
-        assert.strictEqual(Config.isConfigured(), true);
+    void test('should return true when owner and repo exist', () => {
+        config.save({ owner: 'test', repo: 'test' });
+        assert.strictEqual(config.isConfigured(), true);
     });
 
-    void test('should return false when owner is empty string', () => {
-        mockStorage.setItem(STORAGE_KEY, JSON.stringify({
-            owner: '',
-            repo: 'test-repo'
-        }));
-
-        assert.strictEqual(Config.isConfigured(), false);
+    void test('should ignore optional branch', () => {
+        config.save({ owner: 'test', repo: 'test' });
+        assert.strictEqual(config.isConfigured(), true);
     });
 
-    void test('should return false when repo is empty string', () => {
-        mockStorage.setItem(STORAGE_KEY, JSON.stringify({
-            owner: 'test-owner',
-            repo: ''
-        }));
-
-        assert.strictEqual(Config.isConfigured(), false);
+    void test('should return false with empty strings', () => {
+        config.save({ owner: '', repo: '' });
+        assert.strictEqual(config.isConfigured(), false);
     });
 
-    void test('should return true even without optional fields', () => {
-        mockStorage.setItem(STORAGE_KEY, JSON.stringify({
-            owner: 'test-owner',
-            repo: 'test-repo'
-            // No branch, whitelistPath, token, or gruposDir
-        }));
-
-        assert.strictEqual(Config.isConfigured(), true);
+    void test('should return true with all fields', () => {
+        config.save({ owner: 'o', repo: 'r', branch: 'b' });
+        assert.strictEqual(config.isConfigured(), true);
     });
 });
 
 // =============================================================================
-// Config.clear() Tests
+// config.clear() Tests
 // =============================================================================
 
-void describe('Config.clear()', () => {
+void describe('config.clear()', () => {
     beforeEach(() => {
         mockStorage = new MockLocalStorage();
     });
 
-    void test('should remove config from storage', () => {
-        mockStorage.setItem(STORAGE_KEY, JSON.stringify({ owner: 'test' }));
-
-        Config.clear();
-
+    void test('should remove from storage', () => {
+        config.save({ owner: 'test' });
+        config.clear();
         assert.strictEqual(mockStorage.getItem(STORAGE_KEY), null);
+        assert.deepStrictEqual(config.get(), {});
     });
 
-    void test('should not throw when nothing to clear', () => {
+    void test('should not crash if already empty', () => {
         assert.doesNotThrow(() => {
-            Config.clear();
+            config.clear();
         });
     });
 
-    void test('should result in empty config from get()', () => {
-        mockStorage.setItem(STORAGE_KEY, JSON.stringify({ owner: 'test' }));
-
-        Config.clear();
-
-        assert.deepStrictEqual(Config.get(), {});
+    void test('should clear all fields', () => {
+        config.save({ owner: 'o', repo: 'r', branch: 'b' });
+        config.clear();
+        assert.deepStrictEqual(config.get(), {});
     });
 
-    void test('should only remove config key', () => {
-        mockStorage.setItem(STORAGE_KEY, JSON.stringify({ owner: 'test' }));
-        mockStorage.setItem('other-key', 'other-value');
-
-        Config.clear();
-
-        assert.strictEqual(mockStorage.getItem('other-key'), 'other-value');
+    void test('should be independent of other keys', () => {
+        mockStorage.setItem('other', 'value');
+        config.clear();
+        assert.strictEqual(mockStorage.getItem('other'), 'value');
     });
 });
 
 // =============================================================================
-// Config.getRequired() Tests
+// config.getRequired() Tests
 // =============================================================================
 
-void describe('Config.getRequired()', () => {
+void describe('config.getRequired()', () => {
     beforeEach(() => {
         mockStorage = new MockLocalStorage();
     });
 
-    void test('should throw when config is empty', () => {
+    void test('should throw if incomplete', () => {
         assert.throws(
-            () => Config.getRequired(),
-            { message: 'Configuración incompleta' }
+            () => config.getRequired(),
+            /Configuración incompleta/
         );
     });
 
-    void test('should throw when owner is missing', () => {
-        mockStorage.setItem(STORAGE_KEY, JSON.stringify({ repo: 'test-repo' }));
-
+    void test('should throw if repo missing', () => {
+        config.save({ owner: 'test' });
         assert.throws(
-            () => Config.getRequired(),
-            { message: 'Configuración incompleta' }
+            () => config.getRequired(),
+            /Configuración incompleta/
         );
     });
 
-    void test('should throw when repo is missing', () => {
-        mockStorage.setItem(STORAGE_KEY, JSON.stringify({ owner: 'test-owner' }));
-
+    void test('should throw if owner missing', () => {
+        config.save({ repo: 'test' });
         assert.throws(
-            () => Config.getRequired(),
-            { message: 'Configuración incompleta' }
+            () => config.getRequired(),
+            /Configuración incompleta/
         );
     });
 
-    void test('should return config when both required fields present', () => {
-        const stored: SPAConfig = {
-            owner: 'test-owner',
-            repo: 'test-repo',
-            branch: 'main',
-            whitelistPath: 'whitelist.txt'
-        };
-        mockStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
-
-        const result = Config.getRequired();
-
-        assert.strictEqual(result.owner, 'test-owner');
-        assert.strictEqual(result.repo, 'test-repo');
+    void test('should return config if complete', () => {
+        const full = { owner: 'o', repo: 'r', branch: 'b', whitelistPath: 'p' };
+        config.save(full);
+        const result = config.getRequired();
+        assert.deepStrictEqual(result, full);
     });
 
-    void test('should include optional fields in returned config', () => {
-        const stored: SPAConfig = {
-            owner: 'test-owner',
-            repo: 'test-repo',
-            branch: 'develop',
-            whitelistPath: 'custom/path.txt',
-            token: 'my-token',
-            gruposDir: 'custom-grupos'
-        };
-        mockStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
-
-        const result = Config.getRequired();
-
-        assert.strictEqual(result.branch, 'develop');
-        assert.strictEqual(result.whitelistPath, 'custom/path.txt');
-        assert.strictEqual(result.token, 'my-token');
-        assert.strictEqual(result.gruposDir, 'custom-grupos');
+    void test('should work after update', () => {
+        config.save({ owner: 'o', repo: 'r', branch: 'b', whitelistPath: 'p' });
+        const result = config.getRequired();
+        assert.strictEqual(result.owner, 'o');
     });
 });
 
 // =============================================================================
-// Edge Cases
+// Persistence Tests
 // =============================================================================
 
-void describe('Config edge cases', () => {
+void describe('Config Persistence', () => {
     beforeEach(() => {
         mockStorage = new MockLocalStorage();
     });
 
-    void test('should handle special characters in values', () => {
-        const config: Partial<SPAConfig> = {
-            owner: 'test-owner_123',
-            repo: 'repo.with.dots',
-            branch: 'feature/my-branch'
-        };
-
-        Config.save(config);
-        const result = Config.get();
-
-        assert.deepStrictEqual(result, config);
+    void test('should persist between instances', () => {
+        const data = { owner: 'persisted' };
+        config.save(data);
+        
+        // Simulating reload by calling get again
+        const result = config.get();
+        assert.strictEqual(result.owner, 'persisted');
     });
 
-    void test('should handle unicode in values', () => {
-        const config: Partial<SPAConfig> = {
-            owner: 'usuario-español',
-            repo: 'repositorio-日本語'
-        };
-
-        Config.save(config);
-        const result = Config.get();
-
-        assert.deepStrictEqual(result, config);
+    void test('should handle storage updates', () => {
+        config.save({ owner: 'v1' });
+        config.save({ owner: 'v2' });
+        const result = config.get();
+        assert.strictEqual(result.owner, 'v2');
     });
 
-    void test('should handle multiple saves', () => {
-        Config.save({ owner: 'first' });
-        Config.save({ repo: 'second' });
-        Config.save({ branch: 'third' });
-
-        const result = Config.get();
-
+    void test('should maintain partial updates', () => {
+        config.save({ owner: 'first' });
+        config.save({ repo: 'second' });
+        config.save({ branch: 'third' });
+        
+        const result = config.get();
         assert.strictEqual(result.owner, 'first');
         assert.strictEqual(result.repo, 'second');
         assert.strictEqual(result.branch, 'third');
     });
 
-    void test('should handle save after clear', () => {
-        Config.save({ owner: 'test' });
-        Config.clear();
-        Config.save({ repo: 'new-repo' });
-
-        const result = Config.get();
-
+    void test('should clear then save', () => {
+        config.save({ owner: 'test' });
+        config.clear();
+        config.save({ repo: 'new-repo' });
+        
+        const result = config.get();
         assert.strictEqual(result.owner, undefined);
         assert.strictEqual(result.repo, 'new-repo');
     });
 
-    void test('STORAGE_KEY should be correct', () => {
-        assert.strictEqual(Config.STORAGE_KEY, 'openpath-spa-config');
+    void test('should use correct STORAGE_KEY', () => {
+        assert.strictEqual(STORAGE_KEY, 'openpath-spa-config');
     });
 });

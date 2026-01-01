@@ -375,16 +375,16 @@ openpath/
 │   └── tests/             # Existing tests
 ├── shared/                # Zod schemas
 │   ├── src/schemas/       # Schema definitions
-│   └── tests/             # TO CREATE
+│   └── tests/             # Schema tests
 ├── auth-worker/           # Cloudflare Worker
 │   ├── src/worker.ts      # OAuth implementation
-│   └── tests/             # TO CREATE
-├── spa/                   # Static SPA (needs logger)
-│   └── src/lib/           # TO CREATE logger.ts
-├── firefox-extension/     # Browser extension (needs logger)
-│   └── src/lib/           # TO CREATE logger.ts
-├── dashboard/             # Next.js dashboard (needs logger)
-│   └── src/lib/           # TO CREATE logger.ts
+│   └── tests/             # Worker tests
+├── spa/                   # Static SPA
+│   └── src/lib/           # Shared libraries (logger, etc.)
+├── firefox-extension/     # Browser extension
+│   └── src/lib/           # Shared libraries (logger, etc.)
+├── dashboard/             # Express dashboard
+│   └── src/lib/           # Shared libraries (logger, etc.)
 ├── linux/                 # Shell scripts
 │   └── lib/               # Modular bash libraries
 ├── windows/               # PowerShell scripts

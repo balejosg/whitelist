@@ -2,17 +2,17 @@ import { state, setGithub, setCurrentUser, setCanEdit } from './state.js';
 import { showScreen } from './ui.js';
 import { loadDashboard } from './groups.js';
 import { loadUsers } from './users.js';
-import { OAuth } from '../oauth.js';
-import { Auth } from '../auth.js';
-import { Config } from '../config.js';
+import { oauth } from '../oauth.js';
+import { auth } from '../auth.js';
+import { config as appConfig } from '../config.js';
 import { GitHubAPI } from '../github-api.js';
-import { SchedulesModule } from './schedules.js';
+import { schedulesModule } from './schedules.js';
 import { trpc } from '../trpc.js';
 import { logger } from '../lib/logger.js';
 
 export async function init(): Promise<void> {
     // 1. Check for OAuth callback first
-    const callbackResult = OAuth.handleCallback();
+    const callbackResult = oauth.handleCallback();
     if (callbackResult?.error) {
         showScreen('login-screen');
         const errorEl = document.getElementById('login-error');
@@ -21,8 +21,8 @@ export async function init(): Promise<void> {
     }
 
     // 2. Check if logged in (either via GitHub OAuth or JWT)
-    const isGitHubLoggedIn = OAuth.isLoggedIn();
-    const isJWTLoggedIn = Auth.isAuthenticated();
+    const isGitHubLoggedIn = oauth.isLoggedIn();
+    const isJWTLoggedIn = auth.isAuthenticated();
 
     if (!isGitHubLoggedIn && !isJWTLoggedIn) {
         showScreen('login-screen');
@@ -32,14 +32,14 @@ export async function init(): Promise<void> {
     // 3. Load user info
     try {
         if (isGitHubLoggedIn) {
-            const user = await OAuth.getUser();
+            const user = await oauth.getUser();
             setCurrentUser(user);
         } else if (isJWTLoggedIn) {
-            let user = Auth.getUser();
+            let user = auth.getUser();
             // Optional: refresh user info from server
             try {
-                await Auth.getMe();
-                user = Auth.getUser();
+                await auth.getMe();
+                user = auth.getUser();
             } catch {
                 // Ignore errors when refreshing user info
             }
@@ -64,10 +64,10 @@ export async function init(): Promise<void> {
     // }
 
     // 5. Check if repo config exists (only for admins/github users)
-    const config = Config.get();
-    if (!config.owner || !config.repo) {
+    const activeConfig = appConfig.get();
+    if (!activeConfig.owner || !activeConfig.repo) {
         // If teacher, they don't need to configure the repo
-        if (Auth.isTeacher() && !Auth.isAdmin()) {
+        if (auth.isTeacher() && !auth.isAdmin()) {
             // But we need to make sure github-api is initialized with SOME credentials 
             // if we want them to see group names. 
         } else {
@@ -77,17 +77,17 @@ export async function init(): Promise<void> {
     }
 
     // 6. Initialize GitHub API if possible
-    if (isGitHubLoggedIn && config.owner && config.repo) {
-        const token = OAuth.getToken();
+    if (isGitHubLoggedIn && activeConfig.owner && activeConfig.repo) {
+        const token = oauth.getToken();
         if (token) {
             const api = new GitHubAPI(
                 token,
-                config.owner,
-                config.repo,
-                config.branch ?? 'main'
+                activeConfig.owner,
+                activeConfig.repo,
+                activeConfig.branch ?? 'main'
             );
             setGithub(api);
-            const canWrite = await OAuth.canWrite(config.owner, config.repo);
+            const canWrite = await oauth.canWrite(activeConfig.owner, activeConfig.repo);
             setCanEdit(canWrite);
         }
     } else if (isJWTLoggedIn) {
@@ -117,8 +117,8 @@ export function showConfigScreen(): void {
 }
 
 export function updateEditUI(): void {
-    const isAdmin = Auth.isAdmin() || state.canEdit;
-    const isTeacher = Auth.isTeacher();
+    const isAdmin = auth.isAdmin() || state.canEdit;
+    const isTeacher = auth.isTeacher();
 
     // Hide/show edit buttons based on permissions
     const editButtons = document.querySelectorAll(
@@ -131,9 +131,9 @@ export function updateEditUI(): void {
     // Toggle users section for admins
     const usersSection = document.getElementById('users-section');
     if (usersSection) {
-        usersSection.classList.toggle('hidden', !Auth.isAdmin());
+        usersSection.classList.toggle('hidden', !auth.isAdmin());
         const adminBtn = document.getElementById('admin-users-btn');
-        if (Auth.isAdmin()) {
+        if (auth.isAdmin()) {
             void loadUsers();
             if (adminBtn) adminBtn.classList.remove('hidden');
         } else {
@@ -149,7 +149,7 @@ export function updateEditUI(): void {
             const nameEl = document.getElementById('teacher-name');
             if (nameEl && state.currentUser) nameEl.textContent = state.currentUser.name || state.currentUser.email;
 
-            const groups = Auth.getTeacherGroups();
+            const groups = auth.getTeacherGroups();
             const groupsEl = document.getElementById('teacher-assigned-groups');
             if (groupsEl) groupsEl.textContent = groups.length > 0 ? groups.join(', ') : 'no groups yet';
         } else {
@@ -215,7 +215,7 @@ async function initScheduleSection(): Promise<void> {
     select.addEventListener('change', () => void (async () => {
         const classroomId = select.value;
         if (classroomId) {
-            await SchedulesModule.init(classroomId);
+            await schedulesModule.init(classroomId);
         } else {
             const container = document.getElementById('schedule-grid-container');
             if (container) container.innerHTML = '<p class="empty-message">Select a classroom to view its schedule</p>';
@@ -226,8 +226,8 @@ async function initScheduleSection(): Promise<void> {
     document.getElementById('schedule-refresh-btn')?.addEventListener('click', () => void (async () => {
         const classroomId = select.value;
         if (classroomId) {
-            await SchedulesModule.loadSchedules();
-            SchedulesModule.render();
+            await schedulesModule.loadSchedules();
+            schedulesModule.render();
         }
     })());
 }

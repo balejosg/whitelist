@@ -9,7 +9,7 @@ import { logger } from './lib/logger.js';
 // Default OAuth worker URL (can be overridden via localStorage)
 const DEFAULT_OAUTH_WORKER_URL = 'https://openpath-oauth.bruno-alejosgomez.workers.dev';
 
-export const OAuth = {
+export const oauth = {
     // OAuth worker URL - configurable via localStorage for custom deployments
     // Override by setting localStorage.setItem('openpath-oauth-worker', 'https://your-worker.example.com')
     get WORKER_URL(): string {

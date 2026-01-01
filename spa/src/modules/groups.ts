@@ -1,16 +1,15 @@
 import { state } from './state.js';
 import { showScreen } from './ui.js';
 import { showToast, escapeHtml } from '../utils.js';
-import { Config } from '../config.js';
-import { Auth } from '../auth.js';
+import { config as appConfig } from '../config.js';
+import { auth } from '../auth.js';
 import { initRequestsSection } from './requests.js';
-import { WhitelistParser } from '../openpath-parser.js';
+import { whitelistParser } from '../openpath-parser.js';
 import { logger } from '../lib/logger.js';
-// import type { GroupData } from '../types/index.js';
 
 export async function loadDashboard(): Promise<void> {
-    const config = Config.get();
-    const gruposDir = config.gruposDir ?? 'grupos';
+    const currentConfig = appConfig.get();
+    const gruposDir = currentConfig.gruposDir ?? 'grupos';
 
     try {
         const files = await state.github?.listFiles(gruposDir);
@@ -28,35 +27,33 @@ export async function loadDashboard(): Promise<void> {
         let totalBlocked = 0;
 
         // Determine visible groups for teachers
-        const isTeacher = Auth.isTeacher();
-        const isAdmin = Auth.isAdmin() || state.canEdit;
-        const assignedGroups = isTeacher && !isAdmin ? Auth.getAssignedGroups() : null;
+        const isTeacher = auth.isTeacher();
+        const isAdmin = auth.isAdmin() || state.canEdit;
+        const assignedGroups = isTeacher && !isAdmin ? auth.getAssignedGroups() : null;
 
         for (const group of state.allGroups) {
             try {
-                // Fetch content to check status (or enhance listFiles to return it?)
-                // Doing N+1 fetches is slow. But that's how JS did it roughly or JS showed list first.
-                // Actually, dashboard shows counts. So we need content.
+                // Fetch content to check status
                 const result = await state.github?.getFile(group.path);
                 if (result) {
-                    const data = WhitelistParser.parse(result.content);
+                    const data = whitelistParser.parse(result.content);
                     // Enhance group object with stats
                     group.stats = {
                         whitelist: data.whitelist.length,
-                        blocked_subdomains: data.blocked_subdomains.length,
-                        blocked_paths: data.blocked_paths.length
+                        blockedSubdomains: data.blockedSubdomains.length,
+                        blockedPaths: data.blockedPaths.length
                     };
                     group.enabled = data.enabled;
 
                     // Only count stats for visible groups
                     if (!assignedGroups || assignedGroups.includes(group.name)) {
                         totalWhitelist += group.stats.whitelist;
-                        totalBlocked += group.stats.blocked_subdomains + group.stats.blocked_paths;
+                        totalBlocked += group.stats.blockedSubdomains + group.stats.blockedPaths;
                     }
                 }
             } catch (error) {
                 logger.warn(`Failed to load stats for group "${group.name}"`, { error: error instanceof Error ? error.message : String(error) });
-                group.stats = { whitelist: 0, blocked_subdomains: 0, blocked_paths: 0 };
+                group.stats = { whitelist: 0, blockedSubdomains: 0, blockedPaths: 0 };
                 group.enabled = true;
             }
         }
@@ -90,13 +87,13 @@ export function renderGroupsList(): void {
     const list = document.getElementById('groups-list');
     if (!list) return;
 
-    const isTeacher = Auth.isTeacher();
-    const isAdmin = Auth.isAdmin() || state.canEdit;
+    const isTeacher = auth.isTeacher();
+    const isAdmin = auth.isAdmin() || state.canEdit;
 
     // Filter groups based on user role
     let visibleGroups = state.allGroups;
     if (isTeacher && !isAdmin) {
-        const assignedGroups = Auth.getAssignedGroups();
+        const assignedGroups = auth.getAssignedGroups();
         visibleGroups = state.allGroups.filter(g => assignedGroups.includes(g.name));
     }
 
@@ -126,8 +123,8 @@ export function renderGroupsList(): void {
 }
 
 export async function openGroup(name: string): Promise<void> {
-    const config = Config.get();
-    const gruposDir = config.gruposDir ?? 'grupos';
+    const currentConfig = appConfig.get();
+    const gruposDir = currentConfig.gruposDir ?? 'grupos';
     const path = `${gruposDir}/${name}.txt`;
 
     try {
@@ -136,7 +133,7 @@ export async function openGroup(name: string): Promise<void> {
 
         const { content, sha } = result;
 
-        const data = WhitelistParser.parse(content);
+        const data = whitelistParser.parse(content);
         state.currentGroup = name;
         state.currentGroupData = data;
         state.currentGroupSha = sha;
@@ -211,14 +208,14 @@ export function renderRules(): void {
 export function updateRuleCounts(): void {
     if (!state.currentGroupData) return;
 
-    // UI IDs are singular in HTML
+    // UI IDs are camelCase
     const wEl = document.getElementById('count-whitelist');
-    const bSubEl = document.getElementById('count-blocked_subdomain');
-    const bPathEl = document.getElementById('count-blocked_path');
+    const bSubEl = document.getElementById('count-blockedSubdomains');
+    const bPathEl = document.getElementById('count-blockedPaths');
 
     if (wEl) wEl.textContent = state.currentGroupData.whitelist.length.toString();
-    if (bSubEl) bSubEl.textContent = state.currentGroupData.blocked_subdomains.length.toString();
-    if (bPathEl) bPathEl.textContent = state.currentGroupData.blocked_paths.length.toString();
+    if (bSubEl) bSubEl.textContent = state.currentGroupData.blockedSubdomains.length.toString();
+    if (bPathEl) bPathEl.textContent = state.currentGroupData.blockedPaths.length.toString();
 }
 
 export async function deleteRule(value: string, event: Event): Promise<void> {
@@ -235,14 +232,12 @@ export async function deleteRule(value: string, event: Event): Promise<void> {
     await saveCurrentGroup(`Eliminar ${value} de ${state.currentGroup ?? ''}`);
 }
 
-
-
 export async function saveCurrentGroup(message: string): Promise<void> {
-    const config = Config.get();
-    const gruposDir = config.gruposDir ?? 'grupos';
+    const currentConfig = appConfig.get();
+    const gruposDir = currentConfig.gruposDir ?? 'grupos';
     const path = `${gruposDir}/${state.currentGroup ?? ''}.txt`;
     if (!state.currentGroupData) return;
-    const content = WhitelistParser.serialize(state.currentGroupData);
+    const content = whitelistParser.serialize(state.currentGroupData);
 
     try {
         if (!state.github) throw new Error('GitHub API not initialized');
@@ -252,7 +247,6 @@ export async function saveCurrentGroup(message: string): Promise<void> {
 
         // Since we don't get new SHA from boolean return, we risk concurrency issues if we save again immediately.
         // Ideally we should re-fetch module SHA.
-        // Check if getFile uses SHA or HEAD.
         const file = await state.github.getFile(path);
         if (file) state.currentGroupSha = file.sha;
 
@@ -270,8 +264,8 @@ export async function deleteGroup(): Promise<void> {
     if (!state.canEdit) return;
     if (!confirm('Delete this group and all its rules?')) return;
 
-    const config = Config.get();
-    const gruposDir = config.gruposDir ?? 'grupos';
+    const currentConfig = appConfig.get();
+    const gruposDir = currentConfig.gruposDir ?? 'grupos';
     const path = `${gruposDir}/${state.currentGroup ?? ''}.txt`;
 
     try {
@@ -286,7 +280,6 @@ export async function deleteGroup(): Promise<void> {
     }
 }
 
-// Global Exports
 declare global {
     interface Window {
         openGroup: (name: string) => Promise<void>;
@@ -304,4 +297,3 @@ window.openNewGroupModal = () => {
     document.getElementById(modalId)?.classList.remove('hidden');
 };
 window.deleteGroup = deleteGroup;
-

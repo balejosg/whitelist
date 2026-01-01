@@ -26,7 +26,7 @@
 #   wget -qO- https://raw.githubusercontent.com/balejosg/openpath/main/quick-install.sh | sudo bash
 ################################################################################
 
-set -e
+set -eo pipefail
 
 # ========== CONFIGURE THESE VALUES ==========
 WHITELIST_URL="https://raw.githubusercontent.com/balejosg/openpath/main/api/data/classrooms.json"

@@ -1,9 +1,8 @@
 import { state } from './state.js';
 import { relativeTime, escapeHtml, showToast } from '../utils.js';
 import { trpc } from '../trpc.js';
-import { Auth } from '../auth.js';
+import { auth } from '../auth.js';
 import { logger } from '../lib/logger.js';
-// import type { DomainRequest } from '../types/index.js';
 
 // Initialize requests section
 export async function initRequestsSection(): Promise<void> {
@@ -65,7 +64,7 @@ export async function loadPendingRequests(): Promise<void> {
     if (!listEl || !statEl) return;
 
     const url = localStorage.getItem('requests_api_url');
-    if (!url && !Auth.isAuthenticated()) {
+    if (!url && !auth.isAuthenticated()) {
         listEl.innerHTML = '<p class="empty-message">Configure the server URL or log in to see requests</p>';
         statEl.textContent = '—';
         return;
@@ -92,9 +91,9 @@ export async function loadPendingRequests(): Promise<void> {
             return;
         }
 
-        const isTeacher = Auth.isTeacher();
-        const isAdmin = Auth.isAdmin() || state.canEdit;
-        const teacherGroups = Auth.getTeacherGroups();
+        const isTeacher = auth.isTeacher();
+        const isAdmin = auth.isAdmin() || state.canEdit;
+        const teacherGroups = auth.getTeacherGroups();
 
         listEl.innerHTML = requests.map(req => {
             const canApprove = isAdmin || (isTeacher && teacherGroups.includes(req.groupId));

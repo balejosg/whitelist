@@ -4,7 +4,7 @@ import type { SPAConfig } from './types/index.js';
  * Configuration Manager
  * Stores and retrieves app configuration from localStorage
  */
-export const Config = {
+export const config = {
     STORAGE_KEY: 'openpath-spa-config',
 
     get(): Partial<SPAConfig> {

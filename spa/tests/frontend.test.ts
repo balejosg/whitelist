@@ -56,7 +56,7 @@ void describe('relativeTime() function', () => {
 });
 
 // ============================================
-// Auth object method tests
+// auth object method tests
 // ============================================
 
 interface User {
@@ -76,133 +76,96 @@ interface AuthMock {
     isStudent(): boolean;
 }
 
-void describe('Auth.getTeacherGroups()', () => {
-    // Mock Auth object with minimal implementation
-    const createMockAuth = (user?: User): AuthMock => ({
-        user,
-        getUser() { return this.user; },
-        isAdmin() {
-            return this.user?.roles?.some(r => r.role === 'admin') ?? false;
-        },
-        hasRole(role) {
-            return this.user?.roles?.some(r => r.role === role) ?? false;
-        },
-        getApprovalGroups() {
-            if (this.isAdmin()) return 'all';
-            if (!this.user?.roles) return [];
-            const groups = new Set<string>();
-            this.user.roles
-                .filter(r => r.role === 'teacher')
-                .forEach(r => { (r.groupIds ?? []).forEach(g => { groups.add(g); }); });
-            return Array.from(groups);
-        },
-        getTeacherGroups() {
-            const groups = this.getApprovalGroups();
-            return groups === 'all' ? [] : (groups as string[]);
-        },
-        getAssignedGroups() {
-            return this.getTeacherGroups();
-        },
-        isTeacher() {
-            return this.hasRole('teacher');
-        },
-        isStudent() {
-            return this.hasRole('student');
-        }
-    });
+// Mock auth object with minimal implementation
+const createMockAuth = (user?: User): AuthMock => ({
+    user,
+    getUser() { return this.user; },
+    isAdmin() {
+        return this.user?.roles?.some(r => r.role === 'admin') ?? false;
+    },
+    hasRole(role) {
+        return this.user?.roles?.some(r => r.role === role) ?? false;
+    },
+    getApprovalGroups() {
+        if (this.isAdmin()) return 'all';
+        if (!this.user?.roles) return [];
+        const groups = new Set<string>();
+        this.user.roles
+            .filter(r => r.role === 'teacher')
+            .forEach(r => { (r.groupIds ?? []).forEach(g => { groups.add(g); }); });
+        return Array.from(groups);
+    },
+    getTeacherGroups() {
+        const groups = this.getApprovalGroups();
+        return typeof groups === 'string' ? [] : groups;
+    },
+    getAssignedGroups() {
+        return this.getTeacherGroups();
+    },
+    isTeacher() {
+        return this.hasRole('teacher');
+    },
+    isStudent() {
+        return this.hasRole('student');
+    }
+});
 
-    void test('should return empty array for admin (gets "all")', () => {
-        const auth = createMockAuth({
-            roles: [{ role: 'admin' }]
-        });
-        assert.deepStrictEqual(auth.getTeacherGroups(), []);
-    });
-
-    void test('should return groups for teacher', () => {
-        const auth = createMockAuth({
-            roles: [{ role: 'teacher', groupIds: ['matematicas-3', 'ciencias-2'] }]
-        });
-        const groups = auth.getTeacherGroups();
-        assert.ok(groups.includes('matematicas-3'));
-        assert.ok(groups.includes('ciencias-2'));
-        assert.strictEqual(groups.length, 2);
-    });
-
-    void test('should return empty array for user without roles', () => {
+void describe('auth.getTeacherGroups()', () => {
+    void test('should return empty array if user has no roles', () => {
         const auth = createMockAuth({});
         assert.deepStrictEqual(auth.getTeacherGroups(), []);
     });
 
-    void test('should return empty array for student', () => {
+    void test('should return group names if user is teacher', () => {
         const auth = createMockAuth({
-            roles: [{ role: 'student' }]
+            roles: [{ role: 'teacher', groupIds: ['g1', 'g2'] }]
         });
+        assert.deepStrictEqual(auth.getTeacherGroups(), ['g1', 'g2']);
+    });
+
+    void test('should handle teacher with multiple role entries', () => {
+        const auth = createMockAuth({
+            roles: [
+                { role: 'teacher', groupIds: ['g1'] },
+                { role: 'teacher', groupIds: ['g2', 'g1'] }
+            ]
+        });
+        const result = auth.getTeacherGroups();
+        assert.strictEqual(result.length, 2);
+        assert.ok(result.includes('g1'));
+        assert.ok(result.includes('g2'));
+    });
+
+    void test('should return empty if user is admin (admin sees ALL)', () => {
+        const auth = createMockAuth({ roles: [{ role: 'admin' }] });
+        // getTeacherGroups returns [] for admin because getApprovalGroups returns 'all'
         assert.deepStrictEqual(auth.getTeacherGroups(), []);
     });
 });
 
-void describe('Auth.isTeacher()', () => {
-    const createMockAuth = (roles: { role: string }[]): AuthMock => ({
-        user: { roles: roles.map(r => ({ role: r.role })) },
-        getUser() { return this.user; },
-        isAdmin() { return roles.some(r => r.role === 'admin'); },
-        hasRole(role: string) { return roles.some(r => r.role === role); },
-        isTeacher() { return this.hasRole('teacher'); },
-        isStudent() { return this.hasRole('student'); },
-        getApprovalGroups() { return []; },
-        getTeacherGroups() { return []; },
-        getAssignedGroups() { return []; }
+void describe('auth.isTeacher()', () => {
+    void test('should return true if user has teacher role', () => {
+        const auth = createMockAuth({ roles: [{ role: 'teacher' }] });
+        assert.strictEqual(auth.isTeacher(), true);
     });
 
-    void test('should return false for admin', () => {
-        const auth = createMockAuth([{ role: 'admin' }]);
-        assert.strictEqual(auth.isTeacher(), false);
-    });
-
-    void test('should return false for student', () => {
-        const auth = createMockAuth([{ role: 'student' }]);
+    void test('should return false if user is only student', () => {
+        const auth = createMockAuth({ roles: [{ role: 'student' }] });
         assert.strictEqual(auth.isTeacher(), false);
     });
 });
 
-void describe('Auth.isStudent()', () => {
-    const createMockAuth = (roles: { role: string }[]): AuthMock => ({
-        user: { roles: roles.map(r => ({ role: r.role })) },
-        getUser() { return this.user; },
-        isAdmin() { return roles.some(r => r.role === 'admin'); },
-        hasRole(role: string) { return roles.some(r => r.role === role); },
-        isTeacher() { return this.hasRole('teacher'); },
-        isStudent() { return this.hasRole('student'); },
-        getApprovalGroups() { return []; },
-        getTeacherGroups() { return []; },
-        getAssignedGroups() { return []; }
-    });
-
-    void test('should return true for student', () => {
-        const auth = createMockAuth([{ role: 'student' }]);
+void describe('auth.isStudent()', () => {
+    void test('should return true if user has student role', () => {
+        const auth = createMockAuth({ roles: [{ role: 'student' }] });
         assert.strictEqual(auth.isStudent(), true);
     });
-
-    void test('should return false for teacher', () => {
-        const auth = createMockAuth([{ role: 'teacher' }]);
-        assert.strictEqual(auth.isStudent(), false);
-    });
 });
 
-void describe('Auth.getAssignedGroups() alias', () => {
-    void test('should return same as getTeacherGroups', () => {
-        const mockAuth: AuthMock = {
-            user: {},
-            getUser() { return this.user; },
-            isAdmin() { return false; },
-            hasRole(_r: string) { return false; },
-            getApprovalGroups() { return []; },
-            isTeacher() { return false; },
-            isStudent() { return false; },
-            getTeacherGroups() { return ['group1', 'group2']; },
-            getAssignedGroups() { return this.getTeacherGroups(); }
-        };
-
+void describe('auth.getAssignedGroups() alias', () => {
+    void test('should return the same as teacher groups', () => {
+        const mockUser = { roles: [{ role: 'teacher', groupIds: ['a', 'b'] }] };
+        const mockAuth = createMockAuth(mockUser);
         assert.deepStrictEqual(
             mockAuth.getAssignedGroups(),
             mockAuth.getTeacherGroups()

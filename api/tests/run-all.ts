@@ -8,9 +8,9 @@
  * module cache conflicts when multiple test files need to start servers.
  */
 
-import { spawn, type ChildProcess } from 'child_process';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { spawn, type ChildProcess } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const currentFilePath = fileURLToPath(import.meta.url);
 const currentDirPath = path.dirname(currentFilePath);

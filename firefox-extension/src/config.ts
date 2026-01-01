@@ -33,39 +33,28 @@ import { logger } from './lib/logger.js';
 const DEFAULT_CONFIG: Config = {
     // Home server URL for domain requests API
     // Production API endpoint
-    REQUEST_API_URL: 'https://openpath-api.duckdns.org',
+    requestApiUrl: 'https://openpath-api.duckdns.org',
 
     // Fallback API URLs (tried in order if primary fails)
-    FALLBACK_API_URLS: [],
+    fallbackApiUrls: [],
 
     // Timeout for API requests (in milliseconds)
-    REQUEST_TIMEOUT: 10000,
-
-    // Retry configuration
-    RETRY_ATTEMPTS: 3,
-    RETRY_DELAY: 1000,  // Initial delay in ms (doubles each retry)
+    requestTimeout: 10000,
 
     // Default group for requests (if not specified)
-    DEFAULT_GROUP: 'informatica-3',
+    defaultGroup: 'informatica-3',
 
     // Enable/disable request feature
-    ENABLE_REQUESTS: true,
+    enableRequests: true,
 
     // Show detailed error messages
-    DEBUG_MODE: false,
-
-    // Native messaging retry config
-    NATIVE_RETRY_ATTEMPTS: 2,
-    NATIVE_RETRY_DELAY: 500,
-
-    // Auto-inclusion settings
-    AUTO_INCLUDE_ENABLED: true,
+    debugMode: false,
 
     // Shared secret for machine auto-registration
     // SECURITY: This MUST be configured via browser.storage.sync in production
     // Set via extension options page or programmatically before enabling auto-include
     // Default empty string disables auto-registration until properly configured
-    SHARED_SECRET: ''
+    sharedSecret: ''
 };
 
 // Runtime config (merged with stored settings)
@@ -113,7 +102,7 @@ async function saveConfig(newConfig: Partial<Config>): Promise<void> {
  * @returns {string} Current API URL
  */
 function getApiUrl(): string {
-    return CONFIG.REQUEST_API_URL;
+    return CONFIG.requestApiUrl;
 }
 
 /**
@@ -121,7 +110,7 @@ function getApiUrl(): string {
  * @returns {string[]} List of API URLs to try
  */
 function getAllApiUrls(): string[] {
-    return [CONFIG.REQUEST_API_URL, ...CONFIG.FALLBACK_API_URLS].filter(Boolean);
+    return [CONFIG.requestApiUrl, ...CONFIG.fallbackApiUrls].filter(Boolean);
 }
 
 // Window interface is extended in types.d.ts for type-safe global access
@@ -134,4 +123,3 @@ if (typeof window !== 'undefined') {
     window.getApiUrl = getApiUrl;
     window.getAllApiUrls = getAllApiUrls;
 }
-

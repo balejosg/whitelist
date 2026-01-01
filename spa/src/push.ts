@@ -16,7 +16,7 @@ interface SubscribeResponse {
  * Push Notifications Manager
  * Handles push subscription management for teachers
  */
-export const PushManager = {
+export const pushManager = {
     /**
      * Check if push notifications are supported
      */

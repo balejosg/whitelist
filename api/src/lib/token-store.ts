@@ -96,7 +96,3 @@ export function getTokenStore(): ITokenStore {
 export function resetTokenStore(): void {
     // No-op for DB-based store
 }
-
-export function createTokenStoreAdapter(_store?: unknown): ITokenStore {
-    return tokenStore;
-}

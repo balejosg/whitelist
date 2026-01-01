@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { router, publicProcedure, protectedProcedure } from '../trpc.js';
 import { TRPCError } from '@trpc/server';
+import { CreatePushSubscriptionDTOSchema } from '../../types/index.js';
 import * as push from '../../lib/push.js';
 import * as auth from '../../lib/auth.js';
 import { logger } from '../../lib/logger.js';
@@ -47,14 +48,7 @@ export const pushRouter = router({
 
     subscribe: protectedProcedure
         .input(z.object({
-            subscription: z.object({
-                endpoint: z.string().min(1),
-                keys: z.object({
-                    p256dh: z.string().min(1),
-                    auth: z.string().min(1),
-                }),
-                expirationTime: z.number().nullable().optional(),
-            }),
+            subscription: CreatePushSubscriptionDTOSchema.omit({ userAgent: true }),
             groupIds: z.array(z.string()).optional(),
         }))
         .mutation(async ({ input, ctx }) => {

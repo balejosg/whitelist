@@ -199,5 +199,3 @@ export const logger = {
     child: createChildLogger,
     requestMiddleware
 };
-
-export default logger;

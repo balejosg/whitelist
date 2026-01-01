@@ -12,7 +12,7 @@ import assert from 'node:assert';
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
-import { Server } from 'node:http';
+import type { Server } from 'node:http';
 import { getAvailablePort, resetDb } from './test-utils.js';
 import { closeConnection } from '../src/db/index.js';
 

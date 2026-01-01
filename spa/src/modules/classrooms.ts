@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { Auth } from '../auth.js';
+import { auth } from '../auth.js';
 import { trpc } from '../trpc.js';
 import { showToast, escapeHtml } from '../utils.js';
 import { openModal, closeModal } from './ui.js';
@@ -15,7 +15,7 @@ export async function loadClassrooms(): Promise<void> {
     const listEl = document.getElementById('classrooms-list');
 
     // Only show for admins
-    if (!Auth.isAdmin() && !state.canEdit) {
+    if (!auth.isAdmin() && !state.canEdit) {
         section?.classList.add('hidden');
         return;
     }

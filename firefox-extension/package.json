@@ -6,12 +6,15 @@
     "private": true,
     "type": "module",
     "scripts": {
+        "clean": "rm -rf dist",
+        "prebuild": "npm run clean",
         "build": "tsc",
         "typecheck": "tsc --noEmit",
         "lint": "eslint . --max-warnings=0",
         "lint:fix": "eslint . --fix",
         "dev": "tsc --watch",
-        "test": "npx tsx --test tests/*.test.ts"
+        "test": "npx tsx --test tests/*.test.ts",
+        "test:coverage": "c8 npx tsx --test tests/*.test.ts"
     },
     "devDependencies": {
         "@types/node": "^22.19.3",

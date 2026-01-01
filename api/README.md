@@ -293,11 +293,10 @@ api/
 ├── src/                # TypeScript Source Code
 │   ├── server.ts       # Main entry point
 │   ├── trpc/           # tRPC Router definitions
-│   │   ├── router.ts   # Main AppRouter
+│   │   ├── routers/    # All routers (index.ts is Main AppRouter)
 │   │   └── context.ts  # Request context
-│   ├── routes/         # REST API endpoints
 │   └── lib/
-│       ├── storage.ts  # JSON file persistence
+│       ├── storage.ts  # PostgreSQL-backed storage
 │       └── github.ts   # GitHub API client
 ├── dist/               # Compiled JavaScript (Production)
 ├── tests/              # Test suite

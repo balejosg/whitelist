@@ -132,8 +132,8 @@ activate_firewall() {
     fi
 
     # Detect gateway
-    local GATEWAY
-    GATEWAY=$(ip route | grep default | awk '{print $3}' | head -1)
+    local gateway
+    gateway=$(ip route | grep default | awk '{print $3}' | head -1)
 
     # Clear existing rules (optional - ok to fail if no rules exist)
     add_optional_rule "Flush OUTPUT chain" \
@@ -169,11 +169,11 @@ activate_firewall() {
 
     # 5. If gateway is different from DNS, allow DNS to gateway too
     #    (some routers act as DNS)
-    if [ -n "$GATEWAY" ] && [ "$GATEWAY" != "$PRIMARY_DNS" ]; then
-        add_optional_rule "Allow DNS to gateway $GATEWAY (UDP)" \
-            iptables -A OUTPUT -p udp -d "$GATEWAY" --dport 53 -j ACCEPT
-        add_optional_rule "Allow DNS to gateway $GATEWAY (TCP)" \
-            iptables -A OUTPUT -p tcp -d "$GATEWAY" --dport 53 -j ACCEPT
+    if [ -n "$gateway" ] && [ "$gateway" != "$PRIMARY_DNS" ]; then
+        add_optional_rule "Allow DNS to gateway $gateway (UDP)" \
+            iptables -A OUTPUT -p udp -d "$gateway" --dport 53 -j ACCEPT
+        add_optional_rule "Allow DNS to gateway $gateway (TCP)" \
+            iptables -A OUTPUT -p tcp -d "$gateway" --dport 53 -j ACCEPT
     fi
 
     # 6. Block DNS to any other server - enforces DNS sinkhole
@@ -250,7 +250,7 @@ activate_firewall() {
         return 1
     fi
 
-    log "Restrictive firewall activated (DNS: $PRIMARY_DNS, GW: ${GATEWAY:-none})"
+    log "Restrictive firewall activated (DNS: $PRIMARY_DNS, GW: ${gateway:-none})"
     return 0
 }
 

@@ -184,8 +184,8 @@ export interface GitHubFile {
 export interface GroupData {
     enabled: boolean;
     whitelist: string[];
-    blocked_subdomains: string[];
-    blocked_paths: string[];
+    blockedSubdomains: string[];
+    blockedPaths: string[];
 }
 
 /**
@@ -205,7 +205,7 @@ export interface Group {
     name: string;
     path: string;
     sha: string;
-    stats?: { whitelist: number; blocked_subdomains: number; blocked_paths: number };
+    stats?: { whitelist: number; blockedSubdomains: number; blockedPaths: number };
     enabled?: boolean;
 }
 
@@ -217,7 +217,7 @@ export interface AppState {
     currentGroup: string | null;
     currentGroupData: GroupData | null;
     currentGroupSha: string | null;
-    currentRuleType: 'whitelist' | 'blocked_subdomains' | 'blocked_paths';
+    currentRuleType: 'whitelist' | 'blockedSubdomains' | 'blockedPaths';
     allGroups: Group[];
     currentUser: User | null;
     canEdit: boolean;
@@ -346,12 +346,12 @@ export interface PushNotificationPayload {
 
 declare global {
     interface Window {
-        Auth: AuthAPI;
-        OAuth: OAuthAPI;
-        RequestsAPI: RequestsAPIInstance;
-        Config: ConfigAPI;
+        auth: AuthAPI;
+        oauth: OAuthAPI;
+        config: ConfigAPI;
+        setup: typeof import('../setup.js').setup;
         GitHubAPI: new (token: string, owner: string, repo: string, branch: string) => GitHubAPIInstance;
-        SchedulesModule: typeof import('../modules/schedules.js').SchedulesModule;
+        schedulesModule: typeof import('../modules/schedules.js').schedulesModule;
     }
 }
 

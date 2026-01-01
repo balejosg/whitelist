@@ -121,7 +121,6 @@ All functionality is split into reusable libraries in `/usr/local/lib/openpath/l
   - `openpath-update.sh` - Main update script
   - `dnsmasq-watchdog.sh` - Health monitoring
   - `captive-portal-detector.sh` - Captive portal handling
-  - `dnsmasq-init-resolv.sh` - DNS upstream initialization
   - `whitelist` - Unified CLI command
 
 - **Libraries**: `/usr/local/lib/openpath/lib/*.sh` (source: `linux/lib/`)
@@ -181,11 +180,6 @@ sudo ./uninstall.sh
 sudo ./uninstall.sh --unattended
 ```
 
-**Quick reinstall (for development):**
-```bash
-sudo ./auto-reinstall.sh
-```
-
 ### Testing Changes to Scripts
 
 After modifying scripts in the repository:
@@ -200,11 +194,6 @@ After modifying scripts in the repository:
    ```bash
    sudo cp linux/scripts/runtime/openpath-update.sh /usr/local/bin/
    sudo systemctl restart openpath-dnsmasq.timer
-   ```
-
-3. **For full reinstall** (recommended during development):
-   ```bash
-   sudo ./auto-reinstall.sh
    ```
 
 ### Debugging
@@ -383,8 +372,7 @@ cd dashboard && npm test
 
 ### CI/CD
 Workflows in `.github/workflows/`:
-- `ci.yml` - BATS tests, web tests, Windows Pester tests
-- `lint.yml` - ShellCheck, ESLint, PSScriptAnalyzer linting
+- `ci.yml` - BATS tests, web tests, Windows Pester tests, ShellCheck, ESLint, PSScriptAnalyzer linting
 - `e2e-tests.yml` - Full E2E on Linux/Windows
 - `deploy.yml` - GitHub Pages deployment
 - `deploy-api.yml` - API deployment

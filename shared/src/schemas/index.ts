@@ -8,7 +8,15 @@ export const RequestStatus = z.enum(['pending', 'approved', 'rejected']);
 export const RequestPriority = z.enum(['low', 'normal', 'high', 'urgent']);
 export const UserRole = z.enum(['admin', 'teacher', 'student']);
 export const MachineStatus = z.enum(['online', 'offline', 'unknown']);
-export const HealthStatus = z.enum(['healthy', 'warning', 'error']);
+export const HealthStatus = z.enum([
+    'healthy',
+    'warning',
+    'error',
+    'OK',
+    'WARNING',
+    'CRITICAL',
+    'FAIL_OPEN'
+]);
 
 // =============================================================================
 // Entity Schemas
@@ -245,8 +253,9 @@ export const PushSubscriptionKeys = z.object({
 });
 
 export const CreatePushSubscriptionDTO = z.object({
-    endpoint: z.string(),
+    endpoint: z.string().min(1),
     keys: PushSubscriptionKeys,
+    expirationTime: z.number().nullable().optional(),
     userAgent: z.string().optional(),
 });
 

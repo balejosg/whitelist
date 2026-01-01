@@ -47,7 +47,7 @@ import rateLimit from 'express-rate-limit';
 import 'dotenv/config';
 
 // Structured logging with Winston
-import logger from './lib/logger.js';
+import { logger } from './lib/logger.js';
 
 // Centralized configuration
 import { config } from './config.js';
@@ -251,6 +251,7 @@ app.use((req: Request, res: Response) => {
     res.status(404).json({
         success: false,
         error: 'Endpoint not found',
+        code: 'NOT_FOUND',
         path: req.path
     });
 });

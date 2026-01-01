@@ -4,7 +4,7 @@ import { TRPCError } from '@trpc/server';
 import * as userStorage from '../../lib/user-storage.js';
 import * as roleStorage from '../../lib/role-storage.js';
 import * as auth from '../../lib/auth.js';
-import logger from '../../lib/logger.js';
+import { logger } from '../../lib/logger.js';
 import {
     UserRole,
     LoginDTOSchema,

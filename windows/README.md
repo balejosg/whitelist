@@ -117,4 +117,4 @@ Este sistema es el equivalente Windows del [sistema Linux](../README.md) basado 
 
 ## Licencia
 
-MIT
+AGPL-3.0-or-later

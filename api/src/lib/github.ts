@@ -6,7 +6,7 @@
  */
 
 import https from 'node:https';
-import logger from './logger.js';
+import { logger } from './logger.js';
 
 // =============================================================================
 // Constants
@@ -371,35 +371,6 @@ export async function listWhitelistFiles(): Promise<WhitelistFile[]> {
 }
 
 /**
- * Check if a domain is already in a whitelist file.
- * Handles exact matches, wildcard subdomains, and parent domain matches.
- * 
- * @param domain - Domain to check
- * @param groupId - Group identifier (maps to filename)
- * @returns Promise resolving to true if domain is found, false otherwise
- */
-export async function isDomainInWhitelist(domain: string, groupId: string): Promise<boolean> {
-    try {
-        const filePath = `${groupId}.txt`;
-        const file = await getFileContent(filePath);
-
-        const lines = file.content.split('\n');
-        const domainLower = domain.toLowerCase().trim();
-
-        return lines.some((line) => {
-            const trimmed = line.trim().toLowerCase();
-            return trimmed === domainLower ||
-                trimmed === `*.${domainLower}` ||
-                (trimmed.startsWith('*.') && domainLower.endsWith(trimmed.slice(1)));
-        });
-    } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        logger.error('Error checking domain in whitelist', { domain, groupId, error: message });
-        return false;
-    }
-}
-
-/**
  * Check if a domain is blocked by global blocklists.
  * Checks against blocked-subdomains.txt.
  * 
@@ -445,6 +416,5 @@ export default {
     updateFile,
     addDomainToWhitelist,
     listWhitelistFiles,
-    isDomainInWhitelist,
     isDomainBlocked
 };

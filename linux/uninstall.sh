@@ -27,7 +27,7 @@
 # - Verificar DNS funcional antes de terminar
 ################################################################################
 
-set -e
+set -eo pipefail
 
 # Verificar root
 if [ "$EUID" -ne 0 ]; then

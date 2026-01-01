@@ -7,7 +7,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
-import logger from './logger.js';
+import { logger } from './logger.js';
 
 // =============================================================================
 // Types
@@ -44,14 +44,6 @@ interface LogEntry {
     userId?: string;
     userEmail?: string;
     [key: string]: unknown;
-}
-
-interface ErrorResponseBase {
-    success: false;
-    error: string;
-    code: string;
-    requestId?: string;
-    details?: unknown;
 }
 
 // =============================================================================
@@ -146,104 +138,9 @@ export function errorTrackingMiddleware(
     }
 }
 
-// =============================================================================
-// Error Creation
-// =============================================================================
-
-export function createError(
-    message: string,
-    statusCode = 500,
-    code: string | null = null
-): ErrorWithStatus {
-    const error: ErrorWithStatus = new Error(message);
-    error.statusCode = statusCode;
-    if (code !== null) {
-        error.code = code;
-    }
-    return error;
-}
-
-// =============================================================================
-// Async Handler
-// =============================================================================
-
-type AsyncHandlerFn = (req: Request, res: Response, next: NextFunction) => Promise<unknown>;
-
-export function asyncHandler(fn: AsyncHandlerFn): RequestHandler {
-    return (req: Request, res: Response, next: NextFunction): void => {
-        Promise.resolve(fn(req, res, next)).catch(next);
-    };
-}
-
-// =============================================================================
-// API Response Helpers
-// =============================================================================
-
-export const apiResponse = {
-    success: (res: Response, data: Record<string, unknown>, statusCode = 200): void => {
-        res.status(statusCode).json({
-            success: true,
-            ...data
-        });
-    },
-
-    error: (
-        res: Response,
-        message: string,
-        code: string,
-        statusCode = 400,
-        details: unknown = null
-    ): void => {
-        const response: ErrorResponseBase = {
-            success: false,
-            error: message,
-            code: code
-        };
-        if (details !== null) response.details = details;
-        res.status(statusCode).json(response);
-    },
-
-    notFound: (res: Response, message = 'Resource not found'): void => {
-        res.status(404).json({
-            success: false,
-            error: message,
-            code: 'NOT_FOUND'
-        });
-    },
-
-    unauthorized: (res: Response, message = 'Authentication required'): void => {
-        res.status(401).json({
-            success: false,
-            error: message,
-            code: 'UNAUTHORIZED'
-        });
-    },
-
-    forbidden: (res: Response, message = 'Access denied'): void => {
-        res.status(403).json({
-            success: false,
-            error: message,
-            code: 'FORBIDDEN'
-        });
-    },
-
-    validationError: (res: Response, message = 'Validation failed', details: unknown = null): void => {
-        const response: ErrorResponseBase = {
-            success: false,
-            error: message,
-            code: 'VALIDATION_ERROR'
-        };
-        if (details !== null) response.details = details;
-        res.status(400).json(response);
-    }
-};
-
 export default {
     ErrorCategory,
     requestIdMiddleware,
     errorTrackingMiddleware,
-    logError,
-    createError,
-    asyncHandler,
-    apiResponse
+    logError
 };

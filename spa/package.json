@@ -14,7 +14,9 @@
         "test:e2e": "npx playwright test",
         "test:e2e:headed": "npx playwright test --headed",
         "test:e2e:ui": "npx playwright test --ui",
-        "lint": "eslint src/ --max-warnings=0"
+        "test:coverage": "c8 npx tsx --test tests/*.test.ts",
+        "lint": "eslint src/ --max-warnings=0",
+        "lint:fix": "eslint src/ --fix --max-warnings=0"
     },
     "devDependencies": {
         "@playwright/test": "^1.40.0",

@@ -4,7 +4,7 @@ import type { GroupData } from './types/index.js';
  * OpenPath File Parser
  * Parses and serializes the whitelist.txt format with sections
  */
-export const WhitelistParser = {
+export const whitelistParser = {
     SECTIONS: {
         WHITELIST: '## WHITELIST',
         BLOCKED_SUBDOMAINS: '## BLOCKED-SUBDOMAINS',
@@ -18,8 +18,8 @@ export const WhitelistParser = {
         const result: GroupData = {
             enabled: true,
             whitelist: [],
-            blocked_subdomains: [],
-            blocked_paths: []
+            blockedSubdomains: [],
+            blockedPaths: []
         };
 
         if (!content.trim()) {
@@ -29,8 +29,9 @@ export const WhitelistParser = {
         const lines = content.split('\n');
         let currentSection: keyof GroupData | null = null;
 
-        // Check if disabled
-        if (lines[0]?.trim() === '#DESACTIVADO') {
+        // Check if disabled - find first non-empty line
+        const firstLine = lines.find(l => l.trim() !== '');
+        if (firstLine?.trim().toUpperCase() === '#DESACTIVADO') {
             result.enabled = false;
         }
 
@@ -48,11 +49,11 @@ export const WhitelistParser = {
                 continue;
             }
             if (trimmed === this.SECTIONS.BLOCKED_SUBDOMAINS) {
-                currentSection = 'blocked_subdomains';
+                currentSection = 'blockedSubdomains';
                 continue;
             }
             if (trimmed === this.SECTIONS.BLOCKED_PATHS) {
-                currentSection = 'blocked_paths';
+                currentSection = 'blockedPaths';
                 continue;
             }
 
@@ -89,18 +90,18 @@ export const WhitelistParser = {
         }
 
         // Blocked subdomains section
-        if (data.blocked_subdomains.length > 0) {
+        if (data.blockedSubdomains.length > 0) {
             content += `${this.SECTIONS.BLOCKED_SUBDOMAINS}\n`;
-            data.blocked_subdomains.sort().forEach((subdomain: string) => {
+            data.blockedSubdomains.sort().forEach((subdomain: string) => {
                 content += `${subdomain}\n`;
             });
             content += '\n';
         }
 
         // Blocked paths section
-        if (data.blocked_paths.length > 0) {
+        if (data.blockedPaths.length > 0) {
             content += `${this.SECTIONS.BLOCKED_PATHS}\n`;
-            data.blocked_paths.sort().forEach((path: string) => {
+            data.blockedPaths.sort().forEach((path: string) => {
                 content += `${path}\n`;
             });
             content += '\n';
@@ -112,11 +113,11 @@ export const WhitelistParser = {
     /**
      * Get stats from parsed data
      */
-    getStats(data: GroupData): { whitelist: number; blocked_subdomains: number; blocked_paths: number } {
+    getStats(data: GroupData): { whitelist: number; blockedSubdomains: number; blockedPaths: number } {
         return {
             whitelist: data.whitelist.length,
-            blocked_subdomains: data.blocked_subdomains.length,
-            blocked_paths: data.blocked_paths.length
+            blockedSubdomains: data.blockedSubdomains.length,
+            blockedPaths: data.blockedPaths.length
         };
     }
 };

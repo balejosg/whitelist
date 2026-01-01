@@ -6,7 +6,7 @@
  * Handles the initial configuration when no admins exist
  */
 
-import { Auth } from './auth.js';
+import { auth } from './auth.js';
 import { logger } from './lib/logger.js';
 
 interface SetupStatusResponse {
@@ -101,7 +101,7 @@ export async function getRegistrationToken(): Promise<string> {
     }
 
     const response = await fetch(`${apiUrl}/api/setup/registration-token`, {
-        headers: Auth.getAuthHeaders()
+        headers: auth.getAuthHeaders()
     });
 
     const data = await response.json() as TokenResponse & { error?: string };
@@ -124,7 +124,7 @@ export async function regenerateToken(): Promise<string> {
 
     const response = await fetch(`${apiUrl}/api/setup/regenerate-token`, {
         method: 'POST',
-        headers: Auth.getAuthHeaders()
+        headers: auth.getAuthHeaders()
     });
 
     const data = await response.json() as TokenResponse & { error?: string };
@@ -184,7 +184,7 @@ export function showSetupComplete(token: string): void {
 }
 
 // Export as object for backwards compatibility
-export const Setup = {
+export const setup = {
     checkStatus,
     createFirstAdmin,
     getRegistrationToken,
@@ -196,7 +196,7 @@ export const Setup = {
 // Make available globally for HTML onclick handlers
 declare global {
     interface Window {
-        Setup: typeof Setup;
+        setup: typeof setup;
     }
 }
-window.Setup = Setup;
+window.setup = setup;

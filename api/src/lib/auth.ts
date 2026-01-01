@@ -260,21 +260,6 @@ export function getApprovalGroups(decoded: DecodedWithRoles | null | undefined):
     return Array.from(groups);
 }
 
-/**
- * Get the highest role from decoded token
- */
-export function getHighestRole(decoded: DecodedWithRoles | null): UserRole | null {
-    if (decoded?.roles === undefined || decoded.roles.length === 0) return null;
-
-    const roles = decoded.roles.map((r) => r.role);
-
-    if (roles.includes('admin')) return 'admin';
-    if (roles.includes('teacher')) return 'teacher';
-    if (roles.includes('student')) return 'student';
-
-    return null;
-}
-
 // =============================================================================
 // Legacy Token Support (for backward compatibility with ADMIN_TOKEN)
 // =============================================================================

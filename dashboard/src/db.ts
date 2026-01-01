@@ -4,9 +4,9 @@
  */
 
 import bcrypt from 'bcrypt';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
+import path from 'node:path';
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { v4 as uuidv4 } from 'uuid';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { eq, and, sql } from 'drizzle-orm';

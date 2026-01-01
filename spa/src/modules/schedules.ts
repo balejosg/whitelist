@@ -3,13 +3,13 @@
  * Weekly schedule grid for classroom reservations
  */
 
-import { Auth } from '../auth.js';
+import { auth } from '../auth.js';
 import { trpc } from '../trpc.js';
 import { showToast } from '../utils.js';
 import { logger } from '../lib/logger.js';
 import type { Schedule, ScheduleSlot, ScheduleGroup } from '../types/index.js';
 
-export const SchedulesModule = {
+export const schedulesModule = {
     currentClassroomId: null as string | null,
     schedules: [] as Schedule[],
     groups: [] as ScheduleGroup[],
@@ -151,10 +151,10 @@ export const SchedulesModule = {
      */
     renderGroupsLegend(): string {
         // Get teacher's groups (filter if teacher role)
-        const myGroups = Auth.isAdmin()
+        const myGroups = auth.isAdmin()
             ? this.groups
             : this.groups.filter(g => {
-                const teacherGroups = Auth.getTeacherGroups();
+                const teacherGroups = auth.getTeacherGroups();
                 return teacherGroups.includes(g.id);
             });
 
@@ -264,10 +264,10 @@ export const SchedulesModule = {
     showGroupSelectionModal(dayOfWeek: number, startTime: string, endTime: string): Promise<string | null> {
         return new Promise((resolve) => {
             const dayName = this.DAY_NAMES[dayOfWeek];
-            const myGroups = Auth.isAdmin()
+            const myGroups = auth.isAdmin()
                 ? this.groups
                 : this.groups.filter(g => {
-                    const teacherGroups = Auth.getTeacherGroups();
+                    const teacherGroups = auth.getTeacherGroups();
                     return teacherGroups.includes(g.id);
                 });
 
@@ -355,7 +355,7 @@ export const SchedulesModule = {
 // Expose globally
 declare global {
     interface Window {
-        SchedulesModule: typeof SchedulesModule;
+        schedulesModule: typeof schedulesModule;
     }
 }
-window.SchedulesModule = SchedulesModule;
+window.schedulesModule = schedulesModule;

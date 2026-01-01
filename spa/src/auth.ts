@@ -6,7 +6,7 @@ import { logger } from './lib/logger.js';
  * Authentication API Client
  * Handles JWT-based authentication for the OpenPath SPA
  */
-export const Auth: AuthAPI = {
+export const auth: AuthAPI = {
     // Storage keys
     ACCESS_TOKEN_KEY: 'openpath_access_token',
     REFRESH_TOKEN_KEY: 'openpath_refresh_token',

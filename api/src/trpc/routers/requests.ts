@@ -11,7 +11,7 @@ import * as github from '../../lib/github.js';
 import * as push from '../../lib/push.js';
 import * as auth from '../../lib/auth.js';
 import { stripUndefined } from '../../lib/utils.js';
-import logger from '../../lib/logger.js';
+import { logger } from '../../lib/logger.js';
 
 export const requestsRouter = router({
     /**

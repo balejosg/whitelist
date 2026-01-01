@@ -1,16 +1,16 @@
 import { state } from './state.js';
-import { Auth } from '../auth.js';
+import { auth } from '../auth.js';
 import { trpc } from '../trpc.js';
 import { showToast, escapeHtml } from '../utils.js';
 import { openModal, closeModal } from './ui.js';
-import { UserRole } from '../../../shared/src/index.js';
+import { UserRole } from '@openpath/shared';
 import { logger } from '../lib/logger.js';
 import { z } from 'zod';
 
 type UserRoleType = z.infer<typeof UserRole>;
 
 export async function loadUsers(): Promise<void> {
-    if (!Auth.isAdmin()) return;
+    if (!auth.isAdmin()) return;
 
     const listEl = document.getElementById('users-list');
     if (!listEl) return;

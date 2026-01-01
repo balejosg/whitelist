@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { router, publicProcedure, adminProcedure } from '../trpc.js';
 import { TRPCError } from '@trpc/server';
+import { CreateUserDTOSchema } from '../../types/index.js';
 import { SetupService } from '../../services/index.js';
 
 export const setupRouter = router({
@@ -9,11 +10,7 @@ export const setupRouter = router({
     }),
 
     createFirstAdmin: publicProcedure
-        .input(z.object({
-            email: z.string().email(),
-            name: z.string().min(1),
-            password: z.string().min(8),
-        }))
+        .input(CreateUserDTOSchema)
         .mutation(async ({ input }) => {
             const result = await SetupService.createFirstAdmin(input);
 
