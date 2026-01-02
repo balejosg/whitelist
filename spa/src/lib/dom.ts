@@ -3,8 +3,6 @@
  * Provides type-safe access to DOM elements with proper error handling
  */
 
-/* eslint-disable @typescript-eslint/no-unnecessary-type-parameters */
-
 /**
  * Safely get element by ID with type assertion
  * Returns null if element doesn't exist
