@@ -8,6 +8,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { eq, sql, count } from 'drizzle-orm';
 import { db, classrooms, machines } from '../db/index.js';
+import { logger } from './logger.js';
 import type { Classroom, MachineStatus } from '../types/index.js';
 import type { IClassroomStorage, CreateClassroomData, UpdateClassroomData } from '../types/storage.js';
 
@@ -480,6 +481,8 @@ export const classroomStorage: IClassroomStorage = {
         return machine !== null;
     }
 };
+
+logger.debug('Classroom storage initialized');
 
 export default classroomStorage;
 

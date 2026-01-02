@@ -8,6 +8,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { eq, sql, and, count } from 'drizzle-orm';
 import { db, roles } from '../db/index.js';
+import { logger } from './logger.js';
 import type { UserRole } from '../types/index.js';
 import type { IRoleStorage, AssignRoleData, Role } from '../types/storage.js';
 
@@ -358,5 +359,7 @@ export const roleStorage: IRoleStorage = {
     revokeRole,
     revokeAllUserRoles
 };
+
+logger.debug('Role storage initialized');
 
 export default roleStorage;

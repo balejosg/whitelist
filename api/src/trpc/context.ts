@@ -1,6 +1,7 @@
 import type { CreateExpressContextOptions } from '@trpc/server/adapters/express';
 import * as auth from '../lib/auth.js';
 import type { DecodedWithRoles } from '../lib/auth.js';
+import { logger } from '../lib/logger.js';
 
 export interface Context {
     user: DecodedWithRoles | null;
@@ -18,6 +19,7 @@ export async function createContext({ req, res }: CreateExpressContextOptions): 
 
         // Fallback to legacy admin token
         if (!user && process.env.ADMIN_TOKEN === token) {
+            logger.info('Legacy admin token used for request context');
             user = auth.createLegacyAdminPayload();
         }
     }

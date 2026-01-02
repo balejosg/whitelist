@@ -11,6 +11,7 @@
 import * as roleStorage from '../lib/role-storage.js';
 import * as userStorage from '../lib/user-storage.js';
 import * as setupStorage from '../lib/setup-storage.js';
+import { logger } from '../lib/logger.js';
 
 // =============================================================================
 // Types
@@ -177,6 +178,8 @@ export async function regenerateToken(): Promise<SetupResult<{ registrationToken
 // =============================================================================
 // Default Export
 // =============================================================================
+
+logger.debug('SetupService initialized');
 
 export default {
     getStatus,

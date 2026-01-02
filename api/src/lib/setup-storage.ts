@@ -8,6 +8,7 @@
 import crypto from 'node:crypto';
 import { inArray } from 'drizzle-orm';
 import { db, settings } from '../db/index.js';
+import { logger } from './logger.js';
 
 // =============================================================================
 // Types
@@ -133,3 +134,5 @@ export default {
     regenerateRegistrationToken,
     validateRegistrationToken
 };
+
+logger.debug('Setup storage initialized');

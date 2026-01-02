@@ -8,6 +8,7 @@
 import crypto from 'node:crypto';
 import { eq, and, sql } from 'drizzle-orm';
 import { db, schedules } from '../db/index.js';
+import { logger } from './logger.js';
 
 // =============================================================================
 // Types
@@ -253,3 +254,5 @@ export default {
     timeToMinutes,
     timesOverlap
 };
+
+logger.debug('Schedule storage initialized');

@@ -1,6 +1,7 @@
 import { initTRPC, TRPCError } from '@trpc/server';
 import type { Context } from './context.js';
 import * as auth from '../lib/auth.js';
+import { logger } from '../lib/logger.js';
 
 const t = initTRPC.context<Context>().create();
 
@@ -37,6 +38,10 @@ export const sharedSecretProcedure = t.procedure.use(({ ctx, next }) => {
     if (secret !== undefined && secret !== '') {
         const authHeader = ctx.req.headers.authorization;
         if (authHeader !== `Bearer ${secret}`) {
+            logger.warn('Failed shared secret authentication attempt', {
+                path: ctx.req.path,
+                ip: ctx.req.ip
+            });
             throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid or missing shared secret' });
         }
     }

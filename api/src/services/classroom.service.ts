@@ -10,6 +10,7 @@
 
 import * as classroomStorage from '../lib/classroom-storage.js';
 import type { WhitelistUrlResult as StorageWhitelistUrlResult } from '../lib/classroom-storage.js';
+import { logger } from '../lib/logger.js';
 
 // =============================================================================
 // Types
@@ -122,6 +123,8 @@ export async function getWhitelistUrl(
 // =============================================================================
 // Default Export
 // =============================================================================
+
+logger.debug('ClassroomService initialized');
 
 export default {
     registerMachine,
