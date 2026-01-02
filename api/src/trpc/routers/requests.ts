@@ -122,10 +122,11 @@ export const requestsRouter = router({
             return lines.map(l => l.trim()).filter(l => l !== '' && !l.startsWith('#'));
         } catch (error) {
             const message = getErrorMessage(error);
-            if (!message.includes('Not Found')) {
-                throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
+            // If file is not found or GitHub is not configured, return empty list instead of crashing
+            if (message.includes('Not Found') || message.includes('GITHUB_') || message.includes('configured')) {
+                return [];
             }
-            return [];
+            throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
         }
     }),
 

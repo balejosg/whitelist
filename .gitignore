@@ -7,6 +7,9 @@ dist/
 */dist/
 build/
 */build/
+*.tsbuildinfo
+**/tsconfig.tsbuildinfo
+**/tsconfig.build.tsbuildinfo
 
 # Env files
 .env
