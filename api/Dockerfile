@@ -7,6 +7,7 @@ RUN apk add --no-cache python3 make g++
 
 # Copy root package files and workspace package files
 COPY package*.json ./
+COPY tsconfig.base.json ./
 COPY api/package*.json ./api/
 COPY shared/package*.json ./shared/
 COPY spa/package*.json ./spa/
