@@ -1,73 +1,65 @@
-# OpenPath DNS para Windows
+# OpenPath DNS for Windows
+Internet access control system using a DNS sinkhole for Windows, powered by Acrylic DNS Proxy.
 
-Sistema de control de acceso a internet mediante DNS sinkhole para Windows, usando Acrylic DNS Proxy.
+## Features
+✅ **DNS Sinkhole** - Blocks all domains except for the whitelist.  
+✅ **Acrylic DNS Proxy** - Local DNS server with wildcard support.  
+✅ **Windows Firewall** - Blocks external DNS, VPNs, and Tor.  
+✅ **Browser Policies** - Supports Firefox, Chrome, and Edge.  
+✅ **Auto-Update** - Syncs every 5 minutes via Task Scheduler.  
+✅ **Watchdog** - Automatic failure recovery.  
 
-## Características
+## Requirements
+- Windows 10/11 or Windows Server 2016+.
+- PowerShell 5.1+.
+- Administrator privileges.
 
-✅ **DNS Sinkhole** - Bloquea todos los dominios excepto whitelist  
-✅ **Acrylic DNS Proxy** - Servidor DNS local con soporte wildcards  
-✅ **Windows Firewall** - Bloquea DNS externo, VPNs, Tor  
-✅ **Políticas de navegadores** - Firefox y Chrome/Edge  
-✅ **Actualización automática** - Cada 5 minutos vía Task Scheduler  
-✅ **Watchdog** - Auto-recuperación de fallos  
-
-## Requisitos
-
-- Windows 10/11 o Windows Server 2016+
-- PowerShell 5.1+
-- Privilegios de administrador
-
-## Instalación Rápida
-
+## Quick Install
 ```powershell
-# Ejecutar como Administrador
-.\Install-OpenPath.ps1 -WhitelistUrl "http://tu-servidor:3000/export/grupo.txt"
+# Run as Administrator
+.\Install-OpenPath.ps1 -WhitelistUrl "http://your-server:3000/export/group.txt"
 ```
 
-## Verificar Instalación
-
+## Verify Installation
 ```powershell
-# Probar DNS (debe resolver)
+# Test DNS (should resolve)
 nslookup google.com 127.0.0.1
 
-# Probar sinkhole (debe fallar)
+# Test sinkhole (should fail)
 nslookup facebook.com 127.0.0.1
 
-# Ver tareas programadas
+# View scheduled tasks
 Get-ScheduledTask -TaskName "OpenPath-*"
 
-# Ver reglas de firewall
+# View firewall rules
 Get-NetFirewallRule -DisplayName "OpenPath-*"
 ```
 
-## Estructura
-
+## Structure
 ```
 C:\OpenPath\
-├── Install-OpenPath.ps1        # Instalador
-├── Uninstall-OpenPath.ps1      # Desinstalador
+├── Install-OpenPath.ps1        # Installer
+├── Uninstall-OpenPath.ps1      # Uninstaller
 ├── lib\
-│   ├── Common.psm1             # Funciones comunes
-│   ├── DNS.psm1                # Gestión Acrylic
+│   ├── Common.psm1             # Common functions
+│   ├── DNS.psm1                # Acrylic management
 │   ├── Firewall.psm1           # Windows Firewall
-│   ├── Browser.psm1            # Políticas navegadores
+│   ├── Browser.psm1            # Browser policies
 │   └── Services.psm1           # Task Scheduler
 ├── scripts\
-│   ├── Update-OpenPath.ps1     # Actualización periódica
+│   ├── Update-OpenPath.ps1     # Periodic update
 │   └── Test-DNSHealth.ps1      # Watchdog
 └── data\
-    ├── config.json             # Configuración
-    ├── whitelist.txt           # Whitelist local
+    ├── config.json             # Configuration
+    ├── whitelist.txt           # Local whitelist
     └── logs\                   # Logs
 ```
 
-## Configuración
-
-Editar `C:\OpenPath\data\config.json`:
-
+## Configuration
+Edit `C:\OpenPath\data\config.json`:
 ```json
 {
-    "whitelistUrl": "http://servidor:3000/export/grupo.txt",
+    "whitelistUrl": "http://server:3000/export/group.txt",
     "updateIntervalMinutes": 5,
     "primaryDNS": "8.8.8.8",
     "enableFirewall": true,
@@ -75,46 +67,39 @@ Editar `C:\OpenPath\data\config.json`:
 }
 ```
 
-## Desinstalación
-
+## Uninstallation
 ```powershell
-# Ejecutar como Administrador
+# Run as Administrator
 .\Uninstall-OpenPath.ps1
 ```
 
 ## Troubleshooting
-
-### DNS no resuelve
-
+### DNS not resolving
 ```powershell
-# Verificar servicio Acrylic
+# Check Acrylic service
 Get-Service -DisplayName "*Acrylic*"
 
-# Reiniciar Acrylic
+# Restart Acrylic
 Restart-Service -DisplayName "*Acrylic*"
 
-# Ver logs
+# View logs
 Get-Content C:\OpenPath\data\logs\openpath.log -Tail 50
 ```
 
-### Firewall bloqueando
-
+### Firewall blocking
 ```powershell
-# Verificar reglas
+# Check rules
 Get-NetFirewallRule -DisplayName "OpenPath-*" | Format-Table
 
-# Deshabilitar temporalmente
+# Temporarily disable
 Get-NetFirewallRule -DisplayName "OpenPath-*" | Disable-NetFirewallRule
 ```
 
-## Compatibilidad con Linux
+## Linux Compatibility
+This system is the Windows equivalent of the [Linux system](../README.md) based on dnsmasq. Both systems:
+- Use the same whitelist format.
+- Are compatible with the [SPA](../spa/) for centralized management.
+- Implement the same DNS sinkhole logic.
 
-Este sistema es el equivalente Windows del [sistema Linux](../README.md) basado en dnsmasq. Ambos sistemas:
-
-- Usan el mismo formato de whitelist
-- Son compatibles con la [SPA](../spa/) para gestión centralizada
-- Implementan la misma lógica de sinkhole DNS
-
-## Licencia
-
+## License
 AGPL-3.0-or-later

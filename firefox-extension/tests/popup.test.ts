@@ -375,3 +375,33 @@ void describe('Edge Cases', () => {
         assert.ok(result.length > longString.length); // Escaped version is longer
     });
 });
+
+// =============================================================================
+// Privacy & Data Minimization Tests
+// =============================================================================
+
+void describe('Privacy & Data Minimization', () => {
+    void test('extractTabHostname should never include URL path', () => {
+        const url = 'https://example.com/secret/path/to/resource?query=sensitive';
+        const result = extractTabHostname(url);
+        assert.strictEqual(result, 'example.com');
+        assert.ok(!result.includes('secret'));
+        assert.ok(!result.includes('query'));
+    });
+
+    void test('extractTabHostname should handle URLs with credentials safely', () => {
+        const url = 'https://user:password@example.com/path';
+        const result = extractTabHostname(url);
+        assert.strictEqual(result, 'example.com');
+        assert.ok(!result.includes('user'));
+        assert.ok(!result.includes('password'));
+    });
+
+    void test('extractTabHostname should handle ports without leaking path', () => {
+        const url = 'http://localhost:8080/sensitive-api';
+        const result = extractTabHostname(url);
+        assert.strictEqual(result, 'localhost');
+        assert.ok(!result.includes('8080')); // extractTabHostname specifically returns hostname, not host
+        assert.ok(!result.includes('sensitive'));
+    });
+});

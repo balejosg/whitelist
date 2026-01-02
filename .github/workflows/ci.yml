@@ -142,7 +142,7 @@ jobs:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   # ============================================
-  # Job 6: Test SPA (Lint & Type Check)
+  # Job 6: Test SPA
   # ============================================
   test-spa:
     name: SPA Tests
@@ -151,7 +151,34 @@ jobs:
       test-type: spa
 
   # ============================================
-  # Job 7: Build Docker Image (Dashboard)
+  # Job 7: Test Shared Package
+  # ============================================
+  test-shared:
+    name: Shared Tests
+    uses: ./.github/workflows/reusable-test.yml
+    with:
+      test-type: shared
+
+  # ============================================
+  # Job 8: Test Auth Worker
+  # ============================================
+  test-auth-worker:
+    name: Auth Worker Tests
+    uses: ./.github/workflows/reusable-test.yml
+    with:
+      test-type: auth-worker
+
+  # ============================================
+  # Job 9: Test Firefox Extension
+  # ============================================
+  test-firefox-extension:
+    name: Extension Tests
+    uses: ./.github/workflows/reusable-test.yml
+    with:
+      test-type: extension
+
+  # ============================================
+  # Job 10: Build Docker Image (Dashboard)
   # ============================================
   build-docker:
     name: Build Dashboard Docker
@@ -164,7 +191,7 @@ jobs:
     secrets: inherit
 
   # ============================================
-  # Job 8: Build Docker Image (API)
+  # Job 11: Build Docker Image (API)
   # ============================================
   build-docker-api:
     name: Build API Docker
@@ -177,7 +204,7 @@ jobs:
     secrets: inherit
 
   # ============================================
-  # Job 9: Deploy to Production
+  # Job 12: Deploy to Production
   # ============================================
   deploy:
     name: Deploy to Production
@@ -194,7 +221,7 @@ jobs:
   ci-success:
     name: CI Success
     runs-on: ubuntu-latest
-    needs: [lint, security, test-web, test-bash, test-windows, test-api, test-spa, build-docker, build-docker-api]
+    needs: [lint, security, test-web, test-bash, test-windows, test-api, test-spa, test-shared, test-auth-worker, test-firefox-extension, build-docker, build-docker-api]
     if: always()
 
     steps:
@@ -207,6 +234,9 @@ jobs:
              [[ "${{ needs.test-windows.result }}" == "failure" ]] || \
              [[ "${{ needs.test-api.result }}" == "failure" ]] || \
              [[ "${{ needs.test-spa.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-shared.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-auth-worker.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-firefox-extension.result }}" == "failure" ]] || \
              [[ "${{ needs.build-docker.result }}" == "failure" ]] || \
              [[ "${{ needs.build-docker-api.result }}" == "failure" ]]; then
             echo "CI Failed"

@@ -279,4 +279,55 @@ await describe('Security and Hardening Tests', async () => {
             assert.ok(response.status === 400 || response.status === 500);
         });
     });
+
+    await describe('Data Minimization & Privacy Boundaries', async () => {
+        await it('rejects health reports with unrecognized fields (strict schema)', async (): Promise<void> => {
+            const { status, body } = await request('/trpc/healthReports.submit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer test-shared-secret' 
+                },
+                body: JSON.stringify({
+                    json: {
+                        hostname: 'test-host',
+                        status: 'OK',
+                        // Malicious/Excessive data:
+                        browsingHistory: ['forbidden-site.com'],
+                        dnsQueries: ['how to bypass']
+                    }
+                })
+            });
+
+            if (status !== 401) {
+                assert.strictEqual(status, 400, 'Should reject unrecognized keys in health report');
+                const errorMessage = (body as { error: { message: string } }).error.message;
+                assert.ok(errorMessage.includes('unrecognized_keys'));
+            }
+        });
+
+        await it('rejects domain requests with unrecognized fields', async (): Promise<void> => {
+            const { status, body } = await request('/trpc/requests.create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    json: {
+                        domain: `privacy-test-${Date.now()}.com`,
+                        reason: 'test',
+                        requesterEmail: 'user@test.local',
+                        fullUrl: 'https://example.com/private/path'
+                    }
+                })
+            });
+
+            if (status === 429) {
+                console.warn('Rate limited in privacy test - skipping 400 check');
+                return;
+            }
+
+            assert.strictEqual(status, 400, 'Should reject unrecognized keys in domain request');
+            const errorMessage = (body as { error: { message: string } }).error.message;
+            assert.ok(errorMessage.includes('unrecognized_keys'));
+        });
+    });
 });

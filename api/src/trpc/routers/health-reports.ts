@@ -15,7 +15,7 @@ export const healthReportsRouter = router({
             failCount: z.number().optional(),
             actions: z.string().optional(),
             version: z.string().optional(),
-        }))
+        }).strict())
         .mutation(async ({ input }) => {
             await healthReports.saveHealthReport(input.hostname, stripUndefined({
                 status: input.status,

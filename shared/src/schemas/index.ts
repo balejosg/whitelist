@@ -214,7 +214,7 @@ export const CreateRequestDTO = z.object({
     requesterEmail: z.string().email().optional(),
     groupId: z.string().optional(),
     priority: RequestPriority.optional(),
-});
+}).strict();
 
 export const UpdateRequestStatusDTO = z.object({
     status: z.enum(['approved', 'rejected']),

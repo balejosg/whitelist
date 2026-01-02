@@ -194,6 +194,22 @@ void describe('extractHostname()', () => {
     void test('should handle IPv6 addresses', () => {
         assert.strictEqual(extractHostname('http://[::1]:8080/'), '[::1]');
     });
+
+    void test('Privacy: should never leak path in hostname extraction', () => {
+        const url = 'https://example.com/private/api/v1?token=12345';
+        const hostname = extractHostname(url);
+        assert.strictEqual(hostname, 'example.com');
+        assert.ok(!hostname.includes('private'));
+        assert.ok(!hostname.includes('token'));
+    });
+
+    void test('Privacy: should handle credentials safely', () => {
+        const url = 'https://admin:secret@internal.dev/config';
+        const hostname = extractHostname(url);
+        assert.strictEqual(hostname, 'internal.dev');
+        assert.ok(!hostname.includes('admin'));
+        assert.ok(!hostname.includes('secret'));
+    });
 });
 
 // =============================================================================

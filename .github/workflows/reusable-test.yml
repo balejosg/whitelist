@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       test-type:
-        description: 'Type of test to run (api, web, spa, bash)'
+        description: 'Type of test to run (api, web, spa, bash, shared, auth-worker, extension)'
         required: true
         type: string
       node-version:
@@ -111,6 +111,25 @@ jobs:
       - name: Run SPA typecheck
         if: inputs.test-type == 'spa'
         run: npm run typecheck --workspace=openpath-spa
+
+      - name: Run SPA tests
+        if: inputs.test-type == 'spa'
+        run: npm test --workspace=openpath-spa
+
+      # Shared Package Tests
+      - name: Run Shared tests
+        if: inputs.test-type == 'shared'
+        run: npm test --workspace=@openpath/shared
+
+      # Auth Worker Tests
+      - name: Run Auth Worker tests
+        if: inputs.test-type == 'auth-worker'
+        run: npm test --workspace=auth-worker
+
+      # Extension Tests
+      - name: Run Extension tests
+        if: inputs.test-type == 'extension'
+        run: npm test --workspace=openpath-firefox-extension
 
       # Bash Tests
       - name: Run Bash tests

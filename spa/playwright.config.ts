@@ -16,6 +16,14 @@ export default defineConfig({
     // Fail on CI if you accidentally left test.only
     forbidOnly: !!process.env.CI,
 
+    // Visual regression settings
+    expect: {
+        toHaveScreenshot: {
+            threshold: 0.2,
+            maxDiffPixelRatio: 0.01,
+        },
+    },
+
     // Retry on CI only
     retries: process.env.CI ? 2 : 0,
 
