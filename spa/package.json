@@ -5,7 +5,7 @@
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "scripts": {
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist *.tsbuildinfo",
     "prebuild": "npm run clean",
     "build": "tsc",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.sw.json --noEmit",
