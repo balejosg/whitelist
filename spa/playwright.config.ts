@@ -14,7 +14,7 @@ export default defineConfig({
     fullyParallel: true,
 
     // Fail on CI if you accidentally left test.only
-    forbidOnly: !!process.env.CI,
+    forbidOnly: !!process.env['CI'],
 
     // Visual regression settings
     expect: {
@@ -25,18 +25,18 @@ export default defineConfig({
     },
 
     // Retry on CI only
-    retries: process.env.CI ? 2 : 0,
+    retries: process.env['CI'] ? 2 : 0,
 
     // Opt out of parallel tests on CI - they can be flaky
-    ...(process.env.CI ? { workers: 1 } : {}),
+    ...(process.env['CI'] ? { workers: 1 } : {}),
 
     // Reporter
-    reporter: process.env.CI ? 'github' : 'html',
+    reporter: process.env['CI'] ? 'github' : 'html',
 
     // Shared settings for all projects
     use: {
         // Base URL for navigation
-        baseURL: process.env.BASE_URL ?? 'http://localhost:3001',
+        baseURL: process.env['BASE_URL'] ?? 'http://localhost:3001',
 
         // Collect trace on first retry
         trace: 'on-first-retry',
@@ -62,7 +62,7 @@ export default defineConfig({
     ],
 
     // Run local server before tests (skip in CI where workflow starts it)
-    ...(process.env.CI ? {} : {
+    ...(process.env['CI'] ? {} : {
         webServer: {
             command: 'cd ../api && npm start',
             url: 'http://localhost:3001/health',

@@ -1,4 +1,3 @@
- 
 /**
  * Browser Logger for OpenPath SPA
  *
@@ -17,16 +16,15 @@ interface ImportMetaEnv {
     readonly MODE: string;
 }
 
-declare global {
-    interface ImportMeta {
-        readonly env: ImportMetaEnv;
-    }
+// Vite type for import.meta
+interface ImportMeta {
+    readonly env: ImportMetaEnv;
 }
 
 // Check if running in development mode
 // Vite sets import.meta.env.DEV to true during development
 function isDev(): boolean {
-    return import.meta.env.DEV;
+    return (import.meta as unknown as ImportMeta).env.DEV;
 }
 
 function formatMessage(level: LogLevel, message: string, context?: LogContext): string {

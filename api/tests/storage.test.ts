@@ -7,7 +7,7 @@ import * as classroomStorage from '../src/lib/classroom-storage.js';
 import * as scheduleStorage from '../src/lib/schedule-storage.js';
 
 void describe('Storage Layer', () => {
-    const randomSuffix = () => crypto.randomBytes(4).toString('hex');
+    const randomSuffix = (): string => crypto.randomBytes(4).toString('hex');
 
     void describe('User Storage', () => {
         void it('should normalize email on creation', async () => {

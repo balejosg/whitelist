@@ -1,43 +1,26 @@
 {
-    "compilerOptions": {
-        "target": "ES2022",
-        "module": "ES2022",
-        "moduleResolution": "bundler",
-        "lib": [
-            "ES2022",
-            "dom",
-            "dom.iterable",
-            "scripthost"
-        ],
-        "strict": true,
-        "esModuleInterop": true,
-        "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true,
-        "outDir": "./dist/js",
-        "declaration": false,
-        "sourceMap": true,
-        "noImplicitAny": true,
-        "strictNullChecks": true,
-        "strictFunctionTypes": true,
-        "strictBindCallApply": true,
-        "strictPropertyInitialization": true,
-        "noImplicitThis": true,
-        "alwaysStrict": true,
-        "noUnusedLocals": true,
-        "noUnusedParameters": true,
-        "noImplicitReturns": true,
-        "noFallthroughCasesInSwitch": true,
-        "noUncheckedIndexedAccess": true,
-        "exactOptionalPropertyTypes": true
-    },
-    "include": [
-        "src/**/*",
-        "e2e/**/*",
-        "tests/**/*",
-        "playwright.config.ts"
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "lib": [
+      "ES2022",
+      "dom",
+      "dom.iterable",
+      "scripthost"
     ],
-    "exclude": [
-        "node_modules",
-        "dist"
-    ]
+    "outDir": "./dist/js",
+    "declaration": false,
+    "sourceMap": true
+  },
+  "include": [
+    "src/**/*",
+    "e2e/**/*",
+    "tests/**/*",
+    "playwright.config.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

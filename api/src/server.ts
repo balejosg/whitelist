@@ -82,8 +82,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = parseInt(process.env.PORT ?? '3000', 10);
-const HOST = process.env.HOST ?? '0.0.0.0';
+const PORT = config.port;
+const HOST = config.host;
 
 // =============================================================================
 // Security Middleware
@@ -369,10 +369,12 @@ if (isMainModule) {
             logger.info('');
         })();
     });
-    if (process.env.ADMIN_TOKEN === undefined || process.env.ADMIN_TOKEN === '') {
+    const adminToken = process.env.ADMIN_TOKEN;
+    if (adminToken === undefined || adminToken === '') {
         logger.warn('ADMIN_TOKEN not set - admin endpoints will fail');
     }
-    if (process.env.GITHUB_TOKEN === undefined || process.env.GITHUB_TOKEN === '') {
+    const githubToken = process.env.GITHUB_TOKEN;
+    if (githubToken === undefined || githubToken === '') {
         logger.warn('GITHUB_TOKEN not set - approval will fail to push to GitHub');
     }
 

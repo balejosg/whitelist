@@ -1,43 +1,26 @@
 {
-    "compilerOptions": {
-        "target": "ES2022",
-        "module": "ES2022",
-        "moduleResolution": "bundler",
-        "lib": [
-            "ES2022",
-            "DOM"
-        ],
-        "strict": true,
-        "esModuleInterop": true,
-        "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true,
-        "outDir": "./dist",
-        "declaration": false,
-        "sourceMap": true,
-        "noImplicitAny": true,
-        "strictNullChecks": true,
-        "strictFunctionTypes": true,
-        "strictBindCallApply": true,
-        "noImplicitThis": true,
-        "alwaysStrict": true,
-        "noUnusedLocals": true,
-        "noUnusedParameters": true,
-        "noImplicitReturns": true,
-        "noFallthroughCasesInSwitch": true,
-        "noUncheckedIndexedAccess": true,
-        "exactOptionalPropertyTypes": true,
-        "strictPropertyInitialization": true,
-        "types": [
-            "webextension-polyfill",
-            "node"
-        ]
-    },
-    "include": [
-        "src/**/*",
-        "tests/**/*"
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "lib": [
+      "ES2022",
+      "DOM"
     ],
-    "exclude": [
-        "node_modules",
-        "dist"
+    "outDir": "./dist",
+    "declaration": false,
+    "sourceMap": true,
+    "types": [
+      "webextension-polyfill",
+      "node"
     ]
+  },
+  "include": [
+    "src/**/*",
+    "tests/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

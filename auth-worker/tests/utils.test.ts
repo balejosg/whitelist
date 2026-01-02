@@ -183,8 +183,9 @@ describe('redirectToFrontend', () => {
             { error: 'invalid_state' },
             { 'Set-Cookie': 'session=; Max-Age=0' }
         );
-        assert.ok(response.headers.get('Set-Cookie'));
-        assert.ok(response.headers.get('Set-Cookie')?.includes('Max-Age=0'));
+        const setCookie = response.headers.get('Set-Cookie');
+        assert.ok(setCookie !== null);
+        assert.ok(setCookie.includes('Max-Age=0'));
     });
 
     it('handles error params', () => {

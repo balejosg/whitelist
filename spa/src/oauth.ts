@@ -94,7 +94,8 @@ export const oauth = {
                 email: githubUser.email ?? '',
                 name: githubUser.name ?? githubUser.login,
                 login: githubUser.login,
-                avatarUrl: githubUser.avatar_url ?? undefined
+                avatarUrl: githubUser.avatar_url ?? undefined,
+                roles: []
             };
         } catch (error) {
             logger.error('Error getting user', { error: getErrorMessage(error) });

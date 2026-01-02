@@ -26,7 +26,7 @@ export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
 
 // Teacher/Admin procedure middleware
 export const teacherProcedure = protectedProcedure.use(({ ctx, next }) => {
-    const roles = ctx.user.roles?.map(r => r.role) ?? [];
+    const roles = ctx.user.roles.map(r => r.role);
     if (!roles.includes('admin') && !roles.includes('teacher')) {
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Teacher access required' });
     }

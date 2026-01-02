@@ -2,7 +2,9 @@
  * Utility functions
  */
 
-export function showToast(message: string, type = 'success'): void {
+import type { ToastType } from './types/index.js';
+
+export function showToast(message: string, type: ToastType = 'success'): void {
     const container = document.getElementById('toast-container');
     if (!container) return;
 

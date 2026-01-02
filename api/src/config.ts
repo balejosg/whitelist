@@ -118,6 +118,16 @@ export const config = {
     /** PostgreSQL connection URL */
     databaseUrl: process.env.DATABASE_URL ?? 'postgres://openpath:openpath@localhost:5432/openpath',
 
+    /** Database settings */
+    database: {
+        host: process.env.DB_HOST ?? 'localhost',
+        port: parseIntEnv(process.env.DB_PORT, 5432),
+        name: process.env.DB_NAME ?? 'openpath',
+        user: process.env.DB_USER ?? 'openpath',
+        password: process.env.DB_PASSWORD ?? 'openpath_dev',
+        poolMax: parseIntEnv(process.env.DB_POOL_MAX, 20),
+    },
+
     // ==========================================================================
     // GitHub Integration
     // ==========================================================================

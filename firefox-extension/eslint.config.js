@@ -20,6 +20,7 @@ export default tseslint.config(
             '@typescript-eslint/no-misused-promises': 'error',
             '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
             '@typescript-eslint/explicit-function-return-type': 'error',
+            '@typescript-eslint/dot-notation': 'off',
             'no-console': 'off',
         },
     },

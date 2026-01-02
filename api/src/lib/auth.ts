@@ -10,24 +10,13 @@ import jwt, { type SignOptions } from 'jsonwebtoken';
 import crypto from 'node:crypto';
 import { getTokenStore } from './token-store.js';
 import { logger } from './logger.js';
-import type { User, UserRole, JWTPayload } from '../types/index.js';
+import type { User, JWTPayload, RoleInfo } from '../types/index.js';
 
 // =============================================================================
 // Types
 // =============================================================================
 
-export interface RoleInfo {
-    role: UserRole;
-    groupIds: string[];
-}
-
-interface TokenPayload {
-    sub: string;
-    email: string;
-    name: string;
-    roles: RoleInfo[];
-    type: 'access' | 'refresh';
-}
+export type { JWTPayload, RoleInfo };
 
 export interface TokensResult {
     accessToken: string;
@@ -87,7 +76,7 @@ const tokenStore = getTokenStore();
  * Generate access token for user
  */
 export function generateAccessToken(user: User, roles: RoleInfo[] = []): string {
-    const payload: TokenPayload = {
+    const payload: JWTPayload = {
         sub: user.id,
         email: user.email,
         name: user.name,
@@ -254,7 +243,7 @@ export function getApprovalGroups(decoded: DecodedWithRoles | null | undefined):
     decoded.roles
         .filter((r) => r.role === 'teacher')
         .forEach((r) => {
-            r.groupIds.forEach((g) => groups.add(g));
+            r.groupIds.forEach((g: string) => groups.add(g));
         });
 
     return Array.from(groups);

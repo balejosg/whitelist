@@ -68,15 +68,15 @@ async function handleCallback(request: Request, url: URL, env: Env): Promise<Res
         sameSite: 'Lax'
     });
 
-    if (error) {
+    if (error !== null) {
         return redirectToFrontend(env.FRONTEND_URL, { error }, { 'Set-Cookie': clearStateCookie });
     }
 
-    if (!code) {
+    if (code === null) {
         return redirectToFrontend(env.FRONTEND_URL, { error: 'no_code' }, { 'Set-Cookie': clearStateCookie });
     }
 
-    if (!returnedState || !expectedState || returnedState !== expectedState) {
+    if (returnedState === null || expectedState === undefined || returnedState !== expectedState) {
         return redirectToFrontend(env.FRONTEND_URL, { error: 'invalid_state' }, { 'Set-Cookie': clearStateCookie });
     }
 
@@ -97,12 +97,12 @@ async function handleCallback(request: Request, url: URL, env: Env): Promise<Res
 
         const tokenData: GitHubTokenResponse = await tokenResponse.json();
 
-        if (tokenData.error) {
+        if (tokenData.error !== undefined) {
             return redirectToFrontend(env.FRONTEND_URL, { error: tokenData.error }, { 'Set-Cookie': clearStateCookie });
         }
 
         // Redirect to frontend with token
-        if (tokenData.access_token && tokenData.token_type) {
+        if (tokenData.access_token !== undefined && tokenData.token_type !== undefined) {
             return redirectToFrontend(env.FRONTEND_URL, {
                 access_token: tokenData.access_token,
                 token_type: tokenData.token_type
@@ -111,7 +111,8 @@ async function handleCallback(request: Request, url: URL, env: Env): Promise<Res
 
         return redirectToFrontend(env.FRONTEND_URL, { error: 'invalid_token_response' }, { 'Set-Cookie': clearStateCookie });
 
-    } catch {
+    } catch (error) {
+        console.error('Token exchange failed:', error);
         return redirectToFrontend(env.FRONTEND_URL, { error: 'token_exchange_failed' }, { 'Set-Cookie': clearStateCookie });
     }
 }

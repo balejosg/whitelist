@@ -29,6 +29,7 @@ export default tseslint.config(
                 allowNullableString: true,
                 allowNullableNumber: true
             }],
+            '@typescript-eslint/dot-notation': 'off',
             'no-console': 'off',
             'semi': ['error', 'always'],
             'quotes': ['error', 'single', { 'avoidEscape': true }]

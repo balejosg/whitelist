@@ -11,6 +11,7 @@ import { db } from '../src/db/index.js';
 import { users, classrooms, schedules, machines, roles, tokens, pushSubscriptions } from '../src/db/schema.js';
 import * as scheduleStorage from '../src/lib/schedule-storage.js';
 import * as classroomStorage from '../src/lib/classroom-storage.js';
+import { ClassroomService } from '../src/services/index.js';
 
 // Test data
 const testClassroomId = 'test-classroom-1';
@@ -349,11 +350,11 @@ await describe('Schedule Storage', async () => {
                     endTime: endTime
                 });
 
-                const result = await classroomStorage.getWhitelistUrlForMachine('pc-test-01');
+                const result = await ClassroomService.getWhitelistUrl('pc-test-01');
 
-                assert.ok(result !== null);
-                assert.strictEqual(result.groupId, 'scheduled-group');
-                assert.strictEqual(result.source, 'schedule');
+                assert.ok(result.ok);
+                assert.strictEqual(result.data.groupId, 'scheduled-group');
+                assert.strictEqual(result.data.source, 'schedule');
             } else {
                 console.log('Skipping schedule test on weekend');
             }
@@ -377,11 +378,11 @@ await describe('Schedule Storage', async () => {
                 classroomId: classroom.id
             });
 
-            const result = await classroomStorage.getWhitelistUrlForMachine('pc-override-01');
+            const result = await ClassroomService.getWhitelistUrl('pc-override-01');
 
-            assert.ok(result !== null);
-            assert.strictEqual(result.groupId, 'manual-group');
-            assert.strictEqual(result.source, 'manual');
+            assert.ok(result.ok);
+            assert.strictEqual(result.data.groupId, 'manual-group');
+            assert.strictEqual(result.data.source, 'manual');
         });
 
         await it('should fall back to default group when no schedule', async () => {
@@ -400,11 +401,11 @@ await describe('Schedule Storage', async () => {
                 classroomId: classroom.id
             });
 
-            const result = await classroomStorage.getWhitelistUrlForMachine('pc-default-01');
+            const result = await ClassroomService.getWhitelistUrl('pc-default-01');
 
-            assert.ok(result !== null);
-            assert.strictEqual(result.groupId, 'fallback-group');
-            assert.strictEqual(result.source, 'default');
+            assert.ok(result.ok);
+            assert.strictEqual(result.data.groupId, 'fallback-group');
+            assert.strictEqual(result.data.source, 'default');
         });
     });
 });

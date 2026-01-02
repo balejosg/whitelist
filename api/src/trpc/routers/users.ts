@@ -5,24 +5,22 @@ import {
     CreateUserDTOSchema,
 } from '../../types/index.js';
 import { TRPCError } from '@trpc/server';
-import * as userStorage from '../../lib/user-storage.js';
+import { UserService } from '../../services/index.js';
 import * as roleStorage from '../../lib/role-storage.js';
 
 export const usersRouter = router({
     list: adminProcedure.query(async () => {
-        const users = await userStorage.getAllUsers();
-        return Promise.all(users.map(async (u) => {
-            const roles = await roleStorage.getUserRoles(u.id);
-            return { ...u, roles };
-        }));
+        return await UserService.listUsers();
     }),
 
     get: adminProcedure
         .input(z.object({ id: z.string() }))
         .query(async ({ input }) => {
-            const user = await userStorage.getUserById(input.id);
-            if (!user) throw new TRPCError({ code: 'NOT_FOUND' });
-            return { ...user, roles: await roleStorage.getUserRoles(user.id) };
+            const result = await UserService.getUser(input.id);
+            if (!result.ok) {
+                throw new TRPCError({ code: result.error.code, message: result.error.message });
+            }
+            return result.data;
         }),
 
     create: adminProcedure
@@ -30,20 +28,22 @@ export const usersRouter = router({
             role: UserRoleSchema.optional(),
             groupIds: z.array(z.string()).optional(),
         }))
-        .mutation(async ({ input, ctx }) => {
-            if (await userStorage.emailExists(input.email)) {
-                throw new TRPCError({ code: 'CONFLICT', message: 'Email exists' });
-            }
-            const user = await userStorage.createUser(input);
+        .mutation(async ({ input }) => {
+            // First check email
+            const check = await UserService.getUserByEmail(input.email);
+            if (check) throw new TRPCError({ code: 'CONFLICT', message: 'Email exists' });
+
+            const result = await UserService.register(input);
+            if (!result.ok) throw new TRPCError({ code: result.error.code, message: result.error.message });
+            
+            const user = result.data.user;
             if (input.role) {
-                await roleStorage.assignRole({
-                    userId: user.id,
-                    role: input.role,
-                    groupIds: input.groupIds ?? [],
-                    createdBy: ctx.user.sub,
-                });
+                await UserService.assignRole(user.id, input.role, input.groupIds ?? []);
             }
-            return { ...user, roles: await roleStorage.getUserRoles(user.id) };
+            
+            const final = await UserService.getUser(user.id);
+            if (!final.ok) throw new TRPCError({ code: final.error.code, message: final.error.message });
+            return final.data;
         }),
 
     update: adminProcedure
@@ -56,9 +56,14 @@ export const usersRouter = router({
         }))
         .mutation(async ({ input }) => {
             const { id, ...updates } = input;
-            const updated = await userStorage.updateUser(id, updates);
-            if (!updated) throw new TRPCError({ code: 'NOT_FOUND' });
-            return { ...updated, roles: await roleStorage.getUserRoles(id) };
+            const result = await UserService.updateUser(id, updates);
+            if (!result.ok) {
+                throw new TRPCError({ code: result.error.code, message: result.error.message });
+            }
+            
+            const final = await UserService.getUser(id);
+            if (!final.ok) throw new TRPCError({ code: final.error.code, message: final.error.message });
+            return final.data;
         }),
 
     delete: adminProcedure
@@ -67,9 +72,11 @@ export const usersRouter = router({
             if (ctx.user.sub === input.id) {
                 throw new TRPCError({ code: 'BAD_REQUEST', message: 'Cannot delete yourself' });
             }
-            await roleStorage.revokeAllUserRoles(input.id, ctx.user.sub);
-            await userStorage.deleteUser(input.id);
-            return { success: true };
+            const result = await UserService.deleteUser(input.id);
+            if (!result.ok) {
+                throw new TRPCError({ code: result.error.code, message: result.error.message });
+            }
+            return result.data;
         }),
 
     // Role management
@@ -79,20 +86,22 @@ export const usersRouter = router({
             role: UserRoleSchema,
             groupIds: z.array(z.string()).default([]),
         }))
-        .mutation(async ({ input, ctx }) => {
-            return await roleStorage.assignRole({
-                userId: input.userId,
-                role: input.role,
-                groupIds: input.groupIds,
-                createdBy: ctx.user.sub,
-            });
+        .mutation(async ({ input }) => {
+            const result = await UserService.assignRole(input.userId, input.role, input.groupIds);
+            if (!result.ok) {
+                throw new TRPCError({ code: result.error.code, message: result.error.message });
+            }
+            return result.data;
         }),
 
     revokeRole: adminProcedure
         .input(z.object({ userId: z.string(), roleId: z.string() }))
-        .mutation(async ({ input, ctx }) => {
-            await roleStorage.revokeRole(input.roleId, ctx.user.sub);
-            return { success: true };
+        .mutation(async ({ input }) => {
+            const result = await UserService.revokeRole(input.roleId);
+            if (!result.ok) {
+                throw new TRPCError({ code: result.error.code, message: result.error.message });
+            }
+            return result.data;
         }),
 
     listTeachers: adminProcedure.query(async () => await roleStorage.getAllTeachers()),

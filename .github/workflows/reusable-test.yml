@@ -28,7 +28,7 @@ jobs:
 
     services:
       postgres:
-        image: ${{ (inputs.test-type == 'api' || inputs.test-type == 'web') && 'postgres:16' || '' }}
+        image: ${{ (inputs.test-type == 'api' || inputs.test-type == 'web' || inputs.test-type == 'spa-e2e') && 'postgres:16' || '' }}
         env:
           POSTGRES_USER: openpath
           POSTGRES_PASSWORD: openpath_dev
@@ -68,7 +68,7 @@ jobs:
 
       # Run database migrations for API/Web tests
       - name: Run database migrations
-        if: inputs.test-type == 'api' || inputs.test-type == 'web'
+        if: inputs.test-type == 'api' || inputs.test-type == 'web' || inputs.test-type == 'spa-e2e'
         run: |
           npm run drizzle:push --workspace=@openpath/api
           npm run db:migrate --workspace=@openpath/api
@@ -103,33 +103,25 @@ jobs:
           DATABASE_URL: postgresql://openpath:openpath_dev@localhost:5432/openpath
           NODE_ENV: test
 
-      # SPA Tests (lint + typecheck only)
-      - name: Run SPA lint
-        if: inputs.test-type == 'spa'
-        run: npm run lint --workspace=openpath-spa
-
-      - name: Run SPA typecheck
-        if: inputs.test-type == 'spa'
-        run: npm run typecheck --workspace=openpath-spa
-
+      # SPA Tests
       - name: Run SPA tests
         if: inputs.test-type == 'spa'
-        run: npm test --workspace=openpath-spa
+        run: npm run test:coverage --workspace=openpath-spa
 
       # Shared Package Tests
       - name: Run Shared tests
         if: inputs.test-type == 'shared'
-        run: npm test --workspace=@openpath/shared
+        run: npm run test:coverage --workspace=@openpath/shared
 
       # Auth Worker Tests
       - name: Run Auth Worker tests
         if: inputs.test-type == 'auth-worker'
-        run: npm test --workspace=auth-worker
+        run: npm run test:coverage --workspace=auth-worker
 
       # Extension Tests
       - name: Run Extension tests
         if: inputs.test-type == 'extension'
-        run: npm test --workspace=openpath-firefox-extension
+        run: npm run test:coverage --workspace=openpath-firefox-extension
 
       # Bash Tests
       - name: Run Bash tests
@@ -138,19 +130,31 @@ jobs:
 
       # Coverage upload
       - name: Upload coverage to Codecov
-        if: inputs.run-coverage && (inputs.test-type == 'api' || inputs.test-type == 'web')
+        if: inputs.run-coverage && inputs.test-type != 'bash'
         uses: codecov/codecov-action@v5
         with:
-          files: ${{ inputs.test-type == 'api' && 'api/coverage/lcov.info' || 'dashboard/coverage/lcov.info' }}
+          files: |
+            api/coverage/lcov.info
+            dashboard/coverage/lcov.info
+            spa/coverage/lcov.info
+            shared/coverage/lcov.info
+            auth-worker/coverage/lcov.info
+            firefox-extension/coverage/lcov.info
           flags: ${{ inputs.test-type }}
           name: ${{ inputs.test-type }}-coverage
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload coverage artifact
-        if: inputs.run-coverage && (inputs.test-type == 'api' || inputs.test-type == 'web')
+        if: inputs.run-coverage && inputs.test-type != 'bash'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ inputs.test-type }}
-          path: ${{ inputs.test-type == 'api' && 'api/coverage/' || 'dashboard/coverage/' }}
+          path: |
+            api/coverage/
+            dashboard/coverage/
+            spa/coverage/
+            shared/coverage/
+            auth-worker/coverage/
+            firefox-extension/coverage/
           retention-days: 7

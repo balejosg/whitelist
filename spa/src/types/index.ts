@@ -52,7 +52,7 @@ export interface User {
     name: string;
     login?: string | undefined; // GitHub login
     avatarUrl?: string | undefined; // GitHub/S3 avatar
-    roles?: RoleInfo[] | undefined;
+    roles: RoleInfo[];
 }
 
 /**
@@ -352,6 +352,7 @@ declare global {
         setup: typeof import('../setup.js').setup;
         GitHubAPI: new (token: string, owner: string, repo: string, branch: string) => GitHubAPIInstance;
         schedulesModule: typeof import('../modules/schedules.js').schedulesModule;
+        requestsAPI: RequestsAPIInstance;
     }
 }
 

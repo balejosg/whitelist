@@ -7,11 +7,11 @@
  */
 export function getCookie(request: Request, name: string): string | undefined {
     const cookieHeader = request.headers.get('Cookie');
-    if (!cookieHeader) return undefined;
+    if (cookieHeader === null) return undefined;
     const cookies = cookieHeader.split(';');
     for (const cookie of cookies) {
         const [rawKey, ...rawValue] = cookie.trim().split('=');
-        if (!rawKey) continue;
+        if (rawKey === undefined || rawKey === '') continue;
         const key = rawKey.trim();
         if (key !== name) continue;
         return decodeURIComponent(rawValue.join('='));

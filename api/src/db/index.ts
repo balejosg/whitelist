@@ -8,10 +8,10 @@
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
+import { logger } from '../lib/logger.js';
 import * as schema from './schema.js';
 import * as relations from './relations.js';
-import { logger } from '../lib/logger.js';
-import 'dotenv/config';
+import { config } from '../config.js';
 
 const { Pool } = pg;
 
@@ -20,12 +20,12 @@ const { Pool } = pg;
 // =============================================================================
 
 const pool = new Pool({
-    host: process.env.DB_HOST ?? 'localhost',
-    port: parseInt(process.env.DB_PORT ?? '5432', 10),
-    database: process.env.DB_NAME ?? 'openpath',
-    user: process.env.DB_USER ?? 'openpath',
-    password: process.env.DB_PASSWORD ?? 'openpath_dev',
-    max: parseInt(process.env.DB_POOL_MAX ?? '20', 10),
+    host: config.database.host,
+    port: config.database.port,
+    database: config.database.name,
+    user: config.database.user,
+    password: config.database.password,
+    max: config.database.poolMax,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 2000,
 });

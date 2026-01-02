@@ -17,6 +17,7 @@ export default tseslint.config(
             '@typescript-eslint/no-non-null-assertion': 'error',
             '@typescript-eslint/explicit-module-boundary-types': 'off',
             '@typescript-eslint/no-floating-promises': 'error',
+            '@typescript-eslint/dot-notation': 'off',
             'no-console': ['error', { allow: ['warn', 'error'] }],
         },
     },

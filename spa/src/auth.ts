@@ -24,6 +24,7 @@ export const auth: AuthAPI = {
 
     // API base URL (uses RequestsAPI config if available)
     getApiUrl(): string {
+        if (typeof window === 'undefined') return '';
         return localStorage.getItem('requests_api_url') ?? '';
     },
 
@@ -32,6 +33,7 @@ export const auth: AuthAPI = {
     // ==========================================================================
 
     getAccessToken(): string | null {
+        if (typeof window === 'undefined') return null;
         return localStorage.getItem(this.ACCESS_TOKEN_KEY);
     },
 
@@ -40,6 +42,7 @@ export const auth: AuthAPI = {
     },
 
     getRefreshToken(): string | null {
+        if (typeof window === 'undefined') return null;
         return localStorage.getItem(this.REFRESH_TOKEN_KEY);
     },
 
@@ -47,11 +50,11 @@ export const auth: AuthAPI = {
         const token = this.getAccessToken();
         if (!token) {
             // Fall back to legacy admin token
-            const adminToken = localStorage.getItem('requests_api_token');
+            const adminToken = typeof window !== 'undefined' ? localStorage.getItem('requests_api_token') : null;
             return {
                 'Content-Type': 'application/json',
                 'Authorization': adminToken ? `Bearer ${adminToken}` : ''
-            } as const;
+            };
         }
         return {
             'Content-Type': 'application/json',
@@ -60,6 +63,7 @@ export const auth: AuthAPI = {
     },
 
     storeTokens(tokens: AuthTokens): void {
+        if (typeof window === 'undefined') return;
         if (tokens.accessToken) {
             localStorage.setItem(this.ACCESS_TOKEN_KEY, tokens.accessToken);
         }
@@ -69,27 +73,32 @@ export const auth: AuthAPI = {
     },
 
     storeUser(user: User): void {
+        if (typeof window === 'undefined') return;
         localStorage.setItem(this.USER_KEY, JSON.stringify(user));
     },
 
     getUser(): StoredUser | null {
+        if (typeof window === 'undefined') return null;
         const stored = localStorage.getItem(this.USER_KEY);
         if (!stored) return null;
         const result = safeJsonParse(stored, StoredUserSchema);
         if (result.success) {
-            return result.data;
+            return result.data as StoredUser;
         }
-        logger.error('Failed to parse stored user', { error: result.error.message });
+        const errorMsg = 'error' in result ? (result.error instanceof Error ? result.error.message : 'Validation error') : 'Unknown error';
+        logger.error('Failed to parse stored user', { error: errorMsg });
         return null;
     },
 
     clearAuth(): void {
+        if (typeof window === 'undefined') return;
         localStorage.removeItem(this.ACCESS_TOKEN_KEY);
         localStorage.removeItem(this.REFRESH_TOKEN_KEY);
         localStorage.removeItem(this.USER_KEY);
     },
 
     isAuthenticated(): boolean {
+        if (typeof window === 'undefined') return false;
         return !!(this.getAccessToken() ?? localStorage.getItem('requests_api_token'));
     },
 
@@ -97,12 +106,12 @@ export const auth: AuthAPI = {
         const user = this.getUser();
         if (!user?.roles) {
             // Legacy admin token is always admin
-            if (localStorage.getItem('requests_api_token')) {
+            if (typeof window !== 'undefined' && localStorage.getItem('requests_api_token')) {
                 return role === 'admin';
             }
             return false;
         }
-        return user.roles.some((r: RoleInfo) => r.role === role);
+        return user.roles.some((r) => r.role === role);
     },
 
     isAdmin(): boolean {
@@ -125,25 +134,9 @@ export const auth: AuthAPI = {
         if (!user?.roles) return [];
 
         const groups = new Set<string>();
-        // Check actual role structure (string or object?)
-        // Backend types say UserRole is string literal.
-        // But StoredUser has roles: UserRole[].
-        // Wait, backend implementation sends roles as strings?
-        // Ref: api/src/lib/auth.ts (from Plan): `roles: UserRole[]` (strings).
-        // But `auth.js` line 118: `r.role === role`. This implies roles are OBJECTS { role: string, groupIds: ... }.
-        // I need to check backend implementation or types.
-        // Plan `api/src/types/index.ts`: `export type UserRole = 'admin' ...`.
-        // `JWTPayload` has `roles: UserRole[]`.
-        // But `auth.js` existing code says `user.roles.some(r => r.role === role)`.
-        // This implies `user.roles` is an array of OBJECTS in the stored user JSON?
-        // Let's assume implementation matches JS for now to avoid breaking.
-        // But types say `UserRole[]`.
-        // Use `any` cast for safety or update types?
-        // I'll update types later if needed. For now I handle both.
-
-        user.roles.forEach((r: RoleInfo) => {
+        user.roles.forEach((r) => {
             if (r.role === 'teacher') {
-                r.groupIds.forEach((g: string) => groups.add(g));
+                r.groupIds.forEach((g) => groups.add(g));
             }
         });
 
@@ -163,16 +156,27 @@ export const auth: AuthAPI = {
     // API Methods
     // ==========================================================================
 
-    // ==========================================================================
-    // API Methods
-    // ==========================================================================
-
     async login(email: string, password: string): Promise<APIResponse<{ user: User }>> {
         try {
             const data = await trpc.auth.login.mutate({ email, password });
             this.storeTokens(data);
-            this.storeUser(data.user);
-            return { success: true, data: { user: data.user } };
+            
+            // The backend returns roles but the type doesn't reflect it
+            // Cast to unknown then to the expected shape
+            const backendUser = data.user as unknown as { id: string; email: string; name: string; roles: RoleInfo[] };
+            
+            const user: User = {
+                id: backendUser.id,
+                email: backendUser.email,
+                name: backendUser.name,
+                roles: backendUser.roles.map(r => ({
+                    role: r.role,
+                    groupIds: r.groupIds
+                }))
+            };
+            
+            this.storeUser(user);
+            return { success: true, data: { user } };
         } catch (error: unknown) {
             const message = getErrorMessage(error);
             throw new Error(message);
@@ -182,7 +186,13 @@ export const auth: AuthAPI = {
     async register(email: string, name: string, password: string): Promise<APIResponse<{ user: User }>> {
         try {
             const data = await trpc.auth.register.mutate({ email, name, password });
-            return { success: true, data: { user: data.user } };
+            const user: User = {
+                id: data.user.id,
+                email: data.user.email,
+                name: data.user.name,
+                roles: [] // New users have no roles initially
+            };
+            return { success: true, data: { user } };
         } catch (error: unknown) {
             const message = getErrorMessage(error);
             throw new Error(message);
@@ -197,8 +207,8 @@ export const auth: AuthAPI = {
 
         try {
             const data = await trpc.auth.refresh.mutate({ refreshToken });
-            this.storeTokens(data);
-            return { success: true, data };
+            this.storeTokens(data as AuthTokens);
+            return { success: true, data: data as AuthTokens };
         } catch (error: unknown) {
             this.clearAuth();
             const message = getErrorMessage(error);
@@ -219,8 +229,21 @@ export const auth: AuthAPI = {
     async getMe(): Promise<APIResponse<{ user: User }>> {
         try {
             const data = await trpc.auth.me.query();
-            this.storeUser(data.user);
-            return { success: true, data: { user: data.user } };
+            
+            // The backend returns roles but the type doesn't reflect it
+            const backendUser = data.user as unknown as { id: string; email: string; name: string; roles: RoleInfo[] };
+            
+            const user: User = {
+                id: backendUser.id,
+                email: backendUser.email,
+                name: backendUser.name,
+                roles: backendUser.roles.map(r => ({
+                    role: r.role,
+                    groupIds: r.groupIds
+                }))
+            };
+            this.storeUser(user);
+            return { success: true, data: { user } };
         } catch (error: unknown) {
             const message = getErrorMessage(error);
             throw new Error(message);
@@ -228,9 +251,9 @@ export const auth: AuthAPI = {
     },
 
     async fetch(url: string, options: RequestInit = {}): Promise<Response> {
-        const headers = {
+        const headers: Record<string, string> = {
             ...this.getAuthHeaders(),
-            ...(options.headers as Record<string, string>)
+            ...((options.headers ?? {}) as Record<string, string>)
         };
         return window.fetch(url, { ...options, headers });
     }

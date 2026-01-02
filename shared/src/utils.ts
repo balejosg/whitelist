@@ -20,16 +20,16 @@ export const normalize = {
  */
 export const parseEnv = {
     int: (value: string | undefined, fallback: number): number => {
-        if (!value) return fallback;
+        if (value === undefined || value === '') return fallback;
         const parsed = parseInt(value, 10);
         return isNaN(parsed) ? fallback : parsed;
     },
     list: (value: string | undefined, fallback: string[]): string[] => {
-        if (!value) return fallback;
+        if (value === undefined || value === '') return fallback;
         return value.split(',').map(s => s.trim()).filter(Boolean);
     },
     bool: (value: string | undefined, fallback: boolean): boolean => {
-        if (!value) return fallback;
+        if (value === undefined || value === '') return fallback;
         return value.toLowerCase() === 'true' || value === '1';
     },
 };

@@ -3,14 +3,12 @@
  * Copyright (C) 2025 OpenPath Authors
  *
  * ClassroomService - Business logic for classroom and machine management
- *
- * This service extracts the shared logic from REST endpoints and tRPC routers
- * to eliminate duplication and provide a single source of truth.
  */
 
+ 
+
 import * as classroomStorage from '../lib/classroom-storage.js';
-import type { WhitelistUrlResult as StorageWhitelistUrlResult } from '../lib/classroom-storage.js';
-import { logger } from '../lib/logger.js';
+import * as scheduleStorage from '../lib/schedule-storage.js';
 
 // =============================================================================
 // Types
@@ -23,14 +21,54 @@ export interface RegisterMachineInput {
     version?: string | undefined;
 }
 
-// Re-export the storage type for consistency
-export type WhitelistUrlResult = StorageWhitelistUrlResult;
+export interface WhitelistUrlResult {
+    url: string;
+    groupId: string;
+    classroomId: string;
+    classroomName: string;
+    source: 'manual' | 'schedule' | 'default';
+}
 
+export interface MachineInfo {
+    hostname: string;
+    lastSeen: string | null;
+    status: 'unknown';
+}
+
+export interface MachineRegistrationResult {
+    hostname: string;
+    classroomId: string;
+    classroomName: string;
+    version?: string;
+    lastSeen: string;
+}
+
+export interface ClassroomWithMachines {
+    id: string;
+    name: string;
+    displayName: string;
+    defaultGroupId: string | null;
+    activeGroupId: string | null;
+    createdAt: string;
+    updatedAt: string;
+    currentGroupId: string | null;
+    machines: MachineInfo[];
+    machineCount: number;
+}
+
+export interface UpdateClassroomData {
+    name?: string;
+    displayName?: string;
+    defaultGroupId?: string;
+    activeGroupId?: string;
+}
+
+// Use standard tRPC error codes for easy mapping
 export type ClassroomServiceError =
-    | { code: 'HOSTNAME_REQUIRED'; message: string }
-    | { code: 'CLASSROOM_NOT_FOUND'; message: string }
-    | { code: 'MACHINE_NOT_FOUND'; message: string }
-    | { code: 'NO_GROUP_CONFIGURED'; message: string };
+    | { code: 'BAD_REQUEST'; message: string }
+    | { code: 'NOT_FOUND'; message: string }
+    | { code: 'CONFLICT'; message: string }
+    | { code: 'INTERNAL_SERVER_ERROR'; message: string };
 
 export type ClassroomResult<T> =
     | { ok: true; data: T }
@@ -40,20 +78,83 @@ export type ClassroomResult<T> =
 // Service Implementation
 // =============================================================================
 
-// The machine type returned by storage
-type StorageMachine = Awaited<ReturnType<typeof classroomStorage.registerMachine>>;
+/**
+ * List all classrooms with their machine counts and current state
+ */
+export async function listClassrooms(): Promise<ClassroomWithMachines[]> {
+    const classrooms = await classroomStorage.getAllClassrooms();
+    return Promise.all(classrooms.map(async (c) => {
+        const rawMachines = await classroomStorage.getMachinesByClassroom(c.id);
+        const machines: MachineInfo[] = rawMachines.map(m => ({
+            hostname: m.hostname,
+            lastSeen: m.lastSeen?.toISOString() ?? null,
+            status: 'unknown' as const
+        }));
+        
+        // Use schedule service for current group
+        const currentSchedule = await scheduleStorage.getCurrentSchedule(c.id);
+        const currentGroupId = c.activeGroupId ?? currentSchedule?.groupId ?? c.defaultGroupId;
+
+        return {
+            id: c.id,
+            name: c.name,
+            displayName: c.displayName,
+            defaultGroupId: c.defaultGroupId,
+            activeGroupId: c.activeGroupId,
+            createdAt: c.createdAt.toISOString(),
+            updatedAt: c.updatedAt.toISOString(),
+            currentGroupId,
+            machines,
+            machineCount: machines.length,
+        };
+    }));
+}
+
+/**
+ * Get a specific classroom with its machines and current state
+ */
+export async function getClassroom(id: string): Promise<ClassroomResult<ClassroomWithMachines>> {
+    const classroom = await classroomStorage.getClassroomById(id);
+    if (!classroom) return { ok: false, error: { code: 'NOT_FOUND', message: 'Classroom not found' } };
+
+    const rawMachines = await classroomStorage.getMachinesByClassroom(id);
+    const machines: MachineInfo[] = rawMachines.map(m => ({
+        hostname: m.hostname,
+        lastSeen: m.lastSeen?.toISOString() ?? null,
+        status: 'unknown' as const
+    }));
+
+    const currentSchedule = await scheduleStorage.getCurrentSchedule(id);
+    const currentGroupId = classroom.activeGroupId ?? currentSchedule?.groupId ?? classroom.defaultGroupId;
+
+    return {
+        ok: true,
+        data: {
+            id: classroom.id,
+            name: classroom.name,
+            displayName: classroom.displayName,
+            defaultGroupId: classroom.defaultGroupId,
+            activeGroupId: classroom.activeGroupId,
+            createdAt: (classroom.createdAt ?? new Date()).toISOString(),
+            updatedAt: (classroom.updatedAt ?? new Date()).toISOString(),
+            currentGroupId,
+            machines,
+            machineCount: machines.length,
+        }
+    };
+}
 
 /**
  * Register a machine to a classroom
  */
 export async function registerMachine(
     input: RegisterMachineInput
-): Promise<ClassroomResult<StorageMachine>> {
+): Promise<ClassroomResult<MachineRegistrationResult>> {
     // Validate hostname
     if (!input.hostname || input.hostname.trim() === '') {
         return {
             ok: false,
-            error: { code: 'HOSTNAME_REQUIRED', message: 'Hostname required' }
+            error: { code: 'BAD_REQUEST', message: 'Hostname required' }
         };
     }
 
@@ -70,7 +171,7 @@ export async function registerMachine(
     if (!classroomId) {
         return {
             ok: false,
-            error: { code: 'CLASSROOM_NOT_FOUND', message: 'Valid classroom_id or classroom_name is required' }
+            error: { code: 'NOT_FOUND', message: 'Valid classroom_id or classroom_name is required' }
         };
     }
 
@@ -81,9 +182,21 @@ export async function registerMachine(
         ...(input.version ? { version: input.version } : {}),
     });
 
+    // Get classroom name
+    const classroom = await classroomStorage.getClassroomById(classroomId);
+    
+    // Type the result properly
+    const result: MachineRegistrationResult = {
+        hostname: machine.hostname,
+        classroomId: machine.classroomId ?? classroomId,
+        classroomName: classroom?.name ?? '',
+        lastSeen: machine.lastSeen?.toISOString() ?? new Date().toISOString(),
+        ...(machine.version !== null && { version: machine.version })
+    };
+
     return {
         ok: true,
-        data: machine
+        data: result
     };
 }
 
@@ -97,26 +210,67 @@ export async function getWhitelistUrl(
     if (!hostname || hostname.trim() === '') {
         return {
             ok: false,
-            error: { code: 'HOSTNAME_REQUIRED', message: 'Hostname required' }
+            error: { code: 'BAD_REQUEST', message: 'Hostname required' }
         };
     }
 
     // Update last seen timestamp
     await classroomStorage.updateMachineLastSeen(hostname);
 
-    // Get the whitelist URL
-    const result = await classroomStorage.getWhitelistUrlForMachine(hostname);
-
-    if (!result) {
+    const machine = await classroomStorage.getMachineOnlyByHostname(hostname);
+    if (!machine?.classroomId) {
         return {
             ok: false,
-            error: { code: 'MACHINE_NOT_FOUND', message: 'Machine not found or no group configured' }
+            error: { code: 'NOT_FOUND', message: 'Machine not found or not assigned to a classroom' }
         };
     }
 
+    const classroom = await classroomStorage.getClassroomById(machine.classroomId);
+    if (!classroom) {
+        return {
+            ok: false,
+            error: { code: 'NOT_FOUND', message: 'Classroom not found' }
+        };
+    }
+
+    let groupId = classroom.activeGroupId;
+    let source: 'manual' | 'schedule' | 'default' = 'manual';
+
+    if (groupId === null) {
+        // Try to get from schedule
+        const currentSchedule = await scheduleStorage.getCurrentSchedule(classroom.id);
+        if (currentSchedule) {
+            groupId = currentSchedule.groupId;
+            source = 'schedule';
+        }
+    }
+
+    if (groupId === null) {
+        groupId = classroom.defaultGroupId;
+        source = 'default';
+    }
+
+    if (groupId === null) {
+        return {
+            ok: false,
+            error: { code: 'BAD_REQUEST', message: 'No whitelist group configured for this classroom' }
+        };
+    }
+
+    const owner = process.env.GITHUB_OWNER ?? 'LasEncinasIT';
+    const repo = process.env.GITHUB_REPO ?? 'Whitelist-por-aula';
+    const branch = process.env.GITHUB_BRANCH ?? 'main';
+    const url = `https://raw.githubusercontent.com/${owner}/${repo}/refs/heads/${branch}/${encodeURIComponent(groupId)}.txt`;
+
     return {
         ok: true,
-        data: result
+        data: {
+            url,
+            groupId,
+            classroomId: classroom.id,
+            classroomName: classroom.name,
+            source
+        }
     };
 }
 
@@ -124,9 +278,9 @@ export async function getWhitelistUrl(
 // Default Export
 // =============================================================================
 
-logger.debug('ClassroomService initialized');
-
 export default {
     registerMachine,
     getWhitelistUrl,
+    listClassrooms,
+    getClassroom
 };

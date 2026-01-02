@@ -28,14 +28,14 @@ await describe('Worker OAuth Flow', () => {
 
             assert.strictEqual(response.status, 302);
             const location = response.headers.get('Location');
-            assert.ok(location);
+            assert.ok(location !== null);
             assert.ok(location.startsWith('https://github.com/login/oauth/authorize'));
             assert.ok(location.includes('client_id=mock_client_id'));
             assert.ok(location.includes('redirect_uri=https%3A%2F%2Fworker.example.com%2Fauth%2Fcallback'));
             assert.ok(location.includes('state='));
 
             const setCookie = response.headers.get('Set-Cookie');
-            assert.ok(setCookie);
+            assert.ok(setCookie !== null);
             assert.ok(setCookie.includes('openpath_oauth_state='));
             assert.ok(setCookie.includes('HttpOnly'));
         });
@@ -54,7 +54,7 @@ await describe('Worker OAuth Flow', () => {
             
             assert.strictEqual(response.status, 302);
             const location = response.headers.get('Location');
-            assert.ok(location);
+            assert.ok(location !== null);
             assert.ok(location.includes('error=access_denied'));
         });
 
@@ -64,7 +64,7 @@ await describe('Worker OAuth Flow', () => {
             
             assert.strictEqual(response.status, 302);
             const location = response.headers.get('Location');
-            assert.ok(location);
+            assert.ok(location !== null);
             assert.ok(location.includes('error=no_code'));
         });
 
@@ -77,7 +77,7 @@ await describe('Worker OAuth Flow', () => {
             
             assert.strictEqual(response.status, 302);
             const location = response.headers.get('Location');
-            assert.ok(location);
+            assert.ok(location !== null);
             assert.ok(location.includes('error=invalid_state'));
         });
 
@@ -99,7 +99,7 @@ await describe('Worker OAuth Flow', () => {
             
             assert.strictEqual(response.status, 302);
             const location = response.headers.get('Location');
-            assert.ok(location);
+            assert.ok(location !== null);
             assert.ok(location.includes('access_token=gh_token_123'));
             assert.ok(location.includes('token_type=bearer'));
         });
@@ -121,7 +121,7 @@ await describe('Worker OAuth Flow', () => {
             
             assert.strictEqual(response.status, 302);
             const location = response.headers.get('Location');
-            assert.ok(location);
+            assert.ok(location !== null);
             assert.ok(location.includes('error=bad_verification_code'));
         });
         
@@ -140,7 +140,7 @@ await describe('Worker OAuth Flow', () => {
             
             assert.strictEqual(response.status, 302);
             const location = response.headers.get('Location');
-            assert.ok(location);
+            assert.ok(location !== null);
             assert.ok(location.includes('error=token_exchange_failed'));
         });
     });

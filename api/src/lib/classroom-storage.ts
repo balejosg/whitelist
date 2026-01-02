@@ -31,11 +31,9 @@ interface ClassroomWithCount {
 }
 
 export interface WhitelistUrlResult {
-    url: string;
     groupId: string;
     classroomId: string;
     classroomName: string;
-    source: 'manual' | 'schedule' | 'default';
 }
 
 export interface ClassroomStats {
@@ -300,6 +298,18 @@ export async function updateMachineLastSeen(hostname: string): Promise<DBMachine
     return result ?? null;
 }
 
+/**
+ * Get the machine record by hostname
+ */
+export async function getMachineOnlyByHostname(hostname: string): Promise<DBMachine | null> {
+    const result = await db.select()
+        .from(machines)
+        .where(sql`LOWER(${machines.hostname}) = LOWER(${hostname})`)
+        .limit(1);
+
+    return result[0] ?? null;
+}
+
 export async function deleteMachine(hostname: string): Promise<boolean> {
     const machine = await getMachineByHostname(hostname);
     if (!machine) return false;
@@ -338,8 +348,6 @@ export async function getWhitelistUrlForMachine(hostname: string): Promise<White
     if (!classroom) return null;
 
     let groupId = classroom.activeGroupId;
-    let source: 'manual' | 'schedule' | 'default' = 'manual';
-
     if (groupId === null) {
         // Try to get from schedule
         try {
@@ -347,31 +355,20 @@ export async function getWhitelistUrlForMachine(hostname: string): Promise<White
             const currentSchedule = await getCurrentSchedule(classroom.id);
             if (currentSchedule) {
                 groupId = currentSchedule.groupId;
-                source = 'schedule';
             }
         } catch {
             // Schedule storage not available
         }
     }
 
-    if (groupId === null) {
-        groupId = classroom.defaultGroupId;
-        source = 'default';
-    }
+    groupId ??= classroom.defaultGroupId;
 
     if (groupId === null) return null;
 
-    const owner = process.env.GITHUB_OWNER ?? 'LasEncinasIT';
-    const repo = process.env.GITHUB_REPO ?? 'Whitelist-por-aula';
-    const branch = process.env.GITHUB_BRANCH ?? 'main';
-    const url = `https://raw.githubusercontent.com/${owner}/${repo}/refs/heads/${branch}/${encodeURIComponent(groupId)}.txt`;
-
     return {
-        url,
         groupId,
         classroomId: classroom.id,
         classroomName: classroom.name,
-        source
     };
 }
 
