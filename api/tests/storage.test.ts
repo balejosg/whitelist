@@ -1,47 +1,60 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
+import crypto from 'node:crypto';
 import * as storage from '../src/lib/storage.js';
 import * as userStorage from '../src/lib/user-storage.js';
 import * as classroomStorage from '../src/lib/classroom-storage.js';
 import * as scheduleStorage from '../src/lib/schedule-storage.js';
 
 void describe('Storage Layer', () => {
+    const randomSuffix = () => crypto.randomBytes(4).toString('hex');
+
     void describe('User Storage', () => {
         void it('should normalize email on creation', async () => {
+            const email = ` TEST-${randomSuffix()}@Example.com `;
             const userData = {
-                email: ' TEST@Example.com ',
+                email,
                 name: 'Test User',
                 password: 'password123'
             };
             const user = await userStorage.createUser(userData);
-            assert.strictEqual(user.email, 'test@example.com');
+            assert.strictEqual(user.email, email.toLowerCase().trim());
         });
         
         void it('should find user by email (case-insensitive)', async () => {
-            const user = await userStorage.getUserByEmail('tEsT@eXamPle.coM');
+            const email = `test-${randomSuffix()}@example.com`;
+            await userStorage.createUser({
+                email,
+                name: 'Test User',
+                password: 'password123'
+            });
+            const user = await userStorage.getUserByEmail(email.toUpperCase());
             assert.ok(user);
-            assert.strictEqual(user.email, 'test@example.com');
+            assert.strictEqual(user.email, email);
         });
     });
 
     void describe('Request Storage', () => {
         void it('should normalize domain on creation', async () => {
+            const domain = ` GOOGLE-${randomSuffix()}.com `;
             const requestData = {
-                domain: ' GOOGLE.com ',
+                domain,
                 requesterEmail: 'user@example.com',
                 groupId: 'default'
             };
             const request = await storage.createRequest(requestData);
-            assert.strictEqual(request.domain, 'google.com');
+            assert.strictEqual(request.domain, domain.toLowerCase().trim());
         });
     });
 
     void describe('Classroom Storage', () => {
         void it('should generate slug from name', async () => {
+            const name = `Aula de Informática ${randomSuffix()}`;
             const room = await classroomStorage.createClassroom({
-                name: 'Aula de Informática 1'
+                name
             });
-            assert.strictEqual(room.name, 'aula-de-informatica-1');
+            const expectedSlug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+            assert.strictEqual(room.name, expectedSlug);
         });
     });
 

@@ -26,7 +26,9 @@ const testFiles: readonly string[] = [
     'tests/github.test.ts',
     'tests/security.test.ts',
     'tests/integration.test.ts',
-    'tests/e2e.test.ts'
+    'tests/e2e.test.ts',
+    'tests/storage.test.ts',
+    'tests/token-store.test.ts'
 ];
 
 let currentIndex = 0;
