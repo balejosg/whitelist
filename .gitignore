@@ -7,6 +7,8 @@ dist/
 */dist/
 build/
 */build/
+coverage/
+*/coverage/
 *.tsbuildinfo
 **/tsconfig.tsbuildinfo
 **/tsconfig.build.tsbuildinfo
