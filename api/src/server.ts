@@ -49,6 +49,7 @@ import 'dotenv/config';
 // Structured logging with Winston
 import { logger } from './lib/logger.js';
 
+import { getErrorMessage } from '@openpath/shared';
 // Centralized configuration
 import { config } from './config.js';
 
@@ -320,7 +321,7 @@ if (isMainModule) {
                 await cleanupBlacklist();
                 logger.info('Token blacklist cleanup completed');
             } catch (error) {
-                logger.warn('Token blacklist cleanup failed', { error: error instanceof Error ? error.message : String(error) });
+                logger.warn('Token blacklist cleanup failed', { error: getErrorMessage(error) });
             }
 
             logger.info('Server started', {
@@ -350,7 +351,7 @@ if (isMainModule) {
                     });
                     logger.info(`Default admin user created: ${admin.email}`);
                 } catch (error) {
-                    logger.error('Failed to create default admin user', { error: error instanceof Error ? error.message : String(error) });
+                    logger.error('Failed to create default admin user', { error: getErrorMessage(error) });
                 }
             }
 

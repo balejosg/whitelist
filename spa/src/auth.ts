@@ -1,6 +1,16 @@
-import type { AuthAPI, AuthTokens, StoredUser, User, UserRole, APIResponse, RoleInfo } from './types/index.js';
+import { z } from 'zod';
+import { getErrorMessage, safeJsonParse, RoleInfo } from '@openpath/shared';
+import type { AuthAPI, AuthTokens, StoredUser, User, UserRole, APIResponse } from './types/index.js';
 import { trpc } from './trpc.js';
 import { logger } from './lib/logger.js';
+
+// Stored user schema for validation
+const StoredUserSchema = z.object({
+    id: z.string(),
+    email: z.string(),
+    name: z.string(),
+    roles: z.array(RoleInfo)
+});
 
 /**
  * Authentication API Client
@@ -64,7 +74,13 @@ export const auth: AuthAPI = {
 
     getUser(): StoredUser | null {
         const stored = localStorage.getItem(this.USER_KEY);
-        return stored ? JSON.parse(stored) as StoredUser : null;
+        if (!stored) return null;
+        const result = safeJsonParse(stored, StoredUserSchema);
+        if (result.success) {
+            return result.data;
+        }
+        logger.error('Failed to parse stored user', { error: result.error.message });
+        return null;
     },
 
     clearAuth(): void {
@@ -158,7 +174,7 @@ export const auth: AuthAPI = {
             this.storeUser(data.user);
             return { success: true, data: { user: data.user } };
         } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : String(error);
+            const message = getErrorMessage(error);
             throw new Error(message);
         }
     },
@@ -168,7 +184,7 @@ export const auth: AuthAPI = {
             const data = await trpc.auth.register.mutate({ email, name, password });
             return { success: true, data: { user: data.user } };
         } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : String(error);
+            const message = getErrorMessage(error);
             throw new Error(message);
         }
     },
@@ -185,7 +201,7 @@ export const auth: AuthAPI = {
             return { success: true, data };
         } catch (error: unknown) {
             this.clearAuth();
-            const message = error instanceof Error ? error.message : 'Token refresh failed';
+            const message = getErrorMessage(error);
             throw new Error(message);
         }
     },
@@ -195,7 +211,7 @@ export const auth: AuthAPI = {
             const refreshToken = this.getRefreshToken();
             await trpc.auth.logout.mutate({ refreshToken: refreshToken ?? undefined });
         } catch (e) {
-            logger.warn('Logout API call failed', { error: e instanceof Error ? e.message : String(e) });
+            logger.warn('Logout API call failed', { error: getErrorMessage(e) });
         }
         this.clearAuth();
     },
@@ -206,7 +222,7 @@ export const auth: AuthAPI = {
             this.storeUser(data.user);
             return { success: true, data: { user: data.user } };
         } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : String(error);
+            const message = getErrorMessage(error);
             throw new Error(message);
         }
     },

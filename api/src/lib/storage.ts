@@ -7,6 +7,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { eq, desc, and, sql, count } from 'drizzle-orm';
+import { normalize } from '@openpath/shared';
 import { db, requests } from '../db/index.js';
 import type {
     DomainRequest,
@@ -92,7 +93,7 @@ export async function createRequest(requestData: CreateRequestData): Promise<Dom
     const [result] = await db.insert(requests)
         .values({
             id,
-            domain: requestData.domain.toLowerCase().trim(),
+            domain: normalize.domain(requestData.domain),
             reason: requestData.reason ?? '',
             requesterEmail: requestData.requesterEmail ?? 'anonymous',
             groupId: requestData.groupId ?? process.env.DEFAULT_GROUP ?? 'default',

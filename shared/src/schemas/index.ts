@@ -259,6 +259,23 @@ export const CreatePushSubscriptionDTO = z.object({
     userAgent: z.string().optional(),
 });
 
+// GitHub API response schemas (for SPA OAuth)
+export const GitHubUser = z.object({
+    id: z.number(),
+    login: z.string(),
+    avatar_url: z.string().optional(),
+    name: z.string().nullable().optional(),
+    email: z.string().nullable().optional(),
+});
+
+export const GitHubRepoPermissions = z.object({
+    permissions: z.object({
+        admin: z.boolean(),
+        push: z.boolean(),
+        pull: z.boolean(),
+    }).optional(),
+});
+
 // DTO Types
 export type CreateRequestDTO = z.infer<typeof CreateRequestDTO>;
 export type UpdateRequestStatusDTO = z.infer<typeof UpdateRequestStatusDTO>;
@@ -268,4 +285,6 @@ export type CreateClassroomDTO = z.infer<typeof CreateClassroomDTO>;
 export type CreateScheduleDTO = z.infer<typeof CreateScheduleDTO>;
 export type PushSubscriptionKeys = z.infer<typeof PushSubscriptionKeys>;
 export type CreatePushSubscriptionDTO = z.infer<typeof CreatePushSubscriptionDTO>;
+export type GitHubUser = z.infer<typeof GitHubUser>;
+export type GitHubRepoPermissions = z.infer<typeof GitHubRepoPermissions>;
 

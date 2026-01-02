@@ -1,11 +1,12 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc.js';
 import { TRPCError } from '@trpc/server';
-import { CreateScheduleDTOSchema } from '../../types/index.js';
+import { CreateScheduleDTOSchema, getErrorMessage } from '../../types/index.js';
 import * as scheduleStorage from '../../lib/schedule-storage.js';
 import * as classroomStorage from '../../lib/classroom-storage.js';
 import * as auth from '../../lib/auth.js';
 import { stripUndefined } from '../../lib/utils.js';
+import { logger } from '../../lib/logger.js';
 
 export const schedulesRouter = router({
     getByClassroom: protectedProcedure
@@ -58,7 +59,8 @@ export const schedulesRouter = router({
                 });
                 return schedule;
             } catch (error: unknown) {
-                const message = error instanceof Error ? error.message : String(error);
+                const message = getErrorMessage(error);
+                logger.error('schedules.create error', { error: message, input });
                 if (message === 'Schedule conflict') {
                     throw new TRPCError({
                         code: 'CONFLICT',
@@ -107,7 +109,8 @@ export const schedulesRouter = router({
                 if (!updated) throw new TRPCError({ code: 'NOT_FOUND' });
                 return updated;
             } catch (error: unknown) {
-                const message = error instanceof Error ? error.message : String(error);
+                const message = getErrorMessage(error);
+                logger.error('schedules.update error', { error: message, id: input.id });
                 if (message === 'Schedule conflict') {
                     throw new TRPCError({
                         code: 'CONFLICT',

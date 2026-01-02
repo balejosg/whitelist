@@ -3,7 +3,7 @@
  * Handles the popup UI and communication with background script
  */
 
-import { logger } from './lib/logger.js';
+import { logger, getErrorMessage } from './lib/logger.js';
 
 interface BlockedDomainInfo {
     count: number;
@@ -117,7 +117,7 @@ async function loadBlockedDomains(): Promise<void> {
         blockedDomainsData = (data as BlockedDomainsData | null) ?? {};
         renderDomainsList();
     } catch (error) {
-        logger.error('[Popup] Error loading blocked domains', { error: error instanceof Error ? error.message : String(error) });
+        logger.error('[Popup] Error loading blocked domains', { error: getErrorMessage(error) });
         renderDomainsList();
     }
 }
@@ -172,7 +172,7 @@ async function copyToClipboard(): Promise<void> {
         await navigator.clipboard.writeText(text);
         showToast('Copiado al portapapeles');
     } catch (error) {
-        logger.error('[Popup] Error copying to clipboard', { error: error instanceof Error ? error.message : String(error) });
+        logger.error('[Popup] Error copying to clipboard', { error: getErrorMessage(error) });
         showToast('Error al copiar');
     }
 }
@@ -194,7 +194,7 @@ async function clearDomains(): Promise<void> {
         hideRequestSection();
         showToast('Lista limpiada');
     } catch (error) {
-        logger.error('[Popup] Error clearing domains', { error: error instanceof Error ? error.message : String(error) });
+        logger.error('[Popup] Error clearing domains', { error: getErrorMessage(error) });
     }
 }
 
@@ -258,7 +258,7 @@ async function verifyDomainsWithNative(): Promise<void> {
             verifyListEl.innerHTML = `<div class="error-text">Error: ${res.error ?? 'Error desconocido'}</div>`;
         }
     } catch (error) {
-        logger.error('[Popup] Error verifying domains', { error: error instanceof Error ? error.message : String(error) });
+        logger.error('[Popup] Error verifying domains', { error: getErrorMessage(error) });
         verifyListEl.innerHTML = '<div class="error-text">Error al comunicar con el host nativo</div>';
     } finally {
         btnVerify.disabled = false;
@@ -338,7 +338,7 @@ async function checkRequestApiAvailable(): Promise<boolean> {
     } catch (error) {
         clearTimeout(timeout);
         if (CONFIG.debugMode) {
-            logger.debug('[Popup] Request API not available', { error: error instanceof Error ? error.message : String(error) });
+            logger.debug('[Popup] Request API not available', { error: getErrorMessage(error) });
         }
     }
 
@@ -587,7 +587,7 @@ async function init(): Promise<void> {
         }
 
     } catch (error) {
-        logger.error('[Popup] Error de inicialización', { error: error instanceof Error ? error.message : String(error) });
+        logger.error('[Popup] Error de inicialización', { error: getErrorMessage(error) });
         tabDomainEl.textContent = 'Error';
     }
 }

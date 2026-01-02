@@ -50,9 +50,9 @@ export interface User {
     id: string;
     email: string;
     name: string;
-    login?: string; // GitHub login
-    avatarUrl?: string; // GitHub/S3 avatar
-    roles?: RoleInfo[];
+    login?: string | undefined; // GitHub login
+    avatarUrl?: string | undefined; // GitHub/S3 avatar
+    roles?: RoleInfo[] | undefined;
 }
 
 /**
@@ -134,9 +134,9 @@ export interface StoredUser {
  * OAuth callback result
  */
 export interface OAuthCallbackResult {
-    accessToken?: string;
-    tokenType?: string;
-    error?: string;
+    accessToken?: string | undefined;
+    tokenType?: string | undefined;
+    error?: string | undefined;
 }
 
 // =============================================================================
@@ -147,12 +147,12 @@ export interface OAuthCallbackResult {
  * SPA configuration
  */
 export interface SPAConfig {
-    owner: string;
-    repo: string;
-    branch: string;
-    whitelistPath: string;
-    token?: string;
-    gruposDir?: string;
+    owner: string | undefined;
+    repo: string | undefined;
+    branch: string | undefined;
+    whitelistPath: string | undefined;
+    token?: string | undefined;
+    gruposDir?: string | undefined;
 }
 
 export interface GitHubAPIInstance {
@@ -270,7 +270,7 @@ export interface UsersResponse extends APIResponse<User[]> {
  */
 export interface RequestsAPIConfig {
     apiUrl: string;
-    token?: string;
+    token?: string | undefined;
 }
 
 // =============================================================================

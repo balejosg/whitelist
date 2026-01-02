@@ -1,4 +1,16 @@
+import { z } from 'zod';
+import { safeJsonParse } from '@openpath/shared';
 import type { SPAConfig } from './types/index.js';
+
+// Configuration schema for validation
+const SPAConfigSchema = z.object({
+    owner: z.string(),
+    repo: z.string(),
+    branch: z.string(),
+    whitelistPath: z.string(),
+    token: z.string().optional(),
+    gruposDir: z.string().optional(),
+}).partial();
 
 /**
  * Configuration Manager
@@ -8,16 +20,16 @@ export const config = {
     STORAGE_KEY: 'openpath-spa-config',
 
     get(): Partial<SPAConfig> {
-        try {
-            return JSON.parse(localStorage.getItem(this.STORAGE_KEY) ?? '{}') as Partial<SPAConfig>;
-        } catch {
-            return {};
-        }
+        const stored = localStorage.getItem(this.STORAGE_KEY);
+        if (!stored) return {};
+        
+        const result = safeJsonParse(stored, SPAConfigSchema);
+        return result.success ? result.data : {};
     },
 
     save(config: Partial<SPAConfig>): Partial<SPAConfig> {
         const current = this.get();
-        const merged = { ...current, ...config };
+        const merged = Object.assign({}, current, config);
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(merged));
         return merged;
     },

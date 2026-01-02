@@ -34,6 +34,8 @@ export {
     CreateClassroomDTO as CreateClassroomDTOSchema,
     CreateScheduleDTO as CreateScheduleDTOSchema,
     CreatePushSubscriptionDTO as CreatePushSubscriptionDTOSchema,
+    getErrorMessage,
+    normalize,
 } from '@openpath/shared';
 
 export type {

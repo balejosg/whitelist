@@ -1,3 +1,4 @@
+import { GitHubUser, GitHubRepoPermissions, getErrorMessage } from '@openpath/shared';
 import type { OAuthCallbackResult, User } from './types/index.js';
 import { logger } from './lib/logger.js';
 
@@ -85,9 +86,18 @@ export const oauth = {
                 throw new Error('Failed to get user');
             }
 
-            return await response.json() as User;
+            const data: unknown = await response.json();
+            const githubUser = GitHubUser.parse(data);
+            
+            return {
+                id: githubUser.id.toString(),
+                email: githubUser.email ?? '',
+                name: githubUser.name ?? githubUser.login,
+                login: githubUser.login,
+                avatarUrl: githubUser.avatar_url ?? undefined
+            };
         } catch (error) {
-            logger.error('Error getting user', { error: error instanceof Error ? error.message : String(error) });
+            logger.error('Error getting user', { error: getErrorMessage(error) });
             throw error;
         }
     },
@@ -111,9 +121,10 @@ export const oauth = {
 
             if (!response.ok) return false;
 
-            const data = await response.json() as { permissions?: { admin: boolean; push: boolean } };
-            if (data.permissions) {
-                return data.permissions.admin || data.permissions.push;
+            const data: unknown = await response.json();
+            const repoData = GitHubRepoPermissions.parse(data);
+            if (repoData.permissions) {
+                return repoData.permissions.admin || repoData.permissions.push;
             }
             return false;
         } catch {

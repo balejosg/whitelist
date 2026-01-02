@@ -6,6 +6,7 @@
  */
 
 import https from 'node:https';
+import { getErrorMessage, normalize } from '@openpath/shared';
 import { logger } from './logger.js';
 
 // =============================================================================
@@ -279,7 +280,7 @@ export async function addDomainToWhitelist(
         }
 
         const lines = currentContent.split('\n');
-        const domainLower = domain.toLowerCase().trim();
+        const domainLower = normalize.domain(domain);
 
         const exists = lines.some((line) => {
             const trimmed = line.trim().toLowerCase();
@@ -335,8 +336,8 @@ export async function addDomainToWhitelist(
         };
 
     } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to add domain to whitelist';
-        logger.error('Error adding domain to whitelist', { domain, groupId, error: error instanceof Error ? error.message : String(error) });
+        const message = getErrorMessage(error);
+        logger.error('Error adding domain to whitelist', { domain, groupId, error: message });
         return {
             success: false,
             message
@@ -365,7 +366,7 @@ export async function listWhitelistFiles(): Promise<WhitelistFile[]> {
             }));
 
     } catch (error) {
-        logger.error('Error listing whitelist files', { error: error instanceof Error ? error.message : String(error) });
+        logger.error('Error listing whitelist files', { error: getErrorMessage(error) });
         return [];
     }
 }
@@ -381,7 +382,7 @@ export async function isDomainBlocked(domain: string): Promise<BlockedCheckResul
     try {
         const file = await getFileContent('blocked-subdomains.txt');
         const lines = file.content.split('\n');
-        const domainLower = domain.toLowerCase().trim();
+        const domainLower = normalize.domain(domain);
 
         for (const line of lines) {
             const trimmed = line.trim().toLowerCase();

@@ -21,6 +21,13 @@ export function setDebug(enabled: boolean): void {
     DEBUG = enabled;
 }
 
+/**
+ * Extract error message from unknown error type
+ */
+export function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+}
+
 function formatMessage(level: LogLevel, message: string, context?: LogContext): string {
     const timestamp = new Date().toISOString();
     const contextStr = context ? ` ${JSON.stringify(context)}` : '';

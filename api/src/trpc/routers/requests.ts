@@ -3,6 +3,7 @@ import { router, publicProcedure, protectedProcedure, teacherProcedure, adminPro
 import {
     RequestStatusSchema,
     CreateRequestDTOSchema,
+    getErrorMessage,
 } from '../../types/index.js';
 import { TRPCError } from '@trpc/server';
 import { CreateRequestData } from '../../types/storage.js';
@@ -44,7 +45,7 @@ export const requestsRouter = router({
                 logger.error('Failed to notify teachers of new request', {
                     requestId: request.id,
                     domain: request.domain,
-                    error: error instanceof Error ? error.message : String(error)
+                    error: getErrorMessage(error)
                 });
             });
             return request;
@@ -174,7 +175,7 @@ export const requestsRouter = router({
         } catch (error) {
             // File not found is expected (no blocked domains configured)
             // Log other errors for debugging
-            const message = error instanceof Error ? error.message : String(error);
+            const message = getErrorMessage(error);
             if (!message.includes('Not Found')) {
                 logger.warn('Failed to fetch blocked subdomains', { error: message });
             }

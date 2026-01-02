@@ -13,7 +13,7 @@
  */
 
 import { Browser, WebRequest, Runtime, WebNavigation } from 'webextension-polyfill';
-import { logger } from './lib/logger.js';
+import { logger, getErrorMessage } from './lib/logger.js';
 
 declare const browser: Browser;
 
@@ -179,7 +179,7 @@ async function connectNativeHost(): Promise<boolean> {
             logger.info('[Monitor] Native host conectado');
             resolve(true);
         } catch (error) {
-            logger.error('[Monitor] Error conectando Native host', { error: error instanceof Error ? error.message : String(error) });
+            logger.error('[Monitor] Error conectando Native host', { error: getErrorMessage(error) });
 
             resolve(false);
         }
@@ -212,7 +212,7 @@ async function sendNativeMessage(message: unknown): Promise<unknown> {
 
                 resolve(response);
             } catch (error) {
-                logger.error('[Monitor] Error en Native Messaging', { error: error instanceof Error ? error.message : String(error) });
+                logger.error('[Monitor] Error en Native Messaging', { error: getErrorMessage(error) });
                 reject(error instanceof Error ? error : new Error(String(error)));
             }
         };

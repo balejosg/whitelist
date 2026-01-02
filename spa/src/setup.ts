@@ -6,28 +6,33 @@
  * Handles the initial configuration when no admins exist
  */
 
+import { z } from 'zod';
+import { getErrorMessage, parseApiResponse } from '@openpath/shared';
 import { auth } from './auth.js';
 import { logger } from './lib/logger.js';
+import { getElement } from './lib/dom.js';
 
-interface SetupStatusResponse {
-    needsSetup: boolean;
-    hasAdmin: boolean;
-    error?: string;
-}
+const SetupStatusSchema = z.object({
+    needsSetup: z.boolean(),
+    hasAdmin: z.boolean(),
+    error: z.string().optional(),
+});
 
-interface CreateAdminResponse {
-    success: boolean;
-    registrationToken: string;
-    user: {
-        id: string;
-        email: string;
-        name: string;
-    };
-}
+const CreateAdminResponseSchema = z.object({
+    success: z.boolean(),
+    registrationToken: z.string(),
+    user: z.object({
+        id: z.string(),
+        email: z.string(),
+        name: z.string(),
+    }),
+});
 
-interface TokenResponse {
-    registrationToken: string;
-}
+const TokenResponseSchema = z.object({
+    registrationToken: z.string(),
+});
+
+type CreateAdminResponse = z.infer<typeof CreateAdminResponseSchema>;
 
 interface SetupStatus {
     needsSetup: boolean;
@@ -50,7 +55,7 @@ export async function checkStatus(): Promise<SetupStatus> {
 
     try {
         const response = await fetch(`${apiUrl}/api/setup/status`);
-        const data = await response.json() as SetupStatusResponse;
+        const data = await parseApiResponse(response, SetupStatusSchema);
 
         if (!response.ok) {
             throw new Error(data.error ?? 'Failed to check setup status');
@@ -61,7 +66,7 @@ export async function checkStatus(): Promise<SetupStatus> {
             hasAdmin: data.hasAdmin
         };
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage = getErrorMessage(error);
         logger.error('Setup status check failed', { error: errorMessage });
         return { needsSetup: false, hasAdmin: true, error: errorMessage };
     }
@@ -82,13 +87,12 @@ export async function createFirstAdmin(email: string, name: string, password: st
         body: JSON.stringify({ email, name, password })
     });
 
-    const data = await response.json() as CreateAdminResponse & { error?: string };
-
     if (!response.ok) {
-        throw new Error(data.error ?? 'Failed to create admin');
+        const errorData = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(errorData.error ?? 'Failed to create admin');
     }
 
-    return data;
+    return parseApiResponse(response, CreateAdminResponseSchema);
 }
 
 /**
@@ -104,12 +108,12 @@ export async function getRegistrationToken(): Promise<string> {
         headers: auth.getAuthHeaders()
     });
 
-    const data = await response.json() as TokenResponse & { error?: string };
-
     if (!response.ok) {
-        throw new Error(data.error ?? 'Failed to get registration token');
+        const errorData = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(errorData.error ?? 'Failed to get registration token');
     }
 
+    const data = await parseApiResponse(response, TokenResponseSchema);
     return data.registrationToken;
 }
 
@@ -127,12 +131,12 @@ export async function regenerateToken(): Promise<string> {
         headers: auth.getAuthHeaders()
     });
 
-    const data = await response.json() as TokenResponse & { error?: string };
-
     if (!response.ok) {
-        throw new Error(data.error ?? 'Failed to regenerate token');
+        const errorData = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(errorData.error ?? 'Failed to regenerate token');
     }
 
+    const data = await parseApiResponse(response, TokenResponseSchema);
     return data.registrationToken;
 }
 
@@ -142,9 +146,9 @@ export async function regenerateToken(): Promise<string> {
 export async function initSetupPage(): Promise<void> {
     const status = await checkStatus();
 
-    const formContainer = document.getElementById('setup-form-container');
-    const completeContainer = document.getElementById('setup-complete-container');
-    const alreadyContainer = document.getElementById('setup-already-container');
+    const formContainer = getElement('setup-form-container');
+    const completeContainer = getElement('setup-complete-container');
+    const alreadyContainer = getElement('setup-already-container');
 
     // Hide all containers first
     formContainer?.classList.add('hidden');
@@ -152,7 +156,7 @@ export async function initSetupPage(): Promise<void> {
     alreadyContainer?.classList.add('hidden');
 
     if (status.error !== undefined && status.error !== 'API URL not configured') {
-        const errorEl = document.getElementById('setup-error');
+        const errorEl = getElement('setup-error');
         if (errorEl !== null) {
             errorEl.textContent = status.error;
         }
@@ -171,13 +175,13 @@ export async function initSetupPage(): Promise<void> {
  * Show the setup complete screen with registration token
  */
 export function showSetupComplete(token: string): void {
-    const formContainer = document.getElementById('setup-form-container');
-    const completeContainer = document.getElementById('setup-complete-container');
+    const formContainer = getElement('setup-form-container');
+    const completeContainer = getElement('setup-complete-container');
 
     formContainer?.classList.add('hidden');
     completeContainer?.classList.remove('hidden');
 
-    const tokenEl = document.getElementById('setup-registration-token');
+    const tokenEl = getElement('setup-registration-token');
     if (tokenEl !== null) {
         tokenEl.textContent = token;
     }

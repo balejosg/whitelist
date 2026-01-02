@@ -49,3 +49,55 @@ updates:
       - "npm"
       - "auth-worker"
     versioning-strategy: increase
+
+  # Root (Node.js)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "npm"
+      - "root"
+    versioning-strategy: increase
+
+  # spa (Node.js)
+  - package-ecosystem: "npm"
+    directory: "/spa"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "npm"
+      - "spa"
+    versioning-strategy: increase
+
+  # shared (Node.js)
+  - package-ecosystem: "npm"
+    directory: "/shared"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "npm"
+      - "shared"
+    versioning-strategy: increase
+
+  # firefox-extension (Node.js)
+  - package-ecosystem: "npm"
+    directory: "/firefox-extension"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "npm"
+      - "extension"
+    versioning-strategy: increase

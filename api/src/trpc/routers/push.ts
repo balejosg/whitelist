@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { router, publicProcedure, protectedProcedure } from '../trpc.js';
 import { TRPCError } from '@trpc/server';
-import { CreatePushSubscriptionDTOSchema } from '../../types/index.js';
+import { CreatePushSubscriptionDTOSchema, getErrorMessage } from '../../types/index.js';
 import * as push from '../../lib/push.js';
 import * as auth from '../../lib/auth.js';
 import { logger } from '../../lib/logger.js';
@@ -81,7 +81,7 @@ export const pushRouter = router({
                 };
             } catch (error) {
                 logger.error('Error saving subscription', {
-                    error: error instanceof Error ? error.message : String(error),
+                    error: getErrorMessage(error),
                     userId: ctx.user.sub,
                     endpoint: input.subscription.endpoint.substring(0, 50)
                 });

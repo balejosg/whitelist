@@ -11,6 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { eq, and, sql } from 'drizzle-orm';
 import pg from 'pg';
+import { getErrorMessage, normalize } from '@openpath/shared';
 import {
     whitelistGroups,
     whitelistRules,
@@ -203,7 +204,7 @@ export async function createRule(
     comment: string | null = null
 ): Promise<{ success: boolean; id?: string; error?: string }> {
     const stringGroupId = String(groupId);
-    const normalizedValue = value.toLowerCase().trim();
+    const normalizedValue = normalize.domain(value);
 
     // Check for existing
     const [existing] = await db.select().from(whitelistRules)
@@ -241,7 +242,7 @@ export async function bulkCreateRules(
 ): Promise<number> {
     let count = 0;
     for (const value of values) {
-        const trimmed = value.toLowerCase().trim();
+        const trimmed = normalize.domain(value);
         if (trimmed) {
             const result = await createRule(groupId, type, trimmed);
             if (result.success) count++;
@@ -386,7 +387,7 @@ export async function waitForDb(retries = 30, delay = 1000): Promise<void> {
             return;
         } catch (error) {
             if (i === retries - 1) {
-                logger.error('Failed to connect to database after retries', { error: error instanceof Error ? error.message : String(error) });
+                logger.error('Failed to connect to database after retries', { error: getErrorMessage(error) });
                 throw error;
             }
             logger.info(`Waiting for database... (${String(i + 1)}/${String(retries)})`);

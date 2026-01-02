@@ -8,6 +8,7 @@
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { eq, sql, count } from 'drizzle-orm';
+import { normalize } from '@openpath/shared';
 import { db, users } from '../db/index.js';
 import type { User, SafeUser } from '../types/index.js';
 import type { IUserStorage, CreateUserData, UpdateUserData } from '../types/storage.js';
@@ -119,7 +120,7 @@ export async function createUser(userData: CreateUserData): Promise<SafeUser> {
     const [result] = await db.insert(users)
         .values({
             id,
-            email: userData.email.toLowerCase().trim(),
+            email: normalize.email(userData.email),
             name: userData.name.trim(),
             passwordHash,
         })
@@ -152,7 +153,7 @@ export async function updateUser(
     const updateValues: Partial<typeof users.$inferInsert> = {};
 
     if (updates.email !== undefined) {
-        updateValues.email = updates.email.toLowerCase().trim();
+        updateValues.email = normalize.email(updates.email);
     }
     if (updates.name !== undefined) {
         updateValues.name = updates.name.trim();

@@ -1,3 +1,4 @@
+import { getErrorMessage, normalize } from '@openpath/shared';
 import { init, updateEditUI } from './modules/app-core.js';
 import { pushManager } from './push.js';
 import { initUsersListeners } from './modules/users.js';
@@ -12,6 +13,7 @@ import { config } from './config.js';
 import { GitHubAPI } from './github-api.js';
 import { whitelistParser } from './openpath-parser.js';
 import { logger } from './lib/logger.js';
+import { getElement, requireElement } from './lib/dom.js';
 import type { GroupData } from './types/index.js';
 
 // Initialize application
@@ -32,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => void (async () => {
     try {
         await pushManager.init();
     } catch (e) {
-        logger.warn('Push init failed', { error: e instanceof Error ? e.message : String(e) });
+        logger.warn('Push init failed', { error: getErrorMessage(e) });
     }
 })());
 
@@ -40,12 +42,12 @@ function initMainListeners() {
     // ============== Login Listeners ==============
 
     // Email Login
-    document.getElementById('email-login-form')?.addEventListener('submit', (e) => void (async () => {
+    getElement('email-login-form')?.addEventListener('submit', (e) => void (async () => {
         e.preventDefault();
-        const emailInput = document.getElementById('login-email') as HTMLInputElement;
-        const passwordInput = document.getElementById('login-password') as HTMLInputElement;
-        const errorEl = document.getElementById('login-error');
-        const btn = document.getElementById('email-login-btn') as HTMLButtonElement;
+        const emailInput = requireElement<HTMLInputElement>('login-email');
+        const passwordInput = requireElement<HTMLInputElement>('login-password');
+        const errorEl = getElement('login-error');
+        const btn = requireElement<HTMLButtonElement>('email-login-btn');
 
         if (errorEl) errorEl.textContent = '';
         btn.disabled = true;
@@ -55,7 +57,7 @@ function initMainListeners() {
             await auth.login(emailInput.value, passwordInput.value);
             await init(); // Re-initialize the app
         } catch (err: unknown) {
-            if (errorEl && err instanceof Error) errorEl.textContent = 'Error: ' + err.message;
+            if (errorEl) errorEl.textContent = 'Error: ' + getErrorMessage(err);
         } finally {
             btn.disabled = false;
             btn.textContent = 'Access Dashboard';
@@ -96,16 +98,13 @@ function initMainListeners() {
                 showToast('Notifications enabled! You will receive alerts when a student requests access.');
             }
         } catch (err: unknown) {
-            logger.error('Push notification error', { error: err instanceof Error ? err.message : String(err) });
+            const message = getErrorMessage(err);
+            logger.error('Push notification error', { error: message });
             if (icon) icon.textContent = '🔕';
-            if (err instanceof Error) {
-                if (err.message.includes('denied')) {
-                    showToast('Notification permission denied. Enable it in browser settings.', 'error');
-                } else {
-                    showToast('Error setting up notifications: ' + err.message, 'error');
-                }
+            if (message.includes('denied')) {
+                showToast('Notification permission denied. Enable it in browser settings.', 'error');
             } else {
-                showToast('Error setting up notifications: Unknown error', 'error');
+                showToast('Error setting up notifications: ' + message, 'error');
             }
         } finally {
             btn.disabled = false;
@@ -227,12 +226,12 @@ function initMainListeners() {
     });
 
     // Add Rule Form
-    document.getElementById('add-rule-form')?.addEventListener('submit', (e) => void (async () => {
+    getElement('add-rule-form')?.addEventListener('submit', (e) => void (async () => {
         e.preventDefault();
         if (!state.canEdit || !state.currentGroupData) return;
 
-        const input = document.getElementById('new-rule-value') as HTMLInputElement;
-        const value = input.value.toLowerCase().trim();
+        const input = requireElement<HTMLInputElement>('new-rule-value');
+        const value = normalize.domain(input.value);
 
         if (!value) {
             showToast('Value required', 'error');
@@ -261,13 +260,13 @@ function initMainListeners() {
     });
 
     // Bulk Add Form
-    document.getElementById('bulk-add-form')?.addEventListener('submit', (e) => void (async () => {
+    getElement('bulk-add-form')?.addEventListener('submit', (e) => void (async () => {
         e.preventDefault();
         if (!state.canEdit || !state.currentGroupData) return;
 
-        const input = document.getElementById('bulk-values') as HTMLTextAreaElement;
+        const input = requireElement<HTMLTextAreaElement>('bulk-values');
         const text = input.value;
-        const values = text.split('\n').map(v => v.toLowerCase().trim()).filter(v => v);
+        const values = text.split('\n').map(v => normalize.domain(v)).filter(v => v);
 
         if (values.length === 0) {
             showToast('No values to add', 'error');

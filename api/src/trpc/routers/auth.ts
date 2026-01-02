@@ -9,6 +9,7 @@ import {
     UserRole,
     LoginDTOSchema,
     CreateUserDTOSchema,
+    getErrorMessage,
 } from '../../types/index.js';
 
 export const authRouter = router({
@@ -30,7 +31,7 @@ export const authRouter = router({
                 const user = await userStorage.createUser(input);
                 return { user: { id: user.id, email: user.email, name: user.name } };
             } catch (error) {
-                logger.error('auth.register error', { error: error instanceof Error ? error.message : String(error) });
+                logger.error('auth.register error', { error: getErrorMessage(error) });
                 throw error;
             }
         }),
@@ -74,7 +75,7 @@ export const authRouter = router({
                     }
                 };
             } catch (error) {
-                logger.error('auth.login error', { error: error instanceof Error ? error.message : String(error) });
+                logger.error('auth.login error', { error: getErrorMessage(error) });
                 throw error;
             }
         }),

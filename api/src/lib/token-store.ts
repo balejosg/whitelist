@@ -9,6 +9,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'node:crypto';
 import { eq, lt } from 'drizzle-orm';
 import { db, tokens } from '../db/index.js';
+import { logger } from './logger.js';
 import type { ITokenStore } from '../types/storage.js';
 
 // =============================================================================
@@ -38,6 +39,8 @@ export async function blacklistToken(token: string, expiresAt: Date): Promise<vo
     const tokenHash = hashToken(token);
     // Use first 32 chars of hash as ID (deterministic and unique enough)
     const id = tokenHash.substring(0, 32);
+
+    logger.debug('Blacklisting token', { userId, tokenId: id });
 
     await db.insert(tokens)
         .values({

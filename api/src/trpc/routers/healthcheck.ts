@@ -1,5 +1,7 @@
 import { router, publicProcedure } from '../trpc.js';
 import { getStats } from '../../lib/user-storage.js';
+import { logger } from '../../lib/logger.js';
+import { getErrorMessage } from '@openpath/shared';
 
 export const healthcheckRouter = router({
     live: publicProcedure.query(() => {
@@ -16,7 +18,8 @@ export const healthcheckRouter = router({
             const stats = await getStats();
             checks.storage = { status: 'ok', totalRequests: stats.total };
         } catch (e: unknown) {
-            const message = e instanceof Error ? e.message : String(e);
+            const message = getErrorMessage(e);
+            logger.error('Healthcheck readiness check failed', { error: message });
             checks.storage = { status: 'error', error: message };
             status = 'degraded';
         }

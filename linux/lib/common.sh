@@ -36,8 +36,8 @@ elif [ -f "$(dirname "${BASH_SOURCE[0]}")/defaults.conf" ]; then
 fi
 
 # Directories and files - exported for use by other scripts
-export INSTALL_DIR="/usr/local/lib/openpath"
-export SCRIPTS_DIR="/usr/local/bin"
+export INSTALL_DIR="${INSTALL_DIR:-/usr/local/lib/openpath}"
+export SCRIPTS_DIR="${SCRIPTS_DIR:-/usr/local/bin}"
 
 # Debian FHS compliant paths:
 # - /etc/ for configuration (preserved on upgrade)

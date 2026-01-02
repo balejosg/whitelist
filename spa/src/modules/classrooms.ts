@@ -1,8 +1,10 @@
+import { getErrorMessage } from '@openpath/shared';
 import { state } from './state.js';
 import { auth } from '../auth.js';
 import { trpc } from '../trpc.js';
 import { showToast, escapeHtml } from '../utils.js';
 import { openModal, closeModal } from './ui.js';
+import { getElement } from '../lib/dom.js';
 import type { Classroom } from '../types/index.js';
 
 let allClassrooms: Classroom[] = [];
@@ -11,8 +13,8 @@ let allClassrooms: Classroom[] = [];
  * Load classrooms from the API
  */
 export async function loadClassrooms(): Promise<void> {
-    const section = document.getElementById('classrooms-section');
-    const listEl = document.getElementById('classrooms-list');
+    const section = getElement('classrooms-section');
+    const listEl = getElement('classrooms-list');
 
     // Only show for admins
     if (!auth.isAdmin() && !state.canEdit) {
@@ -27,7 +29,7 @@ export async function loadClassrooms(): Promise<void> {
         renderClassroomsList();
     } catch (error: unknown) {
         if (listEl) {
-            const message = error instanceof Error ? error.message : String(error);
+            const message = getErrorMessage(error);
             listEl.innerHTML = `<p class="empty-message error">Error: ${escapeHtml(message)}</p>`;
         }
     }
@@ -37,7 +39,7 @@ export async function loadClassrooms(): Promise<void> {
  * Render the list of classrooms
  */
 export function renderClassroomsList(): void {
-    const listEl = document.getElementById('classrooms-list');
+    const listEl = getElement('classrooms-list');
     if (!listEl) return;
 
     if (allClassrooms.length === 0) {
@@ -81,7 +83,7 @@ export async function changeClassroomGroup(classroomId: string, groupId: string)
         showToast(groupId ? `Active group: ${groupId}` : 'Using default group');
         await loadClassrooms();
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message = getErrorMessage(error);
         showToast('Error: ' + message, 'error');
         void loadClassrooms(); // Reload to reset select
     }
@@ -97,7 +99,7 @@ export async function deleteClassroom(classroomId: string): Promise<void> {
         showToast('Classroom deleted');
         await loadClassrooms();
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message = getErrorMessage(error);
         showToast('Error: ' + message, 'error');
     }
 }
@@ -107,11 +109,11 @@ export async function deleteClassroom(classroomId: string): Promise<void> {
  */
 export function initClassroomListeners(): void {
     // New Classroom Form
-    document.getElementById('new-classroom-form')?.addEventListener('submit', (e) => {
+    getElement('new-classroom-form')?.addEventListener('submit', (e) => {
         void (async () => {
             e.preventDefault();
-            const nameInput = document.getElementById('new-classroom-name') as HTMLInputElement | null;
-            const groupInput = document.getElementById('new-classroom-default-group') as HTMLSelectElement | null;
+            const nameInput = getElement<HTMLInputElement>('new-classroom-name');
+            const groupInput = getElement<HTMLSelectElement>('new-classroom-default-group');
 
             if (!nameInput || !groupInput) return;
 
@@ -125,11 +127,11 @@ export function initClassroomListeners(): void {
                     defaultGroupId: defaultGroupId || undefined
                 });
                 closeModal('modal-new-classroom');
-                (document.getElementById('new-classroom-form') as HTMLFormElement | null)?.reset();
+                getElement<HTMLFormElement>('new-classroom-form')?.reset();
                 showToast('Classroom created');
                 await loadClassrooms();
             } catch (error: unknown) {
-                const message = error instanceof Error ? error.message : String(error);
+                const message = getErrorMessage(error);
                 showToast('Error: ' + message, 'error');
             }
         })();
@@ -151,7 +153,7 @@ declare global {
 
 function openNewClassroomModal() {
     // Populate groups dropdown
-    const select = document.getElementById('new-classroom-default-group');
+    const select = getElement('new-classroom-default-group');
     if (select) {
         select.innerHTML = '<option value="">-- Select group --</option>' +
             state.allGroups.map(g => `<option value="${g.name}">${g.name}</option>`).join('');
