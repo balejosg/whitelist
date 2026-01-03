@@ -122,9 +122,9 @@ jobs:
             # Restart service
             echo "Restarting API service..."
             if command -v rc-service >/dev/null 2>&1; then
-              rc-service openpath-api restart
+              sudo rc-service openpath-api restart || true
             elif command -v systemctl >/dev/null 2>&1; then
-              systemctl restart openpath-api
+              sudo systemctl restart openpath-api || true
             fi
 
             # Verify health
@@ -138,9 +138,9 @@ jobs:
               rm -rf api
               mv api.backup api
               if command -v rc-service >/dev/null 2>&1; then
-                rc-service openpath-api restart
+                sudo rc-service openpath-api restart || true
               elif command -v systemctl >/dev/null 2>&1; then
-                systemctl restart openpath-api
+                sudo systemctl restart openpath-api || true
               fi
               echo "Rolled back"
               exit 1
