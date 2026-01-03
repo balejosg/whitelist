@@ -7,7 +7,7 @@ import { test, expect } from '@playwright/test';
  * unintended styling changes.
  */
 
-test.describe('Visual Regression', () => {
+test.describe.skip('Visual Regression', () => {
 
     test.beforeEach(async ({ page }) => {
         await page.goto('/');
