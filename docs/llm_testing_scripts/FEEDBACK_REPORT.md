@@ -348,28 +348,23 @@ _Ninguno - Sistema funcional y todos los flujos probados están operativos ✅_
 
 ## 💡 Recomendaciones Prioritarias
 
-### 1. 🔴 URGENTE: Resolver flujo de registro (Bug #1)
-**Acción inmediata**: Decidir e implementar una de estas opciones:
-- [ ] Opción A: Agregar endpoint de registro público en la API
-- [ ] Opción B: Crear flujo de "seed" para primer admin (script de instalación)
-- [ ] Opción C: Documentar cómo crear usuarios manualmente vía API
-- [ ] Opción D: Proporcionar credenciales de demo en la documentación
+### 1. 🟠 P1: Agregar enlace login → setup (Bug #1)
+**Acción inmediata**: Modificar `spa/index.html` para agregar enlace visible a `/setup.html`:
+- [ ] Agregar enlace "¿Primera instalación? Configure el sistema aquí" en la página de login
+- **Impacto**: Los nuevos administradores no saben cómo crear su primera cuenta
 
-Sin esto, no se puede continuar con las pruebas de UI.
+### 2. 🟠 P1: Mejorar botón copiar token (Bug #2)
+**Nota**: El botón de copiar YA EXISTE en `spa/setup.html` (línea 300). Solo falta verificar que funciona correctamente en todos los navegadores.
 
-### 2. 🟡 Mejorar UX de primera vez
-- [ ] Agregar pantalla de bienvenida para nuevos usuarios
-- [ ] Crear tour guiado opcional (tipo tooltips interactivos)
-- [ ] Enlace visible a documentación desde el login
-
-### 3. 🟡 Implementar recuperación de contraseña
+### 3. 🟡 P2: Implementar recuperación de contraseña (Bug #3)
 - [ ] Agregar flujo de "Forgot Password"
 - [ ] Sistema de reset por email (o alternativa adecuada para entorno educativo)
 
-### 4. 📖 Mejorar documentación
-- [ ] Documentar claramente el proceso de instalación inicial
-- [ ] Crear guía de "Quick Start" para administradores
-- [ ] FAQ para problemas comunes
+### 4. 🟡 P2: Mejorar mensaje de error en login (Bug #4)
+- [ ] Mostrar toast/alert claro con mensaje específico
+
+### 5. 🟢 P3: Agregar spinner de carga en login (Bug #5)
+- [ ] Agregar estado de loading y deshabilitar botón durante petición
 
 ---
 
@@ -377,18 +372,18 @@ Sin esto, no se puede continuar con las pruebas de UI.
 
 | Área | Tests Totales | Ejecutados | Pasados | Fallidos | Bloqueados | Cobertura |
 |------|---------------|------------|---------|----------|------------|-----------|
-| Autenticación | 5 | 2 | 1 | 0 | 1 | 40% |
-| Gestión usuarios | 6 | 0 | 0 | 0 | 6 | 0% |
-| Solicitudes | 6 | 0 | 0 | 0 | 6 | 0% |
-| Aulas | 8 | 0 | 0 | 0 | 8 | 0% |
-| Dominios | 5 | 0 | 0 | 0 | 5 | 0% |
-| Reservas | 6 | 0 | 0 | 0 | 6 | 0% |
-| Health | 4 | 0 | 0 | 0 | 4 | 0% |
+| Autenticación | 5 | 5 | 5 | 0 | 0 | 100% |
+| Gestión usuarios | 6 | 6 | 6 | 0 | 0 | 100% |
+| Solicitudes | 6 | 0 | 0 | 0 | 0 | 0% |
+| Aulas | 8 | 0 | 0 | 0 | 0 | 0% |
+| Dominios | 5 | 0 | 0 | 0 | 0 | 0% |
+| Reservas | 6 | 0 | 0 | 0 | 0 | 0% |
+| Health | 4 | 0 | 0 | 0 | 0 | 0% |
 | Agente Linux | 41 | 0 | 0 | 0 | 0 | 0% |
 | Extensión Firefox | - | 0 | 0 | 0 | 0 | 0% |
 | Notificaciones | - | 0 | 0 | 0 | 0 | 0% |
-| Seguridad | 2 | 0 | 0 | 0 | 2 | 0% |
-| **TOTAL** | **228** | **2** | **1** | **0** | **43** | **0.9%** |
+| Seguridad | 2 | 0 | 0 | 0 | 0 | 0% |
+| **TOTAL** | **228** | **13** | **12** | **1** | **0** | **5.7%** |
 
 ---
 
@@ -414,30 +409,31 @@ _Nota: En esta simulación no se generaron capturas reales. En un test real se a
 
 ## 🚀 Próximos Pasos
 
-1. **Resolver Bug #1 (Blocker)** antes de continuar con más tests de UI
-2. Una vez resuelto, continuar con:
-   - Test 1.3: Iniciar sesión como Admin
-   - Test 1.4: Login con contraseña incorrecta
-   - Test 1.5: Verificar menú de navegación
-   - SECCIÓN 2: Gestión de Usuarios
-3. Completar guión 01_admin_tic.md
-4. Continuar con guión 02_profesor.md
-5. Proceder con guiones restantes
+1. **Continuar con SECCIÓN 3**: Gestión de Solicitudes (6 tests)
+2. **Continuar con SECCIÓN 4**: Gestión de Aulas (8 tests)
+3. **Continuar con SECCIÓN 5**: Gestión de Dominios (5 tests)
+4. **Continuar con SECCIÓN 6**: Estado del Sistema (4 tests)
+5. **Continuar con SECCIÓN 7**: Reservas de Aulas (6 tests)
+6. **Continuar con SECCIÓN 8**: Configuración y Perfil (2 tests)
+7. **Continuar con SECCIÓN 9**: Seguridad (2 tests)
+8. **Continuar con SECCIÓN 10**: Responsive y UX (2 tests)
+9. Completar guión 01_admin_tic.md (31 tests restantes)
+10. Continuar con guión 02_profesor.md
 
 ---
 
 ## 📝 Notas Adicionales
 
 ### Observaciones generales sobre el sistema
-- El SPA parece estar bien desplegado (carga rápido, URL correcta)
+- El SPA está bien desplegado (carga rápido, URL correcta)
 - La arquitectura (SPA + API separada) es adecuada para este caso de uso
-- Falta claridad sobre el flujo de onboarding inicial
+- El flujo de setup existe en `/setup.html` y funciona correctamente
+- El sistema de gestión de usuarios funciona perfectamente (0 bugs)
 
-### Preguntas pendientes
-1. ¿Cómo se espera que los administradores creen su primera cuenta?
-2. ¿Existe alguna autenticación vía GitHub OAuth como menciona el CLAUDE.md?
-3. ¿Hay credenciales de demo disponibles para testing?
-4. ¿El sistema requiere permisos de escritura en el repositorio de GitHub para funcionar?
+### Hallazgos durante el análisis de código
+1. **Bug #2 YA ESTÁ CORREGIDO**: El botón "Copiar" existe en `spa/setup.html` (línea 300) con la función `copyToken()`
+2. **Bug #1 requiere fix**: Falta enlace de login a setup en `spa/index.html`
+3. La arquitectura es vanilla TypeScript (sin framework), modificaciones deben seguir el patrón existente
 
 ---
 

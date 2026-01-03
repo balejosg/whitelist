@@ -6,6 +6,7 @@ import { initClassroomListeners } from './modules/classrooms.js';
 import { initModals, showScreen, openModal, closeModal, initTheme, toggleTheme } from './modules/ui.js';
 import { auth } from './auth.js';
 import { oauth } from './oauth.js';
+import { setup } from './setup.js';
 import { showToast } from './utils.js';
 import { state, setGithub, setCanEdit } from './modules/state.js';
 import { loadDashboard, renderRules, saveCurrentGroup, deleteGroup } from './modules/groups.js';
@@ -30,6 +31,8 @@ document.addEventListener('DOMContentLoaded', () => void (async () => {
     // Initialize Core
     await init();
 
+    await initSetupLink();
+
     // Initialize Push Notifications (if logged in)
     try {
         await pushManager.init();
@@ -37,6 +40,20 @@ document.addEventListener('DOMContentLoaded', () => void (async () => {
         logger.warn('Push init failed', { error: getErrorMessage(e) });
     }
 })());
+
+async function initSetupLink(): Promise<void> {
+    const container = getElement('setup-link-container');
+    if (container === null) return;
+
+    try {
+        const status = await setup.checkStatus();
+        if (status.needsSetup) {
+            container.classList.remove('hidden');
+        }
+    } catch (e) {
+        logger.warn('Failed to evaluate setup status', { error: getErrorMessage(e) });
+    }
+}
 
 function initMainListeners() {
     // ============== Login Listeners ==============
@@ -211,12 +228,38 @@ function initMainListeners() {
     });
 
     // Copy URL
-    document.getElementById('copy-url-btn')?.addEventListener('click', () => {
+    document.getElementById('copy-url-btn')?.addEventListener('click', () => void (async () => {
         const urlEl = document.getElementById('export-url');
-        if (urlEl) {
-            void navigator.clipboard.writeText(urlEl.textContent || '');
+        if (!urlEl) return;
+
+        const text = urlEl.textContent;
+        if (!text) return;
+
+        try {
+            await navigator.clipboard.writeText(text);
             showToast('URL copied to clipboard');
+        } catch (e) {
+            logger.warn('Failed to copy URL', { error: getErrorMessage(e) });
+            showToast('Failed to copy URL', 'error');
         }
+    })());
+
+    document.getElementById('copy-registration-token-btn')?.addEventListener('click', () => {
+        const tokenEl = document.getElementById('setup-registration-token');
+        const token = tokenEl?.textContent.trim();
+        if (!token) {
+            showToast('No token to copy', 'error');
+            return;
+        }
+        void (async () => {
+            try {
+                await navigator.clipboard.writeText(token);
+                showToast('Token copied to clipboard');
+            } catch (e) {
+                logger.warn('Failed to copy registration token', { error: getErrorMessage(e) });
+                showToast('Failed to copy token', 'error');
+            }
+        })();
     });
 
     // Add Rule Modal Trigger
