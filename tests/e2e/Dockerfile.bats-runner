@@ -1,0 +1,17 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    bats \
+    curl \
+    dnsutils \
+    netcat-openbsd \
+    jq \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /tests
+
+COPY tests/ /tests/
+
+CMD ["bats", "--formatter", "tap", "/tests/e2e/agent-integration.bats"]

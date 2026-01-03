@@ -1,4 +1,17 @@
-# Reporte de Feedback - Simulación de Usuarios OpenPath K-12
+# ⚠️ ARCHIVO OBSOLETO - NO USAR
+
+> **IMPORTANTE**: Este reporte contiene información incorrecta y está desactualizado.
+> 
+> **Bug #1 es FALSO**: El flujo de registro SÍ existe en `/setup.html`. El test 1.2 del guión
+> `01_admin_tic.md` documenta correctamente este flujo de configuración inicial.
+>
+> **Fecha de obsolescencia**: 2026-01-03
+> **Razón**: El reporte se basó en una prueba incompleta que no consideró la existencia
+> de `setup.html` para la creación del primer administrador.
+
+---
+
+# Reporte de Feedback - Simulación de Usuarios OpenPath K-12 (OBSOLETO)
 
 **Fecha de inicio**: 2025-12-26
 **Simulador**: Claude (LLM Testing)

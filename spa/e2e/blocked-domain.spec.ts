@@ -15,14 +15,9 @@ test.describe('Blocked Domain UI - US3', () => {
         await page.waitForLoadState('domcontentloaded');
     });
 
-    test('blocked domain modal should exist in DOM', async ({ page }) => {
-        // The modal should exist in DOM (even if hidden)
+    test('blocked domain modal should exist in DOM', { tag: '@smoke' }, async ({ page }) => {
         const blockedModal = page.locator('#modal-blocked-domain');
-
-        // Wait for page to fully load
         await page.waitForLoadState('networkidle');
-
-        // Modal should be in DOM
         await expect(blockedModal).toBeAttached({ timeout: 5000 });
     });
 

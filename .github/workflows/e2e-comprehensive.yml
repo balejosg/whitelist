@@ -1,0 +1,257 @@
+name: E2E Comprehensive
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * *'  # Nightly at 3 AM UTC
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-comprehensive-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Only run on PRs if labeled with 'e2e' or 'full-test'
+  check-label:
+    runs-on: ubuntu-latest
+    outputs:
+      should-run: ${{ steps.check.outputs.should-run }}
+    steps:
+      - id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]] || \
+             [[ "${{ github.event_name }}" == "schedule" ]] || \
+             [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || \
+             [[ "${{ github.event.label.name }}" == "e2e" ]] || \
+             [[ "${{ github.event.label.name }}" == "full-test" ]]; then
+            echo "should-run=true" >> $GITHUB_OUTPUT
+          else
+            echo "should-run=false" >> $GITHUB_OUTPUT
+          fi
+
+  spa-e2e-full:
+    name: SPA E2E Full Suite
+    needs: check-label
+    if: needs.check-label.outputs.should-run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: openpath
+          POSTGRES_PASSWORD: openpath_dev
+          POSTGRES_DB: openpath
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-node
+
+      - name: Build workspaces
+        uses: ./.github/actions/build-workspaces
+
+      - name: Run DB migrations
+        run: npm run drizzle:push --workspace=@openpath/api
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: openpath
+          DB_USER: openpath
+          DB_PASSWORD: openpath_dev
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+        working-directory: spa
+
+      - name: Start API server
+        run: |
+          npm start --workspace=@openpath/api &
+          npx wait-on -t 30000 http://localhost:3001/health
+        env:
+          PORT: 3001
+          NODE_ENV: test
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: openpath
+          DB_USER: openpath
+          DB_PASSWORD: openpath_dev
+          JWT_SECRET: test-jwt-secret-for-ci-testing
+          ADMIN_TOKEN: test-admin-token-for-ci
+
+      - name: Start SPA server
+        run: |
+          npx -y http-server spa -p 8080 -c-1 &
+          sleep 3
+
+      - name: Run ALL Playwright tests
+        run: npm run test:e2e --workspace=openpath-spa
+        env:
+          BASE_URL: http://localhost:8080
+          API_URL: http://localhost:3001
+          CI: true
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-full
+          path: spa/playwright-report/
+          retention-days: 14
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-results-full
+          path: spa/test-results/
+          retention-days: 14
+
+  spa-e2e-security:
+    name: Security & Edge Cases
+    needs: check-label
+    if: needs.check-label.outputs.should-run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: openpath
+          POSTGRES_PASSWORD: openpath_dev
+          POSTGRES_DB: openpath
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-node
+
+      - name: Build workspaces
+        uses: ./.github/actions/build-workspaces
+
+      - name: Run DB migrations
+        run: npm run drizzle:push --workspace=@openpath/api
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: openpath
+          DB_USER: openpath
+          DB_PASSWORD: openpath_dev
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: spa
+
+      - name: Start API server
+        run: |
+          npm start --workspace=@openpath/api &
+          npx wait-on -t 30000 http://localhost:3001/health
+        env:
+          PORT: 3001
+          NODE_ENV: test
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: openpath
+          DB_USER: openpath
+          DB_PASSWORD: openpath_dev
+          JWT_SECRET: test-jwt-secret-for-ci-testing
+          ADMIN_TOKEN: test-admin-token-for-ci
+
+      - name: Start SPA server
+        run: |
+          npx -y http-server spa -p 8080 -c-1 &
+          sleep 3
+
+      - name: Run Security E2E tests
+        run: npx playwright test e2e/edge-cases-security.spec.ts --project=chromium
+        working-directory: spa
+        env:
+          BASE_URL: http://localhost:8080
+          API_URL: http://localhost:3001
+          CI: true
+
+      - name: Upload security test report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-security
+          path: spa/playwright-report/
+          retention-days: 14
+
+  linux-agent-e2e:
+    name: Linux Agent E2E
+    needs: check-label
+    if: needs.check-label.outputs.should-run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install BATS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats
+
+      - name: Run Agent Integration tests
+        run: bats tests/e2e/agent-integration.bats
+
+  summary:
+    name: E2E Summary
+    needs: [spa-e2e-full, spa-e2e-security, linux-agent-e2e]
+    if: always() && needs.check-label.outputs.should-run == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check results
+        run: |
+          echo "## E2E Comprehensive Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ needs.spa-e2e-full.result }}" == "success" ]]; then
+            echo "✅ SPA Full Suite: PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ SPA Full Suite: ${{ needs.spa-e2e-full.result }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [[ "${{ needs.spa-e2e-security.result }}" == "success" ]]; then
+            echo "✅ Security Tests: PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Security Tests: ${{ needs.spa-e2e-security.result }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [[ "${{ needs.linux-agent-e2e.result }}" == "success" ]]; then
+            echo "✅ Linux Agent: PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Linux Agent: ${{ needs.linux-agent-e2e.result }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [[ "${{ needs.spa-e2e-full.result }}" == "failure" ]] || \
+             [[ "${{ needs.spa-e2e-security.result }}" == "failure" ]] || \
+             [[ "${{ needs.linux-agent-e2e.result }}" == "failure" ]]; then
+            exit 1
+          fi

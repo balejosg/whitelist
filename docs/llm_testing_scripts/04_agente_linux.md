@@ -66,7 +66,7 @@ dpkg -l | grep dnsmasq
 **Acciones**:
 ```bash
 cd /tmp
-git clone https://github.com/balejosg/whitelist.git openpath-install
+git clone https://github.com/balejosg/openpath.git openpath-install
 cd openpath-install/linux
 ls -la
 ```
@@ -100,7 +100,7 @@ sudo ./install.sh --help
 **Acciones**:
 ```bash
 sudo ./install.sh --unattended \
-  --whitelist-url "https://raw.githubusercontent.com/balejosg/whitelist/main/whitelist.txt"
+  --whitelist-url "https://raw.githubusercontent.com/balejosg/openpath/main/whitelist.txt"
 ```
 
 **Verificaciones**:

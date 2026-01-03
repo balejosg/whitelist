@@ -186,10 +186,11 @@ jobs:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   # ============================================
-  # Job 11: SPA E2E Tests
+  # Job 11: SPA E2E Smoke Tests (fast feedback)
+  # Full E2E suite runs in e2e-comprehensive.yml
   # ============================================
   test-spa-e2e:
-    name: SPA E2E Tests
+    name: SPA E2E Smoke
     runs-on: ubuntu-latest
     needs: [test-api]
 
@@ -231,8 +232,8 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: spa
 
-      - name: Run E2E tests
-        run: npm run test:e2e
+      - name: Run Smoke E2E tests
+        run: npx playwright test --grep @smoke --project=chromium
         working-directory: spa
         env:
           CI: true

@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: ../../api
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=test
+      - PORT=3001
+      - JWT_SECRET=test-secret-for-e2e
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/openpath_test
+    ports:
+      - "3001:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=openpath_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  agent:
+    build:
+      context: ../..
+      dockerfile: tests/e2e/Dockerfile
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+    environment:
+      - API_URL=http://api:3001
+      - WHITELIST_URL=http://api:3001/export/test-group.txt
+      - CLASSROOM=e2e-test-room
+      - container=docker
+    depends_on:
+      api:
+        condition: service_healthy
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /run/lock
+    stop_signal: SIGRTMIN+3
+
+  test-runner:
+    build:
+      context: ../..
+      dockerfile: tests/e2e/Dockerfile.bats-runner
+    depends_on:
+      - agent
+    volumes:
+      - ../../tests:/tests:ro
+      - ./results:/results
+    command: ["bats", "--formatter", "tap", "/tests/e2e/agent-integration.bats"]
+
+volumes:
+  test-results:

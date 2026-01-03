@@ -68,7 +68,8 @@ La experiencia debe ser simple y sin fricciones.
 
 **Verificaciones**:
 - [ ] Muestra lista de dominios bloqueados en esta pestaña
-- [ ] Hay botón para "Solicitar desbloqueo"
+- [ ] Hay botón para "📨 Solicitar desbloqueo"
+- [ ] Botones disponibles: 📋 Copiar, 🔍 Verificar, 📨 Solicitar, 🗑️ Limpiar
 - [ ] Interface simple y clara
 - [ ] No requiere conocimientos técnicos
 
@@ -83,7 +84,7 @@ La experiencia debe ser simple y sin fricciones.
 **Acciones**:
 1. Después de intentar acceder a `wikipedia.org` (si está bloqueado)
 2. Abre el popup de la extensión
-3. Haz clic en "Solicitar desbloqueo" para wikipedia.org
+3. Haz clic en "📨 Solicitar" para wikipedia.org
 4. Si pide motivo, escribe: "Necesito buscar información para el trabajo de Historia"
 5. Envía la solicitud
 
@@ -364,7 +365,7 @@ La experiencia debe ser simple y sin fricciones.
 
 **Verificaciones**:
 - [ ] Lenguaje simple, sin jerga técnica
-- [ ] "Solicitar acceso" en vez de "Request unblock"
+- [ ] "📨 Solicitar" en vez de jerga técnica
 - [ ] Mensajes amigables, no intimidantes
 
 ---

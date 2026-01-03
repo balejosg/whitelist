@@ -77,23 +77,40 @@ git clone https://github.com/balejosg/openpath.git
 cd openpath/linux
 sudo ./install.sh --classroom "informatica-1" \
   --api-url "https://openpath-api.duckdns.org" \
-  --registration-token "$REGISTRATION_TOKEN" \
-  --whitelist-url "https://raw.githubusercontent.com/balejosg/openpath/main/whitelist.txt"
+  --registration-token "$REGISTRATION_TOKEN"
 ```
 
 ---
 
 ## Índice de Guiones
 
-| # | Archivo | Rol / Área | Tests | Tiempo Est. |
-|---|---------|------------|-------|-------------|
-| 1 | [01_admin_tic.md](./01_admin_tic.md) | 👩‍💼 **Admin TIC (María)** | 44 | 45 min |
-| 2 | [02_profesor.md](./02_profesor.md) | 👨‍🏫 **Profesor (Pedro)** | 39 | 35 min |
-| 3 | [03_alumno.md](./03_alumno.md) | 👧 **Alumno (Ana)** | 28 | 25 min |
-| 4 | [04_agente_linux.md](./04_agente_linux.md) | 🖥️ **Agente Linux** | 41 | 40 min |
-| 5 | [05_flujo_e2e.md](./05_flujo_e2e.md) | 🔄 **Flujo E2E Completo** | 28 | 60 min |
-| 6 | [06_edge_cases_seguridad.md](./06_edge_cases_seguridad.md) | 🚨 **Edge Cases & Seguridad** | 48 | 45 min |
-| | | **TOTAL** | **228** | **~4.5 hrs** |
+| # | Archivo | Rol / Área | Tests | Tiempo Est. | E2E Coverage |
+|---|---------|------------|-------|-------------|--------------|
+| 1 | [01_admin_tic.md](./01_admin_tic.md) | 👩‍💼 **Admin TIC (María)** | 44 | 45 min | ✅ `spa/e2e/auth.spec.ts`, `admin-*.spec.ts`, `schedules.spec.ts` |
+| 2 | [02_profesor.md](./02_profesor.md) | 👨‍🏫 **Profesor (Pedro)** | 39 | 35 min | ✅ `spa/e2e/teacher-flow.spec.ts` |
+| 3 | [03_alumno.md](./03_alumno.md) | 👧 **Alumno (Ana)** | 28 | 25 min | ✅ `spa/e2e/student-view.spec.ts` |
+| 4 | [04_agente_linux.md](./04_agente_linux.md) | 🖥️ **Agente Linux** | 41 | 40 min | ✅ `tests/e2e/agent-integration.bats` (24 tests) |
+| 5 | [05_flujo_e2e.md](./05_flujo_e2e.md) | 🔄 **Flujo E2E Completo** | 28 | 60 min | ⏳ Partial (covered by individual specs) |
+| 6 | [06_edge_cases_seguridad.md](./06_edge_cases_seguridad.md) | 🚨 **Edge Cases & Seguridad** | 48 | 45 min | ✅ `spa/e2e/edge-cases-security.spec.ts` |
+| | | **TOTAL** | **228** | **~4.5 hrs** | **~85%** |
+
+### E2E Test Files Summary
+
+| Test File | Framework | Tests | UAT Coverage |
+|-----------|-----------|-------|--------------|
+| `spa/e2e/auth.spec.ts` | Playwright | 18 | 01_admin Section 1 |
+| `spa/e2e/setup-flow.spec.ts` | Playwright | 16 | 06_edge Section 1B |
+| `spa/e2e/admin-users.spec.ts` | Playwright | 28 | 01_admin Section 2 |
+| `spa/e2e/admin-requests.spec.ts` | Playwright | 27 | 01_admin Section 3 |
+| `spa/e2e/admin-classrooms.spec.ts` | Playwright | 18 | 01_admin Section 4 |
+| `spa/e2e/admin-domains.spec.ts` | Playwright | 28 | 01_admin Section 5 |
+| `spa/e2e/admin-health.spec.ts` | Playwright | 20 | 01_admin Section 6 |
+| `spa/e2e/schedules.spec.ts` | Playwright | 16 | 01_admin Section 7 |
+| `spa/e2e/teacher-flow.spec.ts` | Playwright | 27 | 02_profesor |
+| `spa/e2e/student-view.spec.ts` | Playwright | 22 | 03_alumno |
+| `spa/e2e/edge-cases-security.spec.ts` | Playwright | 45+ | 06_edge Sections 1-6 |
+| `tests/e2e/agent-integration.bats` | BATS | 24 | 04_agente_linux |
+| **Total** | | **289+** | |
 
 ---
 
