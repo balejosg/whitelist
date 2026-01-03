@@ -115,6 +115,10 @@
                     <div class="form-group">
                         <label for="login-password">Contraseña</label>
                         <input type="password" id="login-password" required placeholder="••••••••">
+                        <div class="login-links">
+                            <a href="#" id="forgot-password-link" class="forgot-password-link">¿Olvidaste tu
+                                contraseña?</a>
+                        </div>
                     </div>
                     <button type="submit" id="email-login-btn" class="btn btn-primary btn-block">
                         Acceder al Panel
@@ -612,6 +616,33 @@ wikipedia.org"></textarea>
     <script src="dist/js/push.js"></script>
     <script src="dist/js/modules/schedules.js"></script>
     <script type="module" src="dist/js/modules/main.js"></script>
+
+    <!-- Modal: Forgot Password -->
+    <div id="modal-forgot-password" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Recuperación de contraseña</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Por razones de seguridad, la recuperación de contraseña es gestionada por los administradores del
+                    centro.</p>
+                <div class="alert alert-info"
+                    style="margin: 1rem 0; padding: 1rem; background: rgba(0, 150, 255, 0.1); border-left: 4px solid var(--primary-color);">
+                    <p>Contacta con el administrador del sistema para que genere un <strong>Token de
+                            Recuperación</strong> temporal para tu cuenta.</p>
+                </div>
+                <p>Una vez que tengas el token, introduce tu email y el token en la página de recuperación para
+                    establecer una nueva contraseña.</p>
+                <div style="text-align: center; margin-top: 1.5rem;">
+                    <a href="reset-password.html" class="btn btn-secondary">Tengo un Token</a>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost modal-close">Cerrar</button>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

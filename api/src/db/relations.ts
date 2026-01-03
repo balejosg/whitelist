@@ -14,7 +14,9 @@ import {
     machines,
     schedules,
     tokens,
+    passwordResetTokens,
 } from './schema.js';
+
 
 // =============================================================================
 // User Relations
@@ -24,7 +26,9 @@ export const usersRelations = relations(users, ({ many }) => ({
     roles: many(roles),
     schedules: many(schedules),
     tokens: many(tokens),
+    passwordResetTokens: many(passwordResetTokens),
 }));
+
 
 // =============================================================================
 // Role Relations
@@ -86,3 +90,11 @@ export const tokensRelations = relations(tokens, ({ one }) => ({
         references: [users.id],
     }),
 }));
+
+export const passwordResetTokensRelations = relations(passwordResetTokens, ({ one }) => ({
+    user: one(users, {
+        fields: [passwordResetTokens.userId],
+        references: [users.id],
+    }),
+}));
+

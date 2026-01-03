@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { router, publicProcedure, protectedProcedure } from '../trpc.js';
+import { router, publicProcedure, protectedProcedure, adminProcedure } from '../trpc.js';
 import { TRPCError } from '@trpc/server';
 import {
     LoginDTOSchema,
@@ -73,4 +73,35 @@ export const authRouter = router({
         }
         return result.data;
     }),
+
+    /**
+     * Generate password reset token (Admin only).
+     */
+    generateResetToken: adminProcedure
+        .input(z.object({ email: z.string().email() }))
+        .mutation(async ({ input }) => {
+            const result = await AuthService.generateResetToken(input.email);
+            if (!result.ok) {
+                throw new TRPCError({ code: result.error.code, message: result.error.message });
+            }
+            return result.data;
+        }),
+
+    /**
+     * Use token to reset password.
+     */
+    resetPassword: publicProcedure
+        .input(z.object({
+            email: z.string().email(),
+            token: z.string(),
+            newPassword: z.string().min(8)
+        }))
+        .mutation(async ({ input }) => {
+            const result = await AuthService.resetPassword(input.email, input.token, input.newPassword);
+            if (!result.ok) {
+                throw new TRPCError({ code: result.error.code, message: result.error.message });
+            }
+            return result.data;
+        }),
 });
+

@@ -5,9 +5,10 @@
 import * as userStorage from '../lib/user-storage.js';
 import * as roleStorage from '../lib/role-storage.js';
 import * as auth from '../lib/auth.js';
+import * as resetTokenStorage from '../lib/reset-token-storage.js';
 import { logger } from '../lib/logger.js';
-import type { 
-    SafeUser, 
+import type {
+    SafeUser,
     LoginResponse,
     UserRole
 } from '../types/index.js';
@@ -80,9 +81,9 @@ export async function login(
         }
 
         const roles = await roleStorage.getUserRoles(user.id);
-        const tokens = auth.generateTokens(user, roles.map(r => ({ 
-            role: r.role as 'admin' | 'teacher' | 'student', 
-            groupIds: r.groupIds ?? [] 
+        const tokens = auth.generateTokens(user, roles.map(r => ({
+            role: r.role as 'admin' | 'teacher' | 'student',
+            groupIds: r.groupIds ?? []
         })));
 
         return {
@@ -134,9 +135,9 @@ export async function refresh(
 
     await auth.blacklistToken(refreshToken);
     const roles = await roleStorage.getUserRoles(user.id);
-    const tokens = auth.generateTokens(user, roles.map(r => ({ 
-        role: r.role as 'admin' | 'teacher' | 'student', 
-        groupIds: r.groupIds ?? [] 
+    const tokens = auth.generateTokens(user, roles.map(r => ({
+        role: r.role as 'admin' | 'teacher' | 'student',
+        groupIds: r.groupIds ?? []
     })));
 
     return { ok: true, data: tokens as TokenPair };
@@ -188,6 +189,59 @@ export async function getProfile(
     };
 }
 
+/**
+ * Generate a password reset token for a user (Admin only)
+ */
+export async function generateResetToken(
+    email: string
+): Promise<AuthResult<{ token: string }>> {
+    try {
+        const user = await userStorage.getUserByEmail(email);
+        if (!user) {
+            return { ok: false, error: { code: 'NOT_FOUND', message: 'User not found' } };
+        }
+
+        const token = await resetTokenStorage.createResetToken(user.id);
+        return { ok: true, data: { token } };
+    } catch (error) {
+        logger.error('auth.generateResetToken error', { error: getErrorMessage(error) });
+        return {
+            ok: false,
+            error: { code: 'UNAUTHORIZED', message: getErrorMessage(error) }
+        };
+    }
+}
+
+/**
+ * Reset password using a valid token
+ */
+export async function resetPassword(
+    email: string,
+    token: string,
+    newPassword: string
+): Promise<AuthResult<{ success: boolean }>> {
+    try {
+        const user = await userStorage.getUserByEmail(email);
+        if (!user) {
+            return { ok: false, error: { code: 'NOT_FOUND', message: 'User not found' } };
+        }
+
+        const isValid = await resetTokenStorage.verifyToken(user.id, token);
+        if (!isValid) {
+            return { ok: false, error: { code: 'UNAUTHORIZED', message: 'Invalid or expired token' } };
+        }
+
+        await userStorage.updateUser(user.id, { password: newPassword });
+        return { ok: true, data: { success: true } };
+    } catch (error) {
+        logger.error('auth.resetPassword error', { error: getErrorMessage(error) });
+        return {
+            ok: false,
+            error: { code: 'UNAUTHORIZED', message: getErrorMessage(error) }
+        };
+    }
+}
+
 // =============================================================================
 // Default Export
 // =============================================================================
@@ -197,5 +251,7 @@ export default {
     login,
     refresh,
     logout,
-    getProfile
+    getProfile,
+    generateResetToken,
+    resetPassword
 };

@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS "roles" (
 	"created_by" varchar(50),
 	"created_at" timestamp with time zone DEFAULT now(),
 	"updated_at" timestamp with time zone DEFAULT now(),
+	"expires_at" timestamp with time zone,
 	CONSTRAINT "roles_user_id_key" UNIQUE("user_id")
 );
 --> statement-breakpoint
@@ -140,6 +141,15 @@ CREATE TABLE IF NOT EXISTS "whitelist_rules" (
 	CONSTRAINT "whitelist_rules_group_type_value_key" UNIQUE("group_id","type","value")
 );
 --> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "password_reset_tokens" (
+	"id" varchar(50) PRIMARY KEY NOT NULL,
+	"user_id" varchar(50) NOT NULL,
+	"token_hash" varchar(255) NOT NULL,
+	"expires_at" timestamp with time zone NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now()
+);
+
+--> statement-breakpoint
 DO $$ BEGIN
     ALTER TABLE "machines" ADD CONSTRAINT "machines_classroom_id_classrooms_id_fk" FOREIGN KEY ("classroom_id") REFERENCES "public"."classrooms"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
@@ -184,6 +194,12 @@ END $$;
 --> statement-breakpoint
 DO $$ BEGIN
     ALTER TABLE "whitelist_rules" ADD CONSTRAINT "whitelist_rules_group_id_whitelist_groups_id_fk" FOREIGN KEY ("group_id") REFERENCES "public"."whitelist_groups"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+    ALTER TABLE "password_reset_tokens" ADD CONSTRAINT "password_reset_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;

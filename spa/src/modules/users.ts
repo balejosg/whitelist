@@ -57,6 +57,7 @@ export async function loadUsers(): Promise<void> {
                                 <span class="status-active">Active</span>
                             </td>
                             <td>
+                                <button class="btn btn-ghost btn-sm" onclick="window.generateResetToken('${u.email}')" title="Generar token de recuperación">🔑</button>
                                 <button class="btn btn-ghost btn-sm" onclick="window.editUser('${u.id}')">✏️</button>
                                 <button class="btn btn-ghost btn-sm text-danger" onclick="window.deleteUser('${u.id}')">🗑️</button>
                             </td>
@@ -85,8 +86,10 @@ declare global {
         openAssignRoleModal: (userId: string, userName: string) => void;
         editUser: (userId: string) => Promise<void>;
         openNewUserModal: () => void;
+        generateResetToken: (email: string) => Promise<void>;
     }
 }
+
 
 window.revokeRole = async (userId: string, roleArg: string) => {
     // roleArg is roleId here
@@ -112,6 +115,19 @@ window.deleteUser = async (userId: string) => {
         showToast('Error deleting user: ' + message, 'error');
     }
 };
+
+window.generateResetToken = async (email: string) => {
+    if (!confirm(`¿Generar un token de recuperación para ${email}? Los tokens anteriores para este usuario dejarán de funcionar.`)) return;
+    try {
+        const result = await trpc.auth.generateResetToken.mutate({ email });
+        // Use a prompt or a custom modal to show the token so the admin can copy it
+        window.prompt('Token generado con éxito. Copia este token y envíaselo al usuario:', result.token);
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        showToast('Error generando token: ' + message, 'error');
+    }
+};
+
 
 window.openAssignRoleModal = (userId: string, userName: string) => {
     const idInput = document.getElementById('assign-role-user-id') as HTMLInputElement;

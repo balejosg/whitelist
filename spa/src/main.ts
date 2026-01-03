@@ -63,21 +63,26 @@ function initMainListeners() {
         e.preventDefault();
         const emailInput = requireElement<HTMLInputElement>('login-email');
         const passwordInput = requireElement<HTMLInputElement>('login-password');
-        const errorEl = getElement('login-error');
         const btn = requireElement<HTMLButtonElement>('email-login-btn');
 
-        if (errorEl) errorEl.textContent = '';
         btn.disabled = true;
-        btn.textContent = 'Authenticating...';
+        btn.classList.add('is-loading');
+        const originalText = btn.textContent;
+        btn.innerHTML = '<span class="spinner"></span> <span class="btn-text">Autenticando...</span>';
+
+        emailInput.disabled = true;
+        passwordInput.disabled = true;
 
         try {
             await auth.login(emailInput.value, passwordInput.value);
             await init(); // Re-initialize the app
-        } catch (err: unknown) {
-            if (errorEl) errorEl.textContent = 'Error: ' + getErrorMessage(err);
-        } finally {
+        } catch {
+            showToast('Credenciales inválidas. Por favor, verifica tu email y contraseña.', 'error');
+            emailInput.disabled = false;
+            passwordInput.disabled = false;
             btn.disabled = false;
-            btn.textContent = 'Access Dashboard';
+            btn.classList.remove('is-loading');
+            btn.textContent = originalText;
         }
     })());
 
@@ -85,6 +90,13 @@ function initMainListeners() {
     document.getElementById('github-login-btn')?.addEventListener('click', () => {
         oauth.login();
     });
+
+    // Forgot Password link
+    document.getElementById('forgot-password-link')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        openModal('modal-forgot-password');
+    });
+
 
     // Notifications button
     document.getElementById('notifications-btn')?.addEventListener('click', () => void (async () => {

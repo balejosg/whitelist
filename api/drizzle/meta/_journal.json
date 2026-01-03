@@ -15,6 +15,13 @@
       "when": 1767042422326,
       "tag": "0001_glossy_mystique",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1767468769667,
+      "tag": "0002_flashy_venus",
+      "breakpoints": true
     }
   ]
 }
