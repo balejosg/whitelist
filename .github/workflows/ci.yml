@@ -236,11 +236,17 @@ jobs:
         working-directory: spa
         env:
           CI: true
+          PORT: 3001
+          NODE_ENV: test
           DB_HOST: localhost
           DB_PORT: 5432
           DB_NAME: openpath
           DB_USER: openpath
           DB_PASSWORD: openpath_dev
+          JWT_SECRET: test-jwt-secret-for-ci-testing
+          ADMIN_TOKEN: test-admin-token-for-ci
+          SHARED_SECRET: test-shared-secret-for-ci
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload test artifacts
         if: failure()
