@@ -11,7 +11,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Setup Page - Already Configured', () => {
 
-    test('setup.html should show "already configured" when admin exists', { tag: '@smoke' }, async ({ page }) => {
+    test('setup.html should show "already configured" when admin exists', async ({ page }) => {
         await page.goto('/setup.html');
         await page.waitForLoadState('domcontentloaded');
         await page.waitForTimeout(2000);
