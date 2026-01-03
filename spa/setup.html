@@ -321,12 +321,13 @@
         // Check setup status on load
         async function checkSetupStatus() {
             try {
-                const response = await fetch(`${API_URL}/api/setup/status`);
-                const data = await response.json();
+                const response = await fetch(`${API_URL}/trpc/setup.status`);
+                const trpcResult = await response.json();
+                const data = trpcResult.result?.data;
 
                 document.getElementById('loading-state').classList.add('hidden');
 
-                if (data.needsSetup) {
+                if (data?.needsSetup) {
                     document.getElementById('setup-form').classList.remove('hidden');
                 } else {
                     document.getElementById('already-setup').classList.remove('hidden');
@@ -362,23 +363,24 @@
             submitBtn.textContent = 'Creando...';
 
             try {
-                const response = await fetch(`${API_URL}/api/setup/first-admin`, {
+                const response = await fetch(`${API_URL}/trpc/setup.createFirstAdmin`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ email, name, password })
+                    body: JSON.stringify({ json: { email, name, password } })
                 });
 
-                const data = await response.json();
+                const trpcResult = await response.json();
+                const data = trpcResult.result?.data;
 
-                if (response.ok && data.success) {
-                    // Show success state with token
+                if (response.ok && data) {
                     document.getElementById('setup-form').classList.add('hidden');
                     document.getElementById('setup-success').classList.remove('hidden');
                     document.getElementById('registration-token').value = data.registrationToken;
                 } else {
-                    showError(data.error || 'Error al crear administrador');
+                    const errorMessage = trpcResult.error?.message || 'Error al crear administrador';
+                    showError(errorMessage);
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Crear Administrador';
                 }
