@@ -1,5 +1,13 @@
 # Guiones de Prueba LLM para OpenPath K-12
 
+> [!CAUTION]
+> ## ⚠️ PASO OBLIGATORIO ANTES DE CUALQUIER TEST
+> **Antes de ejecutar CUALQUIER guión de prueba, debes completar la [Checklist de Pre-flight](./00_preflight_checklist.md).**
+> 
+> Esta checklist verifica que el entorno de producción es accesible. Si algún punto falla, los tests UAT no tienen validez.
+
+---
+
 ## Instrucciones Generales
 
 Estos guiones están diseñados para que un **LLM con capacidad de control de navegador** pruebe exhaustivamente la aplicación OpenPath desde la perspectiva de usuarios reales. Cada guión cubre un rol específico y verifica toda la funcionalidad correspondiente.
