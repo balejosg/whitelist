@@ -85,12 +85,21 @@ Unit tests:
 - Single file:
   - `cd spa && npx tsx --test tests/config.test.ts`
 
-Playwright E2E:
-- All: `cd spa && npm run test:e2e`
+Playwright E2E (split into smoke/comprehensive):
+- Smoke only (14 tests, fast CI):
+  - `cd spa && npx playwright test --grep @smoke --project=chromium`
+- All tests (279+ tests):
+  - `cd spa && npm run test:e2e`
 - Single test by name:
   - `cd spa && npx playwright test --grep "blocked-domain"`
 - Single spec:
   - `cd spa && npx playwright test e2e/blocked-domain.spec.ts`
+
+CI runs `@smoke` tests on every PR. Full suite runs on main/nightly/`e2e` label.
+
+#### Linux Agent E2E (`tests/e2e/`)
+- All: `bats tests/e2e/agent-integration.bats`
+- Runs in `e2e-comprehensive.yml` workflow
 
 #### Shared (`shared/`)
 - All: `npm test --workspace=@openpath/shared`

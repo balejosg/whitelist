@@ -188,10 +188,44 @@ Invoke-Pester -Output Detailed                  # Verbose output
 
 ### E2E Tests (Playwright)
 
+E2E tests are split into **smoke** (fast) and **comprehensive** (full) suites:
+
 ```bash
 cd spa
-npm run test:e2e              # Run E2E tests
-npm run test:e2e:headed       # With browser UI
+
+# Smoke tests only (14 tests, ~2-3 min) - runs in CI on every PR
+npx playwright test --grep @smoke --project=chromium
+
+# All E2E tests (279+ tests, ~15-20 min)
+npm run test:e2e
+
+# With browser UI
+npm run test:e2e:headed
+
+# Single spec file
+npx playwright test e2e/auth.spec.ts
+
+# Single test by name
+npx playwright test --grep "login"
+```
+
+#### CI Workflows
+
+| Workflow | Tests | Trigger |
+|----------|-------|---------|
+| `ci.yml` | @smoke only (14 tests) | Every PR/push |
+| `e2e-comprehensive.yml` | All tests (279+) | Push to main, nightly, `e2e` label on PR |
+
+To run full E2E on a PR, add the `e2e` or `full-test` label.
+
+#### Adding Smoke Tests
+
+Tag critical path tests with `@smoke` for fast CI feedback:
+
+```typescript
+test('critical feature works', { tag: '@smoke' }, async ({ page }) => {
+    // ...
+});
 ```
 
 ### Load Tests (k6)

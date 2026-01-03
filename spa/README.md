@@ -100,12 +100,20 @@ https://raw.githubusercontent.com/{user}/{repo}/main/grupos/{group}.txt
 ## Testing
 
 ```bash
-# E2E tests with Playwright
+# Smoke tests (14 critical tests, fast)
+npx playwright test --grep @smoke --project=chromium
+
+# All E2E tests (279+ tests)
 npm run test:e2e
 
 # With browser UI
 npm run test:e2e:headed
+
+# Single spec
+npx playwright test e2e/auth.spec.ts
 ```
+
+CI runs smoke tests on every PR. Full suite runs on main, nightly, or with `e2e` label.
 
 ## Technologies
 
