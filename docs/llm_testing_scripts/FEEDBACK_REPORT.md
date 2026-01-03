@@ -87,7 +87,7 @@ toast.error("Credenciales inválidas. Por favor, verifica tu email y contraseña
 
 ## 🔴 Bugs Críticos (P0 - Blocker)
 
-_Ninguno encontrado - ✅ Sistema funcional_
+Ninguno encontrado - ✅ Sistema funcional
 
 ---
 
@@ -306,7 +306,7 @@ _Ninguno encontrado - ✅ Sistema funcional_
 
 ## ❌ Tests Bloqueados
 
-_Ninguno - Sistema funcional y todos los flujos probados están operativos ✅_
+Ninguno - Sistema funcional y todos los flujos probados están operativos ✅
 
 ---
 
@@ -460,7 +460,7 @@ _Nota: En esta simulación no se generaron capturas reales. En un test real se a
 
 ---
 
-_Última actualización: 2026-01-03 - Sesión 1 en progreso_
+Última actualización: 2026-01-03 - Sesión 1 en progreso
 
 ---
 
@@ -574,14 +574,14 @@ Para desarrolladores/LLMs que vayan a solucionar los bugs:
 
 ## 🎯 Próximos Pasos Sugeridos
 
-### Para el Testing (continuar simulación):
+### Para el Testing (continuar simulación)
 1. **Completar guión Admin TIC** (31 tests restantes)
 2. **Probar guión Profesor** (flujo de aprobación rápida - crítico)
 3. **Probar guión Estudiante** (extensión Firefox + solicitudes)
 4. **Tests de seguridad** (intentar escalada de privilegios)
 5. **Tests E2E completos** (flujo diario completo)
 
-### Para el Desarrollo:
+### Para el Desarrollo
 1. **Fix rápido**: Bugs #1 y #2 (< 30 min de desarrollo)
 2. **Continuar testing** de áreas core antes de más fixes
 3. **Revisar bugs después de completar** más tests (pueden aparecer bugs P0 en otras áreas)
