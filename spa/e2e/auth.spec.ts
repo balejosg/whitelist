@@ -181,11 +181,13 @@ test.describe('Login Flow - Failure', () => {
 test.describe('Session Management', () => {
 
     test('protected routes should redirect to login when not authenticated', { tag: '@smoke' }, async ({ page }) => {
-        // Clear any existing session
+        // Navigate first, then clear session
+        await page.goto('/');
+        await page.waitForLoadState('domcontentloaded');
         await page.context().clearCookies();
         await page.evaluate(() => { localStorage.clear(); });
 
-        await page.goto('/');
+        await page.reload();
         await page.waitForLoadState('domcontentloaded');
 
         // Should show login, not dashboard
