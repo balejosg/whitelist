@@ -120,6 +120,103 @@ jobs:
           path: spa/test-results/
           retention-days: 14
 
+  spa-e2e-extended:
+    name: Extended API & Multi-User Tests
+    needs: check-label
+    if: needs.check-label.outputs.should-run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: openpath
+          POSTGRES_PASSWORD: openpath_dev
+          POSTGRES_DB: openpath
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-node
+
+      - name: Build workspaces
+        uses: ./.github/actions/build-workspaces
+
+      - name: Run DB migrations
+        run: npm run drizzle:push --workspace=@openpath/api
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: openpath
+          DB_USER: openpath
+          DB_PASSWORD: openpath_dev
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: spa
+
+      - name: Start API server
+        run: |
+          npm start --workspace=@openpath/api &
+          npx wait-on -t 30000 http://localhost:3001/health
+        env:
+          PORT: 3001
+          NODE_ENV: test
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: openpath
+          DB_USER: openpath
+          DB_PASSWORD: openpath_dev
+          JWT_SECRET: test-jwt-secret-for-ci-testing
+          ADMIN_TOKEN: test-admin-token-for-ci
+
+      - name: Start SPA server
+        run: |
+          npx -y http-server spa -p 8080 -c-1 &
+          sleep 3
+
+      - name: Run Extended E2E tests (API Integration)
+        run: npx playwright test e2e/api-integration.spec.ts --project=chromium
+        working-directory: spa
+        env:
+          BASE_URL: http://localhost:8080
+          API_URL: http://localhost:3001
+          CI: true
+
+      - name: Run Multi-User Flow tests
+        run: npx playwright test e2e/multi-user-flow.spec.ts --project=chromium
+        working-directory: spa
+        env:
+          BASE_URL: http://localhost:8080
+          API_URL: http://localhost:3001
+          CI: true
+
+      - name: Run Push Notification tests
+        run: npx playwright test e2e/push-notifications.spec.ts --project=chromium
+        working-directory: spa
+        env:
+          BASE_URL: http://localhost:8080
+          API_URL: http://localhost:3001
+          CI: true
+
+      - name: Upload extended test report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-extended
+          path: spa/playwright-report/
+          retention-days: 14
+
   spa-e2e-security:
     name: Security & Edge Cases
     needs: check-label
@@ -222,7 +319,7 @@ jobs:
 
   summary:
     name: E2E Summary
-    needs: [spa-e2e-full, spa-e2e-security, linux-agent-e2e]
+    needs: [spa-e2e-full, spa-e2e-extended, spa-e2e-security, linux-agent-e2e]
     if: always() && needs.check-label.outputs.should-run == 'true'
     runs-on: ubuntu-latest
 
@@ -238,6 +335,12 @@ jobs:
             echo "❌ SPA Full Suite: ${{ needs.spa-e2e-full.result }}" >> $GITHUB_STEP_SUMMARY
           fi
           
+          if [[ "${{ needs.spa-e2e-extended.result }}" == "success" ]]; then
+            echo "✅ Extended Tests: PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Extended Tests: ${{ needs.spa-e2e-extended.result }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          
           if [[ "${{ needs.spa-e2e-security.result }}" == "success" ]]; then
             echo "✅ Security Tests: PASSED" >> $GITHUB_STEP_SUMMARY
           else
@@ -251,7 +354,9 @@ jobs:
           fi
           
           if [[ "${{ needs.spa-e2e-full.result }}" == "failure" ]] || \
+             [[ "${{ needs.spa-e2e-extended.result }}" == "failure" ]] || \
              [[ "${{ needs.spa-e2e-security.result }}" == "failure" ]] || \
              [[ "${{ needs.linux-agent-e2e.result }}" == "failure" ]]; then
             exit 1
           fi
+
