@@ -58,6 +58,7 @@ import { requestIdMiddleware, errorTrackingMiddleware } from './lib/error-tracki
 
 import * as roleStorage from './lib/role-storage.js';
 import * as userStorage from './lib/user-storage.js';
+import * as groupsStorage from './lib/groups-storage.js';
 import { cleanupBlacklist } from './lib/auth.js';
 
 // Swagger/OpenAPI (optional - only load if dependencies installed and enabled)
@@ -198,6 +199,38 @@ app.use(logger.requestMiddleware);
 // Basic health check for liveness probes
 app.get('/health', (_req, res) => {
     res.json({ status: 'ok', service: 'openpath-api' });
+});
+
+// Public endpoint for dnsmasq clients to fetch whitelist files
+// This endpoint is unauthenticated to allow machines to fetch their whitelist
+app.get('/export/:name.txt', (req: Request, res: Response): void => {
+    const name = req.params.name;
+    if (!name) {
+        res.status(400).type('text/plain').send('Group name required');
+        return;
+    }
+
+    void (async (): Promise<void> => {
+        const group = await groupsStorage.getGroupByName(name);
+        if (!group) {
+            res.status(404).type('text/plain').send('Group not found');
+            return;
+        }
+
+        // If group is disabled, return empty content (with header comment)
+        if (!group.enabled) {
+            res.type('text/plain').send(`# Group "${group.displayName}" is currently disabled\n`);
+            return;
+        }
+
+        const content = await groupsStorage.exportGroup(group.id);
+        if (!content) {
+            res.status(500).type('text/plain').send('Error exporting group');
+            return;
+        }
+
+        res.type('text/plain').send(content);
+    })();
 });
 
 // Swagger/OpenAPI documentation

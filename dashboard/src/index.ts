@@ -1,61 +1,111 @@
 /**
  * OpenPath - Strict Internet Access Control
  * Copyright (C) 2025 OpenPath Authors
+ * 
+ * Dashboard Server
+ * 
+ * Provides a REST API wrapper around tRPC calls to the OpenPath API.
+ * Authentication is handled via JWT tokens stored in HTTP-only cookies.
  */
 
 import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
-import session from 'express-session';
 import cookieParser from 'cookie-parser';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { v4 as uuidv4 } from 'uuid';
-import * as db from './db.js';
-import type { User } from './db.js';
+import * as api from './api-client.js';
+import type { ApiClient } from './api-client.js';
 import { logger } from './lib/logger.js';
+import { getTRPCErrorMessage, getTRPCErrorStatus, isTRPCError } from './trpc.js';
 
-// ESM-compatible __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// =============================================================================
+// Express Types Extension
+// =============================================================================
 
-// Extend Express Session to include User
-import 'express-session';
-declare module 'express-session' {
-    interface SessionData {
-        user?: User;
+declare global {
+    // eslint-disable-next-line @typescript-eslint/no-namespace
+    namespace Express {
+        interface Request {
+            apiClient?: ApiClient;
+            accessToken?: string;
+        }
     }
 }
 
+// =============================================================================
+// App Setup
+// =============================================================================
+
 const app = express();
-const PORT = process.env.PORT ?? 3000;
+const PORT = process.env.PORT ?? 3001;
+const COOKIE_SECRET = process.env.COOKIE_SECRET ?? 'dashboard-dev-secret';
+const COOKIE_SECURE = process.env.NODE_ENV === 'production';
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-app.use(session({
-    secret: (process.env.SESSION_SECRET) ?? uuidv4(),
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
-}));
+app.use(cookieParser(COOKIE_SECRET));
 
-// Static files
-app.use(express.static(path.join(__dirname, '..', 'public')));
+// =============================================================================
+// Authentication Middleware
+// =============================================================================
 
-// Authentication middleware
-function requireAuth(req: Request, res: Response, next: NextFunction): void {
-    if (req.session.user) {
-        next();
-    } else {
-        res.status(401).json({ error: 'No autorizado' });
+/**
+ * Extract JWT token from cookie or Authorization header.
+ */
+function getToken(req: Request): string | null {
+    // Option 1: From HTTP-only cookie
+    const cookieToken = req.signedCookies.access_token as string | undefined;
+    if (cookieToken) {
+        return cookieToken;
     }
+    
+    // Option 2: From Authorization header (API clients)
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+        return authHeader.slice(7);
+    }
+    
+    return null;
 }
 
-// Async route wrapper
+/**
+ * Require authentication for protected routes.
+ */
+function requireAuth(req: Request, res: Response, next: NextFunction): void {
+    const token = getToken(req);
+    if (!token) {
+        res.status(401).json({ error: 'No autorizado' });
+        return;
+    }
+    
+    // Attach token and API client to request
+    req.accessToken = token;
+    req.apiClient = api.createApiClient(token);
+    next();
+}
+
+/**
+ * Get API client from request - throws if not authenticated.
+ */
+function getApiClient(req: Request): ApiClient {
+    if (!req.apiClient) {
+        throw new Error('API client not initialized - requireAuth middleware must be used');
+    }
+    return req.apiClient;
+}
+
+/**
+ * Get access token from request - throws if not authenticated.
+ */
+function getAccessToken(req: Request): string {
+    if (!req.accessToken) {
+        throw new Error('Access token not set - requireAuth middleware must be used');
+    }
+    return req.accessToken;
+}
+
+/**
+ * Async route wrapper for error handling.
+ */
 function asyncHandler(
     fn: (req: Request, res: Response, next: NextFunction) => Promise<void>
 ): (req: Request, res: Response, next: NextFunction) => void {
@@ -64,7 +114,9 @@ function asyncHandler(
     };
 }
 
-// ============== Auth Routes ==============
+// =============================================================================
+// Auth Routes
+// =============================================================================
 
 app.post('/api/auth/login', asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { username, password } = req.body as Record<string, unknown>;
@@ -73,76 +125,101 @@ app.post('/api/auth/login', asyncHandler(async (req: Request, res: Response): Pr
         return;
     }
 
-    const user = await db.validateUser(username, password);
-    if (user) {
-        req.session.user = {
-            id: user.id,
-            username: user.username,
-            passwordHash: ''
-        };
-        res.json({ success: true, user: { username: user.username } });
+    const result = await api.login(username, password);
+    
+    if (result.success && result.accessToken && result.refreshToken) {
+        // Set tokens in HTTP-only cookies
+        res.cookie('access_token', result.accessToken, {
+            httpOnly: true,
+            secure: COOKIE_SECURE,
+            signed: true,
+            maxAge: 24 * 60 * 60 * 1000, // 24 hours
+            sameSite: 'strict',
+        });
+        res.cookie('refresh_token', result.refreshToken, {
+            httpOnly: true,
+            secure: COOKIE_SECURE,
+            signed: true,
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            sameSite: 'strict',
+        });
+        
+        res.json({ success: true, user: result.user });
     } else {
-        res.status(401).json({ error: 'Credenciales inválidas' });
+        res.status(401).json({ error: result.error ?? 'Credenciales inválidas' });
     }
 }));
 
-app.post('/api/auth/logout', (req: Request, res: Response): void => {
-    req.session.destroy((err) => {
-        if (err) {
-            logger.error('Logout error', { error: err instanceof Error ? err.message : String(err) });
-            res.status(500).json({ error: 'Error logging out' });
-        } else {
-            res.json({ success: true });
-        }
-    });
-});
+app.post('/api/auth/logout', asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const accessToken = req.signedCookies.access_token as string | undefined;
+    const refreshToken = req.signedCookies.refresh_token as string | undefined;
+    
+    if (accessToken && refreshToken) {
+        await api.logout(accessToken, refreshToken);
+    }
+    
+    // Clear cookies
+    res.clearCookie('access_token');
+    res.clearCookie('refresh_token');
+    
+    res.json({ success: true });
+}));
 
 app.get('/api/auth/check', (req: Request, res: Response): void => {
-    if (req.session.user) {
-        res.json({ authenticated: true, user: { username: req.session.user.username } });
+    const token = getToken(req);
+    if (token) {
+        // Token exists, assume authenticated (API will validate on actual requests)
+        res.json({ authenticated: true });
     } else {
         res.json({ authenticated: false });
     }
 });
 
 app.post('/api/auth/change-password', requireAuth, asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const { newPassword } = req.body as Record<string, unknown>;
-    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
+    const { currentPassword, newPassword } = req.body as Record<string, unknown>;
+    if (typeof currentPassword !== 'string' || typeof newPassword !== 'string' || newPassword.length < 6) {
         res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
         return;
     }
-    if (req.session.user?.id) {
-        await db.changePassword(req.session.user.id, newPassword);
+    
+    const result = await api.changePassword(getAccessToken(req), currentPassword, newPassword);
+    if (result.success) {
         res.json({ success: true });
     } else {
-        res.status(401).json({ error: 'No autorizado' });
+        res.status(400).json({ error: result.error });
     }
 }));
 
-// ============== Stats Routes ==============
+// =============================================================================
+// Stats Routes
+// =============================================================================
 
-app.get('/api/stats', requireAuth, asyncHandler(async (_req: Request, res: Response): Promise<void> => {
-    const stats = await db.getStats();
+app.get('/api/stats', requireAuth, asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const stats = await getApiClient(req).getStats();
     res.json(stats);
 }));
 
-// ============== System Routes ==============
+// =============================================================================
+// System Routes
+// =============================================================================
 
-app.get('/api/system/status', requireAuth, asyncHandler(async (_req: Request, res: Response): Promise<void> => {
-    const status = await db.getSystemStatus();
+app.get('/api/system/status', requireAuth, asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const status = await getApiClient(req).getSystemStatus();
     res.json(status);
 }));
 
 app.post('/api/system/toggle', requireAuth, asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { enable } = req.body as Record<string, unknown>;
-    const status = await db.toggleSystemStatus(!!enable);
+    const status = await getApiClient(req).toggleSystemStatus(!!enable);
     res.json({ success: true, ...status });
 }));
 
-// ============== Groups Routes ==============
+// =============================================================================
+// Groups Routes
+// =============================================================================
 
-app.get('/api/groups', requireAuth, asyncHandler(async (_req: Request, res: Response): Promise<void> => {
-    const groups = await db.getAllGroups();
+app.get('/api/groups', requireAuth, asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const groups = await getApiClient(req).getAllGroups();
     res.json(groups);
 }));
 
@@ -152,14 +229,12 @@ app.post('/api/groups', requireAuth, asyncHandler(async (req: Request, res: Resp
         res.status(400).json({ error: 'Nombre requerido' });
         return;
     }
-    // Sanitize name for URL
-    const safeName = name.toLowerCase().replace(/[^a-z0-9-_]/g, '-');
+    
     try {
-        const id = await db.createGroup(safeName, displayName);
-        await db.exportGroupToFile(id);
-        res.json({ success: true, id, name: safeName });
+        const result = await getApiClient(req).createGroup(name, displayName);
+        res.json({ success: true, id: result.id, name: result.name });
     } catch (err: unknown) {
-        if (err instanceof Error && err.message === 'UNIQUE_CONSTRAINT_VIOLATION') {
+        if (isTRPCError(err) && err.data?.code === 'CONFLICT') {
             res.status(400).json({ error: 'Ya existe un grupo con ese nombre' });
             return;
         }
@@ -173,7 +248,8 @@ app.get('/api/groups/:id', requireAuth, asyncHandler(async (req: Request, res: R
         res.status(400).json({ error: 'ID requerido' });
         return;
     }
-    const group = await db.getGroupById(id);
+    
+    const group = await getApiClient(req).getGroupById(id);
     if (!group) {
         res.status(404).json({ error: 'Grupo no encontrado' });
         return;
@@ -187,13 +263,14 @@ app.put('/api/groups/:id', requireAuth, asyncHandler(async (req: Request, res: R
         res.status(400).json({ error: 'ID requerido' });
         return;
     }
+    
     const { displayName, enabled } = req.body as Record<string, unknown>;
     if (typeof displayName !== 'string') {
         res.status(400).json({ error: 'Invalid details' });
         return;
     }
-    await db.updateGroup(id, displayName, !!enabled);
-    await db.exportGroupToFile(id);
+    
+    await getApiClient(req).updateGroup(id, displayName, !!enabled);
     res.json({ success: true });
 }));
 
@@ -203,11 +280,14 @@ app.delete('/api/groups/:id', requireAuth, asyncHandler(async (req: Request, res
         res.status(400).json({ error: 'ID requerido' });
         return;
     }
-    await db.deleteGroup(id);
+    
+    await getApiClient(req).deleteGroup(id);
     res.json({ success: true });
 }));
 
-// ============== Rules Routes ==============
+// =============================================================================
+// Rules Routes
+// =============================================================================
 
 app.get('/api/groups/:groupId/rules', requireAuth, asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const groupId = req.params.groupId;
@@ -215,8 +295,12 @@ app.get('/api/groups/:groupId/rules', requireAuth, asyncHandler(async (req: Requ
         res.status(400).json({ error: 'Group ID requerido' });
         return;
     }
+    
     const { type } = req.query;
-    const rules = await db.getRulesByGroup(groupId, (type as db.Rule['type'] | undefined) ?? null);
+    const rules = await getApiClient(req).getRulesByGroup(
+        groupId, 
+        (type as api.RuleType | undefined) ?? undefined
+    );
     res.json(rules);
 }));
 
@@ -226,17 +310,27 @@ app.post('/api/groups/:groupId/rules', requireAuth, asyncHandler(async (req: Req
         res.status(400).json({ error: 'Group ID requerido' });
         return;
     }
+    
     const { type, value, comment } = req.body as Record<string, unknown>;
     if (!type || !value || typeof type !== 'string' || typeof value !== 'string') {
         res.status(400).json({ error: 'Tipo y valor requeridos' });
         return;
     }
-    const result = await db.createRule(groupId, type as db.Rule['type'], value, comment as string | null);
-    if (result.success) {
-        await db.exportGroupToFile(groupId);
+    
+    try {
+        const result = await getApiClient(req).createRule(
+            groupId, 
+            type as api.RuleType, 
+            value, 
+            comment as string | undefined
+        );
         res.json({ success: true, id: result.id });
-    } else {
-        res.status(400).json({ error: result.error });
+    } catch (err: unknown) {
+        if (isTRPCError(err) && err.data?.code === 'CONFLICT') {
+            res.status(400).json({ error: 'La regla ya existe' });
+            return;
+        }
+        throw err;
     }
 }));
 
@@ -246,13 +340,18 @@ app.post('/api/groups/:groupId/rules/bulk', requireAuth, asyncHandler(async (req
         res.status(400).json({ error: 'Group ID requerido' });
         return;
     }
+    
     const { type, values } = req.body as Record<string, unknown>;
     if (!type || !values || !Array.isArray(values)) {
         res.status(400).json({ error: 'Tipo y valores requeridos' });
         return;
     }
-    const count = await db.bulkCreateRules(groupId, type as db.Rule['type'], values as string[]);
-    await db.exportGroupToFile(groupId);
+    
+    const count = await getApiClient(req).bulkCreateRules(
+        groupId, 
+        type as api.RuleType, 
+        values as string[]
+    );
     res.json({ success: true, count });
 }));
 
@@ -262,59 +361,60 @@ app.delete('/api/rules/:id', requireAuth, asyncHandler(async (req: Request, res:
         res.status(400).json({ error: 'ID requerido' });
         return;
     }
-    await db.deleteRule(id);
+    
+    await getApiClient(req).deleteRule(id);
     res.json({ success: true });
 }));
 
-// ============== Public Export (for dnsmasq clients) ==============
+// =============================================================================
+// Public Export (redirects to API)
+// =============================================================================
 
-app.get('/export/:name.txt', asyncHandler(async (req: Request, res: Response): Promise<void> => {
+app.get('/export/:name.txt', (req: Request, res: Response): void => {
     const name = req.params.name;
     if (!name) {
         res.status(400).send('Nombre requerido');
         return;
     }
-    const group = await db.getGroupByName(name);
-    if (!group) {
-        res.status(404).send('Grupo no encontrado');
-        return;
-    }
-    const filePath = await db.exportGroupToFile(group.id);
-    if (!filePath) {
-        res.status(500).send('Error exportando grupo');
-        return;
-    }
-    res.type('text/plain').sendFile(filePath);
-}));
-
-// ============== SPA Fallback ==============
-
-app.get('*', (_req: Request, res: Response): void => {
-    res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+    
+    // Redirect to API export endpoint
+    res.redirect(api.getExportUrl(name));
 });
 
-// Error handler
+// =============================================================================
+// 404 Handler
+// =============================================================================
+
+app.use((_req: Request, res: Response): void => {
+    res.status(404).json({ error: 'Ruta no encontrada' });
+});
+
+// =============================================================================
+// Error Handler
+// =============================================================================
+
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    if (isTRPCError(err)) {
+        const status = getTRPCErrorStatus(err);
+        const message = getTRPCErrorMessage(err);
+        logger.error('tRPC error', { code: err.data?.code, message });
+        res.status(status).json({ error: message });
+        return;
+    }
+    
     logger.error('Unhandled error', { error: err instanceof Error ? err.message : String(err) });
     res.status(500).json({ error: 'Error interno del servidor' });
 });
 
+// =============================================================================
 // Startup
-async function startServer(): Promise<void> {
-    // Ensure default admin exists
-    await db.ensureDefaultAdmin();
+// =============================================================================
 
-    if (process.env.NODE_ENV !== 'test') {
-        app.listen(PORT, () => {
-            logger.info(`OpenPath corriendo en http://localhost:${PORT.toString()}`);
-            logger.info(`Exportaciones en: ${db.EXPORT_DIR}`);
-
-            // Export all groups on startup
-            void db.exportAllGroups();
-        });
-    }
+if (process.env.NODE_ENV !== 'test') {
+    app.listen(PORT, () => {
+        logger.info(`OpenPath Dashboard running on http://localhost:${PORT.toString()}`);
+        logger.info(`API URL: ${process.env.API_URL ?? 'http://localhost:3000'}`);
+    });
 }
-
-void startServer();
 
 export default app;

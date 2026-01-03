@@ -6,22 +6,26 @@
  * Push Notifications API Tests (tRPC)
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
 import webPush from 'web-push';
-import { getAvailablePort, resetDb } from './test-utils.js';
-import { closeConnection } from '../src/db/index.js';
+
+// Setting env vars BEFORE dynamic imports
+const keys = webPush.generateVAPIDKeys();
+process.env.VAPID_SUBJECT = 'mailto:test@example.com';
+process.env.VAPID_PUBLIC_KEY = keys.publicKey;
+process.env.VAPID_PRIVATE_KEY = keys.privateKey;
 
 let PORT: number;
 let API_URL: string;
-
-const GLOBAL_TIMEOUT = setTimeout(() => {
-    console.error('\n❌ Tests timed out! Forcing exit...');
-    process.exit(1);
-}, 25000);
-GLOBAL_TIMEOUT.unref();
+let testUtils: any;
+let db: any;
 
 const mockSubscription = {
     endpoint: 'https://fcm.googleapis.com/fcm/send/test-endpoint-123',
@@ -99,18 +103,16 @@ async function parseTRPC(response: Response): Promise<{ data?: unknown; error?: 
 
 await describe('Push Notifications API Tests (tRPC)', { timeout: 45000 }, async () => {
     before(async () => {
-        await resetDb();
-        PORT = await getAvailablePort();
+        // Dynamic imports to ensure process.env is set before config.js is loaded
+        testUtils = await import('./test-utils.js');
+        db = await import('../src/db/index.js');
+        const { app } = await import('../src/server.js');
+
+        await testUtils.resetDb();
+        PORT = await testUtils.getAvailablePort();
         API_URL = `http://localhost:${String(PORT)}`;
         process.env.PORT = String(PORT);
         process.env.ADMIN_TOKEN = 'test-admin-token';
-        // Ensure push is configured for tests (avoid relying on real secrets)
-        const keys = webPush.generateVAPIDKeys();
-        process.env.VAPID_SUBJECT = 'mailto:test@example.com';
-        process.env.VAPID_PUBLIC_KEY = keys.publicKey;
-        process.env.VAPID_PRIVATE_KEY = keys.privateKey;
-
-        const { app } = await import('../src/server.js');
 
         server = app.listen(PORT, () => {
             console.log(`Push test server started on port ${String(PORT)}`);
@@ -123,7 +125,7 @@ await describe('Push Notifications API Tests (tRPC)', { timeout: 45000 }, async 
     after(async () => {
         if (server !== undefined) {
             if ('closeAllConnections' in server && typeof server.closeAllConnections === 'function') {
-                server.closeAllConnections();
+                (server as any).closeAllConnections();
             }
             await new Promise<void>((resolve) => {
                 server?.close(() => {
@@ -132,7 +134,9 @@ await describe('Push Notifications API Tests (tRPC)', { timeout: 45000 }, async 
                 });
             });
         }
-        await closeConnection();
+        if (db !== undefined) {
+            await db.closeConnection();
+        }
     });
 
     await test('Setup: Create Teacher and Get Token', async (): Promise<void> => {

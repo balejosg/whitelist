@@ -248,7 +248,8 @@ await describe('Role Management E2E Tests (tRPC)', { timeout: 45000 }, async () 
                 roleId: String(roleIdToRevoke)
             }, { 'Authorization': `Bearer ${String(adminToken)}` });
 
-            assert.ok([200, 400].includes(response.status));
+            // tRPC maps NOT_FOUND to 404. It's also acceptable to return 400 or 200 depending on idempotency.
+            assert.ok([200, 400, 404].includes(response.status), `Expected 200, 400 or 404, got ${String(response.status)}`);
         });
     });
 

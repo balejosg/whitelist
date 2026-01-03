@@ -8,6 +8,7 @@ import { pushRouter } from './push.js';
 import { healthReportsRouter } from './health-reports.js';
 import { setupRouter } from './setup.js';
 import { healthcheckRouter } from './healthcheck.js';
+import { groupsRouter } from './groups.js';
 
 export const appRouter = router({
     auth: authRouter,
@@ -19,6 +20,7 @@ export const appRouter = router({
     healthReports: healthReportsRouter,
     setup: setupRouter,
     healthcheck: healthcheckRouter,
+    groups: groupsRouter,
 });
 
 export type AppRouter = typeof appRouter;

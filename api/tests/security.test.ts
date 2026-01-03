@@ -15,7 +15,11 @@ import { it, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
 import jwt from 'jsonwebtoken';
-import { getAvailablePort } from './test-utils.js';
+
+// Set env vars BEFORE any imports that load config.ts
+process.env.JWT_SECRET = 'test-secret-123';
+process.env.NODE_ENV = 'development'; // Enable rate limiting logic
+process.env.ENABLE_RATE_LIMIT_IN_TEST = 'true'; // Actually enable the middleware
 
 let PORT: number;
 let API_URL: string;
@@ -37,22 +41,17 @@ async function request(path: string, options: RequestInit = {}): Promise<{ statu
 
 await describe('Security and Hardening Tests', async () => {
     before(async () => {
+        // Dynamic imports
+        const { getAvailablePort } = await import('./test-utils.js');
+        const { app } = await import('../src/server.js');
+
         PORT = await getAvailablePort();
         API_URL = `http://localhost:${String(PORT)}`;
         process.env.PORT = String(PORT);
-        process.env.JWT_SECRET = JWT_SECRET;
         
-        // Force development env to enable rate limiting (it's skipped in test)
-        const originalEnv = process.env.NODE_ENV;
-        process.env.NODE_ENV = 'development';
-        
-        const { app } = await import('../src/server.js');
         server = app.listen(PORT, () => {
             console.log(`Security test server started on port ${String(PORT)}`);
         });
-        
-        // Restore env (though config is already loaded)
-        process.env.NODE_ENV = originalEnv;
         
         await new Promise(resolve => setTimeout(resolve, 1000));
     });

@@ -1,13 +1,18 @@
-import { describe, it } from 'node:test';
+import { describe, it, before } from 'node:test';
 import assert from 'node:assert';
 import jwt from 'jsonwebtoken';
 import { blacklistToken, isBlacklisted, cleanup } from '../src/lib/token-store.js';
+import { resetDb } from './test-utils.js';
 
 void describe('Token Store', () => {
+    before(async () => {
+        await resetDb();
+    });
+
     const secret = 'test-secret';
     
     function createTestToken(expiresIn = 3600): string {
-        return jwt.sign({ sub: 'test-user' }, secret, { expiresIn });
+        return jwt.sign({ sub: 'legacy_admin', rand: Math.random() }, secret, { expiresIn });
     }
 
     void describe('blacklistToken', () => {

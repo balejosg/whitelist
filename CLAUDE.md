@@ -377,27 +377,8 @@ Workflows in `.github/workflows/`:
 - `deploy.yml` - GitHub Pages deployment
 - `deploy-api.yml` - API deployment
 
-## Quality Improvement Work
+## Verification
 
-**For AI assistants continuing quality work, see `docs/IMPLEMENTATION-GUIDE.md`**
-
-### Completed (Phase 0)
-- Winston logging in API (34 console calls migrated)
-- Windows CI integration (PSScriptAnalyzer + Pester)
-- Coverage infrastructure (Codecov + badges)
-- Version sync (4.1.0)
-
-### Remaining Gaps
-| Gap | Status | Priority |
-|-----|--------|----------|
-| Console logging (spa/extension/dashboard) | Not started | High |
-| Tests for shared/, auth-worker/ | Not started | Critical |
-| JSDoc documentation | Not started | Medium |
-| Config extraction | Not started | Medium |
-| tsconfig standardization | Not started | Low |
-| tRPC documentation | Not started | Low |
-
-### Verification
 ```bash
 npm run verify    # Lint + typecheck + tests (all packages)
 cd tests && bats *.bats   # Shell tests

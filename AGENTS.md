@@ -16,7 +16,6 @@ plus a Node.js/TypeScript monorepo (npm workspaces) for API + web tooling.
 Primary docs:
 - `CLAUDE.md` (project overview + ops)
 - `CONTRIBUTING.md` (conventions + tests)
-- `docs/IMPLEMENTATION-GUIDE.md` (deep technical notes)
 
 ## Requirements
 - Node.js >= 20 (repo `package.json` engines)
