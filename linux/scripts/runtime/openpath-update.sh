@@ -52,37 +52,9 @@ source "$INSTALL_DIR/lib/firewall.sh"
 source "$INSTALL_DIR/lib/browser.sh"
 source "$INSTALL_DIR/lib/rollback.sh"
 
-# URL del whitelist - puede ser estática o dinámica (modo Aula)
+# URL del whitelist - siempre lee de whitelist-url.conf
+# En modo Aula, install.sh guarda la URL tokenizada durante el registro
 get_whitelist_url() {
-    # Modo Aula: obtener URL dinámica desde API
-    if [ -f "$ETC_CONFIG_DIR/api-url.conf" ] && [ -f "$ETC_CONFIG_DIR/classroom.conf" ]; then
-        local api_url
-        api_url=$(cat "$ETC_CONFIG_DIR/api-url.conf")
-        local hostname
-        hostname=$(hostname)
-        local secret=""
-        if [ -f "$ETC_CONFIG_DIR/api-secret.conf" ]; then
-            secret=$(cat "$ETC_CONFIG_DIR/api-secret.conf")
-        fi
-
-        local response
-        response=$(timeout 10 curl -s \
-            -H "Authorization: Bearer $secret" \
-            "$api_url/api/classrooms/machines/$hostname/whitelist-url" 2>/dev/null)
-
-        if echo "$response" | grep -q '"success":true'; then
-            local dynamic_url
-            dynamic_url=$(echo "$response" | grep -o '"url":"[^"]*"' | cut -d'"' -f4)
-            if [ -n "$dynamic_url" ]; then
-                log "Modo Aula: URL dinámica obtenida del API"
-                echo "$dynamic_url"
-                return 0
-            fi
-        fi
-        log "⚠ Modo Aula: error al obtener URL dinámica, usando fallback"
-    fi
-    
-    # Modo estático: leer de archivo de configuración
     if [ -f "$WHITELIST_URL_CONF" ]; then
         cat "$WHITELIST_URL_CONF"
     else

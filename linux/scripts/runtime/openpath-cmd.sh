@@ -36,7 +36,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Comandos que requieren root
-ROOT_COMMANDS="update health force enable disable restart"
+ROOT_COMMANDS="update health force enable disable restart rotate-token"
 
 # Auto-elevar a root si el comando lo requiere
 auto_elevate() {
@@ -345,6 +345,55 @@ cmd_restart() {
     cmd_status
 }
 
+# Rotar token de descarga
+cmd_rotate_token() {
+    if [ ! -f "$ETC_CONFIG_DIR/api-url.conf" ]; then
+        echo -e "${RED}Error: No está configurado el modo Aula${NC}"
+        echo "  Solo las máquinas registradas en un aula pueden rotar su token"
+        exit 1
+    fi
+    
+    local api_url
+    api_url=$(cat "$ETC_CONFIG_DIR/api-url.conf")
+    local hostname
+    hostname=$(hostname)
+    local secret=""
+    if [ -f "$ETC_CONFIG_DIR/api-secret.conf" ]; then
+        secret=$(cat "$ETC_CONFIG_DIR/api-secret.conf")
+    fi
+    
+    if [ -z "$secret" ]; then
+        echo -e "${RED}Error: No se encontró el secreto de API${NC}"
+        echo "  Archivo esperado: $ETC_CONFIG_DIR/api-secret.conf"
+        exit 1
+    fi
+    
+    echo -e "${BLUE}Rotando token de descarga...${NC}"
+    
+    local response
+    response=$(timeout 30 curl -s -X POST \
+        -H "Authorization: Bearer $secret" \
+        -H "Content-Type: application/json" \
+        "$api_url/api/machines/$hostname/rotate-download-token" 2>/dev/null)
+    
+    if echo "$response" | grep -q '"success":true'; then
+        local new_url
+        new_url=$(echo "$response" | grep -o '"whitelistUrl":"[^"]*"' | sed 's/"whitelistUrl":"//;s/"$//')
+        if [ -n "$new_url" ]; then
+            echo "$new_url" > "$WHITELIST_URL_CONF"
+            echo -e "${GREEN}✓ Token rotado exitosamente${NC}"
+            echo "  Nueva URL guardada en $WHITELIST_URL_CONF"
+        else
+            echo -e "${RED}✗ Rotación exitosa pero no se recibió nueva URL${NC}"
+            exit 1
+        fi
+    else
+        echo -e "${RED}✗ Error al rotar token${NC}"
+        echo "  Respuesta: $response"
+        exit 1
+    fi
+}
+
 # Ayuda
 cmd_help() {
     echo -e "${BLUE}openpath - Gestión del sistema OpenPath DNS v$VERSION${NC}"
@@ -364,6 +413,7 @@ cmd_help() {
     echo "  enable          Habilitar sistema"
     echo "  disable         Deshabilitar sistema"
     echo "  restart         Reiniciar servicios"
+    echo "  rotate-token    Rotar token de descarga (modo Aula)"
     echo "  help            Mostrar esta ayuda"
     echo ""
 }
@@ -382,6 +432,7 @@ case "${1:-status}" in
     enable)     cmd_enable ;;
     disable)    cmd_disable ;;
     restart)    cmd_restart ;;
+    rotate-token) cmd_rotate_token ;;
     help|--help|-h) cmd_help ;;
     *)
         echo -e "${RED}Comando desconocido: $1${NC}"
