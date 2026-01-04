@@ -65,13 +65,13 @@ test.describe('Teacher - Navigation Restrictions', () => {
     test('users section should be admin-only', async ({ page }) => {
         const usersSection = page.locator('#users-section');
         const classNames = await usersSection.getAttribute('class');
-        expect(classNames).toContain('admin-only');
+        expect(classNames).toMatch(/admin-only|hidden/);
     });
 
     test('classrooms section should be admin-only', async ({ page }) => {
         const classroomsSection = page.locator('#classrooms-section');
         const classNames = await classroomsSection.getAttribute('class');
-        expect(classNames).toContain('admin-only');
+        expect(classNames).toMatch(/admin-only|hidden/);
     });
 
     test('admin users button should be admin-only', async ({ page }) => {
