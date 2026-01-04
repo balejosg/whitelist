@@ -59,7 +59,10 @@ import { requestIdMiddleware, errorTrackingMiddleware } from './lib/error-tracki
 import * as roleStorage from './lib/role-storage.js';
 import * as userStorage from './lib/user-storage.js';
 import * as groupsStorage from './lib/groups-storage.js';
+import * as classroomStorage from './lib/classroom-storage.js';
+import * as setupStorage from './lib/setup-storage.js';
 import { cleanupBlacklist } from './lib/auth.js';
+import { generateMachineToken, hashMachineToken, buildWhitelistUrl } from './lib/machine-download-token.js';
 
 // Swagger/OpenAPI (optional - only load if dependencies installed and enabled)
 let swaggerUi: typeof import('swagger-ui-express') | undefined;
@@ -229,6 +232,152 @@ app.get('/export/:name.txt', (req: Request, res: Response): void => {
         }
 
         res.type('text/plain').send(content);
+    })();
+});
+
+// =============================================================================
+// Token Delivery REST Endpoints
+// =============================================================================
+
+const FAIL_OPEN_RESPONSE = '#DESACTIVADO\n';
+
+app.post('/api/setup/validate-token', (req: Request, res: Response): void => {
+    void (async (): Promise<void> => {
+        const { token } = req.body as { token?: string };
+        if (!token || typeof token !== 'string') {
+            res.json({ valid: false });
+            return;
+        }
+        const valid = await setupStorage.validateRegistrationToken(token);
+        res.json({ valid });
+    })();
+});
+
+app.post('/api/machines/register', (req: Request, res: Response): void => {
+    void (async (): Promise<void> => {
+        const authHeader = req.headers.authorization;
+        if (!authHeader?.startsWith('Bearer ')) {
+            res.status(401).json({ success: false, error: 'Authorization header required' });
+            return;
+        }
+
+        const registrationToken = authHeader.slice(7);
+        const isValid = await setupStorage.validateRegistrationToken(registrationToken);
+        if (!isValid) {
+            res.status(403).json({ success: false, error: 'Invalid registration token' });
+            return;
+        }
+
+        const { hostname, classroomName, version } = req.body as {
+            hostname?: string;
+            classroomName?: string;
+            version?: string;
+        };
+
+        if (!hostname || !classroomName) {
+            res.status(400).json({ success: false, error: 'hostname and classroomName are required' });
+            return;
+        }
+
+        const classroom = await classroomStorage.getClassroomByName(classroomName);
+        if (!classroom) {
+            res.status(404).json({ success: false, error: `Classroom "${classroomName}" not found` });
+            return;
+        }
+
+        const machine = await classroomStorage.registerMachine({
+            hostname,
+            classroomId: classroom.id,
+            ...(version ? { version } : {}),
+        });
+
+        const token = generateMachineToken();
+        const tokenHash = hashMachineToken(token);
+        await classroomStorage.setMachineDownloadTokenHash(machine.id, tokenHash);
+
+        const publicUrl = config.publicUrl ?? `http://${config.host}:${String(config.port)}`;
+        const whitelistUrl = buildWhitelistUrl(publicUrl, token);
+
+        res.json({ success: true, whitelistUrl });
+    })();
+});
+
+app.post('/api/machines/:hostname/rotate-download-token', (req: Request, res: Response): void => {
+    void (async (): Promise<void> => {
+        const authHeader = req.headers.authorization;
+        if (!authHeader?.startsWith('Bearer ')) {
+            res.status(401).json({ success: false, error: 'Authorization header required' });
+            return;
+        }
+
+        const sharedSecret = process.env.SHARED_SECRET;
+        if (!sharedSecret) {
+            res.status(500).json({ success: false, error: 'SHARED_SECRET not configured' });
+            return;
+        }
+
+        const providedSecret = authHeader.slice(7);
+        if (providedSecret !== sharedSecret) {
+            res.status(403).json({ success: false, error: 'Invalid shared secret' });
+            return;
+        }
+
+        const hostname = req.params.hostname;
+        if (!hostname) {
+            res.status(400).json({ success: false, error: 'hostname parameter required' });
+            return;
+        }
+        const machine = await classroomStorage.getMachineOnlyByHostname(hostname);
+        if (!machine) {
+            res.status(404).json({ success: false, error: `Machine "${hostname}" not found` });
+            return;
+        }
+
+        const token = generateMachineToken();
+        const tokenHash = hashMachineToken(token);
+        await classroomStorage.setMachineDownloadTokenHash(machine.id, tokenHash);
+
+        const publicUrl = config.publicUrl ?? `http://${config.host}:${String(config.port)}`;
+        const whitelistUrl = buildWhitelistUrl(publicUrl, token);
+
+        res.json({ success: true, whitelistUrl });
+    })();
+});
+
+app.get('/w/:machineToken/whitelist.txt', (req: Request, res: Response): void => {
+    void (async (): Promise<void> => {
+        try {
+            const { machineToken } = req.params;
+            if (!machineToken) {
+                res.type('text/plain').send(FAIL_OPEN_RESPONSE);
+                return;
+            }
+
+            const tokenHash = hashMachineToken(machineToken);
+            const machine = await classroomStorage.getMachineByDownloadTokenHash(tokenHash);
+            if (!machine) {
+                res.type('text/plain').send(FAIL_OPEN_RESPONSE);
+                return;
+            }
+
+            const whitelistInfo = await classroomStorage.getWhitelistUrlForMachine(machine.hostname);
+            if (!whitelistInfo) {
+                res.type('text/plain').send(FAIL_OPEN_RESPONSE);
+                return;
+            }
+
+            const content = await groupsStorage.exportGroup(whitelistInfo.groupId);
+            if (!content) {
+                res.type('text/plain').send(FAIL_OPEN_RESPONSE);
+                return;
+            }
+
+            await classroomStorage.updateMachineLastSeen(machine.hostname);
+            res.type('text/plain').send(content);
+        } catch (error) {
+            logger.error('Error serving tokenized whitelist', { error: getErrorMessage(error) });
+            res.type('text/plain').send(FAIL_OPEN_RESPONSE);
+        }
     })();
 });
 
