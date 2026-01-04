@@ -119,6 +119,10 @@ jobs:
             npm run build --workspace=@openpath/shared
             npm run build --workspace=@openpath/api
 
+            # Run database migrations
+            echo "Running database migrations..."
+            npm run db:migrate --workspace=@openpath/api
+
             # Restart service
             echo "Restarting API service..."
             if command -v rc-service >/dev/null 2>&1; then
