@@ -1,6 +1,0 @@
-name = "openpath-oauth"
-main = "dist/worker.js"
-compatibility_date = "2024-01-01"
-
-[vars]
-FRONTEND_URL = ""

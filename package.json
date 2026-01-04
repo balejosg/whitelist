@@ -50,7 +50,6 @@
     "spa",
     "shared",
     "dashboard",
-    "auth-worker",
     "firefox-extension"
   ],
   "overrides": {
