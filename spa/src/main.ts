@@ -2,7 +2,7 @@ import { getErrorMessage, normalize } from '@openpath/shared';
 import { init, updateEditUI } from './modules/app-core.js';
 import { pushManager } from './push.js';
 import { initUsersListeners } from './modules/users.js';
-import { initClassroomListeners } from './modules/classrooms.js';
+import { initClassroomListeners, initMachineListeners } from './modules/classrooms.js';
 import { initModals, showScreen, openModal, closeModal, initTheme, toggleTheme } from './modules/ui.js';
 import { auth } from './auth.js';
 import { oauth } from './oauth.js';
@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => void (async () => {
     initModals();
     initUsersListeners();
     initClassroomListeners();
+    initMachineListeners();
     initMainListeners();
 
     // Initialize Core

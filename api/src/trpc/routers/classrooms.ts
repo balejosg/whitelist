@@ -7,6 +7,8 @@ import * as classroomStorage from '../../lib/classroom-storage.js';
 import { stripUndefined } from '../../lib/utils.js';
 import { logger } from '../../lib/logger.js';
 import { ClassroomService } from '../../services/index.js';
+import { generateMachineToken, hashMachineToken, buildWhitelistUrl } from '../../lib/machine-download-token.js';
+import { config } from '../../config.js';
 
 export const classroomsRouter = router({
     list: teacherProcedure.query(async () => {
@@ -129,5 +131,43 @@ export const classroomsRouter = router({
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'Machine not found' });
             }
             return { success: true };
+        }),
+
+    listMachines: adminProcedure
+        .input(z.object({ classroomId: z.string().optional() }))
+        .query(async ({ input }) => {
+            const allMachines = await classroomStorage.getAllMachines(input.classroomId);
+            return allMachines.map(m => ({
+                id: m.id,
+                hostname: m.hostname,
+                classroomId: m.classroomId,
+                version: m.version,
+                lastSeen: m.lastSeen?.toISOString() ?? null,
+                hasDownloadToken: m.downloadTokenHash !== null,
+                downloadTokenLastRotatedAt: m.downloadTokenLastRotatedAt?.toISOString() ?? null,
+            }));
+        }),
+
+    rotateMachineToken: adminProcedure
+        .input(z.object({ machineId: z.string() }))
+        .mutation(async ({ input }) => {
+            const machine = await classroomStorage.getMachineById(input.machineId);
+            if (!machine) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'Machine not found' });
+            }
+
+            const token = generateMachineToken();
+            const tokenHash = hashMachineToken(token);
+            await classroomStorage.setMachineDownloadTokenHash(input.machineId, tokenHash);
+
+            const publicUrl = config.publicUrl ?? `http://${config.host}:${String(config.port)}`;
+            const whitelistUrl = buildWhitelistUrl(publicUrl, token);
+
+            logger.info('Machine download token rotated via dashboard', { 
+                machineId: input.machineId,
+                hostname: machine.hostname 
+            });
+
+            return { success: true, whitelistUrl };
         }),
 });

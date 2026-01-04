@@ -1990,3 +1990,135 @@ a:hover {
     border-radius: 50%;
     animation: spinner-spin 0.6s linear infinite;
 }
+
+/* ============== Machines Table ============== */
+.machines-section {
+    margin-bottom: var(--size-7);
+}
+
+.machines-list {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+}
+
+.machines-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.machines-table th,
+.machines-table td {
+    padding: var(--size-3) var(--size-4);
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.machines-table th {
+    background: var(--bg-tertiary);
+    font-weight: var(--font-weight-6);
+    font-size: var(--font-size-1);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.machines-table tbody tr:hover {
+    background: var(--bg-hover);
+}
+
+.machines-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.machines-table .actions-cell {
+    white-space: nowrap;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: var(--font-size-0);
+    font-weight: var(--font-weight-5);
+    border-radius: var(--border-radius-sm);
+}
+
+.badge-success {
+    background: var(--success-bg, #def7ec);
+    color: var(--success-text, #03543f);
+}
+
+.badge-warning {
+    background: var(--warning-bg, #fef3c7);
+    color: var(--warning-text, #92400e);
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: var(--font-size-0);
+}
+
+.token-url-display {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+}
+
+.token-url-display .modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.token-url-display .modal-content {
+    background: var(--bg-primary);
+    border-radius: var(--border-radius);
+    padding: var(--size-6);
+    max-width: 600px;
+    width: 90%;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.token-url-display .modal-content h3 {
+    margin: 0 0 var(--size-2) 0;
+}
+
+.token-url-display .modal-content input {
+    margin: var(--size-4) 0;
+    font-family: monospace;
+    font-size: var(--font-size-0);
+}
+
+.token-url-display .modal-actions {
+    display: flex;
+    gap: var(--size-3);
+    justify-content: flex-end;
+}
+
+@media (max-width: 768px) {
+    .machines-table {
+        font-size: var(--font-size-0);
+    }
+
+    .machines-table th,
+    .machines-table td {
+        padding: var(--size-2);
+    }
+
+    .machines-table th:nth-child(3),
+    .machines-table td:nth-child(3),
+    .machines-table th:nth-child(5),
+    .machines-table td:nth-child(5) {
+        display: none;
+    }
+}

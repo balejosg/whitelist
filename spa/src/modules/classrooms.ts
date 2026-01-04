@@ -9,6 +9,18 @@ import type { Classroom } from '../types/index.js';
 
 let allClassrooms: Classroom[] = [];
 
+interface MachineWithToken {
+    id: string;
+    hostname: string;
+    classroomId: string | null;
+    version: string | null;
+    lastSeen: string | null;
+    hasDownloadToken: boolean;
+    downloadTokenLastRotatedAt: string | null;
+}
+
+let allMachines: MachineWithToken[] = [];
+
 /**
  * Load classrooms from the API
  */
@@ -27,6 +39,7 @@ export async function loadClassrooms(): Promise<void> {
     try {
         allClassrooms = await trpc.classrooms.list.query();
         renderClassroomsList();
+        void loadMachines();
     } catch (error: unknown) {
         if (listEl) {
             const message = getErrorMessage(error);
@@ -148,6 +161,8 @@ declare global {
         openNewClassroomModal: () => void;
         changeClassroomGroup: (classroomId: string, groupId: string) => Promise<void>;
         deleteClassroom: (classroomId: string) => Promise<void>;
+        rotateMachineToken: (machineId: string) => Promise<void>;
+        deleteMachine: (hostname: string) => Promise<void>;
     }
 }
 
@@ -164,3 +179,126 @@ function openNewClassroomModal() {
 window.openNewClassroomModal = openNewClassroomModal;
 window.changeClassroomGroup = changeClassroomGroup;
 window.deleteClassroom = deleteClassroom;
+window.rotateMachineToken = rotateMachineToken;
+window.deleteMachine = deleteMachineByHostname;
+
+export async function loadMachines(): Promise<void> {
+    const section = getElement('machines-section');
+    const listEl = getElement('machines-list');
+
+    if (!auth.isAdmin()) {
+        section?.classList.add('hidden');
+        return;
+    }
+
+    section?.classList.remove('hidden');
+
+    try {
+        allMachines = await trpc.classrooms.listMachines.query({});
+        renderMachinesList();
+    } catch (error: unknown) {
+        if (listEl) {
+            const message = getErrorMessage(error);
+            listEl.innerHTML = `<p class="empty-message error">Error: ${escapeHtml(message)}</p>`;
+        }
+    }
+}
+
+function formatDate(isoDate: string | null): string {
+    if (!isoDate) return 'Never';
+    const date = new Date(isoDate);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function renderMachinesList(): void {
+    const listEl = getElement('machines-list');
+    if (!listEl) return;
+
+    if (allMachines.length === 0) {
+        listEl.innerHTML = `
+            <div class="empty-state">
+                <p>No machines registered</p>
+                <p class="text-muted">Machines register automatically during installation</p>
+            </div>
+        `;
+        return;
+    }
+
+    listEl.innerHTML = `
+        <table class="machines-table">
+            <thead>
+                <tr>
+                    <th>Hostname</th>
+                    <th>Version</th>
+                    <th>Last Seen</th>
+                    <th>Token Status</th>
+                    <th>Last Rotated</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${allMachines.map(m => `
+                    <tr data-id="${m.id}">
+                        <td><strong>${escapeHtml(m.hostname)}</strong></td>
+                        <td>${escapeHtml(m.version ?? 'unknown')}</td>
+                        <td>${formatDate(m.lastSeen)}</td>
+                        <td>${m.hasDownloadToken ? '<span class="badge badge-success">✓ Configured</span>' : '<span class="badge badge-warning">⚠ Not set</span>'}</td>
+                        <td>${formatDate(m.downloadTokenLastRotatedAt)}</td>
+                        <td class="actions-cell">
+                            <button class="btn btn-sm btn-primary" onclick="window.rotateMachineToken('${m.id}')" title="Rotate token and get new URL">🔄 Rotate</button>
+                            <button class="btn btn-sm btn-ghost" onclick="window.deleteMachine('${escapeHtml(m.hostname)}')" title="Delete machine">🗑️</button>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+async function rotateMachineToken(machineId: string): Promise<void> {
+    try {
+        const result = await trpc.classrooms.rotateMachineToken.mutate({ machineId });
+        
+        showToast('Token rotated successfully');
+        
+        const urlDisplay = document.createElement('div');
+        urlDisplay.className = 'token-url-display';
+        urlDisplay.innerHTML = `
+            <div class="modal-backdrop" onclick="this.parentElement.remove()">
+                <div class="modal-content" onclick="event.stopPropagation()">
+                    <h3>New Whitelist URL</h3>
+                    <p class="text-muted">Copy this URL. It will only be shown once.</p>
+                    <input type="text" class="form-control" value="${escapeHtml(result.whitelistUrl)}" readonly onclick="this.select()">
+                    <div class="modal-actions">
+                        <button class="btn btn-primary" onclick="navigator.clipboard.writeText('${escapeHtml(result.whitelistUrl)}'); this.textContent = 'Copied!';">📋 Copy</button>
+                        <button class="btn btn-ghost" onclick="this.closest('.token-url-display').remove()">Close</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(urlDisplay);
+        
+        await loadMachines();
+    } catch (error: unknown) {
+        const message = getErrorMessage(error);
+        showToast('Error: ' + message, 'error');
+    }
+}
+
+async function deleteMachineByHostname(hostname: string): Promise<void> {
+    if (!confirm(`Delete machine "${hostname}"?`)) return;
+    try {
+        await trpc.classrooms.deleteMachine.mutate({ hostname });
+        showToast('Machine deleted');
+        await loadMachines();
+    } catch (error: unknown) {
+        const message = getErrorMessage(error);
+        showToast('Error: ' + message, 'error');
+    }
+}
+
+export function initMachineListeners(): void {
+    getElement('refresh-machines-btn')?.addEventListener('click', () => {
+        void loadMachines();
+    });
+}

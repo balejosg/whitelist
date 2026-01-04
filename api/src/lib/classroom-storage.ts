@@ -209,12 +209,28 @@ export async function deleteClassroom(id: string): Promise<boolean> {
 // Machine CRUD
 // =============================================================================
 
-export async function getAllMachines(): Promise<DBMachine[]> {
+export async function getAllMachines(classroomId?: string): Promise<DBMachine[]> {
+    if (classroomId) {
+        return await db.select()
+            .from(machines)
+            .where(eq(machines.classroomId, classroomId))
+            .orderBy(sql`${machines.createdAt} DESC`);
+    }
+    
     const result = await db.select()
         .from(machines)
         .orderBy(sql`${machines.createdAt} DESC`);
 
     return result;
+}
+
+export async function getMachineById(id: string): Promise<DBMachine | null> {
+    const result = await db.select()
+        .from(machines)
+        .where(eq(machines.id, id))
+        .limit(1);
+
+    return result[0] ?? null;
 }
 
 export async function getMachinesByClassroom(classroomId: string): Promise<DBMachine[]> {
