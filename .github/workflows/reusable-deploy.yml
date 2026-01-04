@@ -121,6 +121,9 @@ jobs:
 
             # Run database migrations
             echo "Running database migrations..."
+            if [ -f .env ]; then
+              set -a && source .env && set +a
+            fi
             npm run db:migrate --workspace=@openpath/api
 
             # Restart service
