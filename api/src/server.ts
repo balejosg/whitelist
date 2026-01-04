@@ -349,6 +349,11 @@ const isMainModule = import.meta.url === `file://${process.argv[1] ?? ''}`;
 
 if (isMainModule) {
     const serverStartTime = new Date();
+
+    // Initialize database schema before accepting connections
+    const { initializeSchema } = await import('./db/index.js');
+    await initializeSchema();
+
     server = app.listen(PORT, HOST, () => {
         void (async (): Promise<void> => {
             // SECURITY: Clean up expired blacklisted tokens on startup

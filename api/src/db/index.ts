@@ -76,6 +76,52 @@ export async function testConnection(): Promise<boolean> {
 }
 
 /**
+ * Initialize database schema - creates tables if they don't exist.
+ * Safe to call on every startup.
+ */
+export async function initializeSchema(): Promise<boolean> {
+    try {
+        const fs = await import('node:fs');
+        const path = await import('node:path');
+        const { fileURLToPath } = await import('node:url');
+
+        const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+        // Try to find schema.sql in multiple locations
+        const possiblePaths = [
+            path.join(__dirname, 'schema.sql'),           // In dist/src/db/
+            path.join(__dirname, '..', 'db', 'schema.sql'), // In dist/src/../db/
+            path.join(__dirname, '..', '..', 'src', 'db', 'schema.sql'), // In dist/../src/db/
+        ];
+
+        let schemaPath: string | null = null;
+        for (const p of possiblePaths) {
+            if (fs.existsSync(p)) {
+                schemaPath = p;
+                break;
+            }
+        }
+
+        if (!schemaPath) {
+            logger.warn('schema.sql not found, skipping schema initialization', {
+                searchedPaths: possiblePaths
+            });
+            return false;
+        }
+
+        const schema = fs.readFileSync(schemaPath, 'utf-8');
+        await pool.query(schema);
+        logger.info('Database schema initialized successfully');
+        return true;
+    } catch (error) {
+        logger.error('Failed to initialize database schema', {
+            error: error instanceof Error ? error.message : String(error)
+        });
+        return false;
+    }
+}
+
+/**
  * Close the pool (for testing/shutdown)
  */
 export async function closeConnection(): Promise<void> {
