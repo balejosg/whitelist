@@ -37,7 +37,7 @@ export const options = {
 /**
  * Setup function - runs once before test
  */
-export function setup(): { baseUrl: string; timestamp: number } {
+export function setup() {
     // Verify API is reachable
     const healthRes = http.get(`${BASE_URL}/health`);
     if (healthRes.status !== 200) {
@@ -53,7 +53,7 @@ export function setup(): { baseUrl: string; timestamp: number } {
 /**
  * Default test scenario
  */
-export default function (data: { baseUrl: string }): void {
+export default function (data) {
     // Scenario 1: Health check (40% of traffic)
     if (Math.random() < 0.4) {
         testHealthEndpoint(data);
@@ -73,16 +73,16 @@ export default function (data: { baseUrl: string }): void {
 /**
  * Test /health endpoint
  */
-function testHealthEndpoint(data: { baseUrl: string }): void {
+function testHealthEndpoint(data) {
     const start = Date.now();
     const res = http.get(`${data.baseUrl}/health`);
     healthLatency.add(Date.now() - start);
 
     const success = check(res, {
-        'health: status is 200': (r: any) => r.status === 200,
-        'health: has status field': (r: any) => {
+        'health: status is 200': (r) => r.status === 200,
+        'health: has status field': (r) => {
             try {
-                const body = JSON.parse(r.body as string);
+                const body = JSON.parse(r.body);
                 return body.status !== undefined;
             } catch {
                 return false;
@@ -97,7 +97,7 @@ function testHealthEndpoint(data: { baseUrl: string }): void {
 /**
  * Test GET /api/requests endpoint
  */
-function testListRequests(data: { baseUrl: string }): void {
+function testListRequests(data) {
     const start = Date.now();
     const res = http.get(`${data.baseUrl}/api/requests`, {
         headers: {
@@ -107,10 +107,10 @@ function testListRequests(data: { baseUrl: string }): void {
     requestsLatency.add(Date.now() - start);
 
     const success = check(res, {
-        'list: status is 200 or 401': (r: any) => r.status === 200 || r.status === 401,
-        'list: response is JSON': (r: any) => {
+        'list: status is 200 or 401': (r) => r.status === 200 || r.status === 401,
+        'list: response is JSON': (r) => {
             try {
-                JSON.parse(r.body as string);
+                JSON.parse(r.body);
                 return true;
             } catch {
                 return false;
@@ -125,7 +125,7 @@ function testListRequests(data: { baseUrl: string }): void {
 /**
  * Test POST /api/requests endpoint
  */
-function testCreateRequest(data: { baseUrl: string }): void {
+function testCreateRequest(data) {
     const domain = `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.example.com`;
 
     const payload = JSON.stringify({
@@ -142,8 +142,8 @@ function testCreateRequest(data: { baseUrl: string }): void {
     requestsLatency.add(Date.now() - start);
 
     const success = check(res, {
-        'create: status is 200, 201, or 401': (r: any) => [200, 201, 401].includes(r.status),
-        'create: response time OK': (r: any) => r.timings.duration < 1000,
+        'create: status is 200, 201, or 401': (r) => [200, 201, 401].includes(r.status),
+        'create: response time OK': (r) => r.timings.duration < 1000,
     });
 
     errorRate.add(!success);
@@ -153,12 +153,12 @@ function testCreateRequest(data: { baseUrl: string }): void {
 /**
  * Rate limiting test scenario
  */
-export function rateLimitTest(data: { baseUrl: string }): void {
+export function rateLimitTest(data) {
     // Burst of requests to test rate limiting
     for (let i = 0; i < 20; i++) {
         const res = http.get(`${data.baseUrl}/health`);
         check(res, {
-            'rate limit: not server error': (r: any) => r.status < 500,
+            'rate limit: not server error': (r) => r.status < 500,
         });
     }
     sleep(1);
@@ -167,6 +167,6 @@ export function rateLimitTest(data: { baseUrl: string }): void {
 /**
  * Teardown function - runs once after test
  */
-export function teardown(data: { timestamp: number }): void {
+export function teardown(data) {
     console.log(`Test completed. Started at: ${new Date(data.timestamp).toISOString()}`);
 }

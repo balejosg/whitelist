@@ -359,4 +359,3 @@ jobs:
              [[ "${{ needs.linux-agent-e2e.result }}" == "failure" ]]; then
             exit 1
           fi
-

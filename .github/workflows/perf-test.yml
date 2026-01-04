@@ -39,7 +39,7 @@ jobs:
           SHARED_SECRET: test-secret
       
       - name: Run k6 load test
-        run: k6 run api/tests/load/load-test.ts
+        run: k6 run api/tests/load/load-test.js
         env:
           K6_BASE_URL: http://localhost:3000
           K6_VUS: 20
