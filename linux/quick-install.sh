@@ -28,13 +28,15 @@
 
 set -eo pipefail
 
-# ========== CONFIGURE THESE VALUES ==========
-WHITELIST_URL="https://raw.githubusercontent.com/balejosg/openpath/main/api/data/classrooms.json"
-HEALTH_API_URL="https://openpath-api.duckdns.org"
-HEALTH_API_SECRET="your-shared-secret-here"
-# =============================================
+# ========== CONFIGURE THESE VALUES BEFORE USE ==========
+# These MUST be set to your deployment-specific values
+WHITELIST_URL="${WHITELIST_URL:-}"
+HEALTH_API_URL="${HEALTH_API_URL:-}"
+HEALTH_API_SECRET="${HEALTH_API_SECRET:-}"
+# ========================================================
 
-REPO_URL="https://github.com/balejosg/openpath"
+# Override REPO_URL for your fork/deployment
+REPO_URL="${REPO_URL:-https://github.com/your-org/openpath}"
 BRANCH="main"
 
 echo ""

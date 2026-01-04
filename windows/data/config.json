@@ -1,5 +1,5 @@
 {
-    "whitelistUrl": "https://raw.githubusercontent.com/LasEncinasIT/Whitelist-por-aula/main/Informatica%203.txt",
+    "whitelistUrl": "",
     "updateIntervalMinutes": 5,
     "watchdogIntervalMinutes": 1,
     "primaryDNS": "8.8.8.8",

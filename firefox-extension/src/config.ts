@@ -31,9 +31,9 @@ import { logger } from './lib/logger.js';
 // Config interface is defined in types.d.ts
 
 const DEFAULT_CONFIG: Config = {
-    // Home server URL for domain requests API
-    // Production API endpoint
-    requestApiUrl: 'https://openpath-api.duckdns.org',
+    // API endpoint - MUST be configured via browser.storage.sync for production
+    // Set via extension options page before use
+    requestApiUrl: '',
 
     // Fallback API URLs (tried in order if primary fails)
     fallbackApiUrls: [],

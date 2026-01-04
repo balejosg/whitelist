@@ -144,6 +144,11 @@ function requestMiddleware(
 ): void {
     const start = Date.now();
 
+    // Redact download tokens from path to prevent leaking secrets in logs
+    const safePath = req.path.startsWith('/w/') 
+        ? req.path.replace(/^\/w\/[^/]+/, '/w/[REDACTED]')
+        : req.path;
+
     res.on('finish', () => {
         const duration = Date.now() - start;
         const isSlow = duration > SLOW_REQUEST_THRESHOLD_MS;
@@ -159,7 +164,7 @@ function requestMiddleware(
         const logData: RequestLogData = {
             requestId: req.id,
             method: req.method,
-            path: req.path,
+            path: safePath,
             statusCode: res.statusCode,
             durationMs: duration,
             userAgent: req.get('user-agent'),
@@ -172,7 +177,7 @@ function requestMiddleware(
             logData.threshold = SLOW_REQUEST_THRESHOLD_MS;
         }
 
-        const message = `${req.method} ${req.path} ${String(res.statusCode)} ${String(duration)}ms${isSlow ? ' [SLOW]' : ''}`;
+        const message = `${req.method} ${safePath} ${String(res.statusCode)} ${String(duration)}ms${isSlow ? ' [SLOW]' : ''}`;
         baseLogger[level](message, logData);
     });
 

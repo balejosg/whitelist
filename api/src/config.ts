@@ -84,11 +84,11 @@ export const config = {
     // CORS Configuration
     // ==========================================================================
 
-    /** CORS allowed origins (comma-separated) */
+    /** CORS allowed origins (comma-separated). MUST be set in production. */
     corsAllowedOrigins: parseListEnv(
         process.env.CORS_ORIGINS,
         process.env.NODE_ENV === 'production'
-            ? ['https://balejosg.github.io']
+            ? [] // Production MUST set CORS_ORIGINS explicitly
             : ['http://localhost:3000', 'http://localhost:5500', 'http://127.0.0.1:3000']
     ),
 

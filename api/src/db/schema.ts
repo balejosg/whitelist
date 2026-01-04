@@ -98,6 +98,8 @@ export const machines = pgTable('machines', {
     ),
     version: varchar('version', { length: 50 }).default('unknown'),
     lastSeen: timestamp('last_seen', { withTimezone: true }).defaultNow(),
+    downloadTokenHash: varchar('download_token_hash', { length: 64 }).unique(),
+    downloadTokenLastRotatedAt: timestamp('download_token_last_rotated_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });

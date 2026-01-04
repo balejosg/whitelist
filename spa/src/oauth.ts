@@ -7,8 +7,9 @@ import { logger } from './lib/logger.js';
  * Handles GitHub OAuth flow for OpenPath SPA
  */
 
-// Default OAuth worker URL (can be overridden via localStorage)
-const DEFAULT_OAUTH_WORKER_URL = 'https://openpath-oauth.bruno-alejosgomez.workers.dev';
+// OAuth worker URL - MUST be configured for production deployments
+// Override by setting localStorage.setItem('openpath-oauth-worker', 'https://your-worker.example.com')
+const DEFAULT_OAUTH_WORKER_URL = '';
 
 export const oauth = {
     // OAuth worker URL - configurable via localStorage for custom deployments

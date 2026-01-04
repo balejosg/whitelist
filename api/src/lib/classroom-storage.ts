@@ -483,3 +483,73 @@ logger.debug('Classroom storage initialized');
 
 export default classroomStorage;
 
+
+// =============================================================================
+// Machine Download Token Operations
+// =============================================================================
+
+/**
+ * Find a machine by its download token hash.
+ * Used for public whitelist endpoint authentication.
+ *
+ * @param tokenHash - SHA-256 hash of the download token
+ * @returns Machine record or null if not found
+ */
+export async function getMachineByDownloadTokenHash(tokenHash: string): Promise<DBMachine | null> {
+    const result = await db.select()
+        .from(machines)
+        .where(eq(machines.downloadTokenHash, tokenHash))
+        .limit(1);
+
+    return result[0] ?? null;
+}
+
+/**
+ * Set the download token hash for a machine.
+ * Used during registration and rotation.
+ *
+ * @param machineId - Machine ID
+ * @param tokenHash - SHA-256 hash of the new token
+ * @returns Updated machine or null if not found
+ */
+export async function setMachineDownloadTokenHash(
+    machineId: string,
+    tokenHash: string
+): Promise<DBMachine | null> {
+    const [result] = await db.update(machines)
+        .set({
+            downloadTokenHash: tokenHash,
+            downloadTokenLastRotatedAt: new Date(),
+            updatedAt: new Date(),
+        })
+        .where(eq(machines.id, machineId))
+        .returning();
+
+    return result ?? null;
+}
+
+/**
+ * Check if a machine has a download token configured.
+ *
+ * @param machineId - Machine ID
+ * @returns Object with hasToken boolean and lastRotatedAt date
+ */
+export async function getMachineTokenStatus(machineId: string): Promise<{
+    hasToken: boolean;
+    lastRotatedAt: Date | null;
+} | null> {
+    const result = await db.select({
+        downloadTokenHash: machines.downloadTokenHash,
+        downloadTokenLastRotatedAt: machines.downloadTokenLastRotatedAt,
+    })
+        .from(machines)
+        .where(eq(machines.id, machineId))
+        .limit(1);
+
+    if (!result[0]) return null;
+
+    return {
+        hasToken: result[0].downloadTokenHash !== null,
+        lastRotatedAt: result[0].downloadTokenLastRotatedAt,
+    };
+}

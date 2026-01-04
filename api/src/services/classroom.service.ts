@@ -257,9 +257,16 @@ export async function getWhitelistUrl(
         };
     }
 
-    const owner = process.env.GITHUB_OWNER ?? 'LasEncinasIT';
-    const repo = process.env.GITHUB_REPO ?? 'Whitelist-por-aula';
+    const owner = process.env.GITHUB_OWNER ?? '';
+    const repo = process.env.GITHUB_REPO ?? '';
     const branch = process.env.GITHUB_BRANCH ?? 'main';
+
+    if (!owner || !repo) {
+        return {
+            ok: false,
+            error: { code: 'INTERNAL_SERVER_ERROR', message: 'GITHUB_OWNER and GITHUB_REPO must be configured' }
+        };
+    }
     const url = `https://raw.githubusercontent.com/${owner}/${repo}/refs/heads/${branch}/${encodeURIComponent(groupId)}.txt`;
 
     return {

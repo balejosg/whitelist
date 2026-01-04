@@ -68,9 +68,9 @@ export CONFIG_DIR="$VAR_STATE_DIR"
 export FIREFOX_POLICIES="/etc/firefox/policies/policies.json"
 export CHROMIUM_POLICIES_BASE="/etc/chromium/policies/managed"
 
-# Default URL (can be overridden by defaults.conf or environment)
-# Keep as fallback if defaults.conf not loaded
-DEFAULT_WHITELIST_URL="${DEFAULT_WHITELIST_URL:-https://raw.githubusercontent.com/LasEncinasIT/Whitelist-por-aula/refs/heads/main/Informatica%203.txt}"
+# Default URL (must be provided via defaults.conf or environment)
+# Empty default forces explicit configuration
+DEFAULT_WHITELIST_URL="${DEFAULT_WHITELIST_URL:-}"
 
 # Global variables (initialized at runtime) - exported for use by other scripts
 export PRIMARY_DNS=""

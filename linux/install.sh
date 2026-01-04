@@ -41,8 +41,8 @@ INSTALL_DIR="/usr/local/lib/openpath"
 SCRIPTS_DIR="/usr/local/bin"
 CONFIG_DIR="/var/lib/openpath"
 
-# URL por defecto
-DEFAULT_WHITELIST_URL="https://raw.githubusercontent.com/LasEncinasIT/Whitelist-por-aula/refs/heads/main/Informatica%203.txt"
+# No default URL - must be provided via --whitelist-url or configured in defaults.conf
+DEFAULT_WHITELIST_URL=""
 
 # Procesar argumentos
 WHITELIST_URL="$DEFAULT_WHITELIST_URL"

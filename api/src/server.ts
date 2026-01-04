@@ -111,16 +111,15 @@ app.use(helmet({
 // CORS Configuration
 // =============================================================================
 
-const configCors = config.corsAllowedOrigins;
-let corsOrigins = configCors;
+const corsOrigins = config.corsAllowedOrigins;
 
-// Security fix: Force safe default in production if CORS is set to wildcard
-if (config.isProduction && configCors.includes('*')) {
-    logger.warn('CORS_ORIGINS="*" in production - forcing safe default', {
-        configured: '*',
-        forced: 'https://balejosg.github.io'
-    });
-    corsOrigins = ['https://balejosg.github.io'];
+// Warn if CORS is empty or wildcard in production
+if (config.isProduction) {
+    if (corsOrigins.length === 0) {
+        logger.warn('CORS_ORIGINS not set in production - all cross-origin requests will be blocked');
+    } else if (corsOrigins.includes('*')) {
+        logger.warn('CORS_ORIGINS="*" in production - this is insecure, set explicit origins');
+    }
 }
 
 app.use(cors({
