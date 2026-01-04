@@ -18,6 +18,7 @@
     "clean": "rm -rf dist coverage *.tsbuildinfo",
     "prebuild": "npm run clean",
     "build": "tsc -p tsconfig.build.json",
+    "postbuild": "cp src/db/schema.sql dist/src/db/schema.sql",
     "typecheck": "tsc --noEmit",
     "test": "NODE_ENV=test PORT=3006 node --import tsx --test --test-force-exit tests/api.test.ts",
     "test:auth": "NODE_ENV=test PORT=3001 node --import tsx --test --test-force-exit tests/auth.test.ts",
