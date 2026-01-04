@@ -426,30 +426,36 @@ else
 fi
 
 # ============================================================================
-# REGISTRAR MÁQUINA EN AULA (si está configurado el modo Aula)
+# REGISTRAR MÁQUINA Y OBTENER WHITELIST URL TOKENIZADA
 # ============================================================================
 MACHINE_REGISTERED=""
 if [ -n "$CLASSROOM_NAME" ] && [ -n "$API_URL" ]; then
     echo ""
     echo "Registrando máquina en aula..."
     HOSTNAME=$(hostname)
-    SECRET=""
-    if [ -f "$ETC_CONFIG_DIR/api-secret.conf" ]; then
-        SECRET=$(cat "$ETC_CONFIG_DIR/api-secret.conf")
-    fi
     
     REGISTER_RESPONSE=$(curl -s -X POST \
         -H "Content-Type: application/json" \
-        -H "Authorization: Bearer $SECRET" \
-        -d "{\"hostname\":\"$HOSTNAME\",\"classroom_name\":\"$CLASSROOM_NAME\",\"version\":\"$VERSION\"}" \
-        "$API_URL/api/classrooms/machines/register" 2>/dev/null || echo "{\"success\":false}")
+        -H "Authorization: Bearer $REGISTRATION_TOKEN" \
+        -d "{\"hostname\":\"$HOSTNAME\",\"classroomName\":\"$CLASSROOM_NAME\",\"version\":\"$VERSION\"}" \
+        "$API_URL/api/machines/register" 2>/dev/null || echo "{\"success\":false}")
     
     if echo "$REGISTER_RESPONSE" | grep -q '"success":true'; then
         MACHINE_REGISTERED="REGISTERED"
-        echo "✓ Máquina registrada en aula: $CLASSROOM_NAME"
+        TOKENIZED_URL=$(echo "$REGISTER_RESPONSE" | grep -o '"whitelistUrl":"[^"]*"' | sed 's/"whitelistUrl":"//;s/"$//')
+        if [ -n "$TOKENIZED_URL" ]; then
+            echo "$TOKENIZED_URL" > "$WHITELIST_URL_CONF"
+            WHITELIST_URL="$TOKENIZED_URL"
+            echo "✓ Máquina registrada en aula: $CLASSROOM_NAME"
+            echo "  → Whitelist URL tokenizada guardada"
+        else
+            MACHINE_REGISTERED="FAILED"
+            echo "⚠ Registro exitoso pero no se recibió URL tokenizada"
+        fi
     else
         MACHINE_REGISTERED="FAILED"
-        echo "⚠ Error al registrar máquina (el watchdog lo reintentará)"
+        echo "⚠ Error al registrar máquina"
+        echo "  Respuesta: $REGISTER_RESPONSE"
     fi
 fi
 
