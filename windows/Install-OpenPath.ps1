@@ -36,18 +36,56 @@
 #>
 
 param(
-    [string]$WhitelistUrl = "https://raw.githubusercontent.com/LasEncinasIT/Whitelist-por-aula/main/Informatica%203.txt",
-    [switch]$SkipAcrylic
+    [string]$WhitelistUrl = "",
+    [switch]$SkipAcrylic,
+    [string]$Classroom = "",
+    [string]$ApiUrl = "",
+    [string]$RegistrationToken = ""
 )
 
 $ErrorActionPreference = "Stop"
 $OpenPathRoot = "C:\OpenPath"
 
+# Validate classroom mode parameters
+if ($Classroom -and $ApiUrl) {
+    if (-not $RegistrationToken) {
+        Write-Host "ERROR: -RegistrationToken is required in classroom mode" -ForegroundColor Red
+        Write-Host "  Get the registration token from the central server administrator" -ForegroundColor Yellow
+        exit 1
+    }
+    
+    Write-Host "Validating registration token..." -ForegroundColor Yellow
+    try {
+        $validateBody = @{ token = $RegistrationToken } | ConvertTo-Json
+        $validateResponse = Invoke-RestMethod -Uri "$ApiUrl/api/setup/validate-token" `
+            -Method Post -Body $validateBody -ContentType "application/json" -ErrorAction Stop
+        
+        if (-not $validateResponse.valid) {
+            Write-Host "ERROR: Invalid registration token" -ForegroundColor Red
+            exit 1
+        }
+        Write-Host "  Registration token validated" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "ERROR: Failed to validate registration token: $_" -ForegroundColor Red
+        exit 1
+    }
+}
+
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host "  OpenPath DNS para Windows - Instalador" -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "URL: $WhitelistUrl"
+if ($Classroom -and $ApiUrl) {
+    Write-Host "Classroom Mode: $Classroom"
+    Write-Host "API URL: $ApiUrl"
+}
+elseif ($WhitelistUrl) {
+    Write-Host "URL: $WhitelistUrl"
+}
+else {
+    Write-Host "Mode: Standalone (no whitelist URL configured)"
+}
 Write-Host ""
 
 # Step 1: Create directory structure
@@ -103,6 +141,11 @@ $config = @{
     enableFirewall = $true
     enableBrowserPolicies = $true
     installedAt = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+}
+
+if ($Classroom -and $ApiUrl) {
+    $config.classroom = $Classroom
+    $config.apiUrl = $ApiUrl
 }
 
 $config | ConvertTo-Json -Depth 10 | Set-Content "$OpenPathRoot\data\config.json" -Encoding UTF8
@@ -161,6 +204,53 @@ catch {
     Write-Host "  ADVERTENCIA: Primera actualización fallida (se reintentará)" -ForegroundColor Yellow
 }
 
+# Register machine in classroom mode
+$machineRegistered = ""
+if ($Classroom -and $ApiUrl) {
+    Write-Host ""
+    Write-Host "Registering machine in classroom..." -ForegroundColor Yellow
+    $hostname = $env:COMPUTERNAME
+    
+    try {
+        $registerBody = @{
+            hostname = $hostname
+            classroomName = $Classroom
+            version = "1.0.0"
+        } | ConvertTo-Json
+        
+        $headers = @{
+            "Authorization" = "Bearer $RegistrationToken"
+            "Content-Type" = "application/json"
+        }
+        
+        $registerResponse = Invoke-RestMethod -Uri "$ApiUrl/api/machines/register" `
+            -Method Post -Body $registerBody -Headers $headers -ErrorAction Stop
+        
+        if ($registerResponse.success) {
+            $machineRegistered = "REGISTERED"
+            if ($registerResponse.whitelistUrl) {
+                $config.whitelistUrl = $registerResponse.whitelistUrl
+                $WhitelistUrl = $registerResponse.whitelistUrl
+                $config | ConvertTo-Json -Depth 10 | Set-Content "$OpenPathRoot\data\config.json" -Encoding UTF8
+                Write-Host "  Machine registered in classroom: $Classroom" -ForegroundColor Green
+                Write-Host "  Tokenized whitelist URL saved" -ForegroundColor Green
+            }
+            else {
+                $machineRegistered = "FAILED"
+                Write-Host "  Registration successful but no tokenized URL received" -ForegroundColor Yellow
+            }
+        }
+        else {
+            $machineRegistered = "FAILED"
+            Write-Host "  Failed to register machine" -ForegroundColor Yellow
+        }
+    }
+    catch {
+        $machineRegistered = "FAILED"
+        Write-Host "  Error registering machine: $_" -ForegroundColor Yellow
+    }
+}
+
 # Verify installation
 Write-Host ""
 Write-Host "==========================================" -ForegroundColor Cyan
@@ -217,6 +307,10 @@ Write-Host "  INSTALACIÓN COMPLETADA" -ForegroundColor Green
 Write-Host "==========================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "Configuración:"
+if ($Classroom -and $ApiUrl) {
+    Write-Host "  - Classroom: $Classroom"
+    Write-Host "  - Registration: $machineRegistered"
+}
 Write-Host "  - Whitelist: $WhitelistUrl"
 Write-Host "  - DNS upstream: $primaryDNS"
 Write-Host "  - Actualización: cada 5 minutos"
@@ -224,6 +318,9 @@ Write-Host ""
 Write-Host "Comandos útiles:"
 Write-Host "  nslookup google.com 127.0.0.1  # Probar DNS"
 Write-Host "  Get-ScheduledTask OpenPath-*  # Ver tareas"
+if ($Classroom -and $ApiUrl) {
+    Write-Host "  .\Rotate-Token.ps1             # Rotar token"
+}
 Write-Host ""
 Write-Host "Desinstalar: .\Uninstall-OpenPath.ps1"
 Write-Host ""
