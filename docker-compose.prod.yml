@@ -22,7 +22,7 @@ services:
 
   # Request API
   api:
-    image: ghcr.io/${GITHUB_REPOSITORY:-balejosg/openpath}/api:latest
+    image: ghcr.io/${GITHUB_REPOSITORY}/api:latest
     container_name: openpath-api
     restart: unless-stopped
     ports:

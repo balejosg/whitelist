@@ -78,7 +78,7 @@ export { expect };
  * Creates test users if they don't exist
  */
 export async function seedTestData(): Promise<void> {
-    const API_URL = process.env['API_URL'] ?? 'https://openpath-api.duckdns.org';
+    const API_URL = process.env.API_URL ?? 'http://localhost:3000';
 
     try {
         // Ping health endpoint to verify API is available
@@ -95,7 +95,7 @@ export async function seedTestData(): Promise<void> {
  * Cleanup test data after test run
  * Removes users/data created during tests
  */
-export function cleanupTestData(testMarker: string = 'e2e.openpath.local'): void {
+export function cleanupTestData(testMarker = 'e2e.openpath.local'): void {
     // In production mode, we don't auto-cleanup
     // Data cleanup would need admin privileges
     console.log(`Test cleanup marker: ${testMarker}`);

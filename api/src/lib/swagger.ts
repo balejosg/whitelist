@@ -47,7 +47,7 @@ const options: SwaggerOptions = {
             },
             contact: {
                 name: 'OpenPath',
-                url: 'https://github.com/balejosg/openpath'
+                url: 'https://github.com/openpath-oss/openpath'
             }
         },
         servers: [

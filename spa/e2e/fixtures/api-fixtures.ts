@@ -5,7 +5,7 @@
  * Uses production API as configured.
  */
 
-const API_BASE_URL = process.env['API_URL'] ?? 'https://openpath-api.duckdns.org';
+const API_BASE_URL = process.env.API_URL ?? 'http://localhost:3000';
 
 interface ApiResponse<T = unknown> {
     ok: boolean;
@@ -57,10 +57,11 @@ export class ApiClient {
                 this.authToken = data.token;
             }
 
+            const user: User = data.user ?? { id: '', email: '', name: '', role: 'student' };
             return {
                 ok: response.ok,
                 status: response.status,
-                data: response.ok ? { token: data.token ?? '', user: data.user as User } : undefined,
+                data: response.ok ? { token: data.token ?? '', user } : undefined,
                 error: !response.ok ? data.message : undefined
             };
         } catch (error) {
@@ -78,7 +79,7 @@ export class ApiClient {
                 'Content-Type': 'application/json'
             };
             if (this.authToken) {
-                headers['Authorization'] = `Bearer ${this.authToken}`;
+                headers.Authorization = `Bearer ${this.authToken}`;
             }
 
             const fetchOptions: RequestInit = {
