@@ -120,6 +120,29 @@ The ecosystem consists of four main pillars:
 
 ## Configuration
 
+### Required Environment Variables (API Server)
+
+The API server requires these environment variables in production:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `JWT_SECRET` | **Yes** | Secret for signing JWT tokens (64+ chars recommended) |
+| `CORS_ORIGINS` | **Yes** | Comma-separated list of allowed origins (e.g., `https://yourdomain.com`) |
+| `GITHUB_OWNER` | **Yes** | GitHub username/org owning your whitelist repo |
+| `GITHUB_REPO` | **Yes** | Repository name for whitelists |
+| `GITHUB_TOKEN` | **Yes** | GitHub PAT with repo write access |
+| `DATABASE_URL` | **Yes** | PostgreSQL connection string |
+
+Optional but recommended:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `3000` | Server port |
+| `VAPID_PUBLIC_KEY` | - | For push notifications |
+| `VAPID_PRIVATE_KEY` | - | For push notifications |
+
+See `api/.env.example` for a complete list.
+
 ### Changing the Whitelist URL
 
 Point your agents to your own repository:
