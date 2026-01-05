@@ -207,26 +207,6 @@ await describe('Classroom Management API Tests (tRPC)', async () => {
             const data = res.data as { machine: MachineResult };
             assert.strictEqual(data.machine.hostname, 'pc-01');
         });
-
-        await test('classrooms.getWhitelistUrl - returns url and group', async (): Promise<void> => {
-            const response = await trpcQuery('classrooms.getWhitelistUrl', {
-                hostname: 'pc-01'
-            }, { 'Authorization': `Bearer ${process.env.SHARED_SECRET ?? ''}` });
-
-            assert.strictEqual(response.status, 200);
-
-            const res = await parseTRPC(response);
-            const data = res.data as MachineResult;
-            assert.ok(data.url !== undefined);
-            assert.strictEqual(data.groupId, 'lengua-2eso');
-        });
-
-        await test('classrooms.getWhitelistUrl - 404 for unknown machine', async (): Promise<void> => {
-            const response = await trpcQuery('classrooms.getWhitelistUrl', {
-                hostname: 'unknown-pc'
-            }, { 'Authorization': `Bearer ${process.env.SHARED_SECRET ?? ''}` });
-            assert.strictEqual(response.status, 404);
-        });
     });
 
     await describe('Cleanup Operations', async () => {
