@@ -48,8 +48,6 @@ COPY package*.json ./
 COPY api/package*.json ./api/
 COPY shared/package*.json ./shared/
 COPY spa/package*.json ./spa/
-COPY dashboard/package*.json ./dashboard/
-COPY auth-worker/package*.json ./auth-worker/
 
 # Install production dependencies only
 RUN npm ci --only=production && npm cache clean --force
