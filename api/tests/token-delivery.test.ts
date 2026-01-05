@@ -36,7 +36,7 @@ const trpcMutate = (procedure: string, input: unknown): Promise<Response> =>
 
 async function ensureGroupExists(groupId: string): Promise<void> {
     await db.execute(sql.raw(`
-        INSERT INTO whitelist_groups (id, name) VALUES ('${groupId}', '${groupId}')
+        INSERT INTO whitelist_groups (id, name, display_name) VALUES ('${groupId}', '${groupId}', '${groupId}')
         ON CONFLICT (id) DO NOTHING
     `));
 }
