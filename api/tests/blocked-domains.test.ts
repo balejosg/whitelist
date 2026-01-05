@@ -108,6 +108,10 @@ await describe('Blocked Domains Tests - US3 (tRPC)', { timeout: 45000 }, async (
 
         await new Promise(resolve => setTimeout(resolve, 1000));
         adminToken = 'test-admin-token';
+
+        await trpcMutate('groups.create', { name: TEACHER_GROUP }, {
+            'Authorization': `Bearer ${adminToken}`
+        });
     });
 
     after(async () => {
@@ -167,7 +171,7 @@ await describe('Blocked Domains Tests - US3 (tRPC)', { timeout: 45000 }, async (
     await describe('requests.check - Check if domain is blocked', async () => {
         await test('should return blocked status for facebook.com', async (): Promise<void> => {
             const token = teacherToken ?? '';
-            const response = await trpcMutate('requests.check', { domain: 'facebook.com' }, {
+            const response = await trpcMutate('requests.check', { domain: 'facebook.com', groupId: TEACHER_GROUP }, {
                 'Authorization': `Bearer ${token}`
             });
 
@@ -179,7 +183,7 @@ await describe('Blocked Domains Tests - US3 (tRPC)', { timeout: 45000 }, async (
 
         await test('should return blocked status for wikipedia.org', async (): Promise<void> => {
             const token = teacherToken ?? '';
-            const response = await trpcMutate('requests.check', { domain: 'wikipedia.org' }, {
+            const response = await trpcMutate('requests.check', { domain: 'wikipedia.org', groupId: TEACHER_GROUP }, {
                 'Authorization': `Bearer ${token}`
             });
 
@@ -190,14 +194,14 @@ await describe('Blocked Domains Tests - US3 (tRPC)', { timeout: 45000 }, async (
         });
 
         await test('should reject check without authentication', async (): Promise<void> => {
-            const response = await trpcMutate('requests.check', { domain: 'example.com' });
+            const response = await trpcMutate('requests.check', { domain: 'example.com', groupId: TEACHER_GROUP });
 
             assert.strictEqual(response.status, 401);
         });
 
         await test('should reject check without domain parameter', async (): Promise<void> => {
             const token = teacherToken ?? '';
-            const response = await trpcMutate('requests.check', {}, {
+            const response = await trpcMutate('requests.check', { groupId: TEACHER_GROUP }, {
                 'Authorization': `Bearer ${token}`
             });
 
@@ -208,7 +212,7 @@ await describe('Blocked Domains Tests - US3 (tRPC)', { timeout: 45000 }, async (
     await describe('requests.listBlocked - List blocked domains', async () => {
         await test('should return list of blocked domains for admin', async (): Promise<void> => {
             const token = adminToken ?? '';
-            const response = await trpcQuery('requests.listBlocked', undefined, {
+            const response = await trpcQuery('requests.listBlocked', { groupId: TEACHER_GROUP }, {
                 'Authorization': `Bearer ${token}`
             });
 
@@ -220,7 +224,7 @@ await describe('Blocked Domains Tests - US3 (tRPC)', { timeout: 45000 }, async (
 
         await test('should reject for non-admin (teacher)', async (): Promise<void> => {
             const token = teacherToken ?? '';
-            const response = await trpcQuery('requests.listBlocked', undefined, {
+            const response = await trpcQuery('requests.listBlocked', { groupId: TEACHER_GROUP }, {
                 'Authorization': `Bearer ${token}`
             });
 

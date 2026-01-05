@@ -34,7 +34,15 @@ GLOBAL_TIMEOUT.unref();
 const trpcMutate = (procedure: string, input: unknown): Promise<Response> =>
     _trpcMutate(API_URL, procedure, input);
 
+async function ensureGroupExists(groupId: string): Promise<void> {
+    await db.execute(sql.raw(`
+        INSERT INTO whitelist_groups (id, name) VALUES ('${groupId}', '${groupId}')
+        ON CONFLICT (id) DO NOTHING
+    `));
+}
+
 async function createTestClassroom(name: string, groupId: string): Promise<string> {
+    await ensureGroupExists(groupId);
     const id = `classroom-${String(Date.now())}`;
     await db.execute(sql.raw(`
         INSERT INTO classrooms (id, name, display_name, default_group_id, active_group_id)

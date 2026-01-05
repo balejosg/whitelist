@@ -98,6 +98,9 @@ await describe('Classroom Management API Tests (tRPC)', async () => {
         });
 
         await new Promise(resolve => setTimeout(resolve, 1000));
+
+        await trpcMutate('groups.create', { name: 'ciencias-3eso' }, { 'Authorization': `Bearer ${ADMIN_TOKEN}` });
+        await trpcMutate('groups.create', { name: 'lengua-2eso' }, { 'Authorization': `Bearer ${ADMIN_TOKEN}` });
     });
 
     after(async () => {
