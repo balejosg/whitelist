@@ -37,8 +37,8 @@ const trpcMutate = (procedure: string, input: unknown): Promise<Response> =>
 async function createTestClassroom(name: string, groupId: string): Promise<string> {
     const id = `classroom-${String(Date.now())}`;
     await db.execute(sql.raw(`
-        INSERT INTO classrooms (id, name, group_id, created_by_id)
-        VALUES ('${id}', '${name}', '${groupId}', 'legacy_admin')
+        INSERT INTO classrooms (id, name, display_name, default_group_id, active_group_id)
+        VALUES ('${id}', '${name}', '${name}', '${groupId}', '${groupId}')
     `));
     return id;
 }

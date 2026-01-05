@@ -12,8 +12,6 @@ COPY api/package*.json ./api/
 COPY shared/package*.json ./shared/
 COPY dashboard/package*.json ./dashboard/
 COPY spa/package*.json ./spa/
-COPY auth-worker/package*.json ./auth-worker/
-COPY firefox-extension/package*.json ./firefox-extension/
 
 # Install dependencies
 RUN npm ci
@@ -50,8 +48,6 @@ COPY api/package*.json ./api/
 COPY shared/package*.json ./shared/
 COPY dashboard/package*.json ./dashboard/
 COPY spa/package*.json ./spa/
-COPY auth-worker/package*.json ./auth-worker/
-COPY firefox-extension/package*.json ./firefox-extension/
 
 # Install production dependencies
 RUN npm ci --only=production && npm cache clean --force
