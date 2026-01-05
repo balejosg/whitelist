@@ -25,11 +25,6 @@ export const healthcheckRouter = router({
         }
 
         // Config checks
-        const githubConfigured = (process.env.GITHUB_TOKEN !== undefined && process.env.GITHUB_TOKEN !== '') &&
-            (process.env.GITHUB_OWNER !== undefined && process.env.GITHUB_OWNER !== '') &&
-            (process.env.GITHUB_REPO !== undefined && process.env.GITHUB_REPO !== '');
-        checks.github = { status: githubConfigured ? 'configured' : 'not_configured' };
-
         const authConfigured = (process.env.ADMIN_TOKEN !== undefined && process.env.ADMIN_TOKEN !== '') ||
             (process.env.JWT_SECRET !== undefined && process.env.JWT_SECRET !== '');
         checks.auth = { status: authConfigured ? 'configured' : 'not_configured' };

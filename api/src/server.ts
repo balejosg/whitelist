@@ -102,7 +102,7 @@ app.use(helmet({
             fontSrc: ["'self'", 'https://fonts.gstatic.com'],
             scriptSrc: ["'self'"],
             imgSrc: ["'self'", 'data:', 'https:'],
-            connectSrc: ["'self'", 'https://api.github.com']
+            connectSrc: ["'self'"]
         }
     },
     frameguard: { action: 'deny' },
@@ -560,10 +560,6 @@ if (isMainModule) {
     const adminToken = process.env.ADMIN_TOKEN;
     if (adminToken === undefined || adminToken === '') {
         logger.warn('ADMIN_TOKEN not set - admin endpoints will fail');
-    }
-    const githubToken = process.env.GITHUB_TOKEN;
-    if (githubToken === undefined || githubToken === '') {
-        logger.warn('GITHUB_TOKEN not set - approval will fail to push to GitHub');
     }
 
     process.on('SIGTERM', () => { gracefulShutdown('SIGTERM'); });

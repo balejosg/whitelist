@@ -416,6 +416,68 @@ export async function exportAllGroups(): Promise<{ name: string; content: string
 }
 
 // =============================================================================
+// Domain Blocking Functions
+// =============================================================================
+
+/**
+ * Result of a domain block check.
+ */
+export interface BlockedCheckResult {
+    blocked: boolean;
+    matchedRule: string | null;
+}
+
+/**
+ * Check if a domain is blocked by blocked_subdomain rules in a specific group.
+ *
+ * @param groupId - Group ID to check rules against
+ * @param domain - Domain to check
+ * @returns Object with blocked status and matched rule if any
+ */
+export async function isDomainBlocked(
+    groupId: string,
+    domain: string
+): Promise<BlockedCheckResult> {
+    const rules = await getRulesByGroup(groupId, 'blocked_subdomain');
+    const domainLower = normalize.domain(domain);
+
+    for (const rule of rules) {
+        const pattern = rule.value.toLowerCase();
+
+        // Exact match
+        if (pattern === domainLower) {
+            return { blocked: true, matchedRule: pattern };
+        }
+
+        // Subdomain match (e.g., "ads.example.com" blocked by "example.com")
+        if (domainLower.endsWith('.' + pattern)) {
+            return { blocked: true, matchedRule: pattern };
+        }
+
+        // Wildcard match (e.g., "*.example.com")
+        if (pattern.startsWith('*.')) {
+            const baseDomain = pattern.slice(2);
+            if (domainLower === baseDomain || domainLower.endsWith('.' + baseDomain)) {
+                return { blocked: true, matchedRule: pattern };
+            }
+        }
+    }
+
+    return { blocked: false, matchedRule: null };
+}
+
+/**
+ * Get all blocked subdomain rules for a specific group.
+ *
+ * @param groupId - Group ID to get blocked subdomains for
+ * @returns Array of blocked subdomain patterns
+ */
+export async function getBlockedSubdomains(groupId: string): Promise<string[]> {
+    const rules = await getRulesByGroup(groupId, 'blocked_subdomain');
+    return rules.map(r => r.value);
+}
+
+// =============================================================================
 // Storage Instance
 // =============================================================================
 

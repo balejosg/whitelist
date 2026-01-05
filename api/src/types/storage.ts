@@ -242,35 +242,3 @@ export interface IPushStorage {
     deleteSubscription(endpoint: string): boolean;
     deleteUserSubscriptions(userId: string): number;
 }
-
-// =============================================================================
-// GitHub Integration
-// =============================================================================
-
-/**
- * Whitelist file content
- */
-export interface WhitelistFile {
-    path: string;
-    sha: string;
-    content: string;
-    domains: string[];
-}
-
-/**
- * GitHub API interface
- */
-export interface IGitHubService {
-    getWhitelistFile(groupId: string): Promise<WhitelistFile | null>;
-    updateWhitelistFile(
-        groupId: string,
-        domains: string[],
-        message: string
-    ): Promise<boolean>;
-    addDomainToWhitelist(
-        groupId: string,
-        domain: string,
-        message?: string
-    ): Promise<boolean>;
-    listGroups(): Promise<string[]>;
-}

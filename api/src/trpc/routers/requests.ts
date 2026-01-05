@@ -3,13 +3,11 @@ import { router, publicProcedure, protectedProcedure, teacherProcedure, adminPro
 import {
     RequestStatusSchema,
     CreateRequestDTOSchema,
-    getErrorMessage,
 } from '../../types/index.js';
 import { TRPCError } from '@trpc/server';
 import { CreateRequestData } from '../../types/storage.js';
 import * as storage from '../../lib/storage.js';
-import * as github from '../../lib/github.js';
-import { logger } from '../../lib/logger.js';
+import * as groupsStorage from '../../lib/groups-storage.js';
 import { stripUndefined } from '../../lib/utils.js';
 import { RequestService } from '../../services/index.js';
 
@@ -109,30 +107,25 @@ export const requestsRouter = router({
 
     // Protected: List groups
     listGroups: protectedProcedure.query(async ({ ctx }) => {
-        const allGroups = await github.listWhitelistFiles();
+        const allGroups = await groupsStorage.getAllGroups();
         const userGroups = RequestService.getApprovalGroupsForUser(ctx.user);
-        if (userGroups === 'all') return allGroups;
-        return allGroups.filter(g => userGroups.includes(g.name));
+        const filteredGroups = userGroups === 'all'
+            ? allGroups
+            : allGroups.filter(g => userGroups.includes(g.name));
+        return filteredGroups.map(g => ({ name: g.name, path: `${g.name}.txt` }));
     }),
 
-    // Admin: List blocked domains
-    listBlocked: adminProcedure.query(async () => {
-        try {
-            const file = await github.getFileContent('blocked-subdomains.txt');
-            const lines = file.content.split('\n');
-            return lines.map(l => l.trim()).filter(l => l !== '' && !l.startsWith('#'));
-        } catch (error) {
-            // Return empty list on any error (file not found, GitHub not configured, etc.)
-            // listBlocked is non-critical for API tests
-            logger.debug('Could not fetch blocked domains:', { error: getErrorMessage(error) });
-            return [];
-        }
-    }),
+    // Admin: List blocked domains for a group
+    listBlocked: adminProcedure
+        .input(z.object({ groupId: z.string() }))
+        .query(async ({ input }) => {
+            return await groupsStorage.getBlockedSubdomains(input.groupId);
+        }),
 
-    // Protected: Check domain
+    // Protected: Check if domain is blocked in a group
     check: protectedProcedure
-        .input(z.object({ domain: z.string() }))
+        .input(z.object({ domain: z.string(), groupId: z.string() }))
         .mutation(async ({ input }) => {
-            return await github.isDomainBlocked(input.domain);
+            return await groupsStorage.isDomainBlocked(input.groupId, input.domain);
         }),
 });

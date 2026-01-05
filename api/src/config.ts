@@ -129,25 +129,6 @@ export const config = {
     },
 
     // ==========================================================================
-    // GitHub Integration
-    // ==========================================================================
-
-    /** GitHub OAuth client ID */
-    githubClientId: process.env.GITHUB_CLIENT_ID ?? '',
-
-    /** GitHub OAuth client secret */
-    githubClientSecret: process.env.GITHUB_CLIENT_SECRET ?? '',
-
-    /** GitHub whitelist repository owner */
-    githubRepoOwner: process.env.GITHUB_REPO_OWNER ?? '',
-
-    /** GitHub whitelist repository name */
-    githubRepoName: process.env.GITHUB_REPO_NAME ?? '',
-
-    /** GitHub whitelist file path */
-    githubWhitelistPath: process.env.GITHUB_WHITELIST_PATH ?? 'grupos',
-
-    // ==========================================================================
     // Logging
     // ==========================================================================
 

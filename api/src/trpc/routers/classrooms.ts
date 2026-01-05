@@ -114,16 +114,6 @@ export const classroomsRouter = router({
             };
         }),
 
-    getWhitelistUrl: sharedSecretProcedure
-        .input(z.object({ hostname: z.string() }))
-        .query(async ({ input }) => {
-            const result = await ClassroomService.getWhitelistUrl(input.hostname);
-            if (!result.ok) {
-                throw new TRPCError({ code: result.error.code, message: result.error.message });
-            }
-            return result.data;
-        }),
-
     deleteMachine: adminProcedure
         .input(z.object({ hostname: z.string() }))
         .mutation(async ({ input }) => {

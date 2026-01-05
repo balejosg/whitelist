@@ -10,8 +10,6 @@ import assert from 'node:assert';
 import { db } from '../src/db/index.js';
 import { users, classrooms, schedules, machines, roles, tokens, pushSubscriptions } from '../src/db/schema.js';
 import * as scheduleStorage from '../src/lib/schedule-storage.js';
-import * as classroomStorage from '../src/lib/classroom-storage.js';
-import { ClassroomService } from '../src/services/index.js';
 
 // Test data
 const testClassroomId = 'test-classroom-1';
@@ -298,114 +296,6 @@ await describe('Schedule Storage', async () => {
             const wednesday = new Date('2025-01-08T10:00:00');
             const result = await scheduleStorage.getCurrentSchedule(testClassroomId, wednesday);
             assert.strictEqual(result, null);
-        });
-    });
-
-    await describe('Whitelist Integration', async () => {
-        beforeEach(async () => {
-            await db.delete(schedules);
-            await db.delete(machines);
-            // Don't delete classrooms/users to keep dependencies valid
-            // But we need to make sure we don't conflict on names if we recreate
-
-            // For whitelist tests we'll use unique names in the tests themselves
-        });
-
-        await it('should use schedule group when no manual override', async () => {
-            // Setup specialized classroom
-            const classroomName = 'aula-test-whitelist';
-            // Cleanup previous if exists
-            const existing = await classroomStorage.getClassroomByName(classroomName);
-            if (existing) await classroomStorage.deleteClassroom(existing.id);
-
-            const classroom = await classroomStorage.createClassroom({
-                name: classroomName,
-                displayName: 'Aula Test',
-                defaultGroupId: 'default-group'
-            });
-
-            await classroomStorage.registerMachine({
-                hostname: 'pc-test-01',
-                classroomId: classroom.id
-            });
-
-            const now = new Date();
-            const dayOfWeek = now.getDay();
-
-            // Setup valid schedule for NOW
-            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-                const currentHour = now.getHours();
-                // Ensure valid HH:MM format
-                const startTime = `${String(currentHour).padStart(2, '0')}:00`;
-                const endTime = `${String(currentHour + 1).padStart(2, '0')}:00`;
-
-                // Conflict check? Logic assumes none
-
-                await scheduleStorage.createSchedule({
-                    classroomId: classroom.id,
-                    teacherId: testTeacherId,
-                    groupId: 'scheduled-group',
-                    dayOfWeek: dayOfWeek,
-                    startTime: startTime,
-                    endTime: endTime
-                });
-
-                const result = await ClassroomService.getWhitelistUrl('pc-test-01');
-
-                assert.ok(result.ok);
-                assert.strictEqual(result.data.groupId, 'scheduled-group');
-                assert.strictEqual(result.data.source, 'schedule');
-            } else {
-                console.log('Skipping schedule test on weekend');
-            }
-        });
-
-        await it('should prefer manual override over schedule', async () => {
-            const classroomName = 'aula-override';
-            const existing = await classroomStorage.getClassroomByName(classroomName);
-            if (existing) await classroomStorage.deleteClassroom(existing.id);
-
-            const classroom = await classroomStorage.createClassroom({
-                name: classroomName,
-                displayName: 'Aula Override',
-                defaultGroupId: 'default-group'
-            });
-
-            await classroomStorage.setActiveGroup(classroom.id, 'manual-group');
-
-            await classroomStorage.registerMachine({
-                hostname: 'pc-override-01',
-                classroomId: classroom.id
-            });
-
-            const result = await ClassroomService.getWhitelistUrl('pc-override-01');
-
-            assert.ok(result.ok);
-            assert.strictEqual(result.data.groupId, 'manual-group');
-            assert.strictEqual(result.data.source, 'manual');
-        });
-
-        await it('should fall back to default group when no schedule', async () => {
-            const classroomName = 'aula-default';
-            const existing = await classroomStorage.getClassroomByName(classroomName);
-            if (existing) await classroomStorage.deleteClassroom(existing.id);
-
-            const classroom = await classroomStorage.createClassroom({
-                name: classroomName,
-                displayName: 'Aula Default',
-                defaultGroupId: 'fallback-group'
-            });
-
-            await classroomStorage.registerMachine({
-                hostname: 'pc-default-01',
-                classroomId: classroom.id
-            });
-
-            const result = await ClassroomService.getWhitelistUrl('pc-default-01');
-
-            assert.ok(result.ok);
-            assert.strictEqual(result.data.groupId, 'fallback-group');
-            assert.strictEqual(result.data.source, 'default');
         });
     });
 });

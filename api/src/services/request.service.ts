@@ -3,7 +3,7 @@
  */
 
 import * as storage from '../lib/storage.js';
-import * as github from '../lib/github.js';
+import * as groupsStorage from '../lib/groups-storage.js';
 import * as push from '../lib/push.js';
 import * as auth from '../lib/auth.js';
 import { logger } from '../lib/logger.js';
@@ -94,7 +94,7 @@ export async function approveRequest(
 
     // Check blocked domains for non-admins
     if (!auth.isAdminToken(user)) {
-        const blocked = await github.isDomainBlocked(request.domain);
+        const blocked = await groupsStorage.isDomainBlocked(targetGroup, request.domain);
         if (blocked.blocked) {
             return {
                 ok: false,
@@ -104,7 +104,14 @@ export async function approveRequest(
     }
 
     try {
-        await github.addDomainToWhitelist(request.domain, targetGroup);
+        const ruleResult = await groupsStorage.createRule(targetGroup, 'whitelist', request.domain);
+        if (!ruleResult.success) {
+            if (ruleResult.error === 'Rule already exists') {
+                // Domain already whitelisted - still mark request as approved
+            } else {
+                throw new Error(ruleResult.error ?? 'Failed to add domain to whitelist');
+            }
+        }
         const updated = await storage.updateRequestStatus(
             request.id,
             'approved',

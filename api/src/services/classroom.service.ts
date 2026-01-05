@@ -21,14 +21,6 @@ export interface RegisterMachineInput {
     version?: string | undefined;
 }
 
-export interface WhitelistUrlResult {
-    url: string;
-    groupId: string;
-    classroomId: string;
-    classroomName: string;
-    source: 'manual' | 'schedule' | 'default';
-}
-
 export interface MachineInfo {
     hostname: string;
     lastSeen: string | null;
@@ -200,94 +192,12 @@ export async function registerMachine(
     };
 }
 
-/**
- * Get the whitelist URL for a machine
- */
-export async function getWhitelistUrl(
-    hostname: string
-): Promise<ClassroomResult<WhitelistUrlResult>> {
-    // Validate hostname
-    if (!hostname || hostname.trim() === '') {
-        return {
-            ok: false,
-            error: { code: 'BAD_REQUEST', message: 'Hostname required' }
-        };
-    }
-
-    // Update last seen timestamp
-    await classroomStorage.updateMachineLastSeen(hostname);
-
-    const machine = await classroomStorage.getMachineOnlyByHostname(hostname);
-    if (!machine?.classroomId) {
-        return {
-            ok: false,
-            error: { code: 'NOT_FOUND', message: 'Machine not found or not assigned to a classroom' }
-        };
-    }
-
-    const classroom = await classroomStorage.getClassroomById(machine.classroomId);
-    if (!classroom) {
-        return {
-            ok: false,
-            error: { code: 'NOT_FOUND', message: 'Classroom not found' }
-        };
-    }
-
-    let groupId = classroom.activeGroupId;
-    let source: 'manual' | 'schedule' | 'default' = 'manual';
-
-    if (groupId === null) {
-        // Try to get from schedule
-        const currentSchedule = await scheduleStorage.getCurrentSchedule(classroom.id);
-        if (currentSchedule) {
-            groupId = currentSchedule.groupId;
-            source = 'schedule';
-        }
-    }
-
-    if (groupId === null) {
-        groupId = classroom.defaultGroupId;
-        source = 'default';
-    }
-
-    if (groupId === null) {
-        return {
-            ok: false,
-            error: { code: 'BAD_REQUEST', message: 'No whitelist group configured for this classroom' }
-        };
-    }
-
-    const owner = process.env.GITHUB_OWNER ?? '';
-    const repo = process.env.GITHUB_REPO ?? '';
-    const branch = process.env.GITHUB_BRANCH ?? 'main';
-
-    if (!owner || !repo) {
-        return {
-            ok: false,
-            error: { code: 'INTERNAL_SERVER_ERROR', message: 'GITHUB_OWNER and GITHUB_REPO must be configured' }
-        };
-    }
-    const url = `https://raw.githubusercontent.com/${owner}/${repo}/refs/heads/${branch}/${encodeURIComponent(groupId)}.txt`;
-
-    return {
-        ok: true,
-        data: {
-            url,
-            groupId,
-            classroomId: classroom.id,
-            classroomName: classroom.name,
-            source
-        }
-    };
-}
-
 // =============================================================================
 // Default Export
 // =============================================================================
 
 export default {
     registerMachine,
-    getWhitelistUrl,
     listClassrooms,
     getClassroom
 };
