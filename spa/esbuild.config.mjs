@@ -4,7 +4,7 @@ const isWatch = process.argv.includes('--watch');
 
 /** @type {esbuild.BuildOptions} */
 const mainConfig = {
-    entryPoints: ['src/main.ts'],
+    entryPoints: ['src/main.ts', 'src/reset-password.ts'],
     bundle: true,
     outdir: 'dist',
     format: 'esm',
