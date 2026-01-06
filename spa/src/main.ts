@@ -32,8 +32,6 @@ document.addEventListener('DOMContentLoaded', () => void (async () => {
     // Initialize Core
     await init();
 
-    await initSetupLink();
-
     // Initialize Push Notifications (if logged in)
     try {
         await pushManager.init();
@@ -42,21 +40,69 @@ document.addEventListener('DOMContentLoaded', () => void (async () => {
     }
 })());
 
-async function initSetupLink(): Promise<void> {
-    const container = getElement('setup-link-container');
-    if (container === null) return;
-
-    try {
-        const status = await setup.checkStatus();
-        if (status.needsSetup) {
-            container.classList.remove('hidden');
-        }
-    } catch (e) {
-        logger.warn('Failed to evaluate setup status', { error: getErrorMessage(e) });
-    }
-}
-
 function initMainListeners() {
+    // ============== Setup Listeners ==============
+
+    getElement('setup-form')?.addEventListener('submit', (e) => void (async () => {
+        e.preventDefault();
+        
+        const emailInput = requireElement<HTMLInputElement>('setup-email');
+        const nameInput = requireElement<HTMLInputElement>('setup-name');
+        const passwordInput = requireElement<HTMLInputElement>('setup-password');
+        const confirmInput = requireElement<HTMLInputElement>('setup-password-confirm');
+        const btn = requireElement<HTMLButtonElement>('setup-submit-btn');
+        const errorEl = getElement('setup-error');
+
+        errorEl?.classList.add('hidden');
+
+        if (passwordInput.value.length < 8) {
+            if (errorEl) {
+                errorEl.textContent = 'La contraseña debe tener al menos 8 caracteres';
+                errorEl.classList.remove('hidden');
+            }
+            return;
+        }
+
+        if (passwordInput.value !== confirmInput.value) {
+            if (errorEl) {
+                errorEl.textContent = 'Las contraseñas no coinciden';
+                errorEl.classList.remove('hidden');
+            }
+            return;
+        }
+
+        btn.disabled = true;
+        btn.classList.add('is-loading');
+        const originalText = btn.textContent ?? 'Crear administrador';
+        btn.innerHTML = '<span class="spinner"></span> Creando...';
+
+        try {
+            const result = await setup.createFirstAdmin(
+                emailInput.value,
+                nameInput.value,
+                passwordInput.value
+            );
+            setup.showSetupComplete(result.registrationToken);
+        } catch (err) {
+            if (errorEl) {
+                errorEl.textContent = getErrorMessage(err);
+                errorEl.classList.remove('hidden');
+            }
+            btn.disabled = false;
+            btn.classList.remove('is-loading');
+            btn.textContent = originalText;
+        }
+    })());
+
+    getElement('goto-login-btn')?.addEventListener('click', () => {
+        showScreen('login-screen');
+    });
+
+    getElement('setup-goto-login')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        showScreen('login-screen');
+    });
+
     // ============== Login Listeners ==============
 
     // Email Login

@@ -136,7 +136,7 @@ npm start
 
 ### 2. Create First Admin
 
-Navigate to `http://your-server:3000/setup.html` and:
+Navigate to `http://your-server:3000/` - the setup wizard will appear automatically:
 1. Enter admin email, name, and password (min 8 characters)
 2. Click "Create Administrator"
 3. **Save the Registration Token** - you'll need it to register client PCs

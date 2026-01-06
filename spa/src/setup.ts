@@ -141,24 +141,31 @@ export async function regenerateToken(): Promise<string> {
 }
 
 /**
- * Initialize the setup page
+ * Initialize the setup page (for integrated setup in index.html)
  */
 export async function initSetupPage(): Promise<void> {
-    const status = await checkStatus();
-
+    const loadingEl = getElement('setup-loading');
+    const headerEl = getElement('setup-header');
     const formContainer = getElement('setup-form-container');
     const completeContainer = getElement('setup-complete-container');
     const alreadyContainer = getElement('setup-already-container');
 
-    // Hide all containers first
+    loadingEl?.classList.remove('hidden');
+    headerEl?.classList.add('hidden');
     formContainer?.classList.add('hidden');
     completeContainer?.classList.add('hidden');
     alreadyContainer?.classList.add('hidden');
+
+    const status = await checkStatus();
+
+    loadingEl?.classList.add('hidden');
+    headerEl?.classList.remove('hidden');
 
     if (status.error !== undefined && status.error !== 'API URL not configured') {
         const errorEl = getElement('setup-error');
         if (errorEl !== null) {
             errorEl.textContent = status.error;
+            errorEl.classList.remove('hidden');
         }
         formContainer?.classList.remove('hidden');
         return;

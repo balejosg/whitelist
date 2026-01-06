@@ -9,8 +9,23 @@ import { GitHubAPI } from '../github-api.js';
 import { schedulesModule } from './schedules.js';
 import { trpc } from '../trpc.js';
 import { logger } from '../lib/logger.js';
+import { setup } from '../setup.js';
 
 export async function init(): Promise<void> {
+    // 0. Check if system needs initial setup FIRST
+    try {
+        const status = await setup.checkStatus();
+        if (status.needsSetup) {
+            await setup.initSetupPage();
+            showScreen('setup-screen');
+            return;
+        }
+    } catch (e) {
+        logger.warn('Setup status check failed, continuing to login', { 
+            error: e instanceof Error ? e.message : String(e) 
+        });
+    }
+
     // 1. Check for OAuth callback first
     const callbackResult = oauth.handleCallback();
     if (callbackResult?.error) {

@@ -18,41 +18,48 @@
     <!-- Setup Screen (First-time admin setup) -->
     <div id="setup-screen" class="screen hidden">
         <div class="login-container">
-            <div class="login-header">
+            <!-- Loading State -->
+            <div id="setup-loading" class="setup-loading">
+                <div class="spinner-large"></div>
+                <p>Verificando estado del sistema...</p>
+            </div>
+
+            <div id="setup-header" class="login-header hidden">
                 <div class="logo">🛡️</div>
                 <h1>OpenPath</h1>
                 <p>Configuración inicial del servidor</p>
             </div>
 
             <!-- Setup Form (shown when needs setup) -->
-            <div id="setup-form-container" class="login-form">
+            <div id="setup-form-container" class="login-form hidden">
                 <p class="setup-info">
                     ¡Bienvenido! Crea la cuenta de administrador para comenzar.
                 </p>
                 <form id="setup-form">
                     <div class="form-group">
                         <label for="setup-email">Email</label>
-                        <input type="email" id="setup-email" required placeholder="admin@colegio.es">
+                        <input type="email" id="setup-email" required placeholder="admin@colegio.es" autocomplete="email">
+                        <small>Usar email institucional del colegio</small>
                     </div>
                     <div class="form-group">
                         <label for="setup-name">Nombre</label>
-                        <input type="text" id="setup-name" required placeholder="Administrador">
+                        <input type="text" id="setup-name" required placeholder="Administrador" autocomplete="name">
                     </div>
                     <div class="form-group">
                         <label for="setup-password">Contraseña</label>
                         <input type="password" id="setup-password" required minlength="8"
-                            placeholder="Mínimo 8 caracteres">
+                            placeholder="Mínimo 8 caracteres" autocomplete="new-password">
                     </div>
                     <div class="form-group">
                         <label for="setup-password-confirm">Confirmar contraseña</label>
                         <input type="password" id="setup-password-confirm" required minlength="8"
-                            placeholder="Repetir contraseña">
+                            placeholder="Repetir contraseña" autocomplete="new-password">
                     </div>
                     <button type="submit" id="setup-submit-btn" class="btn btn-primary btn-block">
                         Crear administrador
                     </button>
                 </form>
-                <div id="setup-error" class="error-message"></div>
+                <div id="setup-error" class="error-message hidden"></div>
             </div>
 
             <!-- Setup Complete (shown after creating admin) -->
@@ -70,6 +77,12 @@
                             title="Copiar token">📋</button>
                     </div>
                     <small>Guarda este token. Lo necesitarás para instalar OpenPath en las máquinas del aula.</small>
+                </div>
+                <div class="info-box">
+                    <p><strong>Próximos pasos:</strong></p>
+                    <p>1. Guarda el token de registro en un lugar seguro</p>
+                    <p>2. Inicia sesión con tu cuenta de administrador</p>
+                    <p>3. Usa el token al instalar OpenPath en los PCs cliente con <code>--registration-token</code></p>
                 </div>
                 <button type="button" id="goto-login-btn" class="btn btn-primary btn-block">
                     Ir al Login
@@ -126,11 +139,6 @@
                 </form>
 
                 <div id="login-error" class="error-message"></div>
-
-                <p id="setup-link-container" class="login-info hidden">
-                    ¿Primera instalación?
-                    <a href="setup.html" id="setup-link" rel="noopener">Configura el sistema aquí</a>.
-                </p>
 
                 <p class="login-info">
                     Usa GitHub si eres administrador para gestionar el repositorio.

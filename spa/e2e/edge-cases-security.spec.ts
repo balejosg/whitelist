@@ -383,7 +383,7 @@ test.describe('Section 3: Data Validation', () => {
     test.describe('Test 3.1: Invalid email in registration', () => {
 
         test.skip('rejects invalid email formats', async ({ page }) => {
-            await page.goto('/setup.html');
+            await page.goto('/');
 
             const invalidEmails = [
                 'notanemail',
@@ -394,20 +394,17 @@ test.describe('Section 3: Data Validation', () => {
             ];
 
             for (const email of invalidEmails) {
-                await page.fill('#admin-email, input[name="email"]', email);
-                await page.fill('#admin-password, input[name="password"]', 'ValidPassword123!');
-                await page.fill('#admin-name, input[name="name"]', 'Test User');
+                await page.fill('#setup-email', email);
+                await page.fill('#setup-password', 'ValidPassword123!');
+                await page.fill('#setup-name', 'Test User');
                 
-                // Try to submit
-                await page.click('#create-admin-btn, button[type="submit"]');
+                await page.click('#setup-submit-btn');
                 await page.waitForTimeout(300);
 
-                // Should show validation error or not allow submission
                 const error = page.locator('.error, .invalid-feedback, [aria-invalid="true"]');
                 const hasError = await error.isVisible().catch(() => false);
                 
-                // Either shows error OR the email input has validation
-                const emailInput = page.locator('#admin-email, input[name="email"]');
+                const emailInput = page.locator('#setup-email');
                 const isInvalid = await emailInput.evaluate((el: HTMLInputElement) => !el.validity.valid).catch(() => false);
                 
                 expect(hasError || isInvalid).toBeTruthy();
@@ -418,7 +415,7 @@ test.describe('Section 3: Data Validation', () => {
     test.describe('Test 3.2: Weak password', () => {
 
         test.skip('rejects weak passwords', async ({ page }) => {
-            await page.goto('/setup.html');
+            await page.goto('/');
 
             const weakPasswords = [
                 '123',
@@ -429,21 +426,19 @@ test.describe('Section 3: Data Validation', () => {
             ];
 
             for (const password of weakPasswords) {
-                await page.fill('#admin-email, input[name="email"]', 'test@valid.com');
-                await page.fill('#admin-password, input[name="password"]', password);
-                await page.fill('#admin-name, input[name="name"]', 'Test User');
+                await page.fill('#setup-email', 'test@valid.com');
+                await page.fill('#setup-password', password);
+                await page.fill('#setup-name', 'Test User');
                 
-                await page.click('#create-admin-btn, button[type="submit"]');
+                await page.click('#setup-submit-btn');
                 await page.waitForTimeout(300);
 
-                // Should show password requirements error
                 const pageContent = await page.content();
                 const hasPasswordError = pageContent.includes('password') || 
                                          pageContent.includes('contraseña') ||
                                          pageContent.includes('caracteres') ||
                                          pageContent.includes('characters');
                 
-                // Weak passwords should be rejected
                 expect(hasPasswordError || !pageContent.includes('success')).toBeTruthy();
             }
         });

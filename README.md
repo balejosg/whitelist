@@ -56,7 +56,7 @@ The server will start on port 3000 by default.
 
 #### 2. Create the First Admin
 
-Navigate to `http://your-server-ip:3000/setup.html` in your browser:
+Navigate to `http://your-server-ip:3000/` in your browser. On first run, the setup wizard will appear automatically:
 
 1. Enter your administrator email and password
 2. Copy the **Registration Token** shown after creation

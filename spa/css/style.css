@@ -2122,3 +2122,117 @@ a:hover {
         display: none;
     }
 }
+
+/* ============== Setup Screen ============== */
+
+/* Loading state for setup */
+.setup-loading {
+    text-align: center;
+    padding: var(--size-8);
+    color: var(--text-secondary);
+}
+
+.spinner-large {
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--bg-tertiary);
+    border-top-color: var(--accent-primary);
+    border-radius: 50%;
+    animation: spinner-spin 1s linear infinite;
+    margin: 0 auto var(--size-4);
+}
+
+/* Setup success styling */
+.setup-success {
+    text-align: center;
+    margin-bottom: var(--size-5);
+}
+
+.setup-success .success-icon {
+    font-size: var(--font-size-8);
+    display: block;
+    margin-bottom: var(--size-3);
+}
+
+.setup-success h3 {
+    font-size: var(--font-size-4);
+    margin-bottom: var(--size-2);
+    color: var(--accent-success);
+}
+
+/* Registration token box */
+.registration-token-box {
+    padding: var(--size-4);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--size-4);
+}
+
+.registration-token-box label {
+    display: block;
+    font-weight: var(--font-weight-6);
+    color: var(--text-primary);
+    margin-bottom: var(--size-2);
+}
+
+.registration-token-box .token-display {
+    display: flex;
+    align-items: center;
+    gap: var(--size-2);
+    padding: var(--size-2);
+    background: var(--bg-elevated);
+    border-radius: var(--border-radius-sm);
+    margin-bottom: var(--size-2);
+}
+
+.registration-token-box code {
+    flex: 1;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-1);
+    color: var(--accent-primary);
+    word-break: break-all;
+}
+
+.registration-token-box small {
+    display: block;
+    font-size: var(--font-size-0);
+    color: var(--text-muted);
+}
+
+/* Info box for next steps */
+.info-box {
+    padding: var(--size-4);
+    background: linear-gradient(135deg, hsl(var(--indigo-6-hsl) / 0.1) 0%, hsl(var(--violet-6-hsl) / 0.05) 100%);
+    border: 1px solid var(--accent-primary);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--size-4);
+}
+
+.info-box p {
+    margin: 0 0 var(--size-2) 0;
+    color: var(--text-primary);
+    font-size: var(--font-size-1);
+    line-height: 1.6;
+}
+
+.info-box p:last-child {
+    margin-bottom: 0;
+}
+
+.info-box code {
+    padding: var(--size-1) var(--size-2);
+    background: var(--bg-tertiary);
+    border-radius: var(--border-radius-sm);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-0);
+    color: var(--accent-primary);
+}
+
+/* Setup info text */
+.setup-info {
+    text-align: center;
+    color: var(--text-secondary);
+    margin-bottom: var(--size-4);
+    font-size: var(--font-size-1);
+}
