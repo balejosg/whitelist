@@ -60,11 +60,11 @@ jobs:
           build-api: 'true'
 
       # Bash tests setup
-      - name: Install BATS and kcov
+      - name: Install BATS
         if: inputs.test-type == 'bash'
         run: |
           sudo apt-get update
-          sudo apt-get install -y bats kcov
+          sudo apt-get install -y bats
 
       # Run database migrations for API/Web tests
       - name: Run database migrations
@@ -123,28 +123,13 @@ jobs:
         if: inputs.test-type == 'extension'
         run: npm run test:coverage --workspace=openpath-firefox-extension
 
-      # Bash Tests with coverage
-      - name: Run Bash tests with coverage
+      # Bash Tests (no coverage - kcov not available in Ubuntu apt repos)
+      - name: Run Bash tests
         if: inputs.test-type == 'bash'
         run: |
-          mkdir -p coverage/bash
           cd tests
-          # Run each bats file through kcov
-          for test_file in *.bats; do
-            echo "Running $test_file with coverage..."
-            kcov --exclude-pattern=/usr,/tmp,test_helper ../coverage/bash bats "$test_file" || true
-          done
+          bats *.bats
           echo "Bash tests completed"
-
-      - name: Upload Bash coverage to Codecov
-        if: inputs.test-type == 'bash' && inputs.run-coverage
-        uses: codecov/codecov-action@v5
-        with:
-          directory: coverage/bash
-          flags: bash
-          name: bash-coverage
-          fail_ci_if_error: false
-          token: ${{ secrets.CODECOV_TOKEN }}
 
       # Coverage upload
       - name: Upload coverage to Codecov
