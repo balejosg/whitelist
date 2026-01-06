@@ -4,6 +4,7 @@ on:
   push:
     branches: [main, master]
     paths:
+      - 'VERSION'
       - 'linux/install.sh'
       - 'linux/uninstall.sh'
       - 'linux/lib/**'
@@ -32,9 +33,9 @@ jobs:
       - name: Extract version and prepare variables
         id: vars
         run: |
-          echo "📦 Extracting version from install.sh..."
+          echo "📦 Extracting version from VERSION file..."
           
-          VERSION=$(grep -oP 'VERSION="\K[^"]+' linux/install.sh)
+          VERSION=$(cat VERSION 2>/dev/null || echo "4.1.0")
           SHORT_SHA=$(git rev-parse --short HEAD)
           TAG="scripts-v${VERSION}-${SHORT_SHA}"
           
