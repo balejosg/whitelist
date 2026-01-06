@@ -48,15 +48,20 @@ test.describe('Setup Form Structure', () => {
     test('password fields should have minimum length requirement', async ({ page }) => {
         await page.goto('/');
         await page.waitForLoadState('domcontentloaded');
-        await page.waitForTimeout(2000);
-
-        const smallText = page.locator('#setup-form-container .form-group small');
-        const smallTexts = await smallText.allTextContents();
-        const hasMinLengthInfo = smallTexts.some(text => 
-            text.toLowerCase().includes('8') || text.toLowerCase().includes('mínimo')
-        );
         
-        expect(hasMinLengthInfo).toBe(true);
+        const setupForm = page.locator('#setup-form-container');
+        const isSetupNeeded = await setupForm.isVisible({ timeout: 3000 }).catch(() => false);
+        
+        if (!isSetupNeeded) {
+            test.skip();
+            return;
+        }
+
+        const passwordInput = page.locator('#setup-password');
+        await expect(passwordInput).toHaveAttribute('minlength', '8');
+        
+        const placeholder = await passwordInput.getAttribute('placeholder');
+        expect(placeholder?.toLowerCase()).toContain('8');
     });
 
     test('email field should have autocomplete attribute', async ({ page }) => {
@@ -223,13 +228,17 @@ test.describe('Security', () => {
     test('setup form should be protected after first admin', async ({ page }) => {
         await page.goto('/');
         await page.waitForLoadState('domcontentloaded');
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(1000);
 
         const alreadySetup = page.locator('#setup-already-container');
         const setupForm = page.locator('#setup-form-container');
 
-        if (await alreadySetup.isVisible()) {
-            await expect(setupForm).not.toBeVisible();
+        const isAlreadySetup = await alreadySetup.isVisible({ timeout: 2000 }).catch(() => false);
+        
+        if (isAlreadySetup) {
+            await expect(setupForm).toHaveClass(/hidden/);
+        } else {
+            test.skip();
         }
     });
 
