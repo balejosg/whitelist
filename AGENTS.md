@@ -27,7 +27,6 @@ The dependency flows ONE direction only: `ClassroomPath → OpenPath`
 - `dashboard/`: Node/TS dashboard service (Express)
 - `spa/`: static TS SPA + Playwright E2E tests
 - `shared/`: shared Zod schemas/types for other packages
-- `auth-worker/`: Cloudflare Worker (GitHub OAuth flow)
 - `firefox-extension/`: browser extension
 
 Primary docs:
@@ -118,16 +117,6 @@ CI runs `@smoke` tests on every PR. Full suite runs on main/nightly/`e2e` label.
 - All: `bats tests/e2e/agent-integration.bats`
 - Runs in `e2e-comprehensive.yml` workflow
 
-#### Shared (`shared/`)
-- All: `npm test --workspace=@openpath/shared`
-- Single file:
-  - `cd shared && node --import tsx --test tests/schemas.test.ts`
-
-#### Auth Worker (`auth-worker/`)
-- All: `npm test --workspace=auth-worker`
-- Single file:
-  - `cd auth-worker && node --import tsx --test tests/utils.test.ts`
-
 #### Firefox Extension (`firefox-extension/`)
 - All: `npm test --workspace=openpath-firefox-extension`
 - Single file:
@@ -191,6 +180,18 @@ Rules:
 - Use approved verbs (`Get-`, `Set-`, `New-`, `Remove-`, etc.).
 - PascalCase for functions/parameters.
 - Keep scripts compliant with PSScriptAnalyzer (CI).
+
+## Stable Directory Contracts
+
+These directories are **stable API surfaces** consumed by downstream distributions:
+
+| Directory | Contract | Breaking Change Policy |
+|-----------|----------|------------------------|
+| `api/` | Dockerfile builds from this path | Coordinate with downstream before renaming |
+| `spa/` | Static files served by nginx | Coordinate with downstream before renaming |
+| `shared/` | Shared types/schemas | Coordinate with downstream before renaming |
+
+Renaming these directories requires updating downstream Dockerfiles and compose files.
 
 ## Repo-specific Rules Files
 - Cursor rules: none present.
