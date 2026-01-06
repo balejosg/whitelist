@@ -175,12 +175,12 @@ test_firefox_extension_structure() {
     
     local ext_dir="$PROJECT_ROOT/firefox-extension"
     
-    # Check manifest version
+    # Check manifest version (2 or 3 are valid)
     if [ -f "$ext_dir/manifest.json" ]; then
-        if grep -q '"manifest_version": 2' "$ext_dir/manifest.json"; then
-            test_pass "manifest.json has correct manifest_version"
+        if grep -qE '"manifest_version": [23]' "$ext_dir/manifest.json"; then
+            test_pass "manifest.json has valid manifest_version"
         else
-            test_fail "manifest.json missing or wrong manifest_version"
+            test_fail "manifest.json missing or invalid manifest_version"
         fi
         
         # Check extension ID
