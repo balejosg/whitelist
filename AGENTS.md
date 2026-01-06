@@ -3,6 +3,23 @@
 This repo is a multi-platform DNS whitelist enforcement system (Linux Bash, Windows PowerShell)
 plus a Node.js/TypeScript monorepo (npm workspaces) for API + web tooling.
 
+## ⛔ Dependency Rule (CRITICAL)
+
+**This repository MUST remain completely agnostic of ClassroomPath.**
+
+OpenPath is the standalone OSS core. It must:
+- Work independently without any wrapper/distribution
+- Never import, reference, or depend on ClassroomPath
+- Never contain ClassroomPath-specific code or configurations
+- Never mention "ClassroomPath" in source code
+
+If you're asked to add ClassroomPath-specific functionality:
+1. **STOP** — This violates the architecture
+2. Add it to ClassroomPath instead (it consumes OpenPath, not vice versa)
+3. If shared functionality is needed, add it here as a generic feature
+
+The dependency flows ONE direction only: `ClassroomPath → OpenPath`
+
 ## Quick Context (Architecture Cheatsheet)
 - `linux/`: Bash endpoint agent (dnsmasq/iptables, systemd)
 - `windows/`: PowerShell endpoint agent (Acrylic DNS Proxy + Windows Firewall)
