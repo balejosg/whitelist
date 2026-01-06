@@ -22,8 +22,17 @@ set -o pipefail
 # Part of the OpenPath DNS system v4.1.0
 ################################################################################
 
-# System version - exported for use by other scripts
-export VERSION="4.1.0"
+# System version - read from central VERSION file or fallback
+_VERSION_FILE="${INSTALL_DIR:-/usr/local/lib/openpath}/VERSION"
+_SCRIPT_VERSION_FILE="$(dirname "${BASH_SOURCE[0]}")/../../VERSION"
+if [ -f "$_VERSION_FILE" ]; then
+    VERSION=$(cat "$_VERSION_FILE")
+elif [ -f "$_SCRIPT_VERSION_FILE" ]; then
+    VERSION=$(cat "$_SCRIPT_VERSION_FILE")
+else
+    VERSION="4.1.0"
+fi
+export VERSION
 
 # Source configurable defaults (must be early, before other variables)
 # Try installed location first, then source directory

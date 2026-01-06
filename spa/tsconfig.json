@@ -9,9 +9,10 @@
       "dom.iterable",
       "scripthost"
     ],
-    "outDir": "./dist/js",
+    "outDir": "./dist",
     "declaration": false,
-    "sourceMap": true
+    "sourceMap": true,
+    "noEmit": true
   },
   "include": [
     "src/**/*",

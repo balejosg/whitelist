@@ -19,7 +19,8 @@ Add as a dependency in your `package.json`:
 
 Import schemas and types:
 ```typescript
-import { classroomSchema, type Classroom } from '@openpath/shared';
+import { Classroom, User, DomainRequest } from '@openpath/shared';
+import type { Classroom as ClassroomType } from '@openpath/shared';
 ```
 
 ## Quick Start

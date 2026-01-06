@@ -1,7 +1,7 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "Monitor de Bloqueos de Red",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "Detecta dominios bloqueados por whitelists DNS y firewalls. Facilita la identificación de recursos que impiden el correcto funcionamiento de páginas web.",
   "author": "OpenPath System",
   "homepage_url": "https://github.com/balejosg/openpath",
@@ -12,7 +12,7 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "monitor-bloqueos@openpath",
-      "strict_min_version": "78.0"
+      "strict_min_version": "109.0"
     }
   },
   "permissions": [
@@ -20,16 +20,16 @@
     "webNavigation",
     "tabs",
     "clipboardWrite",
-    "nativeMessaging",
+    "nativeMessaging"
+  ],
+  "host_permissions": [
     "<all_urls>"
   ],
   "background": {
-    "scripts": [
-      "dist/background.js"
-    ],
-    "persistent": true
+    "scripts": ["dist/background.js"],
+    "type": "module"
   },
-  "browser_action": {
+  "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
       "48": "icons/icon-48.png"

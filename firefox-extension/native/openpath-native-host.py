@@ -21,17 +21,44 @@ import json
 import struct
 import subprocess
 import os
+from pathlib import Path
+from datetime import datetime
 
-# Constantes
 WHITELIST_CMD = "/usr/local/bin/whitelist"
-MAX_DOMAINS = 50  # Límite de dominios por solicitud
+MAX_DOMAINS = 50
+MAX_LOG_SIZE_MB = 5
+
+def get_log_path():
+    xdg_data = os.environ.get('XDG_DATA_HOME')
+    if xdg_data:
+        log_dir = Path(xdg_data) / 'openpath'
+    else:
+        log_dir = Path.home() / '.local' / 'share' / 'openpath'
+    
+    try:
+        log_dir.mkdir(parents=True, exist_ok=True)
+        return log_dir / 'native-host.log'
+    except (PermissionError, OSError):
+        return Path('/tmp/openpath-native-host.log')
+
+LOG_FILE = get_log_path()
+
+def rotate_log_if_needed():
+    try:
+        if LOG_FILE.exists() and LOG_FILE.stat().st_size > MAX_LOG_SIZE_MB * 1024 * 1024:
+            backup = LOG_FILE.with_suffix('.log.old')
+            if backup.exists():
+                backup.unlink()
+            LOG_FILE.rename(backup)
+    except Exception:
+        pass
 
 def log_debug(message):
-    """Escribe logs de debug al archivo de log del sistema"""
     try:
-        with open("/var/log/openpath-native-host.log", "a") as f:
-            f.write(f"{message}\n")
-    except:
+        with open(LOG_FILE, "a") as f:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            f.write(f"[{timestamp}] {message}\n")
+    except Exception:
         pass
 
 def read_message():
@@ -261,7 +288,7 @@ def handle_message(message):
         }
 
 def main():
-    """Bucle principal de procesamiento de mensajes"""
+    rotate_log_if_needed()
     log_debug("Native host started")
     
     while True:

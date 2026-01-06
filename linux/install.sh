@@ -33,8 +33,8 @@
 
 set -eo pipefail
 
-VERSION="1.0.4"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VERSION=$(cat "$SCRIPT_DIR/../VERSION" 2>/dev/null || echo "4.1.0")
 
 # Directorios de instalación
 INSTALL_DIR="/usr/local/lib/openpath"

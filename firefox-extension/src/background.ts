@@ -9,7 +9,7 @@
  * Captura errores de red asociados a bloqueos DNS/Firewall y mantiene
  * un registro por pestaña de los dominios afectados.
  * 
- * @version 1.1.0
+ * @version 2.0.0
  */
 
 import { Browser, WebRequest, Runtime, WebNavigation } from 'webextension-polyfill';
@@ -107,12 +107,12 @@ function addBlockedDomain(tabId: number, hostname: string, error: string, origin
 function updateBadge(tabId: number): void {
     const count = blockedDomains[tabId] ? blockedDomains[tabId].size : 0;
 
-    void browser.browserAction.setBadgeText({
+    void browser.action.setBadgeText({
         text: count > 0 ? count.toString() : '',
         tabId: tabId
     });
 
-    void browser.browserAction.setBadgeBackgroundColor({
+    void browser.action.setBadgeBackgroundColor({
         color: '#FF0000',
         tabId: tabId
     });
@@ -390,4 +390,4 @@ browser.runtime.onMessage.addListener(
     }
 );
 
-logger.info('[Monitor de Bloqueos] Background script v1.1.0 cargado');
+logger.info('[Monitor de Bloqueos] Background script v2.0.0 (MV3) cargado');

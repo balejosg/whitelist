@@ -18,20 +18,30 @@
 
 ################################################################################
 # rollback.sh - Checkpoint and rollback functionality
-# Parte del sistema dnsmasq URL Whitelist v3.5
+# Part of the OpenPath DNS system v4.1.0
 #
 # Provides save/restore checkpoint functionality for automatic recovery
 ################################################################################
 
-# Checkpoint directory
-CHECKPOINT_DIR="${CONFIG_DIR:-/var/lib/url-whitelist}/checkpoints"
+# Ensure common.sh variables are available
+# This script requires: VAR_STATE_DIR, DNSMASQ_CONF, FIREFOX_POLICIES, WHITELIST_FILE
+if [ -z "${VAR_STATE_DIR:-}" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [ -f "$SCRIPT_DIR/common.sh" ]; then
+        # shellcheck source=common.sh
+        source "$SCRIPT_DIR/common.sh"
+    fi
+fi
+
+# Checkpoint directory - uses VAR_STATE_DIR from common.sh
+CHECKPOINT_DIR="${VAR_STATE_DIR:-/var/lib/openpath}/checkpoints"
 MAX_CHECKPOINTS=3
 
-# Files to checkpoint
+# Files to checkpoint - uses variables from common.sh for consistency
 CHECKPOINT_FILES=(
-    "/etc/dnsmasq.d/url-whitelist.conf"
-    "/etc/firefox/policies/policies.json"
-    "/var/lib/url-whitelist/whitelist.txt"
+    "${DNSMASQ_CONF:-/etc/dnsmasq.d/openpath.conf}"
+    "${FIREFOX_POLICIES:-/etc/firefox/policies/policies.json}"
+    "${WHITELIST_FILE:-/var/lib/openpath/whitelist.txt}"
 )
 
 # Initialize checkpoint directory
@@ -85,7 +95,7 @@ save_checkpoint() {
     "timestamp_id": "$timestamp",
     "label": "$label",
     "files_saved": $saved,
-    "version": "${VERSION:-3.5}"
+    "version": "${VERSION:-4.1.0}"
 }
 EOF
     

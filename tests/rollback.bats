@@ -47,3 +47,35 @@ teardown() {
     [ "$status" -eq 0 ]
     [[ "${lines[1]}" == *"2025-01-01T00:00:00Z"* ]]
 }
+
+@test "rollback: CHECKPOINT_DIR should use VAR_STATE_DIR" {
+    [[ "$CHECKPOINT_DIR" == "${VAR_STATE_DIR}/checkpoints" ]]
+}
+
+@test "rollback: CHECKPOINT_FILES should NOT contain legacy url-whitelist paths" {
+    for file in "${CHECKPOINT_FILES[@]}"; do
+        [[ "$file" != *"url-whitelist"* ]]
+    done
+}
+
+@test "rollback: CHECKPOINT_FILES should include openpath.conf path" {
+    local found=false
+    for file in "${CHECKPOINT_FILES[@]}"; do
+        if [[ "$file" == *"openpath.conf"* ]]; then
+            found=true
+            break
+        fi
+    done
+    [ "$found" = "true" ]
+}
+
+@test "rollback: CHECKPOINT_FILES should include /var/lib/openpath/ path" {
+    local found=false
+    for file in "${CHECKPOINT_FILES[@]}"; do
+        if [[ "$file" == *"/var/lib/openpath/"* ]] || [[ "$file" == "$VAR_STATE_DIR"* ]]; then
+            found=true
+            break
+        fi
+    done
+    [ "$found" = "true" ]
+}
