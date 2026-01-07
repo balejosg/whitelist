@@ -121,6 +121,11 @@ export async function deleteClassroom(classroomId: string): Promise<void> {
  * Initialize classroom management event listeners
  */
 export function initClassroomListeners(): void {
+    // New Classroom Button
+    getElement('new-classroom-btn')?.addEventListener('click', () => {
+        openNewClassroomModal();
+    });
+
     // New Classroom Form
     getElement('new-classroom-form')?.addEventListener('submit', (e) => {
         void (async () => {
