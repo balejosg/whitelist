@@ -1,21 +1,18 @@
 import { getErrorMessage, normalize } from '@openpath/shared';
-import { init, updateEditUI } from './modules/app-core.js';
+import { init } from './modules/app-core.js';
 import { pushManager } from './push.js';
 import { initUsersListeners } from './modules/users.js';
 import { initClassroomListeners, initMachineListeners } from './modules/classrooms.js';
 import { initModals, showScreen, openModal, closeModal, initTheme, toggleTheme } from './modules/ui.js';
 import { auth } from './auth.js';
-import { oauth } from './oauth.js';
+import { googleAuth } from './google-auth.js';
 import { setup } from './setup.js';
 import { showToast } from './utils.js';
-import { state, setGithub, setCanEdit } from './modules/state.js';
+import { state } from './modules/state.js';
 import { loadDashboard, renderRules, saveCurrentGroup, deleteGroup } from './modules/groups.js';
-import { config } from './config.js';
-import { GitHubAPI } from './github-api.js';
-import { whitelistParser } from './openpath-parser.js';
 import { logger } from './lib/logger.js';
 import { getElement, requireElement } from './lib/dom.js';
-import type { GroupData } from './types/index.js';
+import { trpc } from './trpc.js';
 
 // Initialize application
 document.addEventListener('DOMContentLoaded', () => void (async () => {
@@ -28,6 +25,11 @@ document.addEventListener('DOMContentLoaded', () => void (async () => {
     initClassroomListeners();
     initMachineListeners();
     initMainListeners();
+
+    // Initialize Google Auth if configured
+    if (googleAuth.isConfigured()) {
+        googleAuth.init();
+    }
 
     // Initialize Core
     await init();
@@ -73,7 +75,7 @@ function initMainListeners() {
 
         btn.disabled = true;
         btn.classList.add('is-loading');
-        const originalText = btn.textContent ?? 'Crear administrador';
+        const originalText = btn.textContent || 'Crear administrador';
         btn.innerHTML = '<span class="spinner"></span> Creando...';
 
         try {
@@ -133,11 +135,6 @@ function initMainListeners() {
         }
     })());
 
-    // GitHub login button
-    document.getElementById('github-login-btn')?.addEventListener('click', () => {
-        oauth.login();
-    });
-
     // Forgot Password link
     document.getElementById('forgot-password-link')?.addEventListener('click', (e) => {
         e.preventDefault();
@@ -190,58 +187,11 @@ function initMainListeners() {
     // Logout
     document.getElementById('logout-btn')?.addEventListener('click', () => {
         if (confirm('Log out?')) {
-            oauth.logout();
+            googleAuth.logout();
             void auth.logout();
             showScreen('login-screen');
         }
     });
-
-    // Repo config form
-    document.getElementById('repo-config-form')?.addEventListener('submit', (e) => void (async () => {
-        e.preventDefault();
-        const errorEl = document.getElementById('config-error');
-        if (errorEl) errorEl.textContent = '';
-
-        const ownerInput = document.getElementById('config-owner') as HTMLInputElement;
-        const repoInput = document.getElementById('config-repo') as HTMLInputElement;
-        const branchInput = document.getElementById('config-branch') as HTMLInputElement;
-        const gruposDirInput = document.getElementById('config-grupos-dir') as HTMLInputElement;
-
-        const owner = ownerInput.value.trim();
-        const repo = repoInput.value.trim();
-        const branch = branchInput.value.trim() || 'main';
-        const gruposDir = gruposDirInput.value.trim() || 'grupos';
-
-        // Test connection
-        try {
-            const token = oauth.getToken();
-            if (!token) throw new Error('No OAuth token');
-
-            const api = new GitHubAPI(token, owner, repo, branch);
-            await api.listFiles(gruposDir);
-
-            // Update state
-            setGithub(api);
-            config.save({ owner, repo, branch, gruposDir, whitelistPath: gruposDir }); // whitelistPath logic
-
-            const canWrite = await oauth.canWrite(owner, repo);
-            setCanEdit(canWrite);
-
-            const userEl = document.getElementById('current-user');
-            if (userEl && state.currentUser) userEl.textContent = state.currentUser.login ?? '';
-            updateEditUI();
-            showScreen('dashboard-screen');
-            void loadDashboard();
-        } catch (err: unknown) {
-            if (errorEl && err instanceof Error) {
-                if (err.message.includes('Not Found')) {
-                    errorEl.textContent = `Directory "${gruposDir}" not found in ${owner}/${repo}`;
-                } else {
-                    errorEl.textContent = err.message;
-                }
-            }
-        }
-    })());
 
     // Navigation for Admins
     document.getElementById('admin-users-btn')?.addEventListener('click', () => {
@@ -400,7 +350,7 @@ function initMainListeners() {
     // New Group Form
     document.getElementById('new-group-form')?.addEventListener('submit', (e) => void (async () => {
         e.preventDefault();
-        if (!state.canEdit || !state.github) return;
+        if (!state.canEdit) return;
 
         const input = document.getElementById('new-group-name') as HTMLInputElement;
         const name = input.value.toLowerCase().replace(/[^a-z0-9-_]/g, '-');
@@ -410,20 +360,8 @@ function initMainListeners() {
             return;
         }
 
-        const appConfig = config.get();
-        const gruposDir = appConfig.gruposDir ?? 'grupos';
-        const path = `${gruposDir}/${name}.txt`;
-
-        const initialData: GroupData = {
-            enabled: true,
-            whitelist: [],
-            blockedSubdomains: [],
-            blockedPaths: []
-        };
-        const content = whitelistParser.serialize(initialData);
-
         try {
-            await state.github.updateFile(path, content, `Create group ${name}`, ''); // '' for new file
+            await trpc.groups.create.mutate({ name, displayName: name });
             closeModal('modal-new-group');
             (document.getElementById('new-group-form') as HTMLFormElement).reset();
             showToast('Group created');

@@ -1,79 +1,73 @@
 import { state } from './state.js';
 import { showScreen } from './ui.js';
 import { showToast, escapeHtml } from '../utils.js';
-import { config as appConfig } from '../config.js';
 import { auth } from '../auth.js';
 import { initRequestsSection } from './requests.js';
-import { whitelistParser } from '../openpath-parser.js';
 import { logger } from '../lib/logger.js';
+import { trpc } from '../trpc.js';
+
+type RuleType = 'whitelist' | 'blocked_subdomain' | 'blocked_path';
+
+interface APIGroup {
+    id: string;
+    name: string;
+    displayName: string;
+    enabled: boolean;
+    whitelistCount: number;
+    blockedSubdomainCount: number;
+    blockedPathCount: number;
+}
+
+interface APIRule {
+    id: string;
+    groupId: string;
+    type: RuleType;
+    value: string;
+    comment: string | null;
+}
 
 export async function loadDashboard(): Promise<void> {
-    const currentConfig = appConfig.get();
-    const gruposDir = currentConfig.gruposDir ?? 'grupos';
-
     try {
-        const files = await state.github?.listFiles(gruposDir);
-        if (!files) return;
+        const groups = await trpc.groups.list.query() as APIGroup[];
 
-        state.allGroups = files
-            .filter(f => f.name.endsWith('.txt'))
-            .map(f => ({
-                name: f.name.replace('.txt', ''),
-                path: f.path,
-                sha: f.sha
-            }));
+        state.allGroups = groups.map(g => ({
+            id: g.id,
+            name: g.name,
+            path: g.name,
+            sha: g.id,
+            stats: {
+                whitelist: g.whitelistCount,
+                blockedSubdomains: g.blockedSubdomainCount,
+                blockedPaths: g.blockedPathCount
+            },
+            enabled: g.enabled
+        }));
 
-        let totalWhitelist = 0;
-        let totalBlocked = 0;
-
-        // Determine visible groups for teachers
         const isTeacher = auth.isTeacher();
         const isAdmin = auth.isAdmin() || state.canEdit;
         const assignedGroups = isTeacher && !isAdmin ? auth.getAssignedGroups() : null;
 
-        for (const group of state.allGroups) {
-            try {
-                // Fetch content to check status
-                const result = await state.github?.getFile(group.path);
-                if (result) {
-                    const data = whitelistParser.parse(result.content);
-                    // Enhance group object with stats
-                    group.stats = {
-                        whitelist: data.whitelist.length,
-                        blockedSubdomains: data.blockedSubdomains.length,
-                        blockedPaths: data.blockedPaths.length
-                    };
-                    group.enabled = data.enabled;
+        const visibleGroups = assignedGroups
+            ? state.allGroups.filter(g => assignedGroups.includes(g.name))
+            : state.allGroups;
 
-                    // Only count stats for visible groups
-                    if (!assignedGroups || assignedGroups.includes(group.name)) {
-                        totalWhitelist += group.stats.whitelist;
-                        totalBlocked += group.stats.blockedSubdomains + group.stats.blockedPaths;
-                    }
-                }
-            } catch (error) {
-                logger.warn(`Failed to load stats for group "${group.name}"`, { error: error instanceof Error ? error.message : String(error) });
-                group.stats = { whitelist: 0, blockedSubdomains: 0, blockedPaths: 0 };
-                group.enabled = true;
-            }
+        let totalWhitelist = 0;
+        let totalBlocked = 0;
+        for (const g of visibleGroups) {
+            totalWhitelist += g.stats?.whitelist ?? 0;
+            totalBlocked += (g.stats?.blockedSubdomains ?? 0) + (g.stats?.blockedPaths ?? 0);
         }
-
-        // Show filtered count for teachers
-        const visibleGroupCount = assignedGroups
-            ? state.allGroups.filter(g => assignedGroups.includes(g.name)).length
-            : state.allGroups.length;
 
         const statGroups = document.getElementById('stat-groups');
         const statWhitelist = document.getElementById('stat-whitelist');
         const statBlocked = document.getElementById('stat-blocked');
 
-        if (statGroups) statGroups.textContent = visibleGroupCount.toString();
+        if (statGroups) statGroups.textContent = visibleGroups.length.toString();
         if (statWhitelist) statWhitelist.textContent = totalWhitelist.toString();
         if (statBlocked) statBlocked.textContent = totalBlocked.toString();
 
         renderGroupsList();
 
-        // Initialize requests section (home server API)
         await initRequestsSection();
     } catch (err) {
         logger.error('Dashboard error', { error: err instanceof Error ? err.message : String(err) });
@@ -90,7 +84,6 @@ export function renderGroupsList(): void {
     const isTeacher = auth.isTeacher();
     const isAdmin = auth.isAdmin() || state.canEdit;
 
-    // Filter groups based on user role
     let visibleGroups = state.allGroups;
     if (isTeacher && !isAdmin) {
         const assignedGroups = auth.getAssignedGroups();
@@ -115,29 +108,31 @@ export function renderGroupsList(): void {
             </div>
             <div class="group-stats">${(g.stats?.whitelist ?? 0).toString()} dominios</div>
             <span class="group-status ${g.enabled ? 'active' : 'paused'}">
-                ${g.enabled ? '✅ Activo' : '⏸️ Pausado'}
+                ${g.enabled ? 'Activo' : 'Pausado'}
             </span>
-            <span class="btn btn-ghost">→</span>
+            <span class="btn btn-ghost">-></span>
         </div>
     `).join('');
 }
 
 export async function openGroup(name: string): Promise<void> {
-    const currentConfig = appConfig.get();
-    const gruposDir = currentConfig.gruposDir ?? 'grupos';
-    const path = `${gruposDir}/${name}.txt`;
-
     try {
-        const result = await state.github?.getFile(path);
-        if (!result) throw new Error('Could not load group file');
+        const group = await trpc.groups.getByName.query({ name }) as APIGroup;
+        const rules = await trpc.groups.listRules.query({ groupId: group.id }) as APIRule[];
 
-        const { content, sha } = result;
+        const whitelistRules = rules.filter(r => r.type === 'whitelist').map(r => r.value);
+        const blockedSubRules = rules.filter(r => r.type === 'blocked_subdomain').map(r => r.value);
+        const blockedPathRules = rules.filter(r => r.type === 'blocked_path').map(r => r.value);
 
-        const data = whitelistParser.parse(content);
         state.currentGroup = name;
-        state.currentGroupData = data;
-        state.currentGroupSha = sha;
-        state.currentRuleType = 'whitelist'; // Start with whitelist
+        state.currentGroupData = {
+            enabled: group.enabled,
+            whitelist: whitelistRules,
+            blockedSubdomains: blockedSubRules,
+            blockedPaths: blockedPathRules
+        };
+        state.currentGroupSha = group.id;
+        state.currentRuleType = 'whitelist';
 
         const titleEl = document.getElementById('editor-title');
         if (titleEl) titleEl.textContent = `Editando: ${name}`;
@@ -146,11 +141,10 @@ export async function openGroup(name: string): Promise<void> {
         if (nameDisplayEl) nameDisplayEl.textContent = name;
 
         const enabledSelect = document.getElementById('group-enabled') as HTMLSelectElement;
-
-        enabledSelect.value = data.enabled ? '1' : '0';
+        enabledSelect.value = group.enabled ? '1' : '0';
 
         const exportUrlEl = document.getElementById('export-url');
-        if (exportUrlEl) exportUrlEl.textContent = state.github?.getRawUrl(path) ?? '';
+        if (exportUrlEl) exportUrlEl.textContent = '';
 
         showScreen('editor-screen');
         updateRuleCounts();
@@ -172,15 +166,11 @@ export async function openGroup(name: string): Promise<void> {
 export function renderRules(): void {
     if (!state.currentGroupData) return;
 
-    // Use currentRuleType directly as key since we aligned types
     const typeKey = state.currentRuleType;
-
     const searchInput = document.getElementById('search-rules') as HTMLInputElement;
-
     const search = searchInput.value.toLowerCase();
 
     const rulesList = state.currentGroupData[typeKey];
-
     const displayed = search
         ? rulesList.filter((r: string) => r.toLowerCase().includes(search))
         : rulesList;
@@ -200,7 +190,7 @@ export function renderRules(): void {
     list.innerHTML = displayed.map((r: string) => `
         <div class="rule-item">
             <span class="rule-value">${escapeHtml(r)}</span>
-            ${state.canEdit ? `<button class="btn btn-ghost btn-icon rule-delete" onclick="window.deleteRule('${escapeHtml(r)}', event)">🗑️</button>` : ''}
+            ${state.canEdit ? `<button class="btn btn-ghost btn-icon rule-delete" onclick="window.deleteRule('${escapeHtml(r)}', event)">X</button>` : ''}
         </div>
     `).join('');
 }
@@ -208,7 +198,6 @@ export function renderRules(): void {
 export function updateRuleCounts(): void {
     if (!state.currentGroupData) return;
 
-    // UI IDs are camelCase
     const wEl = document.getElementById('count-whitelist');
     const bSubEl = document.getElementById('count-blockedSubdomains');
     const bPathEl = document.getElementById('count-blockedPaths');
@@ -218,37 +207,57 @@ export function updateRuleCounts(): void {
     if (bPathEl) bPathEl.textContent = state.currentGroupData.blockedPaths.length.toString();
 }
 
+function mapRuleType(type: 'whitelist' | 'blockedSubdomains' | 'blockedPaths'): RuleType {
+    if (type === 'blockedSubdomains') return 'blocked_subdomain';
+    if (type === 'blockedPaths') return 'blocked_path';
+    return 'whitelist';
+}
+
 export async function deleteRule(value: string, event: Event): Promise<void> {
     if (!state.canEdit) return;
     event.stopPropagation();
-    if (!state.currentGroupData) return;
+    if (!state.currentGroupData || !state.currentGroupSha) return;
 
-    const typeKey = state.currentRuleType;
-
-    // Remove rule
-    const list = state.currentGroupData[typeKey];
-    state.currentGroupData[typeKey] = list.filter(r => r !== value);
-
-    await saveCurrentGroup(`Eliminar ${value} de ${state.currentGroup ?? ''}`);
-}
-
-export async function saveCurrentGroup(message: string): Promise<void> {
-    const currentConfig = appConfig.get();
-    const gruposDir = currentConfig.gruposDir ?? 'grupos';
-    const path = `${gruposDir}/${state.currentGroup ?? ''}.txt`;
-    if (!state.currentGroupData) return;
-    const content = whitelistParser.serialize(state.currentGroupData);
+    const groupId = state.currentGroupSha;
+    const apiType = mapRuleType(state.currentRuleType);
 
     try {
-        if (!state.github) throw new Error('GitHub API not initialized');
+        const rules = await trpc.groups.listRules.query({ groupId, type: apiType }) as APIRule[];
+        const ruleToDelete = rules.find(r => r.value === value);
+        
+        if (ruleToDelete) {
+            await trpc.groups.deleteRule.mutate({ id: ruleToDelete.id });
+            
+            const typeKey = state.currentRuleType;
+            state.currentGroupData[typeKey] = state.currentGroupData[typeKey].filter(r => r !== value);
+            
+            showToast('Regla eliminada');
+            renderRules();
+            updateRuleCounts();
+        }
+    } catch (err) {
+        if (err instanceof Error) {
+            showToast('Error eliminando regla: ' + err.message, 'error');
+        }
+    }
+}
 
-        // Use updateFile (returns boolean in current types)
-        await state.github.updateFile(path, content, message, state.currentGroupSha ?? '');
+export async function saveCurrentGroup(_message: string): Promise<void> {
+    if (!state.currentGroupData || !state.currentGroupSha) return;
 
-        // Since we don't get new SHA from boolean return, we risk concurrency issues if we save again immediately.
-        // Ideally we should re-fetch module SHA.
-        const file = await state.github.getFile(path);
-        if (file) state.currentGroupSha = file.sha;
+    const groupId = state.currentGroupSha;
+    const enabledSelect = document.getElementById('group-enabled') as HTMLSelectElement;
+    const newEnabled = enabledSelect.value === '1';
+
+    try {
+        const group = state.allGroups.find(g => g.sha === groupId);
+        if (group) {
+            await trpc.groups.update.mutate({
+                id: groupId,
+                displayName: group.name,
+                enabled: newEnabled
+            });
+        }
 
         showToast('Cambios guardados');
         renderRules();
@@ -261,15 +270,11 @@ export async function saveCurrentGroup(message: string): Promise<void> {
 }
 
 export async function deleteGroup(): Promise<void> {
-    if (!state.canEdit) return;
+    if (!state.canEdit || !state.currentGroupSha) return;
     if (!confirm('Delete this group and all its rules?')) return;
 
-    const currentConfig = appConfig.get();
-    const gruposDir = currentConfig.gruposDir ?? 'grupos';
-    const path = `${gruposDir}/${state.currentGroup ?? ''}.txt`;
-
     try {
-        await state.github?.deleteFile(path, `Eliminar grupo ${state.currentGroup ?? ''}`, state.currentGroupSha ?? '');
+        await trpc.groups.delete.mutate({ id: state.currentGroupSha });
         showToast('Grupo eliminado');
         showScreen('dashboard-screen');
         void loadDashboard();
