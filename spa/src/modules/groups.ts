@@ -3,6 +3,7 @@ import { showScreen } from './ui.js';
 import { showToast, escapeHtml } from '../utils.js';
 import { auth } from '../auth.js';
 import { initRequestsSection } from './requests.js';
+import { loadClassrooms } from './classrooms.js';
 import { logger } from '../lib/logger.js';
 import { trpc } from '../trpc.js';
 
@@ -69,6 +70,10 @@ export async function loadDashboard(): Promise<void> {
         renderGroupsList();
 
         await initRequestsSection();
+        
+        if (auth.isAdmin() || state.canEdit) {
+            await loadClassrooms();
+        }
     } catch (err) {
         logger.error('Dashboard error', { error: err instanceof Error ? err.message : String(err) });
         if (err instanceof Error) {

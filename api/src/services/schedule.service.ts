@@ -56,13 +56,23 @@ interface StorageSchedule {
     updatedAt: Date | null;
 }
 
+function normalizeTime(time: string): string {
+    const parts = time.split(':');
+    const hours = parts[0];
+    const minutes = parts[1];
+    if (hours !== undefined && minutes !== undefined) {
+        return `${hours}:${minutes}`;
+    }
+    return time;
+}
+
 function mapToSchedule(s: StorageSchedule): Schedule {
     return {
         id: s.id,
         classroomId: s.classroomId,
         dayOfWeek: s.dayOfWeek,
-        startTime: s.startTime,
-        endTime: s.endTime,
+        startTime: normalizeTime(s.startTime),
+        endTime: normalizeTime(s.endTime),
         groupId: s.groupId,
         teacherId: s.teacherId,
         recurrence: s.recurrence ?? 'weekly',
