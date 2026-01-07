@@ -276,12 +276,26 @@ export async function loginWithGoogle(
                 await userStorage.linkGoogleId(user.id, payload.sub);
                 user = await userStorage.getUserById(user.id);
             } else {
+                // Check if this is the first user (no admins exist)
+                const isFirstUser = !(await roleStorage.hasAnyAdmins());
+
                 const newUser = await userStorage.createGoogleUser({
                     email: payload.email,
                     name: payload.name ?? payload.email,
                     googleId: payload.sub,
                 });
                 user = await userStorage.getUserById(newUser.id);
+
+                // Auto-assign admin role to first user
+                if (isFirstUser && user) {
+                    await roleStorage.assignRole({
+                        userId: user.id,
+                        role: 'admin',
+                        groupIds: [],
+                        createdBy: user.id,
+                    });
+                    logger.info('First user auto-assigned admin role via Google OAuth', { userId: user.id, email: user.email });
+                }
             }
         }
 
