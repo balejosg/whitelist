@@ -122,7 +122,7 @@ export const googleAuth = {
         window.google.accounts.id.initialize({
             client_id: clientId,
             callback: (response) => {
-                console.log('[GoogleAuth] Received credential response');
+                logger.info('Received Google credential response');
                 void this.handleCredentialResponse(response);
             },
             auto_select: false,
