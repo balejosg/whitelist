@@ -41,14 +41,15 @@ export const User = z.object({
     id: z.string(),
     email: z.string().email(),
     name: z.string(),
-    passwordHash: z.string().optional(), // Only in full User, omitted in SafeUser
+    passwordHash: z.string().optional(),
+    googleId: z.string().optional(),
     isActive: z.boolean(),
     emailVerified: z.boolean().optional(),
     createdAt: z.string(),
     updatedAt: z.string(),
 });
 
-export const SafeUser = User.omit({ passwordHash: true });
+export const SafeUser = User.omit({ passwordHash: true, googleId: true });
 
 export const RoleInfo = z.object({
     role: UserRole,

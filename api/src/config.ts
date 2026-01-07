@@ -65,6 +65,13 @@ export const config = {
     jwtRefreshExpiry: process.env.JWT_REFRESH_EXPIRY ?? '7d',
 
     // ==========================================================================
+    // Google OAuth Configuration
+    // ==========================================================================
+
+    /** Google OAuth Client ID for Sign In with Google */
+    googleClientId: process.env.GOOGLE_CLIENT_ID ?? '',
+
+    // ==========================================================================
     // Rate Limiting
     // ==========================================================================
 

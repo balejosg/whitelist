@@ -43,7 +43,8 @@ function toUserType(user: DBUser): User {
         id: user.id,
         email: user.email,
         name: user.name,
-        passwordHash: user.passwordHash,
+        passwordHash: user.passwordHash ?? undefined,
+        googleId: user.googleId ?? undefined,
         isActive: user.isActive,
         emailVerified: user.emailVerified,
         createdAt: user.createdAt?.toISOString() ?? new Date().toISOString(),
@@ -104,6 +105,63 @@ export async function emailExists(email: string): Promise<boolean> {
         .limit(1);
 
     return result.length > 0;
+}
+
+export async function getUserByGoogleId(googleId: string): Promise<User | null> {
+    const result = await db.select()
+        .from(users)
+        .where(eq(users.googleId, googleId))
+        .limit(1);
+
+    return result[0] ? toUserType(result[0]) : null;
+}
+
+export interface CreateGoogleUserData {
+    email: string;
+    name: string;
+    googleId: string;
+}
+
+export async function createGoogleUser(userData: CreateGoogleUserData): Promise<SafeUser> {
+    const id = `user_${uuidv4().slice(0, 8)}`;
+
+    const [result] = await db.insert(users)
+        .values({
+            id,
+            email: normalize.email(userData.email),
+            name: userData.name.trim(),
+            googleId: userData.googleId,
+            emailVerified: true,
+        })
+        .returning({
+            id: users.id,
+            email: users.email,
+            name: users.name,
+            createdAt: users.createdAt,
+            updatedAt: users.updatedAt,
+        });
+
+    if (!result) {
+        throw new Error('Failed to create Google user');
+    }
+
+    return {
+        id: result.id,
+        email: result.email,
+        name: result.name,
+        isActive: true,
+        emailVerified: true,
+        createdAt: result.createdAt?.toISOString() ?? new Date().toISOString(),
+        updatedAt: result.updatedAt?.toISOString() ?? new Date().toISOString()
+    };
+}
+
+export async function linkGoogleId(userId: string, googleId: string): Promise<boolean> {
+    const result = await db.update(users)
+        .set({ googleId, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+
+    return (result.rowCount ?? 0) > 0;
 }
 
 /**
@@ -251,7 +309,7 @@ export async function verifyPasswordByEmail(
         .limit(1);
 
     const user = result[0];
-    if (!user) {
+    if (!user?.passwordHash) {
         return null;
     }
 

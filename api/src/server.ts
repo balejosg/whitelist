@@ -98,16 +98,18 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://unpkg.com'],
+            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://unpkg.com', 'https://accounts.google.com'],
             fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-            scriptSrc: ["'self'"],
+            scriptSrc: ["'self'", 'https://accounts.google.com/gsi/client'],
+            frameSrc: ["'self'", 'https://accounts.google.com'],
             imgSrc: ["'self'", 'data:', 'https:'],
-            connectSrc: ["'self'"]
+            connectSrc: ["'self'", 'https://accounts.google.com']
         }
     },
     frameguard: { action: 'deny' },
     crossOriginEmbedderPolicy: false,
-    crossOriginResourcePolicy: { policy: 'cross-origin' }
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' }
 }));
 
 // =============================================================================
@@ -201,6 +203,14 @@ app.use(logger.requestMiddleware);
 // Basic health check for liveness probes
 app.get('/health', (_req, res) => {
     res.json({ status: 'ok', service: 'openpath-api' });
+});
+
+// Public configuration endpoint (no auth required)
+// Exposes non-sensitive configuration needed by the SPA
+app.get('/api/config', (_req, res) => {
+    res.json({
+        googleClientId: config.googleClientId,
+    });
 });
 
 // Public endpoint for dnsmasq clients to fetch whitelist files

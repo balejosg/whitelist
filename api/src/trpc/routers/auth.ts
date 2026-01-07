@@ -37,6 +37,20 @@ export const authRouter = router({
         }),
 
     /**
+     * Log in with Google ID token.
+     * Public endpoint.
+     */
+    googleLogin: publicProcedure
+        .input(z.object({ idToken: z.string() }))
+        .mutation(async ({ input }) => {
+            const result = await AuthService.loginWithGoogle(input.idToken);
+            if (!result.ok) {
+                throw new TRPCError({ code: result.error.code, message: result.error.message });
+            }
+            return result.data;
+        }),
+
+    /**
      * Refresh access token using refresh token.
      */
     refresh: publicProcedure

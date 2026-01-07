@@ -2,11 +2,13 @@
  * AuthService - Business logic for authentication
  */
 
+import { OAuth2Client } from 'google-auth-library';
 import * as userStorage from '../lib/user-storage.js';
 import * as roleStorage from '../lib/role-storage.js';
 import * as auth from '../lib/auth.js';
 import * as resetTokenStorage from '../lib/reset-token-storage.js';
 import { logger } from '../lib/logger.js';
+import { config } from '../config.js';
 import type {
     SafeUser,
     LoginResponse,
@@ -14,6 +16,8 @@ import type {
 } from '../types/index.js';
 import type { CreateUserData } from '../types/storage.js';
 import { getErrorMessage } from '@openpath/shared';
+
+const googleClient = new OAuth2Client();
 
 // =============================================================================
 // Types
@@ -246,9 +250,87 @@ export async function resetPassword(
 // Default Export
 // =============================================================================
 
+export async function loginWithGoogle(
+    idToken: string
+): Promise<AuthResult<LoginResponse>> {
+    try {
+        if (!config.googleClientId) {
+            return { ok: false, error: { code: 'UNAUTHORIZED', message: 'Google OAuth not configured' } };
+        }
+
+        const ticket = await googleClient.verifyIdToken({
+            idToken,
+            audience: config.googleClientId,
+        });
+        const payload = ticket.getPayload();
+
+        if (!payload?.email || !payload.sub) {
+            return { ok: false, error: { code: 'UNAUTHORIZED', message: 'Invalid Google token' } };
+        }
+
+        let user = await userStorage.getUserByGoogleId(payload.sub);
+
+        if (!user) {
+            user = await userStorage.getUserByEmail(payload.email);
+            if (user) {
+                await userStorage.linkGoogleId(user.id, payload.sub);
+                user = await userStorage.getUserById(user.id);
+            } else {
+                const newUser = await userStorage.createGoogleUser({
+                    email: payload.email,
+                    name: payload.name ?? payload.email,
+                    googleId: payload.sub,
+                });
+                user = await userStorage.getUserById(newUser.id);
+            }
+        }
+
+        if (!user) {
+            return { ok: false, error: { code: 'UNAUTHORIZED', message: 'Failed to create or find user' } };
+        }
+
+        if (!user.isActive) {
+            return { ok: false, error: { code: 'FORBIDDEN', message: 'Account inactive' } };
+        }
+
+        const roles = await roleStorage.getUserRoles(user.id);
+        const tokens = auth.generateTokens(user, roles.map(r => ({
+            role: r.role as 'admin' | 'teacher' | 'student',
+            groupIds: r.groupIds ?? []
+        })));
+
+        return {
+            ok: true,
+            data: {
+                ...tokens,
+                expiresIn: parseInt(tokens.expiresIn) || 86400,
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    name: user.name,
+                    roles: roles.map(r => ({
+                        id: r.id,
+                        userId: r.userId,
+                        role: r.role as UserRole,
+                        groupIds: r.groupIds ?? [],
+                        createdAt: r.createdAt?.toISOString() ?? new Date().toISOString(),
+                        updatedAt: r.updatedAt?.toISOString() ?? new Date().toISOString(),
+                        createdBy: r.createdBy,
+                        revokedAt: null
+                    }))
+                } as unknown as SafeUser
+            }
+        };
+    } catch (error) {
+        logger.error('auth.loginWithGoogle error', { error: getErrorMessage(error) });
+        return { ok: false, error: { code: 'UNAUTHORIZED', message: 'Google authentication failed' } };
+    }
+}
+
 export default {
     register,
     login,
+    loginWithGoogle,
     refresh,
     logout,
     getProfile,
