@@ -3,12 +3,16 @@ import type { AppRouter } from '@openpath/api';
 
 function getApiUrl(): string {
     if (typeof window === 'undefined') return '';
-    return localStorage.getItem('requests_api_url') ?? '';
+    return window.location.origin;
 }
+
+const ACCESS_TOKEN_KEY = 'openpath_access_token';
+const LEGACY_TOKEN_KEY = 'requests_api_token';
 
 function getAuthHeaders(): Record<string, string> {
     if (typeof window === 'undefined') return {};
-    const token = localStorage.getItem('access_token');
+    // Use the correct storage key matching auth.ts
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY) ?? localStorage.getItem(LEGACY_TOKEN_KEY);
     return token ? { Authorization: `Bearer ${token}` } : {};
 }
 

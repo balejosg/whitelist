@@ -17,13 +17,11 @@ interface SubscribeResponse {
  * Handles push subscription management for teachers
  */
 export const pushManager = {
-    /**
-     * Check if push notifications are supported
-     */
     isSupported(): boolean {
         return 'serviceWorker' in navigator &&
             'PushManager' in window &&
-            'Notification' in window;
+            'Notification' in window &&
+            window.isSecureContext;
     },
 
     /**
@@ -204,14 +202,17 @@ export const pushManager = {
      */
     async init(): Promise<void> {
         if (!this.isSupported()) {
-            logger.info('[Push] Push notifications not supported');
+            logger.info('[Push] Push notifications not supported (requires secure context)');
             return;
         }
 
-        // Register service worker
-        await this.registerServiceWorker();
+        try {
+            await this.registerServiceWorker();
+        } catch (error) {
+            logger.warn('Push init failed', { error: error instanceof Error ? error.message : String(error) });
+            return;
+        }
 
-        // Listen for messages from service worker
         navigator.serviceWorker.addEventListener('message', (event) => {
             const data = event.data as Record<string, unknown> | null;
             if (data && typeof data === 'object' && data.type === 'NAVIGATE') {
