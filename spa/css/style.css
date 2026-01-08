@@ -228,6 +228,14 @@ a:hover {
     letter-spacing: 0.05em;
 }
 
+.google-btn-container {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-bottom: 1rem;
+    min-height: 44px;
+}
+
 /* ============== Buttons ============== */
 .btn {
     display: inline-flex;
