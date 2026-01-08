@@ -168,6 +168,7 @@ export const googleAuth = {
             size: 'large',
             text: 'signin_with',
             shape: 'rectangular',
+            // Matches computed width of .btn-block container
             width: 386,
         });
 
