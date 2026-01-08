@@ -36,7 +36,7 @@ export default defineConfig({
     // Shared settings for all projects
     use: {
         // Base URL for navigation
-        baseURL: process.env['BASE_URL'] ?? 'http://localhost:3001',
+        baseURL: process.env['BASE_URL'] ?? 'http://localhost:3005',
 
         // Collect trace on first retry
         trace: 'on-first-retry',
@@ -63,8 +63,8 @@ export default defineConfig({
 
     // Run local server before tests
     webServer: {
-        command: 'cd ../api && PORT=3001 NODE_ENV=test npm start',
-        url: 'http://localhost:3001/health',
+        command: 'cd ../api && PORT=3005 NODE_ENV=test npm start',
+        url: 'http://localhost:3005/health',
         reuseExistingServer: true,
         timeout: 120 * 1000,
     },

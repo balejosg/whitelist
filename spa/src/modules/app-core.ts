@@ -3,6 +3,7 @@ import { showScreen } from './ui.js';
 import { loadDashboard } from './groups.js';
 import { loadUsers } from './users.js';
 import { auth } from '../auth.js';
+import { oauth } from '../oauth.js';
 import { schedulesModule } from './schedules.js';
 import { trpc } from '../trpc.js';
 import { logger } from '../lib/logger.js';
@@ -30,6 +31,13 @@ export async function init(): Promise<void> {
         const configLoaded = await googleAuth.loadConfig();
         if (configLoaded) {
             await googleAuth.renderButton('google-signin-btn');
+        }
+        
+        const githubBtn = document.getElementById('github-login-btn');
+        if (githubBtn) {
+            githubBtn.addEventListener('click', () => {
+                oauth.login();
+            });
         }
         return;
     }
