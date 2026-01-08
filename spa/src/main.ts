@@ -141,6 +141,23 @@ function initMainListeners() {
         openModal('modal-forgot-password');
     });
 
+    document.getElementById('toggle-password-btn')?.addEventListener('click', (e) => {
+        const btn = e.currentTarget as HTMLButtonElement;
+        const input = document.getElementById('login-password') as HTMLInputElement;
+
+        if (input.type === 'password') {
+            input.type = 'text';
+            btn.textContent = '🔒';
+            btn.setAttribute('aria-label', 'Ocultar contraseña');
+            btn.title = 'Ocultar contraseña';
+        } else {
+            input.type = 'password';
+            btn.textContent = '👁️';
+            btn.setAttribute('aria-label', 'Mostrar contraseña');
+            btn.title = 'Mostrar contraseña';
+        }
+    });
+
 
     // Notifications button
     document.getElementById('notifications-btn')?.addEventListener('click', () => void (async () => {

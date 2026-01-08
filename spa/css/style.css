@@ -8,6 +8,8 @@
     --bg-tertiary: var(--gray-10);
     --bg-elevated: var(--gray-9);
 
+    --bg-secondary-rgb: 30, 30, 30;
+
     --text-primary: var(--gray-0);
     --text-secondary: var(--gray-5);
     --text-muted: var(--gray-7);
@@ -31,6 +33,7 @@
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, var(--indigo-6) 0%, var(--violet-6) 100%);
     --gradient-card: linear-gradient(145deg, hsl(var(--indigo-6-hsl) / 0.1) 0%, hsl(var(--violet-6-hsl) / 0.05) 100%);
+    --gradient-mesh: radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
 }
 
 /* Light Theme Overrides */
@@ -39,6 +42,8 @@
     --bg-secondary: var(--gray-1);
     --bg-tertiary: var(--gray-2);
     --bg-elevated: var(--gray-3);
+
+    --bg-secondary-rgb: 255, 255, 255;
 
     --text-primary: var(--gray-9);
     --text-secondary: var(--gray-7);
@@ -54,6 +59,13 @@
     --accent-danger-hover: var(--red-8);
 
     --gradient-card: linear-gradient(145deg, hsl(var(--indigo-7-hsl) / 0.05) 0%, hsl(var(--violet-7-hsl) / 0.02) 100%);
+    --gradient-mesh: radial-gradient(at 0% 0%, hsla(280,100%,96%,1) 0, transparent 50%), radial-gradient(at 50% 0%, hsla(240,100%,96%,1) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(340,100%,96%,1) 0, transparent 50%);
+}
+
+@keyframes meshFlow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 /* ============== Reset ============== */
@@ -99,17 +111,24 @@ a:hover {
     justify-content: center;
     min-height: 100vh;
     padding: var(--size-8);
+    background-color: var(--bg-primary);
+    background-image: var(--gradient-mesh);
+    background-size: 200% 200%;
+    animation: meshFlow 15s ease infinite;
 }
 
 .login-header {
     text-align: center;
     margin-bottom: 2rem;
+    position: relative;
+    z-index: 1;
 }
 
 .logo {
     font-size: var(--font-size-8);
     margin-bottom: var(--size-4);
     animation: pulse 2s infinite;
+    filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.3));
 }
 
 @keyframes pulse {
@@ -131,6 +150,7 @@ a:hover {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
 }
 
 .login-header p {
@@ -146,6 +166,18 @@ a:hover {
     width: 100%;
     max-width: 450px;
     box-shadow: var(--shadow-lg);
+    
+    background: rgba(var(--bg-secondary-rgb), 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+}
+
+[data-theme="light"] .login-form {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
 }
 
 .form-group {
@@ -187,6 +219,33 @@ a:hover {
     font-size: 0.75rem;
     color: var(--text-muted);
     margin-top: 0.25rem;
+}
+
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 0.5rem;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.password-toggle:hover {
+    color: var(--accent-primary);
+    background: var(--bg-tertiary);
 }
 
 .input-display {

@@ -123,7 +123,13 @@
                     </div>
                     <div class="form-group">
                         <label for="login-password">Contraseña</label>
-                        <input type="password" id="login-password" required placeholder="••••••••">
+                        <div class="password-wrapper">
+                            <input type="password" id="login-password" required placeholder="••••••••">
+                            <button type="button" id="toggle-password-btn" class="password-toggle"
+                                aria-label="Mostrar contraseña" title="Mostrar contraseña">
+                                👁️
+                            </button>
+                        </div>
                         <div class="login-links">
                             <a href="#" id="forgot-password-link" class="forgot-password-link">¿Olvidaste tu
                                 contraseña?</a>
