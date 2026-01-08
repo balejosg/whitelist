@@ -168,7 +168,7 @@ export const googleAuth = {
             size: 'large',
             text: 'signin_with',
             shape: 'rectangular',
-            width: 300,
+            width: 386,
         });
 
         logger.info('Google Sign-In button rendered successfully');
