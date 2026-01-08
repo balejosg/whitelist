@@ -163,14 +163,19 @@ export const googleAuth = {
             logger.error('Google Identity Services unexpectedly unavailable');
             return false;
         }
-        gsi.accounts.id.renderButton(element, {
+        const containerWidth = element.parentElement?.offsetWidth ?? element.offsetWidth;
+        const buttonWidth = Math.min(containerWidth - 32, 386);
+        
+        const buttonOptions: GoogleButtonOptions = {
             theme: 'outline',
             size: 'large',
             text: 'signin_with',
             shape: 'rectangular',
-            // Matches computed width of .btn-block container
-            width: 386,
-        });
+        };
+        if (buttonWidth > 200) {
+            buttonOptions.width = buttonWidth;
+        }
+        gsi.accounts.id.renderButton(element, buttonOptions);
 
         logger.info('Google Sign-In button rendered successfully');
         return true;
