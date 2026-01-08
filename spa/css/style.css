@@ -303,22 +303,6 @@ a:hover {
     border-radius: 50%;
 }
 
-.btn-github {
-    background: var(--gray-9);
-    color: var(--gray-0);
-    font-size: var(--font-size-2);
-    padding: var(--size-4) var(--size-6);
-}
-
-.btn-github:hover {
-    background: var(--gray-8);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-}
-
-.btn-github svg {
-    margin-right: 0.5rem;
-}
 
 .login-info {
     text-align: center;

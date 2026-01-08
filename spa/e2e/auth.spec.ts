@@ -43,10 +43,6 @@ test.describe('Login Page', () => {
         await expect(passwordInput).toHaveAttribute('type', 'password');
     });
 
-    test('should show GitHub login option', async ({ page }) => {
-        // UAT: 01_admin_tic.md - optional OAuth
-        await expect(page.locator('#github-login-btn')).toBeVisible();
-    });
 
     test('should have professional and modern design', async ({ page }) => {
         // UAT: 01_admin_tic.md Test 1.1 - design check

@@ -130,14 +130,6 @@ export interface StoredUser {
     roles: RoleInfo[];
 }
 
-/**
- * OAuth callback result
- */
-export interface OAuthCallbackResult {
-    accessToken?: string | undefined;
-    tokenType?: string | undefined;
-    error?: string | undefined;
-}
 
 // =============================================================================
 // State Types
@@ -347,7 +339,6 @@ export interface PushNotificationPayload {
 declare global {
     interface Window {
         auth: AuthAPI;
-        oauth: OAuthAPI;
         config: ConfigAPI;
         setup: typeof import('../setup.js').setup;
         GitHubAPI: new (token: string, owner: string, repo: string, branch: string) => GitHubAPIInstance;
@@ -388,17 +379,6 @@ export interface AuthAPI {
     fetch(url: string, options?: RequestInit): Promise<Response>;
 }
 
-/**
- * OAuth API interface
- */
-export interface OAuthAPI {
-    isLoggedIn(): boolean;
-    getToken(): string | null;
-    handleCallback(): OAuthCallbackResult | null;
-    getUser(): Promise<User>;
-    canWrite(owner: string, repo: string): Promise<boolean>;
-    logout(): void;
-}
 
 /**
  * Requests API instance interface
