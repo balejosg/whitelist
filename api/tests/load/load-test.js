@@ -60,11 +60,34 @@ export default function (data) {
         return;
     }
 
-    // Scenario 2: List requests (30% of traffic)
     if (Math.random() < 0.5) {
-        testListRequests(data);
+        testConfigEndpoint(data);
         return;
     }
+
+    testHealthEndpoint(data);
+}
+
+function testConfigEndpoint(data) {
+    const start = Date.now();
+    const res = http.get(`${data.baseUrl}/api/config`);
+    requestsLatency.add(Date.now() - start);
+
+    const success = check(res, {
+        'config: status is 200': (r) => r.status === 200,
+        'config: has googleClientId': (r) => {
+            try {
+                const body = JSON.parse(r.body);
+                return body.googleClientId !== undefined;
+            } catch {
+                return false;
+            }
+        },
+    });
+
+    errorRate.add(!success);
+    sleep(0.2);
+}
 
     // Scenario 3: Create request (30% of traffic)
     testCreateRequest(data);
