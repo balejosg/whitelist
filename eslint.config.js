@@ -35,6 +35,7 @@ export default tseslint.config(
             '**/*.config.ts',
             '**/*.config.mjs',
             '**/__tests__/**',
+            'shared/tests/**',
             'spa/js/**'
         ],
     }
