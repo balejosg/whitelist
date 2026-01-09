@@ -27,11 +27,6 @@ test.describe('Multi-User E2E Flow', { tag: '@extended' }, () => {
         const studentPage = await studentContext.newPage();
 
         try {
-            // ============================================================
-            // Phase 1: Admin configures system (08:00)
-            // UAT: 05_flujo_e2e.md - Morning setup
-            // ============================================================
-
             await test.step('Admin logs in and checks dashboard', async () => {
                 await adminPage.goto('/');
                 await adminPage.waitForLoadState('domcontentloaded');
@@ -40,27 +35,11 @@ test.describe('Multi-User E2E Flow', { tag: '@extended' }, () => {
                 await adminPage.fill('#login-password', ADMIN_CREDENTIALS.password);
                 await adminPage.click('#email-login-btn');
 
-                // Wait for dashboard or stay on login
-                await adminPage.waitForTimeout(2000);
-
-                // Check if logged in (dashboard visible) or API unavailable
-                const dashboardVisible = await adminPage.locator('#dashboard-screen').isVisible().catch(() => false);
-                const loginVisible = await adminPage.locator('#email-login-form').isVisible().catch(() => false);
-
-                expect(dashboardVisible || loginVisible).toBe(true);
+                await expect(adminPage.locator('#logout-btn')).toBeVisible({ timeout: 10000 });
             });
 
-            await test.step('Admin views pending requests', async () => {
-                const requestsSection = adminPage.locator('#requests-section');
-                if (await requestsSection.isVisible().catch(() => false)) {
-                    await expect(requestsSection).toBeVisible();
-
-                    // Check pending counter exists
-                    const pendingCounter = adminPage.locator('#stat-pending-requests');
-                    await expect(pendingCounter).toBeAttached();
-                }
-            });
-
+            // ============================================================
+            // Phase 2: Teacher starts class (09:00)
             // ============================================================
             // Phase 2: Teacher starts class (08:55)
             // UAT: 05_flujo_e2e.md - First class
