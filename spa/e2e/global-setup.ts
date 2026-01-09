@@ -2,7 +2,7 @@ import { chromium, FullConfig } from '@playwright/test';
 import { ADMIN_CREDENTIALS, TEACHER_CREDENTIALS, STUDENT_CREDENTIALS } from './fixtures/auth';
 
 async function globalSetup(config: FullConfig) {
-    const { baseURL } = config.projects[0].use;
+    const baseURL = config.projects[0]?.use.baseURL;
     const browser = await chromium.launch();
     const page = await browser.newPage();
 
