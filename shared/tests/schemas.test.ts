@@ -573,7 +573,7 @@ describe('DTO Schemas', () => {
             const dto = {
                 email: 'test@example.com',
                 name: 'Test User',
-                password: 'securepassword123',
+                password: 'Securepassword123',
             };
             assert.doesNotThrow(() => CreateUserDTO.parse(dto));
         });
@@ -582,7 +582,7 @@ describe('DTO Schemas', () => {
             assert.throws(() => CreateUserDTO.parse({
                 email: 'test@example.com',
                 name: '',
-                password: 'securepassword123',
+                password: 'Securepassword123',
             }));
         });
 
@@ -590,7 +590,7 @@ describe('DTO Schemas', () => {
             assert.throws(() => CreateUserDTO.parse({
                 email: 'invalid',
                 name: 'Test User',
-                password: 'securepassword123',
+                password: 'Securepassword123',
             }));
         });
     });

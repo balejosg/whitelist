@@ -5,12 +5,14 @@
     "moduleResolution": "NodeNext",
     "declaration": true,
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "./"
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "tests/**/*"
   ],
   "exclude": [
-    "tests"
+    "node_modules",
+    "dist"
   ]
 }
