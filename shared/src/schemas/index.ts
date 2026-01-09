@@ -222,10 +222,17 @@ export const UpdateRequestStatusDTO = z.object({
     note: z.string().optional(),
 });
 
+export const StrongPasswordSchema = z.string()
+    .min(8, 'La contraseña debe tener al menos 8 caracteres')
+    .max(128, 'La contraseña no puede tener más de 128 caracteres')
+    .regex(/[a-z]/, 'La contraseña debe incluir al menos una letra minúscula')
+    .regex(/[A-Z]/, 'La contraseña debe incluir al menos una letra mayúscula')
+    .regex(/\d/, 'La contraseña debe incluir al menos un número');
+
 export const CreateUserDTO = z.object({
     email: z.string().email(),
     name: z.string().min(1),
-    password: z.string().min(8).max(128),
+    password: StrongPasswordSchema,
 });
 
 export const LoginDTO = z.object({
