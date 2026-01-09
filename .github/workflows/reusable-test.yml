@@ -100,7 +100,6 @@ jobs:
         if: inputs.test-type == 'web'
         run: npm run test:coverage --workspace=@openpath/dashboard
         env:
-          DATABASE_URL: postgresql://openpath:openpath_dev@localhost:5432/openpath
           NODE_ENV: test
 
       # SPA Tests
