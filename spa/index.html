@@ -119,12 +119,12 @@
                 <form id="email-login-form">
                     <div class="form-group">
                         <label for="login-email">Email</label>
-                        <input type="email" id="login-email" required placeholder="profesor@colegio.es">
+                        <input type="email" id="login-email" required placeholder="profesor@colegio.es" autocomplete="email">
                     </div>
                     <div class="form-group">
                         <label for="login-password">Contraseña</label>
                         <div class="password-wrapper">
-                            <input type="password" id="login-password" required placeholder="••••••••">
+                            <input type="password" id="login-password" required placeholder="••••••••" autocomplete="current-password">
                             <button type="button" id="toggle-password-btn" class="password-toggle"
                                 aria-label="Mostrar contraseña" title="Mostrar contraseña">
                                 👁️
@@ -275,7 +275,7 @@
                     </div>
                     <div class="form-group inline">
                         <label for="requests-api-token">Token admin:</label>
-                        <input type="password" id="requests-api-token" placeholder="Token de autenticación">
+                        <input type="password" id="requests-api-token" placeholder="Token de autenticación" autocomplete="off">
                     </div>
                     <button id="save-requests-config-btn" class="btn btn-primary btn-sm">Guardar</button>
                 </div>
@@ -531,7 +531,7 @@ wikipedia.org"></textarea>
                 <div class="form-group">
                     <label for="new-user-password">Contraseña</label>
                     <input type="password" id="new-user-password" required minlength="8"
-                        placeholder="Mín. 8 caracteres">
+                        placeholder="Mín. 8 caracteres" autocomplete="new-password">
                 </div>
                 <div class="form-group">
                     <label for="new-user-role">Rol inicial</label>
