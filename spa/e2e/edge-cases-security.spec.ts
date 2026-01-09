@@ -507,7 +507,7 @@ test.describe('Section 3: Data Validation', () => {
                 page.waitForSelector('#setup-name', { timeout: 10000 })
             ]).catch(() => { return; });
 
-            const textInputs = page.locator('input[type="text"], textarea');
+            const textInputs = page.locator('input[type="text"]:visible, textarea:visible');
             const count = await textInputs.count();
             
             if (count > 0) {
