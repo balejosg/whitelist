@@ -74,19 +74,14 @@ test.describe('Multi-User E2E Flow', { tag: '@extended' }, () => {
                 await teacherPage.fill('#login-password', TEACHER_CREDENTIALS.password);
                 await teacherPage.click('#email-login-btn');
 
-                await teacherPage.waitForTimeout(2000);
+                await expect(teacherPage.locator('#logout-btn')).toBeVisible({ timeout: 10000 });
             });
 
             await test.step('Teacher sees their dashboard', async () => {
-                // Check for teacher-specific elements
                 const teacherBanner = teacherPage.locator('#teacher-banner');
                 const requestsSection = teacherPage.locator('#requests-section');
 
-                // Either teacher banner or requests section should be visible
-                const bannerVisible = await teacherBanner.isVisible().catch(() => false);
-                const requestsVisible = await requestsSection.isVisible().catch(() => false);
-
-                expect(bannerVisible || requestsVisible).toBe(true);
+                await expect(teacherBanner.or(requestsSection)).toBeVisible();
             });
 
             // ============================================================
@@ -102,7 +97,7 @@ test.describe('Multi-User E2E Flow', { tag: '@extended' }, () => {
                 await studentPage.fill('#login-password', STUDENT_CREDENTIALS.password);
                 await studentPage.click('#email-login-btn');
 
-                await studentPage.waitForTimeout(2000);
+                await expect(studentPage.locator('#logout-btn')).toBeVisible({ timeout: 10000 });
             });
 
             await test.step('Student views limited dashboard', async () => {
