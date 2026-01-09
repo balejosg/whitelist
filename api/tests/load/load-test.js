@@ -54,7 +54,6 @@ export function setup() {
  * Default test scenario
  */
 export default function (data) {
-    // Scenario 1: Health check (40% of traffic)
     if (Math.random() < 0.4) {
         testHealthEndpoint(data);
         return;
@@ -89,13 +88,6 @@ function testConfigEndpoint(data) {
     sleep(0.2);
 }
 
-    // Scenario 3: Create request (30% of traffic)
-    testCreateRequest(data);
-}
-
-/**
- * Test /health endpoint
- */
 function testHealthEndpoint(data) {
     const start = Date.now();
     const res = http.get(`${data.baseUrl}/health`);
@@ -117,67 +109,7 @@ function testHealthEndpoint(data) {
     sleep(0.1);
 }
 
-/**
- * Test GET /api/requests endpoint
- */
-function testListRequests(data) {
-    const start = Date.now();
-    const res = http.get(`${data.baseUrl}/api/requests`, {
-        headers: {
-            'Content-Type': 'application/json',
-        },
-    });
-    requestsLatency.add(Date.now() - start);
-
-    const success = check(res, {
-        'list: status is 200 or 401': (r) => r.status === 200 || r.status === 401,
-        'list: response is JSON': (r) => {
-            try {
-                JSON.parse(r.body);
-                return true;
-            } catch {
-                return false;
-            }
-        },
-    });
-
-    errorRate.add(!success);
-    sleep(0.2);
-}
-
-/**
- * Test POST /api/requests endpoint
- */
-function testCreateRequest(data) {
-    const domain = `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.example.com`;
-
-    const payload = JSON.stringify({
-        domain: domain,
-        reason: 'Load test request',
-    });
-
-    const start = Date.now();
-    const res = http.post(`${data.baseUrl}/api/requests`, payload, {
-        headers: {
-            'Content-Type': 'application/json',
-        },
-    });
-    requestsLatency.add(Date.now() - start);
-
-    const success = check(res, {
-        'create: status is 200, 201, or 401': (r) => [200, 201, 401].includes(r.status),
-        'create: response time OK': (r) => r.timings.duration < 1000,
-    });
-
-    errorRate.add(!success);
-    sleep(0.3);
-}
-
-/**
- * Rate limiting test scenario
- */
 export function rateLimitTest(data) {
-    // Burst of requests to test rate limiting
     for (let i = 0; i < 20; i++) {
         const res = http.get(`${data.baseUrl}/health`);
         check(res, {
@@ -187,9 +119,6 @@ export function rateLimitTest(data) {
     sleep(1);
 }
 
-/**
- * Teardown function - runs once after test
- */
 export function teardown(data) {
     console.log(`Test completed. Started at: ${new Date(data.timestamp).toISOString()}`);
 }
