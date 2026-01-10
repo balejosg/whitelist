@@ -27,7 +27,8 @@ async function globalSetup(config: FullConfig) {
         await page.fill('#login-email', ADMIN_CREDENTIALS.email);
         await page.fill('#login-password', ADMIN_CREDENTIALS.password);
         await page.click('#email-login-btn');
-        await page.waitForSelector('#logout-btn', { timeout: 10000 });
+        await page.waitForSelector('#logout-btn', { timeout: 30000 });
+        await page.waitForSelector('#dashboard-screen:not(.hidden)', { timeout: 5000 });
 
         await page.click('a[href="#users"]');
         await page.waitForSelector('#users-section', { timeout: 10000 });

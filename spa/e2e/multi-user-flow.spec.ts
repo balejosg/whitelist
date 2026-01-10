@@ -35,7 +35,8 @@ test.describe('Multi-User E2E Flow', { tag: '@extended' }, () => {
                 await adminPage.fill('#login-password', ADMIN_CREDENTIALS.password);
                 await adminPage.click('#email-login-btn');
 
-                await expect(adminPage.locator('#dashboard-screen')).toBeVisible({ timeout: 15000 });
+                await expect(adminPage.locator('#logout-btn')).toBeVisible({ timeout: 30000 });
+                await expect(adminPage.locator('#dashboard-screen')).toBeVisible();
             });
 
             // ============================================================

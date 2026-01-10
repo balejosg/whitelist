@@ -9,6 +9,36 @@ import { logger } from '../lib/logger.js';
 import { setup } from '../setup.js';
 import { googleAuth } from '../google-auth.js';
 
+function showDashboardWithUser(user: ReturnType<typeof auth.getUser>): void {
+    if (!user) return;
+    
+    setCurrentUser(user);
+    setCanEdit(auth.isAdmin());
+    
+    const userName = user.name || user.email;
+    const userEl = document.getElementById('current-user');
+    if (userEl) userEl.textContent = userName;
+
+    updateEditUI();
+    showScreen('dashboard-screen');
+}
+
+async function refreshUserDataInBackground(): Promise<void> {
+    try {
+        await auth.getMe();
+        const user = auth.getUser();
+        if (user) {
+            setCurrentUser(user);
+            setCanEdit(auth.isAdmin());
+            updateEditUI();
+        }
+    } catch {
+        logger.debug('Background user refresh failed');
+    }
+    
+    await loadDashboard();
+}
+
 export async function init(): Promise<void> {
     try {
         const status = await setup.checkStatus();
@@ -36,14 +66,17 @@ export async function init(): Promise<void> {
         return;
     }
 
+    const cachedUser = auth.getUser();
+    
+    if (cachedUser) {
+        showDashboardWithUser(cachedUser);
+        void refreshUserDataInBackground();
+        return;
+    }
+
     try {
-        let user = auth.getUser();
-        try {
-            await auth.getMe();
-            user = auth.getUser();
-        } catch {
-            // Ignore errors when refreshing user info
-        }
+        await auth.getMe();
+        const user = auth.getUser();
         if (user) setCurrentUser(user);
     } catch (err) {
         logger.error('Failed to load user', { error: err instanceof Error ? err.message : String(err) });
