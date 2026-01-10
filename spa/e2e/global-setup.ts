@@ -92,7 +92,7 @@ async function globalSetup(config: FullConfig) {
         await page.waitForSelector('#logout-btn', { timeout: 10000, state: 'visible' });
         console.log('✅ Admin logged in successfully');
 
-        const token = await page.evaluate(() => localStorage.getItem('token'));
+        const token = await page.evaluate(() => localStorage.getItem('openpath_access_token'));
         if (!token) {
             throw new Error('No auth token found in localStorage after login');
         }
