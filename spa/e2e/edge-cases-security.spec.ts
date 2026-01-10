@@ -354,7 +354,7 @@ test.describe('Section 2: Common Attacks', () => {
             await page.click('#email-login-btn');
             await page.waitForTimeout(500);
 
-            const errorNonExistent = await page.locator('.error, .alert-error, #login-error').textContent();
+            const errorNonExistent = await page.locator('#login-error').textContent();
 
             // Try login with existing user but wrong password
             await page.fill('#login-email', ADMIN_EMAIL);
@@ -362,7 +362,7 @@ test.describe('Section 2: Common Attacks', () => {
             await page.click('#email-login-btn');
             await page.waitForTimeout(500);
 
-            const errorWrongPass = await page.locator('.error, .alert-error, #login-error').textContent();
+            const errorWrongPass = await page.locator('#login-error').textContent();
 
             // Error messages should be generic (same or similar)
             // Should NOT say "user not found" vs "wrong password"
