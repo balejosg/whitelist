@@ -13,9 +13,18 @@ async function globalSetup(config: FullConfig) {
     });
     
     page.on('response', response => {
-        if (response.status() === 404) {
-            console.log(`[BROWSER 404] ${response.url()}`);
+        const status = response.status();
+        const url = response.url();
+        if (status === 404) {
+            console.log(`[BROWSER 404] ${url}`);
         }
+        if (status >= 400) {
+            console.log(`[BROWSER ${String(status)}] ${url}`);
+        }
+    });
+
+    page.on('pageerror', error => {
+        console.log(`[BROWSER PAGE ERROR] ${error.message}`);
     });
 
     try {
@@ -40,8 +49,11 @@ async function globalSetup(config: FullConfig) {
             await page.fill('#setup-email', ADMIN_CREDENTIALS.email);
             await page.fill('#setup-name', ADMIN_CREDENTIALS.name);
             await page.fill('#setup-password', ADMIN_CREDENTIALS.password);
+            await page.fill('#setup-password-confirm', ADMIN_CREDENTIALS.password);
+            console.log('📝 Filled setup form, clicking submit...');
             await page.click('#setup-submit-btn');
             
+            console.log('⏳ Waiting for setup complete container to appear...');
             await page.waitForSelector('#setup-complete-container', { timeout: 10000 });
             console.log('✅ Setup complete');
         }
