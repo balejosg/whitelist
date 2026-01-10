@@ -2,12 +2,21 @@ import { test, expect } from '@playwright/test';
 
 /**
  * Visual Regression Tests
- * 
+ *
  * Captures and compares screenshots of key UI components to detect
  * unintended styling changes.
+ *
+ * NOTE: These tests require screenshot baselines to be generated first.
+ * Run with --update-snapshots to generate baselines:
+ *   npx playwright test visual.spec.ts --update-snapshots
+ *
+ * Skip in CI unless baselines are committed.
  */
 
-test.describe.skip('Visual Regression', () => {
+const SKIP_VISUAL_TESTS = process.env.SKIP_VISUAL_TESTS === 'true' || !process.env.CI;
+
+test.describe('Visual Regression', () => {
+    test.skip(() => SKIP_VISUAL_TESTS, 'Visual tests skipped (set SKIP_VISUAL_TESTS=false to run)');
 
     test.beforeEach(async ({ page }) => {
         await page.goto('/');

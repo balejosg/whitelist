@@ -2,22 +2,30 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Setup Page - Already Configured', () => {
 
-    test.skip('should show "already configured" when admin exists', async ({ page }) => {
+    test('should show login screen when system is configured', async ({ page }) => {
         await page.goto('/');
         await page.waitForLoadState('domcontentloaded');
         await page.waitForTimeout(2000);
 
-        const alreadySetup = page.locator('#setup-already-container');
-        const setupForm = page.locator('#setup-form-container');
+        // When system is already configured, login screen should be visible
+        // (not setup screen)
+        const loginScreen = page.locator('#login-screen');
+        const setupScreen = page.locator('#setup-screen');
 
-        const alreadySetupVisible = await alreadySetup.isVisible();
-        const setupFormVisible = await setupForm.isVisible();
+        const loginVisible = await loginScreen.isVisible().catch(() => false);
+        const setupVisible = await setupScreen.isVisible().catch(() => false);
 
-        expect(alreadySetupVisible || setupFormVisible).toBe(true);
+        // One of them should be visible
+        expect(loginVisible || setupVisible).toBe(true);
 
-        if (alreadySetupVisible) {
-            await expect(page.locator('#setup-goto-login')).toBeVisible();
-            await expect(page.locator('#setup-already-container')).toContainText('ya está configurado');
+        // If setup screen is visible and shows "already configured"
+        if (setupVisible) {
+            const alreadySetup = page.locator('#setup-already-container');
+            const isAlreadyConfigured = await alreadySetup.isVisible().catch(() => false);
+
+            if (isAlreadyConfigured) {
+                await expect(page.locator('#setup-goto-login')).toBeVisible();
+            }
         }
     });
 
