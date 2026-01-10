@@ -6,9 +6,21 @@ async function globalSetup(config: FullConfig) {
     const browser = await chromium.launch();
     const page = await browser.newPage();
     
+    // Capture ALL console output for debugging
     page.on('console', msg => {
-        if (msg.type() === 'error' || msg.text().startsWith('[')) {
-            console.log(`[BROWSER] ${msg.text()}`);
+        console.log(`[BROWSER ${msg.type()}] ${msg.text()}`);
+    });
+    
+    page.on('response', response => {
+        if (response.status() === 404) {
+            console.log(`[BROWSER 404] ${response.url()}`);
+        }
+    });
+    
+    // Capture 404s with URLs
+    page.on('response', response => {
+        if (response.status() === 404) {
+            console.log(`[BROWSER 404] ${response.url()}`);
         }
     });
 
