@@ -343,14 +343,15 @@ test.describe('Section 2: Common Attacks', () => {
         });
 
         test('API rejects requests with invalid token', async ({ request }) => {
-            const response = await request.post('/trpc/requests.list?batch=1', {
+            // Use a mutation endpoint (POST) to test invalid token rejection
+            const response = await request.post('/trpc/requests.reject?batch=1', {
                 headers: {
                     'Authorization': 'Bearer invalid.fake.token',
                     'Content-Type': 'application/json'
                 },
                 data: {
                     '0': {
-                        json: {}
+                        json: { id: 'fake-id' }
                     }
                 }
             });
