@@ -33,7 +33,8 @@ async function globalSetup(config: FullConfig) {
         }
         
         await page.goto(baseURL);
-        
+        await page.waitForLoadState('load');
+
         await page.evaluate((apiUrl) => {
             localStorage.setItem('requests_api_url', apiUrl);
         }, apiURL);
@@ -41,7 +42,7 @@ async function globalSetup(config: FullConfig) {
         console.log(`📝 Set API URL in localStorage: ${apiURL}`);
         console.log('🔄 Reloading page to apply API URL...');
         await page.reload();
-        await page.waitForLoadState('domcontentloaded');
+        await page.waitForLoadState('load');
 
         const setupHeader = page.locator('#setup-header');
         if (await setupHeader.isVisible({ timeout: 5000 }).catch(() => false)) {
@@ -60,8 +61,8 @@ async function globalSetup(config: FullConfig) {
 
         console.log('🔐 Logging in as admin...');
         await page.goto(baseURL);
-        await page.waitForLoadState('domcontentloaded');
-        
+        await page.waitForLoadState('load');
+
         console.log('⏳ Waiting for login screen to become visible...');
         await page.waitForSelector('#login-screen:not(.hidden)', { 
             timeout: 10000,
