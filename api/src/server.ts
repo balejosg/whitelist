@@ -246,6 +246,89 @@ app.get('/export/:name.txt', (req: Request, res: Response): void => {
 });
 
 // =============================================================================
+// Setup REST Endpoints (for SPA compatibility)
+// =============================================================================
+
+import { SetupService } from './services/index.js';
+
+// Get setup status
+app.get('/api/setup/status', (_req: Request, res: Response): void => {
+    void (async (): Promise<void> => {
+        const status = await SetupService.getStatus();
+        res.json(status);
+    })();
+});
+
+// Create first admin
+app.post('/api/setup/first-admin', (req: Request, res: Response): void => {
+    void (async (): Promise<void> => {
+        const { email, name, password } = req.body as { email?: string; name?: string; password?: string };
+        
+        if (!email || !name || !password) {
+            res.status(400).json({ 
+                success: false, 
+                error: 'Email, name, and password are required' 
+            });
+            return;
+        }
+
+        const result = await SetupService.createFirstAdmin({ email, name, password });
+
+        if (!result.ok) {
+            const statusMap: Record<string, number> = {
+                'SETUP_ALREADY_COMPLETED': 403,
+                'EMAIL_EXISTS': 409,
+                'INVALID_INPUT': 400,
+            };
+            const statusCode = statusMap[result.error.code] ?? 400;
+            res.status(statusCode).json({ 
+                success: false, 
+                error: result.error.message 
+            });
+            return;
+        }
+
+        res.json(result.data);
+    })();
+});
+
+// Get registration token (admin only)
+app.get('/api/setup/registration-token', (req: Request, res: Response): void => {
+    void (async (): Promise<void> => {
+        // TODO: Add JWT auth check here when migrating to full REST auth
+        const result = await SetupService.getRegistrationToken();
+        
+        if (!result.ok) {
+            res.status(404).json({ 
+                success: false, 
+                error: result.error.message 
+            });
+            return;
+        }
+
+        res.json(result.data);
+    })();
+});
+
+// Regenerate registration token (admin only)
+app.post('/api/setup/regenerate-token', (req: Request, res: Response): void => {
+    void (async (): Promise<void> => {
+        // TODO: Add JWT auth check here when migrating to full REST auth
+        const result = await SetupService.regenerateToken();
+        
+        if (!result.ok) {
+            res.status(404).json({ 
+                success: false, 
+                error: result.error.message 
+            });
+            return;
+        }
+
+        res.json(result.data);
+    })();
+});
+
+// =============================================================================
 // Token Delivery REST Endpoints
 // =============================================================================
 
