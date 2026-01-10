@@ -97,66 +97,65 @@ async function globalSetup(config: FullConfig) {
         await page.waitForSelector('#logout-btn', { timeout: 10000, state: 'visible' });
         console.log('✅ Admin logged in successfully');
 
-        console.log('👨‍🏫 Creating teacher user via tRPC...');
-        const teacherCreated = await page.evaluate(async (credentials: typeof TEACHER_CREDENTIALS) => {
-            try {
-                interface TrpcWindow extends Window {
-                    trpc: {
-                        users: {
-                            create: {
-                                mutate: (input: { email: string; name: string; password: string; role: string; groupIds: string[] }) => Promise<unknown>;
-                            };
-                        };
-                    };
-                }
-                const user = await (window as unknown as TrpcWindow).trpc.users.create.mutate({
-                    email: credentials.email,
-                    name: credentials.name,
-                    password: credentials.password,
-                    role: 'teacher',
-                    groupIds: []
-                });
-                return { ok: true, user };
-            } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                return { ok: false, error: errorMessage };
-            }
-        }, TEACHER_CREDENTIALS);
-        if (teacherCreated.ok) {
-            console.log('✅ Teacher created');
-        } else {
-            console.log(`⚠️  Teacher creation: ${teacherCreated.error ?? 'unknown error'}`);
+        const accessToken = await page.evaluate(() => localStorage.getItem('openpath_access_token'));
+        if (!accessToken) {
+            throw new Error('No access token found after admin login');
         }
 
-        console.log('🎓 Creating student user via tRPC...');
-        const studentCreated = await page.evaluate(async (credentials: typeof STUDENT_CREDENTIALS) => {
-            try {
-                interface TrpcWindow extends Window {
-                    trpc: {
-                        users: {
-                            create: {
-                                mutate: (input: { email: string; name: string; password: string; role: string; groupIds: string[] }) => Promise<unknown>;
-                            };
-                        };
-                    };
-                }
-                const user = await (window as unknown as TrpcWindow).trpc.users.create.mutate({
-                    email: credentials.email,
-                    name: credentials.name,
-                    password: credentials.password,
+        console.log('👨‍🏫 Creating teacher user via API...');
+        try {
+            const teacherResponse = await fetch(`${apiURL}/trpc/users.create`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
+                },
+                body: JSON.stringify({
+                    email: TEACHER_CREDENTIALS.email,
+                    name: TEACHER_CREDENTIALS.name,
+                    password: TEACHER_CREDENTIALS.password,
+                    role: 'teacher',
+                    groupIds: []
+                })
+            });
+            
+            if (teacherResponse.ok) {
+                console.log('✅ Teacher created');
+            } else {
+                const errorText = await teacherResponse.text();
+                console.log(`⚠️  Teacher creation failed (${String(teacherResponse.status)}): ${errorText}`);
+            }
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.log(`⚠️  Teacher creation error: ${errorMessage}`);
+        }
+
+        console.log('🎓 Creating student user via API...');
+        try {
+            const studentResponse = await fetch(`${apiURL}/trpc/users.create`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
+                },
+                body: JSON.stringify({
+                    email: STUDENT_CREDENTIALS.email,
+                    name: STUDENT_CREDENTIALS.name,
+                    password: STUDENT_CREDENTIALS.password,
                     role: 'student',
                     groupIds: []
-                });
-                return { ok: true, user };
-            } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                return { ok: false, error: errorMessage };
+                })
+            });
+            
+            if (studentResponse.ok) {
+                console.log('✅ Student created');
+            } else {
+                const errorText = await studentResponse.text();
+                console.log(`⚠️  Student creation failed (${String(studentResponse.status)}): ${errorText}`);
             }
-        }, STUDENT_CREDENTIALS);
-        if (studentCreated.ok) {
-            console.log('✅ Student created');
-        } else {
-            console.log(`⚠️  Student creation: ${studentCreated.error ?? 'unknown error'}`);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.log(`⚠️  Student creation error: ${errorMessage}`);
         }
         
         console.log('✅ Global setup complete');
