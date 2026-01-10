@@ -75,6 +75,27 @@ test.describe('Multi-User E2E Flow', { tag: '@extended' }, () => {
                     throw new Error(`Login failed: ${errorText ?? 'Unknown error'}`);
                 }
                 
+                if (!dashboardVisible) {
+                    // Capture diagnostic info before failing
+                    const url = teacherPage.url();
+                    const bodyClasses = await teacherPage.evaluate(() => document.body.className);
+                    const visibleScreens = await teacherPage.evaluate(() => {
+                        const screens = ['login-screen', 'dashboard-screen', 'setup-screen'];
+                        return screens.filter(id => {
+                            const el = document.getElementById(id);
+                            return el && !el.classList.contains('hidden');
+                        });
+                    });
+                    const hasToken = await teacherPage.evaluate(() => !!localStorage.getItem('openpath_access_token'));
+                    throw new Error(
+                        'Teacher dashboard not visible after login.\n' +
+                        `URL: ${url}\n` +
+                        `Body classes: ${bodyClasses}\n` +
+                        `Visible screens: ${visibleScreens.join(', ') || 'none'}\n` +
+                        `Has token: ${String(hasToken)}`
+                    );
+                }
+                
                 expect(dashboardVisible).toBeTruthy();
                 await expect(teacherPage.locator('#logout-btn')).toBeVisible({ timeout: 10000 });
             });
