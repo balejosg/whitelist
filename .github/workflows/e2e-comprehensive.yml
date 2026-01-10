@@ -119,6 +119,13 @@ jobs:
         with:
           name: build-artifacts
 
+      - name: Debug - Verify build artifacts
+        run: |
+          echo "=== Checking spa/dist/ contents ==="
+          ls -la spa/dist/ || echo "spa/dist/ not found!"
+          echo "=== Checking api/dist/ contents ==="
+          ls -la api/dist/ || echo "api/dist/ not found!"
+
       # Restore Playwright browser cache
       - name: Get Playwright version
         id: pw-version
