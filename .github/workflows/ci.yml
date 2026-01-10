@@ -207,6 +207,8 @@ jobs:
 
       - name: Build workspaces
         uses: ./.github/actions/build-workspaces
+        with:
+          build-spa: 'true'
 
       - name: Run DB migrations
         run: npm run drizzle:push --workspace=@openpath/api
