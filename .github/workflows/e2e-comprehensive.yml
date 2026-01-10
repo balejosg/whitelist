@@ -69,7 +69,6 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: spa
 
-      # Upload only dist artifacts (small, fast)
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -77,6 +76,7 @@ jobs:
           path: |
             api/dist/
             shared/dist/
+            spa/dist/
           retention-days: 1
 
   # SPA E2E tests with sharding (chromium only for speed)
