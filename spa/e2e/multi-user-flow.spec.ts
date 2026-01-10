@@ -129,10 +129,10 @@ test.describe('Multi-User E2E Flow', { tag: '@extended' }, () => {
             });
 
             await test.step('Teacher sees their dashboard', async () => {
-                const teacherBanner = teacherPage.locator('#teacher-banner');
-                const requestsSection = teacherPage.locator('#requests-section');
+                const teacherBanner = await teacherPage.locator('#teacher-banner').isVisible().catch(() => false);
+                const requestsSection = await teacherPage.locator('#requests-section').isVisible().catch(() => false);
 
-                await expect(teacherBanner.or(requestsSection)).toBeVisible();
+                expect(teacherBanner || requestsSection).toBeTruthy();
             });
 
             // ============================================================
