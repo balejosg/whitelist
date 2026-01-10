@@ -92,10 +92,11 @@ async function globalSetup(config: FullConfig) {
         await page.waitForSelector('#logout-btn', { timeout: 10000, state: 'visible' });
         console.log('✅ Admin logged in successfully');
 
-        const loginResult = await apiClient.login(ADMIN_CREDENTIALS.email, ADMIN_CREDENTIALS.password);
-        if (!loginResult.ok || !loginResult.data) {
-            throw new Error('Failed to login admin via API');
+        const token = await page.evaluate(() => localStorage.getItem('token'));
+        if (!token) {
+            throw new Error('No auth token found in localStorage after login');
         }
+        apiClient.setAuthToken(token);
 
         console.log('👨‍🏫 Creating teacher user via API...');
         const teacherResult = await apiClient.createUser({

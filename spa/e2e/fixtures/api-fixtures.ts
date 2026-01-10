@@ -44,6 +44,10 @@ export class ApiClient {
 
     constructor(private baseUrl: string = API_BASE_URL) { }
 
+    setAuthToken(token: string): void {
+        this.authToken = token;
+    }
+
     async login(email: string, password: string): Promise<ApiResponse<{ token: string; user: User }>> {
         try {
             const response = await fetch(`${this.baseUrl}/api/auth/login`, {
