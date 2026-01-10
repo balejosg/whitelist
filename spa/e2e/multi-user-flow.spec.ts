@@ -136,10 +136,10 @@ test.describe('Multi-User E2E Flow', { tag: '@extended' }, () => {
             });
 
         } finally {
-            // Cleanup contexts
-            await adminContext.close();
-            await teacherContext.close();
-            await studentContext.close();
+            // Cleanup contexts safely (they may already be closed on test failure)
+            try { await adminContext.close(); } catch { /* already closed */ }
+            try { await teacherContext.close(); } catch { /* already closed */ }
+            try { await studentContext.close(); } catch { /* already closed */ }
         }
     });
 
@@ -174,7 +174,7 @@ test.describe('Multi-User E2E Flow', { tag: '@extended' }, () => {
             console.log(`Approval flow completed in ${String(totalTime)}ms`);
 
         } finally {
-            await teacherContext.close();
+            try { await teacherContext.close(); } catch { /* already closed */ }
         }
     });
 
@@ -200,7 +200,7 @@ test.describe('Multi-User E2E Flow', { tag: '@extended' }, () => {
             }
 
         } finally {
-            await mobileContext.close();
+            try { await mobileContext.close(); } catch { /* already closed */ }
         }
     });
 });
