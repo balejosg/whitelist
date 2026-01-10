@@ -158,6 +158,33 @@ async function globalSetup(config: FullConfig) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             console.log(`⚠️  Student creation error: ${errorMessage}`);
         }
+
+        console.log('📋 Creating default whitelist group via API...');
+        try {
+            const groupResponse = await fetch(`${apiURL}/trpc/whitelistGroups.create`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
+                },
+                body: JSON.stringify({
+                    name: 'Default Group',
+                    whitelist: ['google.com', 'github.com'],
+                    blockedSubdomains: [],
+                    blockedPaths: []
+                })
+            });
+            
+            if (groupResponse.ok) {
+                console.log('✅ Default whitelist group created');
+            } else {
+                const errorText = await groupResponse.text();
+                console.log(`⚠️  Whitelist group creation failed (${String(groupResponse.status)}): ${errorText}`);
+            }
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.log(`⚠️  Whitelist group creation error: ${errorMessage}`);
+        }
         
         console.log('✅ Global setup complete');
 
