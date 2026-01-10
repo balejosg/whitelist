@@ -75,6 +75,7 @@ export async function init(): Promise<void> {
     }
 
     showScreen('dashboard-screen');
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     
     try {
         await auth.getMe();
