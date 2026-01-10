@@ -170,3 +170,50 @@ test.describe('Responsive - Classrooms Section', () => {
     });
 
 });
+
+test.describe('Classroom Creation E2E Flow', () => {
+    const ADMIN_EMAIL = 'maria.admin@test.com';
+    const ADMIN_PASSWORD = 'AdminPassword123!';
+    const CLASSROOM_NAME = `E2E Test Aula ${String(Date.now())}`;
+
+    test('should create classroom and verify it appears in listings', { tag: '@smoke' }, async ({ page }) => {
+        await page.goto('/');
+        await page.waitForLoadState('domcontentloaded');
+
+        await page.locator('#login-email').waitFor({ state: 'visible', timeout: 10000 });
+        await page.fill('#login-email', ADMIN_EMAIL);
+        await page.fill('#login-password', ADMIN_PASSWORD);
+        await page.click('#email-login-btn');
+
+        await page.waitForSelector('#dashboard-screen', { state: 'visible', timeout: 10000 });
+
+        const newClassroomBtn = page.locator('#new-classroom-btn');
+        await newClassroomBtn.waitFor({ state: 'visible', timeout: 5000 });
+        await newClassroomBtn.click();
+
+        const modal = page.locator('#modal-new-classroom');
+        await modal.waitFor({ state: 'visible', timeout: 5000 });
+
+        await page.fill('#new-classroom-name', CLASSROOM_NAME);
+
+        const groupSelect = page.locator('#new-classroom-default-group');
+        const firstOption = groupSelect.locator('option:not([value=""])').first();
+        const firstOptionValue = await firstOption.getAttribute('value');
+        if (firstOptionValue) {
+            await groupSelect.selectOption(firstOptionValue);
+        }
+
+        const submitBtn = page.locator('#new-classroom-form button[type="submit"]');
+        await submitBtn.click();
+
+        await modal.waitFor({ state: 'hidden', timeout: 10000 });
+
+        await page.waitForTimeout(1000);
+
+        const classroomsList = page.locator('#classrooms-list');
+        await expect(classroomsList).toContainText(CLASSROOM_NAME, { timeout: 10000 });
+
+        const scheduleClassroomSelect = page.locator('#schedule-classroom-select');
+        await expect(scheduleClassroomSelect).toContainText(CLASSROOM_NAME, { timeout: 5000 });
+    });
+});

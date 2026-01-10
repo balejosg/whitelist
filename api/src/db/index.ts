@@ -76,46 +76,53 @@ export async function testConnection(): Promise<boolean> {
 }
 
 /**
- * Initialize database schema - creates tables if they don't exist.
- * Safe to call on every startup.
+ * Initialize database schema using Drizzle migrations.
+ * Runs all pending migrations from the drizzle/ folder.
+ * Safe to call on every startup - only applies new migrations.
  */
 export async function initializeSchema(): Promise<boolean> {
     try {
-        const fs = await import('node:fs');
         const path = await import('node:path');
         const { fileURLToPath } = await import('node:url');
+        const { migrate } = await import('drizzle-orm/node-postgres/migrator');
 
         const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-        // Try to find schema.sql in multiple locations
+        // Find drizzle migrations folder in dist or src
         const possiblePaths = [
-            path.join(__dirname, 'schema.sql'),           // In dist/src/db/
-            path.join(__dirname, '..', 'db', 'schema.sql'), // In dist/src/../db/
-            path.join(__dirname, '..', '..', 'src', 'db', 'schema.sql'), // In dist/../src/db/
+            path.join(__dirname, '..', '..', 'drizzle'),           // From dist/src/db/ -> drizzle/
+            path.join(__dirname, '..', '..', '..', 'drizzle'),     // From dist/src/db/ -> ../drizzle/
+            path.join(__dirname, '..', '..', '..', 'api', 'drizzle'), // From dist/src/db/ -> api/drizzle/
         ];
 
-        let schemaPath: string | null = null;
+        const fs = await import('node:fs');
+        let migrationsFolder: string | null = null;
         for (const p of possiblePaths) {
             if (fs.existsSync(p)) {
-                schemaPath = p;
+                migrationsFolder = p;
                 break;
             }
         }
 
-        if (!schemaPath) {
-            logger.warn('schema.sql not found, skipping schema initialization', {
-                searchedPaths: possiblePaths
+        if (!migrationsFolder) {
+            logger.error('Drizzle migrations folder not found', {
+                searchedPaths: possiblePaths,
+                cwd: process.cwd(),
+                dirname: __dirname
             });
             return false;
         }
 
-        const schema = fs.readFileSync(schemaPath, 'utf-8');
-        await pool.query(schema);
-        logger.info('Database schema initialized successfully');
+        logger.info('Running database migrations', { migrationsFolder });
+
+        await migrate(db, { migrationsFolder });
+
+        logger.info('Database migrations completed successfully');
         return true;
     } catch (error) {
-        logger.error('Failed to initialize database schema', {
-            error: error instanceof Error ? error.message : String(error)
+        logger.error('Failed to run database migrations', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
         });
         return false;
     }

@@ -31,6 +31,9 @@ jobs:
       - name: Verify Strict Compliance (Lint & Type Check)
         run: npm run verify
 
+      - name: Verify Database Schema Consistency
+        run: npm run verify:schema --workspace=@openpath/api
+
       - name: Shellcheck
         run: |
           find linux -name '*.sh' -type f | xargs shellcheck --severity=warning

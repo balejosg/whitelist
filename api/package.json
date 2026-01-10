@@ -18,7 +18,6 @@
     "clean": "rm -rf dist coverage *.tsbuildinfo",
     "prebuild": "npm run clean",
     "build": "tsc -p tsconfig.build.json",
-    "postbuild": "cp src/db/schema.sql dist/src/db/schema.sql",
     "typecheck": "tsc --noEmit",
     "test": "NODE_ENV=test PORT=3006 node --import tsx --test --test-force-exit tests/api.test.ts",
     "test:auth": "NODE_ENV=test PORT=3001 node --import tsx --test --test-force-exit tests/auth.test.ts",
@@ -42,7 +41,8 @@
     "db:test": "node -e \"import { db } from './dist/src/db/index.js'; console.log('DB module loaded'); process.exit(0);\"",
     "drizzle:generate": "drizzle-kit generate",
     "drizzle:push": "drizzle-kit push",
-    "drizzle:studio": "drizzle-kit studio"
+    "drizzle:studio": "drizzle-kit studio",
+    "verify:schema": "tsx scripts/verify-schema.ts"
   },
   "engines": {
     "node": ">=20.0.0"

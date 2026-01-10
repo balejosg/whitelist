@@ -37,9 +37,12 @@ CREATE TABLE IF NOT EXISTS "machines" (
 	"classroom_id" varchar(50),
 	"version" varchar(50) DEFAULT 'unknown',
 	"last_seen" timestamp with time zone DEFAULT now(),
+	"download_token_hash" varchar(64),
+	"download_token_last_rotated_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now(),
 	"updated_at" timestamp with time zone DEFAULT now(),
-	CONSTRAINT "machines_hostname_unique" UNIQUE("hostname")
+	CONSTRAINT "machines_hostname_unique" UNIQUE("hostname"),
+	CONSTRAINT "machines_download_token_hash_unique" UNIQUE("download_token_hash")
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "push_subscriptions" (
@@ -113,12 +116,14 @@ CREATE TABLE IF NOT EXISTS "users" (
 	"id" varchar(50) PRIMARY KEY NOT NULL,
 	"email" varchar(255) NOT NULL,
 	"name" varchar(255) NOT NULL,
-	"password_hash" varchar(255) NOT NULL,
+	"password_hash" varchar(255),
+	"google_id" varchar(255),
 	"is_active" boolean DEFAULT true NOT NULL,
 	"email_verified" boolean DEFAULT false NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now(),
 	"updated_at" timestamp with time zone DEFAULT now(),
-	CONSTRAINT "users_email_unique" UNIQUE("email")
+	CONSTRAINT "users_email_unique" UNIQUE("email"),
+	CONSTRAINT "users_google_id_unique" UNIQUE("google_id")
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "whitelist_groups" (
