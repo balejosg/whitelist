@@ -168,6 +168,7 @@ jobs:
           DB_PASSWORD: openpath_dev
           JWT_SECRET: test-jwt-secret-for-ci-testing
           ADMIN_TOKEN: test-admin-token-for-ci
+          CORS_ORIGINS: http://localhost:8080
 
       - name: Start SPA server
         run: |
