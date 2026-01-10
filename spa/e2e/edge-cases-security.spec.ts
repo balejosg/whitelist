@@ -116,7 +116,7 @@ test.describe('Section 1: Privilege Escalation', () => {
 
             if (token) {
                 // Try to update own user with different groups via API
-                const response = await request.post('/api/trpc/users.update', {
+                const response = await request.post('/trpc/users.update', {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
@@ -147,7 +147,7 @@ test.describe('Section 1: Privilege Escalation', () => {
             
             if (token) {
                 // Try to approve a request from another group via API
-                const response = await request.post('/api/trpc/requests.approve', {
+                const response = await request.post('/trpc/requests.approve', {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
@@ -211,7 +211,7 @@ test.describe('Section 1: Privilege Escalation', () => {
                     parts[1] = btoa(JSON.stringify(payload));
                     const tamperedToken = parts.join('.');
 
-                    const response = await request.get('/api/trpc/users.list', {
+                    const response = await request.get('/trpc/users.list', {
                         headers: {
                             'Authorization': `Bearer ${tamperedToken}`,
                             'Content-Type': 'application/json'
@@ -328,7 +328,7 @@ test.describe('Section 2: Common Attacks', () => {
     test.describe('Test 2.4: CSRF protection', () => {
 
         test('API requires valid authentication for protected endpoints', async ({ request }) => {
-            const response = await request.post('/api/trpc/requests.approve?batch=1', {
+            const response = await request.post('/trpc/requests.approve?batch=1', {
                 headers: {
                     'Content-Type': 'application/json'
                 },
@@ -343,7 +343,7 @@ test.describe('Section 2: Common Attacks', () => {
         });
 
         test('API rejects requests with invalid token', async ({ request }) => {
-            const response = await request.post('/api/trpc/requests.list?batch=1', {
+            const response = await request.post('/trpc/requests.list?batch=1', {
                 headers: {
                     'Authorization': 'Bearer invalid.fake.token',
                     'Content-Type': 'application/json'
