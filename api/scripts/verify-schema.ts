@@ -29,7 +29,7 @@ const CRITICAL_COLUMNS = {
     users: ['google_id'],
 };
 
-function main() {
+function main(): void {
     const schemaPath = join(__dirname, '../src/db/schema.sql');
     let schemaSQL: string;
 
