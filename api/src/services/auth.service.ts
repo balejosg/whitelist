@@ -57,7 +57,23 @@ export async function register(
                 error: { code: 'CONFLICT', message: 'Email already registered' }
             };
         }
+        
+        // Check if this is the first user (no admins exist)
+        const isFirstUser = !(await roleStorage.hasAnyAdmins());
+        
         const user = await userStorage.createUser(input);
+        
+        // Auto-assign admin role to first user
+        if (isFirstUser) {
+            await roleStorage.assignRole({
+                userId: user.id,
+                role: 'admin',
+                groupIds: [],
+                createdBy: user.id,
+            });
+            logger.info('First user auto-assigned admin role via registration', { userId: user.id, email: user.email });
+        }
+        
         return { ok: true, data: { user: { id: user.id, email: user.email, name: user.name } as SafeUser } };
     } catch (error) {
         logger.error('auth.register error', { error: getErrorMessage(error) });
