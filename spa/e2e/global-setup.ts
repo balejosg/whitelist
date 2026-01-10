@@ -161,22 +161,45 @@ async function globalSetup(config: FullConfig) {
 
         console.log('📋 Creating default whitelist group via API...');
         try {
-            const groupResponse = await fetch(`${apiURL}/trpc/whitelistGroups.create`, {
+            const groupResponse = await fetch(`${apiURL}/trpc/groups.create`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${accessToken}`
                 },
                 body: JSON.stringify({
-                    name: 'Default Group',
-                    whitelist: ['google.com', 'github.com'],
-                    blockedSubdomains: [],
-                    blockedPaths: []
+                    name: 'default-group',
+                    displayName: 'Default Group'
                 })
             });
             
             if (groupResponse.ok) {
-                console.log('✅ Default whitelist group created');
+                const groupData = await groupResponse.json() as { result?: { data?: { id?: string } } };
+                console.log('✅ Default whitelist group created:', groupData);
+                
+                const groupId = groupData.result?.data?.id;
+                if (typeof groupId === 'string') {
+                    console.log('📝 Adding basic whitelist rules...');
+                    const rulesResponse = await fetch(`${apiURL}/trpc/groups.bulkCreateRules`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${accessToken}`
+                        },
+                        body: JSON.stringify({
+                            groupId,
+                            type: 'whitelist',
+                            values: ['google.com', 'github.com']
+                        })
+                    });
+                    
+                    if (rulesResponse.ok) {
+                        console.log('✅ Whitelist rules added');
+                    } else {
+                        const errorText = await rulesResponse.text();
+                        console.log(`⚠️  Rules creation failed: ${errorText}`);
+                    }
+                }
             } else {
                 const errorText = await groupResponse.text();
                 console.log(`⚠️  Whitelist group creation failed (${String(groupResponse.status)}): ${errorText}`);
