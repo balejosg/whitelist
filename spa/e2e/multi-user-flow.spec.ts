@@ -54,8 +54,16 @@ test.describe('Multi-User E2E Flow', { tag: '@extended' }, () => {
                 await teacherPage.fill('#login-password', TEACHER_CREDENTIALS.password);
                 await teacherPage.click('#email-login-btn');
 
-                // Wait for dashboard screen to be visible first (not just present)
-                await expect(teacherPage.locator('#dashboard-screen')).toBeVisible({ timeout: 30000 });
+                await teacherPage.waitForLoadState('networkidle');
+                
+                await teacherPage.waitForFunction(
+                    () => {
+                        const dashboard = document.getElementById('dashboard-screen');
+                        return dashboard && !dashboard.classList.contains('hidden');
+                    },
+                    { timeout: 30000 }
+                );
+
                 await expect(teacherPage.locator('#logout-btn')).toBeVisible({ timeout: 10000 });
             });
 

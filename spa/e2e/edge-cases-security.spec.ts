@@ -856,9 +856,22 @@ test.describe('Section 10: Error Recovery', () => {
             const dashboardVisible = await page.locator('#dashboard-screen').isVisible().catch(() => false);
 
             if (dashboardVisible) {
+                // Wait for token to be written to localStorage (auth.login() stores it)
+                await page.waitForFunction(
+                    () => {
+                        const token = localStorage.getItem('openpath_access_token') ?? 
+                                     localStorage.getItem('accessToken') ?? 
+                                     localStorage.getItem('token');
+                        return token !== null;
+                    },
+                    { timeout: 5000 }
+                );
+
                 // Get current token
                 const token = await page.evaluate(() =>
-                    localStorage.getItem('accessToken') ?? localStorage.getItem('token')
+                    localStorage.getItem('openpath_access_token') ??
+                    localStorage.getItem('accessToken') ?? 
+                    localStorage.getItem('token')
                 );
                 expect(token).toBeTruthy();
 
