@@ -1,11 +1,13 @@
 import { chromium, FullConfig } from '@playwright/test';
 import { ADMIN_CREDENTIALS, TEACHER_CREDENTIALS, STUDENT_CREDENTIALS } from './fixtures/auth';
+import { ApiClient } from './fixtures/api-fixtures';
 
 async function globalSetup(config: FullConfig) {
     const baseURL = config.projects[0]?.use.baseURL;
     const apiURL = process.env.API_URL ?? 'http://localhost:3001';
     const browser = await chromium.launch();
     const page = await browser.newPage();
+    const apiClient = new ApiClient(apiURL);
     
     // Capture ALL console output for debugging
     page.on('console', msg => {
@@ -90,33 +92,35 @@ async function globalSetup(config: FullConfig) {
         await page.waitForSelector('#logout-btn', { timeout: 10000, state: 'visible' });
         console.log('✅ Admin logged in successfully');
 
-        await page.click('#admin-users-btn');
-        await page.waitForSelector('#users-section', { timeout: 10000 });
-
-        const teacherExists = await page.locator(`text=${TEACHER_CREDENTIALS.email}`).isVisible();
-        if (!teacherExists) {
-            console.log('👨‍🏫 Creating teacher user...');
-            await page.click('#add-user-btn');
-            await page.fill('#user-email', TEACHER_CREDENTIALS.email);
-            await page.fill('#user-name', TEACHER_CREDENTIALS.name);
-            await page.fill('#user-password', TEACHER_CREDENTIALS.password);
-            await page.selectOption('#user-role', 'teacher');
-            await page.click('#save-user-btn');
-            await page.waitForTimeout(1000);
-            console.log('✅ Teacher created');
+        const loginResult = await apiClient.login(ADMIN_CREDENTIALS.email, ADMIN_CREDENTIALS.password);
+        if (!loginResult.ok || !loginResult.data) {
+            throw new Error('Failed to login admin via API');
         }
 
-        const studentExists = await page.locator(`text=${STUDENT_CREDENTIALS.email}`).isVisible();
-        if (!studentExists) {
-            console.log('🎓 Creating student user...');
-            await page.click('#add-user-btn');
-            await page.fill('#user-email', STUDENT_CREDENTIALS.email);
-            await page.fill('#user-name', STUDENT_CREDENTIALS.name);
-            await page.fill('#user-password', STUDENT_CREDENTIALS.password);
-            await page.selectOption('#user-role', 'student');
-            await page.click('#save-user-btn');
-            await page.waitForTimeout(1000);
+        console.log('👨‍🏫 Creating teacher user via API...');
+        const teacherResult = await apiClient.createUser({
+            email: TEACHER_CREDENTIALS.email,
+            name: TEACHER_CREDENTIALS.name,
+            password: TEACHER_CREDENTIALS.password,
+            role: 'teacher'
+        });
+        if (teacherResult.ok) {
+            console.log('✅ Teacher created');
+        } else {
+            console.log(`⚠️  Teacher creation: ${teacherResult.error ?? 'unknown error'}`);
+        }
+
+        console.log('🎓 Creating student user via API...');
+        const studentResult = await apiClient.createUser({
+            email: STUDENT_CREDENTIALS.email,
+            name: STUDENT_CREDENTIALS.name,
+            password: STUDENT_CREDENTIALS.password,
+            role: 'student'
+        });
+        if (studentResult.ok) {
             console.log('✅ Student created');
+        } else {
+            console.log(`⚠️  Student creation: ${studentResult.error ?? 'unknown error'}`);
         }
         
         console.log('✅ Global setup complete');
