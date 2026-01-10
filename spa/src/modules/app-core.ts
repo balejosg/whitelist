@@ -74,32 +74,28 @@ export async function init(): Promise<void> {
         return;
     }
 
+    showScreen('dashboard-screen');
+    
     try {
         await auth.getMe();
         const user = auth.getUser();
-        if (user) setCurrentUser(user);
+        if (user) {
+            setCurrentUser(user);
+            setCanEdit(auth.isAdmin());
+            
+            const userName = user.name || user.email;
+            const userEl = document.getElementById('current-user');
+            if (userEl) userEl.textContent = userName;
+            
+            updateEditUI();
+            await loadDashboard();
+        } else {
+            showScreen('login-screen');
+        }
     } catch (err) {
         logger.error('Failed to load user', { error: err instanceof Error ? err.message : String(err) });
         showScreen('login-screen');
-        return;
     }
-
-    if (!state.currentUser) {
-        showScreen('login-screen');
-        return;
-    }
-
-    setCanEdit(auth.isAdmin());
-
-    let userName = '';
-    if (state.currentUser.name) userName = state.currentUser.name;
-    else if (state.currentUser.email) userName = state.currentUser.email;
-    const userEl = document.getElementById('current-user');
-    if (userEl) userEl.textContent = userName;
-
-    updateEditUI();
-    showScreen('dashboard-screen');
-    await loadDashboard();
 }
 
 export function updateEditUI(): void {
