@@ -78,9 +78,9 @@ jobs:
             shared/dist/
           retention-days: 1
 
-  # SPA E2E tests with sharding
+  # SPA E2E tests with sharding (chromium only for speed)
   spa-e2e:
-    name: SPA E2E (Shard ${{ matrix.shard }}/3)
+    name: SPA E2E (Shard ${{ matrix.shard }}/2)
     needs: [check-label, setup]
     if: needs.check-label.outputs.should-run == 'true'
     runs-on: ubuntu-latest
@@ -88,7 +88,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2]
 
     services:
       postgres:
@@ -130,6 +130,7 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
 
+      # System deps can't be cached (installed to /usr/lib) but this is fast (~15s)
       - name: Install Playwright system dependencies
         run: npx playwright install-deps chromium
         working-directory: spa
@@ -163,8 +164,8 @@ jobs:
           npx -y http-server spa -p 8080 -c-1 &
           sleep 3
 
-      - name: Run E2E tests (shard ${{ matrix.shard }}/3)
-        run: npx playwright test --shard=${{ matrix.shard }}/3
+      - name: Run E2E tests (shard ${{ matrix.shard }}/2)
+        run: npx playwright test --shard=${{ matrix.shard }}/2 --project=chromium
         working-directory: spa
         env:
           BASE_URL: http://localhost:8080
@@ -252,7 +253,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [[ "${{ needs.spa-e2e.result }}" == "success" ]]; then
-            echo "✅ SPA E2E (3 shards): PASSED" >> $GITHUB_STEP_SUMMARY
+            echo "✅ SPA E2E (2 shards, chromium): PASSED" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ SPA E2E: ${{ needs.spa-e2e.result }}" >> $GITHUB_STEP_SUMMARY
           fi
