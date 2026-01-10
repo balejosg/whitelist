@@ -62,6 +62,13 @@ async function globalSetup(config: FullConfig) {
         await page.goto(baseURL);
         await page.waitForLoadState('domcontentloaded');
         
+        console.log('⏳ Waiting for login screen to become visible...');
+        await page.waitForSelector('#login-screen:not(.hidden)', { 
+            timeout: 10000,
+            state: 'visible'
+        });
+        console.log('✅ Login screen is visible');
+        
         await page.fill('#login-email', ADMIN_CREDENTIALS.email);
         await page.fill('#login-password', ADMIN_CREDENTIALS.password);
         await page.click('#email-login-btn');
