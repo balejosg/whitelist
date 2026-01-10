@@ -47,10 +47,32 @@ test.describe('Multi-User E2E Flow', { tag: '@extended' }, () => {
             // ============================================================
 
             await test.step('Teacher logs in', async () => {
+                const requests: string[] = [];
+                const consoleMessages: string[] = [];
+                
+                teacherPage.on('request', req => {
+                    if (req.url().includes('login') || req.url().includes('trpc')) {
+                        requests.push(`${req.method()} ${req.url()}`);
+                    }
+                });
+                
+                teacherPage.on('response', async res => {
+                    if (res.url().includes('login') || res.url().includes('trpc')) {
+                        const status = res.status();
+                        const text = await res.text().catch(() => 'Could not read body');
+                        requests.push(`  → ${String(status)} ${text.slice(0, 200)}`);
+                    }
+                });
+                
+                teacherPage.on('console', msg => {
+                    if (msg.type() === 'error' || msg.text().includes('login') || msg.text().includes('auth')) {
+                        consoleMessages.push(`[${msg.type()}] ${msg.text()}`);
+                    }
+                });
+                
                 await teacherPage.goto('/');
                 await teacherPage.waitForLoadState('domcontentloaded');
                 
-                // Wait for login screen to become visible before filling form
                 await teacherPage.waitForSelector('#login-screen:not(.hidden)', { 
                     timeout: 10000,
                     state: 'visible'
@@ -58,6 +80,8 @@ test.describe('Multi-User E2E Flow', { tag: '@extended' }, () => {
 
                 await teacherPage.fill('#login-email', TEACHER_CREDENTIALS.email);
                 await teacherPage.fill('#login-password', TEACHER_CREDENTIALS.password);
+                
+                console.log(`🔑 Attempting teacher login with email: ${TEACHER_CREDENTIALS.email}`);
                 await teacherPage.click('#email-login-btn');
 
                 await teacherPage.waitForLoadState('networkidle');
@@ -76,7 +100,6 @@ test.describe('Multi-User E2E Flow', { tag: '@extended' }, () => {
                 }
                 
                 if (!dashboardVisible) {
-                    // Capture diagnostic info before failing
                     const url = teacherPage.url();
                     const bodyClasses = await teacherPage.evaluate(() => document.body.className);
                     const visibleScreens = await teacherPage.evaluate(() => {
@@ -87,12 +110,17 @@ test.describe('Multi-User E2E Flow', { tag: '@extended' }, () => {
                         });
                     });
                     const hasToken = await teacherPage.evaluate(() => !!localStorage.getItem('openpath_access_token'));
+                    const errorText = await teacherPage.locator('#login-error').textContent().catch(() => null);
+                    
                     throw new Error(
                         'Teacher dashboard not visible after login.\n' +
                         `URL: ${url}\n` +
                         `Body classes: ${bodyClasses}\n` +
                         `Visible screens: ${visibleScreens.join(', ') || 'none'}\n` +
-                        `Has token: ${String(hasToken)}`
+                        `Has token: ${String(hasToken)}\n` +
+                        `Login error message: ${errorText ?? 'none'}\n` +
+                        `Network requests:\n${requests.join('\n') || 'none'}\n` +
+                        `Console messages:\n${consoleMessages.join('\n') || 'none'}`
                     );
                 }
                 
