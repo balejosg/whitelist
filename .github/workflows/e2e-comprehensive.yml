@@ -51,6 +51,7 @@ jobs:
         uses: ./.github/actions/build-workspaces
 
       # Cache Playwright browsers (shared across jobs via actions/cache)
+      # Note: Cache is saved in Post step, which completes before dependent jobs start
       - name: Get Playwright version
         id: pw-version
         run: echo "version=$(npm ls @playwright/test --json | jq -r '.dependencies["@playwright/test"].version')" >> $GITHUB_OUTPUT
@@ -229,16 +230,33 @@ jobs:
           path: spa/all-blob-reports/
           merge-multiple: true
 
+      - name: Check if blob reports exist
+        id: check-blobs
+        run: |
+          if [ -d "spa/all-blob-reports" ] && [ "$(ls -A spa/all-blob-reports 2>/dev/null)" ]; then
+            echo "has-blobs=true" >> $GITHUB_OUTPUT
+            echo "Found blob reports to merge"
+          else
+            echo "has-blobs=false" >> $GITHUB_OUTPUT
+            echo "No blob reports found (all shards may have failed early)"
+          fi
+
       - name: Merge reports into HTML
+        if: steps.check-blobs.outputs.has-blobs == 'true'
         run: npx playwright merge-reports --reporter html ./all-blob-reports
         working-directory: spa
 
       - name: Upload merged HTML report
+        if: steps.check-blobs.outputs.has-blobs == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
           path: spa/playwright-report/
           retention-days: 14
+
+      - name: Report merge skipped
+        if: steps.check-blobs.outputs.has-blobs == 'false'
+        run: echo "::warning::No blob reports to merge - all test shards failed before generating reports"
 
   summary:
     name: E2E Summary
