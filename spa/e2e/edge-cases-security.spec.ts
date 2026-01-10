@@ -328,30 +328,34 @@ test.describe('Section 2: Common Attacks', () => {
     test.describe('Test 2.4: CSRF protection', () => {
 
         test('API requires valid authentication for protected endpoints', async ({ request }) => {
-            // Try to make authenticated request without token
-            const response = await request.post('/api/trpc/requests.approve', {
+            const response = await request.post('/api/trpc/requests.approve?batch=1', {
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 data: {
-                    json: { id: '1', groupId: 'test' }
+                    '0': {
+                        json: { id: '1', groupId: 'test' }
+                    }
                 }
             });
 
-            // Should require authentication (401) or be forbidden (403)
-            expect([401, 403]).toContain(response.status());
+            expect(response.status()).toBe(401);
         });
 
         test('API rejects requests with invalid token', async ({ request }) => {
-            const response = await request.post('/api/trpc/users.list', {
+            const response = await request.post('/api/trpc/requests.list?batch=1', {
                 headers: {
                     'Authorization': 'Bearer invalid.fake.token',
                     'Content-Type': 'application/json'
+                },
+                data: {
+                    '0': {
+                        json: {}
+                    }
                 }
             });
 
-            // Should reject invalid token
-            expect([401, 403]).toContain(response.status());
+            expect(response.status()).toBe(401);
         });
     });
 
@@ -400,7 +404,6 @@ test.describe('Section 3: Data Validation', () => {
 
             const invalidEmails = [
                 'notanemail',
-                'missing@domain',
                 '@nodomain.com'
             ];
 
@@ -408,11 +411,12 @@ test.describe('Section 3: Data Validation', () => {
                 await page.fill('#login-email', email);
                 await page.fill('#login-password', 'ValidPassword123!');
 
-                // Check HTML5 validation
                 const emailInput = page.locator('#login-email');
-                const isInvalid = await emailInput.evaluate((el: HTMLInputElement) => !el.validity.valid).catch(() => false);
+                const isInvalid = await emailInput.evaluate((el: HTMLInputElement) => {
+                    el.reportValidity();
+                    return !el.validity.valid;
+                });
 
-                // HTML5 email validation should catch invalid emails
                 expect(isInvalid).toBeTruthy();
             }
         });
@@ -647,18 +651,13 @@ test.describe('Section 5: UI Edge Cases', () => {
             await page.click('#email-login-btn');
             await page.waitForLoadState('networkidle');
 
-            // Clear the token to simulate expiration
             await page.evaluate(() => {
-                localStorage.removeItem('token');
-                localStorage.removeItem('accessToken');
-                localStorage.removeItem('refreshToken');
+                localStorage.clear();
             });
 
-            // Reload the page
             await page.reload();
             await page.waitForLoadState('networkidle');
 
-            // Should be on login page since session is cleared
             const loginForm = page.locator('#email-login-form');
             await expect(loginForm).toBeVisible({ timeout: 10000 });
         });

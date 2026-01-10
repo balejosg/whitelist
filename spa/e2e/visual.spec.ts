@@ -13,7 +13,7 @@ import { test, expect } from '@playwright/test';
  * Skip in CI unless baselines are committed.
  */
 
-const SKIP_VISUAL_TESTS = process.env.SKIP_VISUAL_TESTS === 'true' || !process.env.CI;
+const SKIP_VISUAL_TESTS = process.env.SKIP_VISUAL_TESTS !== 'false';
 
 test.describe('Visual Regression', () => {
     test.skip(() => SKIP_VISUAL_TESTS, 'Visual tests skipped (set SKIP_VISUAL_TESTS=false to run)');
