@@ -54,8 +54,10 @@ export async function init(): Promise<void> {
     }
 
     const isJWTLoggedIn = auth.isAuthenticated();
+    console.warn('[init] isAuthenticated:', isJWTLoggedIn);
 
     if (!isJWTLoggedIn) {
+        console.warn('[init] Not authenticated, showing login screen');
         showScreen('login-screen');
         const configLoaded = await googleAuth.loadConfig();
         if (configLoaded) {
@@ -67,19 +69,24 @@ export async function init(): Promise<void> {
     }
 
     const cachedUser = auth.getUser();
+    console.warn('[init] Cached user:', cachedUser ? 'exists' : 'null');
     
     if (cachedUser) {
+        console.warn('[init] Using cached user, showing dashboard immediately');
         showDashboardWithUser(cachedUser);
         void refreshUserDataInBackground();
         return;
     }
 
+    console.warn('[init] No cached user, showing dashboard and fetching user data');
     showScreen('dashboard-screen');
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     
     try {
+        console.warn('[init] Calling auth.getMe()...');
         await auth.getMe();
         const user = auth.getUser();
+        console.warn('[init] Got user from getMe:', user ? 'success' : 'null');
         if (user) {
             setCurrentUser(user);
             setCanEdit(auth.isAdmin());
@@ -90,11 +97,14 @@ export async function init(): Promise<void> {
             
             updateEditUI();
             await loadDashboard();
+            console.warn('[init] Dashboard fully loaded');
         } else {
+            console.error('[init] getUser returned null, showing login screen');
             showScreen('login-screen');
         }
     } catch (err) {
         logger.error('Failed to load user', { error: err instanceof Error ? err.message : String(err) });
+        console.error('[init] Exception in getMe:', err);
         showScreen('login-screen');
     }
 }

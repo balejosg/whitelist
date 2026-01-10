@@ -123,9 +123,13 @@ function initMainListeners() {
         passwordInput.disabled = true;
 
         try {
+            console.warn('[login] Attempting login with email:', emailInput.value);
             await auth.login(emailInput.value, passwordInput.value);
-            await init(); // Re-initialize the app
-        } catch {
+            console.warn('[login] Login successful, calling init()');
+            await init();
+            console.warn('[login] init() completed');
+        } catch (err) {
+            console.error('[login] Login failed:', err);
             showToast('Credenciales inválidas. Por favor, verifica tu email y contraseña.', 'error');
             emailInput.disabled = false;
             passwordInput.disabled = false;

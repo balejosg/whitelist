@@ -5,6 +5,12 @@ async function globalSetup(config: FullConfig) {
     const baseURL = config.projects[0]?.use.baseURL;
     const browser = await chromium.launch();
     const page = await browser.newPage();
+    
+    page.on('console', msg => {
+        if (msg.type() === 'error' || msg.text().startsWith('[')) {
+            console.log(`[BROWSER] ${msg.text()}`);
+        }
+    });
 
     try {
         if (!baseURL) {
