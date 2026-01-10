@@ -136,7 +136,15 @@ await describe('Groups Router (tRPC)', { timeout: 30000 }, async () => {
         });
 
         await test('should reject non-admin users', async () => {
-            // Register a non-admin user
+            // First, create an admin user to prevent auto-admin assignment
+            const adminEmail = `admin-${TEST_RUN_ID}@test.local`;
+            await trpcMutate(API_URL, 'auth.register', {
+                email: adminEmail,
+                password: 'AdminPassword123!',
+                name: 'Admin User',
+            });
+            
+            // Now register a non-admin user (won't get admin since one exists)
             const email = `nonadmin-${TEST_RUN_ID}@test.local`;
             const password = 'SecurePassword123!';
             
