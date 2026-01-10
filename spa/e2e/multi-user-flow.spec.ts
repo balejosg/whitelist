@@ -56,14 +56,20 @@ test.describe('Multi-User E2E Flow', { tag: '@extended' }, () => {
 
                 await teacherPage.waitForLoadState('networkidle');
                 
-                await teacherPage.waitForFunction(
-                    () => {
-                        const dashboard = document.getElementById('dashboard-screen');
-                        return dashboard && !dashboard.classList.contains('hidden');
-                    },
-                    { timeout: 30000 }
-                );
+                await Promise.race([
+                    teacherPage.locator('#dashboard-screen').waitFor({ state: 'visible', timeout: 25000 }),
+                    teacherPage.locator('#login-error').waitFor({ state: 'visible', timeout: 25000 })
+                ]).catch(() => undefined);
 
+                const dashboardVisible = await teacherPage.locator('#dashboard-screen').isVisible().catch(() => false);
+                const loginError = await teacherPage.locator('#login-error').isVisible().catch(() => false);
+                
+                if (loginError) {
+                    const errorText = await teacherPage.locator('#login-error').textContent();
+                    throw new Error(`Login failed: ${errorText ?? 'Unknown error'}`);
+                }
+                
+                expect(dashboardVisible).toBeTruthy();
                 await expect(teacherPage.locator('#logout-btn')).toBeVisible({ timeout: 10000 });
             });
 
