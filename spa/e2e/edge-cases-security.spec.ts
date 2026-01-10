@@ -882,7 +882,9 @@ test.describe('Section 10: Error Recovery', () => {
 
                 // Should still have token (session persists)
                 const tokenAfterReload = await page.evaluate(() =>
-                    localStorage.getItem('accessToken') ?? localStorage.getItem('token')
+                    localStorage.getItem('openpath_access_token') ??
+                    localStorage.getItem('accessToken') ?? 
+                    localStorage.getItem('token')
                 );
                 expect(tokenAfterReload).toBeTruthy();
             }
