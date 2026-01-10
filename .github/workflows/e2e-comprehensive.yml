@@ -154,12 +154,12 @@ jobs:
           DB_USER: openpath
           DB_PASSWORD: openpath_dev
 
-      - name: Start API server
+      - name: Start API server (serves SPA static files)
         run: |
           npm start --workspace=@openpath/api &
-          npx wait-on -t 30000 http://localhost:3001/health
+          npx wait-on -t 30000 http://localhost:3005/health
         env:
-          PORT: 3001
+          PORT: 3005
           NODE_ENV: test
           DB_HOST: localhost
           DB_PORT: 5432
@@ -168,19 +168,14 @@ jobs:
           DB_PASSWORD: openpath_dev
           JWT_SECRET: test-jwt-secret-for-ci-testing
           ADMIN_TOKEN: test-admin-token-for-ci
-          CORS_ORIGINS: http://localhost:8080
-
-      - name: Start SPA server
-        run: |
-          npx -y http-server spa -p 8080 -c-1 &
-          sleep 3
+          CORS_ORIGINS: http://localhost:3005
 
       - name: Run E2E tests (shard ${{ matrix.shard }}/2)
         run: npx playwright test --shard=${{ matrix.shard }}/2 --project=chromium
         working-directory: spa
         env:
-          BASE_URL: http://localhost:8080
-          API_URL: http://localhost:3001
+          BASE_URL: http://localhost:3005
+          API_URL: http://localhost:3005
           CI: true
 
       # Upload blob report for merging (not playwright-report)

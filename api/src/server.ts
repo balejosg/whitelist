@@ -94,6 +94,12 @@ const HOST = config.host;
 // =============================================================================
 
 // Helmet - Security headers (OWASP recommended)
+// In test/dev, allow localhost connections for E2E tests
+const connectSrcDirectives = ["'self'", 'https://accounts.google.com'];
+if (!config.isProduction) {
+    connectSrcDirectives.push('http://localhost:*', 'ws://localhost:*');
+}
+
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
@@ -103,7 +109,7 @@ app.use(helmet({
             scriptSrc: ["'self'", 'https://accounts.google.com/gsi/client'],
             frameSrc: ["'self'", 'https://accounts.google.com'],
             imgSrc: ["'self'", 'data:', 'https:'],
-            connectSrc: ["'self'", 'https://accounts.google.com']
+            connectSrc: connectSrcDirectives
         }
     },
     frameguard: { action: 'deny' },

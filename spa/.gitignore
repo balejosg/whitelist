@@ -8,3 +8,4 @@ test-results/
 
 # Package lock - regenerate on install
 package-lock.json
+sw.js

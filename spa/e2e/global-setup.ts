@@ -4,7 +4,7 @@ import { ApiClient } from './fixtures/api-fixtures';
 
 async function globalSetup(config: FullConfig) {
     const baseURL = config.projects[0]?.use.baseURL;
-    const apiURL = process.env.API_URL ?? 'http://localhost:3001';
+    const apiURL = process.env.API_URL ?? baseURL ?? 'http://localhost:3005';
     const browser = await chromium.launch();
     const page = await browser.newPage();
     const apiClient = new ApiClient(apiURL);
