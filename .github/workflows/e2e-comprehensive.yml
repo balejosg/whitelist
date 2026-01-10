@@ -49,6 +49,8 @@ jobs:
 
       - name: Build workspaces
         uses: ./.github/actions/build-workspaces
+        with:
+          build-spa: 'true'
 
       # Cache Playwright browsers (shared across jobs via actions/cache)
       # Note: Cache is saved in Post step, which completes before dependent jobs start
