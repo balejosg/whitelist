@@ -3,7 +3,9 @@ import type { AppRouter } from '@openpath/api';
 
 function getApiUrl(): string {
     if (typeof window === 'undefined') return '';
-    return window.location.origin;
+    // Use the API URL from localStorage (set by setup or global-setup)
+    // Falls back to window.location.origin for backward compatibility
+    return localStorage.getItem('requests_api_url') ?? window.location.origin;
 }
 
 const ACCESS_TOKEN_KEY = 'openpath_access_token';

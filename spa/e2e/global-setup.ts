@@ -3,8 +3,13 @@ import { ADMIN_CREDENTIALS, TEACHER_CREDENTIALS, STUDENT_CREDENTIALS } from './f
 
 async function globalSetup(config: FullConfig) {
     const baseURL = config.projects[0]?.use.baseURL;
+    const apiURL = process.env.API_URL ?? 'http://localhost:3001';
     const browser = await chromium.launch();
     const page = await browser.newPage();
+    
+    await page.addInitScript((apiUrl) => {
+        localStorage.setItem('requests_api_url', apiUrl);
+    }, apiURL);
     
     // Capture ALL console output for debugging
     page.on('console', msg => {
