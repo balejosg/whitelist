@@ -7,10 +7,6 @@ async function globalSetup(config: FullConfig) {
     const browser = await chromium.launch();
     const page = await browser.newPage();
     
-    await page.addInitScript((apiUrl) => {
-        localStorage.setItem('requests_api_url', apiUrl);
-    }, apiURL);
-    
     // Capture ALL console output for debugging
     page.on('console', msg => {
         console.log(`[BROWSER ${msg.type()}] ${msg.text()}`);
@@ -21,19 +17,21 @@ async function globalSetup(config: FullConfig) {
             console.log(`[BROWSER 404] ${response.url()}`);
         }
     });
-    
-    // Capture 404s with URLs
-    page.on('response', response => {
-        if (response.status() === 404) {
-            console.log(`[BROWSER 404] ${response.url()}`);
-        }
-    });
 
     try {
         if (!baseURL) {
             throw new Error('baseURL is required for global setup');
         }
+        
         await page.goto(baseURL);
+        
+        await page.evaluate((apiUrl) => {
+            localStorage.setItem('requests_api_url', apiUrl);
+        }, apiURL);
+        
+        console.log(`📝 Set API URL in localStorage: ${apiURL}`);
+        console.log('🔄 Reloading page to apply API URL...');
+        await page.reload();
         await page.waitForLoadState('domcontentloaded');
 
         const setupHeader = page.locator('#setup-header');
