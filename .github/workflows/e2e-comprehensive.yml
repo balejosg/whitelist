@@ -32,27 +32,13 @@ jobs:
             echo "should-run=false" >> $GITHUB_OUTPUT
           fi
 
-  spa-e2e-full:
-    name: SPA E2E Full Suite
+  # Build once and upload dist artifacts (not node_modules - too large)
+  setup:
+    name: Setup & Build
     needs: check-label
     if: needs.check-label.outputs.should-run == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: openpath
-          POSTGRES_PASSWORD: openpath_dev
-          POSTGRES_DB: openpath
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    timeout-minutes: 10
 
     steps:
       - name: Checkout code
@@ -64,165 +50,45 @@ jobs:
       - name: Build workspaces
         uses: ./.github/actions/build-workspaces
 
-      - name: Run DB migrations
-        run: npm run drizzle:push --workspace=@openpath/api
-        env:
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_NAME: openpath
-          DB_USER: openpath
-          DB_PASSWORD: openpath_dev
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
+      # Cache Playwright browsers (shared across jobs via actions/cache)
+      - name: Get Playwright version
+        id: pw-version
+        run: echo "version=$(npm ls @playwright/test --json | jq -r '.dependencies["@playwright/test"].version')" >> $GITHUB_OUTPUT
         working-directory: spa
 
-      - name: Start API server
-        run: |
-          npm start --workspace=@openpath/api &
-          npx wait-on -t 30000 http://localhost:3001/health
-        env:
-          PORT: 3001
-          NODE_ENV: test
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_NAME: openpath
-          DB_USER: openpath
-          DB_PASSWORD: openpath_dev
-          JWT_SECRET: test-jwt-secret-for-ci-testing
-          ADMIN_TOKEN: test-admin-token-for-ci
-
-      - name: Start SPA server
-        run: |
-          npx -y http-server spa -p 8080 -c-1 &
-          sleep 3
-
-      - name: Run ALL Playwright tests
-        run: npm run test:e2e --workspace=openpath-spa
-        env:
-          BASE_URL: http://localhost:8080
-          API_URL: http://localhost:3001
-          CI: true
-
-      - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
-        if: always()
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
         with:
-          name: playwright-report-full
-          path: spa/playwright-report/
-          retention-days: 14
-
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: test-results-full
-          path: spa/test-results/
-          retention-days: 14
-
-  spa-e2e-extended:
-    name: Extended API & Multi-User Tests
-    needs: check-label
-    if: needs.check-label.outputs.should-run == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: openpath
-          POSTGRES_PASSWORD: openpath_dev
-          POSTGRES_DB: openpath
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: ./.github/actions/setup-node
-
-      - name: Build workspaces
-        uses: ./.github/actions/build-workspaces
-
-      - name: Run DB migrations
-        run: npm run drizzle:push --workspace=@openpath/api
-        env:
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_NAME: openpath
-          DB_USER: openpath
-          DB_PASSWORD: openpath_dev
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
 
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
         working-directory: spa
 
-      - name: Start API server
-        run: |
-          npm start --workspace=@openpath/api &
-          npx wait-on -t 30000 http://localhost:3001/health
-        env:
-          PORT: 3001
-          NODE_ENV: test
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_NAME: openpath
-          DB_USER: openpath
-          DB_PASSWORD: openpath_dev
-          JWT_SECRET: test-jwt-secret-for-ci-testing
-          ADMIN_TOKEN: test-admin-token-for-ci
-
-      - name: Start SPA server
-        run: |
-          npx -y http-server spa -p 8080 -c-1 &
-          sleep 3
-
-      - name: Run Extended E2E tests (API Integration)
-        run: npx playwright test e2e/api-integration.spec.ts --project=chromium
-        working-directory: spa
-        env:
-          BASE_URL: http://localhost:8080
-          API_URL: http://localhost:3001
-          CI: true
-
-      - name: Run Multi-User Flow tests
-        run: npx playwright test e2e/multi-user-flow.spec.ts --project=chromium
-        working-directory: spa
-        env:
-          BASE_URL: http://localhost:8080
-          API_URL: http://localhost:3001
-          CI: true
-
-      - name: Run Push Notification tests
-        run: npx playwright test e2e/push-notifications.spec.ts --project=chromium
-        working-directory: spa
-        env:
-          BASE_URL: http://localhost:8080
-          API_URL: http://localhost:3001
-          CI: true
-
-      - name: Upload extended test report
+      # Upload only dist artifacts (small, fast)
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: playwright-report-extended
-          path: spa/playwright-report/
-          retention-days: 14
+          name: build-artifacts
+          path: |
+            api/dist/
+            shared/dist/
+          retention-days: 1
 
-  spa-e2e-security:
-    name: Security & Edge Cases
-    needs: check-label
+  # SPA E2E tests with sharding
+  spa-e2e:
+    name: SPA E2E (Shard ${{ matrix.shard }}/3)
+    needs: [check-label, setup]
     if: needs.check-label.outputs.should-run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
 
     services:
       postgres:
@@ -246,8 +112,27 @@ jobs:
       - name: Setup Node.js
         uses: ./.github/actions/setup-node
 
-      - name: Build workspaces
-        uses: ./.github/actions/build-workspaces
+      # Download pre-built dist artifacts
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+
+      # Restore Playwright browser cache
+      - name: Get Playwright version
+        id: pw-version
+        run: echo "version=$(npm ls @playwright/test --json | jq -r '.dependencies["@playwright/test"].version')" >> $GITHUB_OUTPUT
+        working-directory: spa
+
+      - name: Restore Playwright cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
+
+      - name: Install Playwright system dependencies
+        run: npx playwright install-deps chromium
+        working-directory: spa
 
       - name: Run DB migrations
         run: npm run drizzle:push --workspace=@openpath/api
@@ -257,10 +142,6 @@ jobs:
           DB_NAME: openpath
           DB_USER: openpath
           DB_PASSWORD: openpath_dev
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-        working-directory: spa
 
       - name: Start API server
         run: |
@@ -282,20 +163,29 @@ jobs:
           npx -y http-server spa -p 8080 -c-1 &
           sleep 3
 
-      - name: Run Security E2E tests
-        run: npx playwright test e2e/edge-cases-security.spec.ts --project=chromium
+      - name: Run E2E tests (shard ${{ matrix.shard }}/3)
+        run: npx playwright test --shard=${{ matrix.shard }}/3
         working-directory: spa
         env:
           BASE_URL: http://localhost:8080
           API_URL: http://localhost:3001
           CI: true
 
-      - name: Upload security test report
+      # Upload blob report for merging (not playwright-report)
+      - name: Upload blob report
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report-security
-          path: spa/playwright-report/
+          name: blob-report-shard-${{ matrix.shard }}
+          path: spa/blob-report/
+          retention-days: 1
+
+      - name: Upload test results on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-results-shard-${{ matrix.shard }}
+          path: spa/test-results/
           retention-days: 14
 
   linux-agent-e2e:
@@ -317,9 +207,41 @@ jobs:
       - name: Run Agent Integration tests
         run: bats tests/e2e/agent-integration.bats
 
+  # Merge Playwright blob reports from all shards
+  merge-reports:
+    name: Merge Test Reports
+    needs: [check-label, spa-e2e]
+    if: always() && needs.check-label.outputs.should-run == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-node
+
+      - name: Download all blob reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: blob-report-shard-*
+          path: spa/all-blob-reports/
+          merge-multiple: true
+
+      - name: Merge reports into HTML
+        run: npx playwright merge-reports --reporter html ./all-blob-reports
+        working-directory: spa
+
+      - name: Upload merged HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: spa/playwright-report/
+          retention-days: 14
+
   summary:
     name: E2E Summary
-    needs: [spa-e2e-full, spa-e2e-extended, spa-e2e-security, linux-agent-e2e]
+    needs: [check-label, spa-e2e, linux-agent-e2e, merge-reports]
     if: always() && needs.check-label.outputs.should-run == 'true'
     runs-on: ubuntu-latest
 
@@ -328,34 +250,26 @@ jobs:
         run: |
           echo "## E2E Comprehensive Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [[ "${{ needs.spa-e2e-full.result }}" == "success" ]]; then
-            echo "✅ SPA Full Suite: PASSED" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ needs.spa-e2e.result }}" == "success" ]]; then
+            echo "✅ SPA E2E (3 shards): PASSED" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ SPA Full Suite: ${{ needs.spa-e2e-full.result }}" >> $GITHUB_STEP_SUMMARY
+            echo "❌ SPA E2E: ${{ needs.spa-e2e.result }}" >> $GITHUB_STEP_SUMMARY
           fi
-          
-          if [[ "${{ needs.spa-e2e-extended.result }}" == "success" ]]; then
-            echo "✅ Extended Tests: PASSED" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ Extended Tests: ${{ needs.spa-e2e-extended.result }}" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          if [[ "${{ needs.spa-e2e-security.result }}" == "success" ]]; then
-            echo "✅ Security Tests: PASSED" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ Security Tests: ${{ needs.spa-e2e-security.result }}" >> $GITHUB_STEP_SUMMARY
-          fi
-          
+
           if [[ "${{ needs.linux-agent-e2e.result }}" == "success" ]]; then
             echo "✅ Linux Agent: PASSED" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ Linux Agent: ${{ needs.linux-agent-e2e.result }}" >> $GITHUB_STEP_SUMMARY
           fi
-          
-          if [[ "${{ needs.spa-e2e-full.result }}" == "failure" ]] || \
-             [[ "${{ needs.spa-e2e-extended.result }}" == "failure" ]] || \
-             [[ "${{ needs.spa-e2e-security.result }}" == "failure" ]] || \
+
+          if [[ "${{ needs.merge-reports.result }}" == "success" ]]; then
+            echo "✅ Report Merge: PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Report Merge: ${{ needs.merge-reports.result }}" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [[ "${{ needs.spa-e2e.result }}" == "failure" ]] || \
              [[ "${{ needs.linux-agent-e2e.result }}" == "failure" ]]; then
             exit 1
           fi

@@ -28,11 +28,11 @@ export default defineConfig({
     // Retry on CI only
     retries: process.env['CI'] ? 2 : 0,
 
-    // Opt out of parallel tests on CI - they can be flaky
-    ...(process.env['CI'] ? { workers: 1 } : {}),
+    // Run tests with 2 workers on CI for better performance
+    ...(process.env['CI'] ? { workers: 2 } : {}),
 
-    // Reporter
-    reporter: process.env['CI'] ? 'github' : 'html',
+    // Reporter: blob for sharding merge + github for CI annotations
+    reporter: process.env['CI'] ? [['blob'], ['github']] : 'html',
 
     // Shared settings for all projects
     use: {
