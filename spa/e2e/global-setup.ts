@@ -90,7 +90,7 @@ async function globalSetup(config: FullConfig) {
         await page.waitForSelector('#logout-btn', { timeout: 10000, state: 'visible' });
         console.log('✅ Admin logged in successfully');
 
-        await page.click('a[href="#users"]');
+        await page.click('#admin-users-btn');
         await page.waitForSelector('#users-section', { timeout: 10000 });
 
         const teacherExists = await page.locator(`text=${TEACHER_CREDENTIALS.email}`).isVisible();
