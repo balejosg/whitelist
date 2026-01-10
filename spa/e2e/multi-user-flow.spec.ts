@@ -49,6 +49,12 @@ test.describe('Multi-User E2E Flow', { tag: '@extended' }, () => {
             await test.step('Teacher logs in', async () => {
                 await teacherPage.goto('/');
                 await teacherPage.waitForLoadState('domcontentloaded');
+                
+                // Wait for login screen to become visible before filling form
+                await teacherPage.waitForSelector('#login-screen:not(.hidden)', { 
+                    timeout: 10000,
+                    state: 'visible'
+                });
 
                 await teacherPage.fill('#login-email', TEACHER_CREDENTIALS.email);
                 await teacherPage.fill('#login-password', TEACHER_CREDENTIALS.password);
