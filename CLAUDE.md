@@ -4,13 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a **multi-platform DNS-based URL whitelist enforcement system** (v4.1.0) that uses DNS sinkhole technology to restrict network access to only whitelisted domains. It's designed for educational environments to control internet access on workstations.
+OpenPath is a **multi-platform DNS-based URL whitelist enforcement system** (v4.1.0) for educational environments with a self-service domain request workflow and centralized management via a modern web dashboard.
 
 **Supported Platforms:**
 - **Linux**: Uses `dnsmasq` as DNS sinkhole with iptables firewall
 - **Windows**: Uses `Acrylic DNS Proxy` with Windows Firewall
 
-**Key Concept**: The system blocks all DNS resolution by default (NXDOMAIN), then explicitly allows only whitelisted domains to resolve. Combined with restrictive iptables rules that force all DNS through localhost, this creates an effective content filter.
+**Key Concept**: The system blocks all DNS resolution by default (NXDOMAIN), then explicitly allows only whitelisted domains to resolve. Combined with restrictive iptables rules that force all DNS through localhost, this creates an effective content filter. Rules are stored in Git, synced across endpoints every 5 minutes, and managed via a dashboard.
+
+## Repository Structure
+
+- **`linux/`** - Bash scripts and shell libraries for Linux agents
+- **`windows/`** - PowerShell scripts for Windows agents
+- **`api/`** - Node.js/Express tRPC API server (home server deployment)
+- **`spa/`** - Vanilla TypeScript SPA dashboard for rule management
+- **`dashboard/`** - Analytics/monitoring dashboard (legacy, maintained)
+- **`firefox-extension/`** - WebExtension for real-time block detection
+- **`shared/`** - TypeScript shared types and schemas used across workspaces
+- **`tests/`** - BATS shell tests + E2E tests
+- **`docs/`** - Architecture and planning documents
 
 ## Architecture
 
@@ -134,13 +146,65 @@ All functionality is split into reusable libraries in `/usr/local/lib/openpath/l
 
 - **Logs**: `/var/log/openpath.log` (rotated daily, 7 days)
 
+## Build and Lint Commands
+
+### Root Level Commands
+
+```bash
+npm run build         # Build all TypeScript workspaces
+npm run lint          # Lint all TS/JS files
+npm run lint:fix      # Fix linting issues
+npm run typecheck     # Type-check all workspaces
+npm run verify        # Run typecheck + lint (all packages)
+npm run test          # Run all tests (shell + TypeScript)
+npm run test:shell    # BATS tests only
+npm run lint:shell    # ShellCheck linting (ignores errors)
+npm run clean         # Clean all dist/ and node_modules
+```
+
+### Workspace-Specific Commands
+
+**API Server** (`api/`):
+```bash
+npm run build --workspace=@openpath/api
+npm run start --workspace=@openpath/api        # Production start (requires build)
+npm run dev --workspace=@openpath/api          # Watch mode with tsx
+npm run test --workspace=@openpath/api         # All API tests
+npm run test:api --workspace=@openpath/api     # Core API tests
+npm run test:auth --workspace=@openpath/api    # Auth workflow tests
+npm run test:setup --workspace=@openpath/api   # Setup flow tests
+npm run test:coverage --workspace=@openpath/api  # Coverage report
+npm run drizzle:push --workspace=@openpath/api  # Apply pending migrations
+npm run drizzle:studio --workspace=@openpath/api  # Open Drizzle Studio
+```
+
+**SPA Dashboard** (`spa/`):
+```bash
+npm run build --workspace=openpath-spa
+npm run dev --workspace=openpath-spa           # Watch mode
+npm run test --workspace=openpath-spa          # Unit tests
+npm run test:e2e --workspace=openpath-spa      # Playwright E2E
+npm run test:e2e:ui --workspace=openpath-spa   # E2E with UI
+npm run test:coverage --workspace=openpath-spa
+```
+
+**Dashboard** (`dashboard/`):
+```bash
+npm run build --workspace=@openpath/dashboard
+npm run test --workspace=@openpath/dashboard
+```
+
+**Firefox Extension** (`firefox-extension/`):
+```bash
+npm run build --workspace=@openpath/firefox-extension
+npm run test --workspace=@openpath/firefox-extension
+```
+
 ## Common Development Tasks
 
-### Building and Testing
+### Installation & System Tests
 
-There is no build process for the Linux agent (Bash). However, the TypeScript workspaces (api, spa, dashboard, etc.) DO require a build step (`npm run build`).
-
-**Install the system:**
+**Install the system (Linux):**
 ```bash
 cd linux
 sudo ./install.sh
@@ -150,7 +214,7 @@ sudo ./install.sh --whitelist-url "https://example.com/whitelist.txt"
 sudo ./install.sh --unattended
 ```
 
-**Test the system:**
+**Test the system (after installation):**
 ```bash
 openpath status    # Check all services and DNS
 openpath test      # Test DNS resolution
@@ -172,11 +236,9 @@ sudo openpath force     # Force apply changes (closes browsers, flushes connecti
 sudo openpath restart   # Restart all services
 ```
 
-**Uninstall:**
+**Uninstall (Linux):**
 ```bash
 cd linux
-sudo ./uninstall.sh
-# Or unattended:
 sudo ./uninstall.sh --unattended
 ```
 
@@ -344,42 +406,106 @@ Version is stored in:
 - `lib/common.sh` - `VERSION="4.1.0"`
 - `CHANGELOG.md` - Full release history
 
+## Workspace Data Flow
+
+Understanding how data flows between services helps with debugging and implementation:
+
+1. **Git Storage**: Whitelist rules stored in a GitHub repository as `whitelist.txt` (GitOps pattern)
+2. **API Server** → Downloads whitelist from GitHub, applies domain requests, stores requests in PostgreSQL
+3. **Linux/Windows Agents** → Poll API for updates, download whitelist from Git, enforce rules locally
+4. **SPA Dashboard** → Displays requests, allows admins to approve/reject (commits to Git)
+5. **Firefox Extension** → Runs on client, detects blocks, enables self-service requests
+
+**Key files in git repo:**
+- `whitelist.txt` - The actual whitelist rules
+- `WHITELIST_METADATA.json` - Request tracking (if enabled)
+
 ## Testing
 
-### BATS Tests (72 tests)
-Shell library tests in `tests/`:
+### Running All Tests
+
 ```bash
-cd tests && bats *.bats
-# Or run all tests:
-./run-tests.sh
+npm run test          # Run all tests (BATS + TypeScript workspaces)
+npm run verify        # Full verification: typecheck + lint + tests
 ```
 
-### E2E Tests
-- Linux: `tests/e2e/linux-e2e-tests.sh`
-- Windows: `tests/e2e/Windows-E2E.Tests.ps1`
+### Shell Tests (BATS)
+
+Tests for Bash libraries in `tests/`:
+```bash
+cd tests && bats *.bats          # Run all BATS tests
+npm run test:shell               # From root
+bats tests/dns.bats              # Single file
+bats tests/dns.bats -f "pattern" # Filter by name
+```
+
+**Key test files:**
+- `tests/common.bats` - Whitelist parsing, logging
+- `tests/dns.bats` - DNS configuration, dnsmasq rules
+- `tests/firewall.bats` - iptables rules, connection flushing
+- `tests/browser.bats` - Browser policy generation
 
 ### API Tests (TypeScript)
+
+API server has comprehensive test suites:
 ```bash
-npm run test --workspace=@openpath/api           # All tests
-npm run test:coverage --workspace=@openpath/api  # With coverage
+npm run test --workspace=@openpath/api         # All tests
+npm run test:api --workspace=@openpath/api     # Core API routes
+npm run test:auth --workspace=@openpath/api    # JWT + OAuth flows
+npm run test:setup --workspace=@openpath/api   # Initial setup wizard
+npm run test:e2e --workspace=@openpath/api     # End-to-end workflows
+npm run test:roles --workspace=@openpath/api   # RBAC enforcement
 npm run test:security --workspace=@openpath/api  # Security tests
+npm run test:coverage --workspace=@openpath/api  # Coverage report (65% threshold)
 ```
 
-### Dashboard Tests
+### SPA Tests
+
+Dashboard/UI tests:
 ```bash
-cd dashboard && npm test
+npm run test --workspace=openpath-spa          # Unit tests
+npm run test:e2e --workspace=openpath-spa      # Playwright E2E
+npm run test:e2e:ui --workspace=openpath-spa   # Interactive UI
 ```
 
-### CI/CD
-Workflows in `.github/workflows/`:
-- `ci.yml` - BATS tests, web tests, Windows Pester tests, ShellCheck, ESLint, PSScriptAnalyzer linting
-- `e2e-tests.yml` - Full E2E on Linux/Windows
-- `deploy.yml` - GitHub Pages deployment
-- `deploy-api.yml` - API deployment
+### E2E System Tests
 
-## Verification
+Full system tests (requires system installation):
+- **Linux**: `tests/e2e/linux-e2e-tests.sh` - Full DNS, firewall, browser policy flow
+- **Windows**: `tests/e2e/Windows-E2E.Tests.ps1` - Windows Firewall, Acrylic DNS tests
 
-```bash
-npm run verify    # Lint + typecheck + tests (all packages)
-cd tests && bats *.bats   # Shell tests
-```
+### CI/CD Pipelines
+
+Automated testing on commits/PRs:
+- **`.github/workflows/ci.yml`** - Lint (ESLint, ShellCheck), typecheck, test (BATS, Node tests), coverage
+- **`.github/workflows/e2e-tests.yml`** - Full E2E on Linux/Windows runners
+- **`.github/workflows/deploy.yml`** - GitHub Pages deployment (SPA)
+- **`.github/workflows/deploy-api.yml`** - API deployment
+
+## Key Implementation Patterns
+
+### Monorepo Structure
+
+Uses npm workspaces (`workspaces:` in root `package.json`):
+- Each workspace has independent `package.json` and `tsconfig.json`
+- Shared types in `shared/` workspace imported by others
+- Root `eslint.config.js` applies to all workspaces
+
+### Type Safety
+
+- **API**: tRPC routers with Zod validation for type-safe RPC
+- **SPA**: Vanilla TypeScript with client-side type checking
+- **Shared**: Single source of truth for types used across services
+
+### Authentication
+
+- API uses JWT tokens (signed with `JWT_SECRET`)
+- Setup wizard creates initial admin, provides registration token
+- Classroom mode requires registration token for PC setup
+
+### Database
+
+- PostgreSQL with Drizzle ORM (type-safe queries)
+- Schema in `api/src/db/schema.ts`
+- Migrations tracked in `api/src/db/migrations/`
+- Use `npm run drizzle:push` to apply pending migrations
